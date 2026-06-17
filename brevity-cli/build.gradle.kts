@@ -1,6 +1,12 @@
 plugins {
   alias(libs.plugins.kotlin.jvm)
   id("org.gradle.application")
+  id("dev.wasmo.brevity-build")
+}
+
+brevityBuild {
+  library(jvm = true)
+  publish()
 }
 
 application {

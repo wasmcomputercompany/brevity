@@ -1,8 +1,8 @@
 plugins {
   id("org.jetbrains.kotlin.multiplatform")
   alias(libs.plugins.burst)
-  id("brevity-build")
-  id("brevity")
+  id("dev.wasmo.brevity-build")
+  id("dev.wasmo.brevity")
 }
 
 brevityBuild {

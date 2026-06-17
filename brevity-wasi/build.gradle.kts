@@ -1,7 +1,7 @@
 plugins {
   id("org.jetbrains.kotlin.multiplatform")
-  id("brevity-build")
-  id("brevity")
+  id("dev.wasmo.brevity-build")
+  id("dev.wasmo.brevity")
 }
 
 brevityBuild {

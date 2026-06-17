@@ -5,6 +5,7 @@ interface BrevityBuildExtension {
     jvm: Boolean = false,
     js: Boolean = false,
     wasm: Boolean = false,
-    publish: Boolean = false,
   )
+
+  fun publish()
 }

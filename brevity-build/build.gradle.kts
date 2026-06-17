@@ -1,10 +1,8 @@
-import org.jetbrains.kotlin.gradle.dsl.KotlinJvmExtension
-import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
-import org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper
-import org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper
-
 plugins {
   `kotlin-dsl`
+  alias(libs.plugins.dokka).apply(false)
+  alias(libs.plugins.kotlin.jvm).apply(false)
+  alias(libs.plugins.maven.publish).apply(false)
 }
 
 dependencies {
@@ -21,27 +19,9 @@ dependencies {
 
 gradlePlugin {
   plugins {
-    create("brevity-build") {
-      id = "brevity-build"
+    create("brevityBuild") {
+      id = "dev.wasmo.brevity-build"
       implementationClass = "dev.wasmo.brevity.gradle.BrevityBuildPlugin"
-    }
-  }
-}
-
-allprojects {
-  plugins.withType<KotlinMultiplatformPluginWrapper> {
-    extensions.configure<KotlinMultiplatformExtension> {
-      compilerOptions {
-        freeCompilerArgs.add("-Xcontext-parameters")
-      }
-    }
-  }
-
-  plugins.withType<KotlinPluginWrapper> {
-    extensions.configure<KotlinJvmExtension> {
-      compilerOptions {
-        freeCompilerArgs.add("-Xcontext-parameters")
-      }
     }
   }
 }
