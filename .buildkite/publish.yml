@@ -1,0 +1,21 @@
+steps:
+  - label: ":gradle: Publish"
+    commands:
+      - "cat .buildkite/gradle.properties >> gradle.properties"
+      - "gradle publishAndReleaseToMavenCentral"
+    plugins:
+      - docker#v5.13.0:
+          image: wasmo/ci@sha256:26863f05fa741dfe1872fc589f8517c190f7aca242c3aedc35190267a419fb5b
+          run: ci-build
+          environment:
+            - "ORG_GRADLE_PROJECT_mavenCentralUsername"
+            - "ORG_GRADLE_PROJECT_mavenCentralPassword"
+            - "ORG_GRADLE_PROJECT_signingInMemoryKey"
+      - docker-login#v3.0.0:
+          username: wasmo
+          isolate-config: false
+    secrets:
+      ORG_GRADLE_PROJECT_mavenCentralUsername: SONATYPE_CENTRAL_USERNAME
+      ORG_GRADLE_PROJECT_mavenCentralPassword: SONATYPE_CENTRAL_PASSWORD
+      ORG_GRADLE_PROJECT_signingInMemoryKey: GPG_SECRET_KEY
+      DOCKER_LOGIN_PASSWORD: DOCKER_LOGIN_PASSWORD

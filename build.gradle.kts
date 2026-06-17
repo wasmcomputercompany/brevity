@@ -57,7 +57,7 @@ allprojects {
   // Don't download Node in CI, it's available in our Docker image.
   project.plugins.withType<NodeJsPlugin> {
     project.the<NodeJsEnvSpec>().apply {
-      if (project.findProperty("wasmo.build.environment") == "ci") {
+      if (project.findProperty("brevity.build.environment") == "ci") {
         download = false
         command.set("/usr/local/bin/node")
       }
