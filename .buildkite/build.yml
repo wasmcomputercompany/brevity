@@ -5,7 +5,7 @@ steps:
       - "gradle jvmTest"
     plugins:
       - docker#v5.13.0:
-          image: wasmo/ci@sha256:26863f05fa741dfe1872fc589f8517c190f7aca242c3aedc35190267a419fb5b
+          image: wasmo/brevity-ci@sha256:62dff340c59e68caff71be91045918ae84f2c95b414a1fa385d92c5503157f88
           run: ci-build
           environment:
             - "BUILDKITE_ANALYTICS_TOKEN"
