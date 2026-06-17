@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper
 
 plugins {
   alias(libs.plugins.kotlin.multiplatform).apply(false)
+  alias(libs.plugins.kotlin.jvm).apply(false)
 }
 
 allprojects {

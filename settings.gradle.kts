@@ -16,6 +16,7 @@ dependencyResolutionManagement {
 }
 
 include(":brevity")
+include(":brevity-cli")
 include(":brevity-gradle-plugin")
 include(":brevity-integration-tests")
 include(":brevity-kotlin-generator")

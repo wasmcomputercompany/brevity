@@ -1,18 +1,15 @@
 plugins {
   id("org.jetbrains.kotlin.multiplatform")
   alias(libs.plugins.burst)
+  id("brevity-build")
   id("brevity")
 }
 
+brevityBuild {
+  library(jvm = true, wasm = true)
+}
+
 kotlin {
-  jvm()
-
-  @Suppress("OPT_IN_USAGE")
-  wasmWasi {
-    nodejs()
-    binaries.executable()
-  }
-
   sourceSets {
     commonMain {
       dependencies {
@@ -31,9 +28,6 @@ kotlin {
     jvmTest {
       dependencies {
         implementation(libs.burst.coroutines)
-        implementation(libs.assertk)
-        implementation(libs.kotlin.test)
-        implementation(libs.kotlin.test.junit)
         implementation(libs.okio.fakefilesystem)
       }
     }

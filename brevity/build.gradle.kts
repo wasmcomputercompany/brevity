@@ -1,10 +1,13 @@
 plugins {
   id("org.jetbrains.kotlin.multiplatform")
+  id("brevity-build")
+}
+
+brevityBuild {
+  library(jvm = true, wasm = true)
 }
 
 kotlin {
-  jvm()
-  wasmWasi()
   sourceSets {
     commonMain {
       dependencies {

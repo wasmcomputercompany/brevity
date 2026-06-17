@@ -1,8 +1,10 @@
 package dev.wasmo.brevity.gradle
 
 import org.gradle.api.Action
+import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -23,9 +25,21 @@ internal class RealBrevityExtension(
   val project: Project,
 ) : BrevityExtension {
   override fun generateKotlin(action: Action<BrevityTask>) {
+    val cliConfiguration = try {
+      project.configurations.create("cliConfiguration") {
+        isCanBeResolved = true
+      }.also { cliConfiguration ->
+        project.dependencies {
+          cliConfiguration(project.project(":brevity-cli"))
+        }
+      }
+    } catch (_: InvalidUserDataException) {
+      // This configuration already exists.
+      project.configurations.named("cliConfiguration")
+    }
+
     val brevityTask = project.tasks.register("brevity", BrevityTask::class.java) {
-      group = "brevity"
-      description = "generate Kotlin from WIT"
+      classpath.setFrom(cliConfiguration)
       outputKotlinCommonMain.value(project.layout.buildDirectory.dir("brevity/commonMain"))
       outputKotlinWasmWasiMain.value(project.layout.buildDirectory.dir("brevity/wasmWasiMain"))
       outputKotlinJvmMain.value(project.layout.buildDirectory.dir("brevity/jvmMain"))

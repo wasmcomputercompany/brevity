@@ -1,9 +1,13 @@
 plugins {
   id("org.jetbrains.kotlin.multiplatform")
+  id("brevity-build")
+}
+
+brevityBuild {
+  library(jvm = true)
 }
 
 kotlin {
-  jvm()
   sourceSets {
     jvmMain {
       dependencies {
@@ -14,9 +18,6 @@ kotlin {
     }
     jvmTest {
       dependencies {
-        implementation(libs.assertk)
-        implementation(libs.kotlin.test)
-        implementation(libs.kotlin.test.junit)
         implementation(libs.okio.fakefilesystem)
         implementation(projects.brevityTesting)
       }
