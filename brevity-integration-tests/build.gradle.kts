@@ -43,6 +43,7 @@ brevity {
 }
 
 val rustCargoBuild = tasks.register("rustCargoBuild", Exec::class.java) {
+  group = "rust"
   description = "Generate .wasm components from Rust sources"
   workingDir = File(projectDir, "rust")
   commandLine(
@@ -53,6 +54,7 @@ val rustCargoBuild = tasks.register("rustCargoBuild", Exec::class.java) {
 }
 
 val rustComponentUnbundle = tasks.register("rustComponentUnbundle", Exec::class.java) {
+  group = "rust"
   dependsOn(rustCargoBuild)
   description = "Unbundle the .wasm component into a .wasm core module"
   workingDir = File(projectDir, "rust")
