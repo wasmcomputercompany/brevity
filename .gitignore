@@ -1,0 +1,9 @@
+.gradle
+.kotlin
+.idea
+.DS_Store
+build
+
+# Rust
+target
+Cargo.lock
