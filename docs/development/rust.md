@@ -1,7 +1,7 @@
-Local Development
-=================
+Rust
+====
 
-Brevity requires some third-party tools to build WebAssembly.
+Brevity uses Rust as a reference implementation of WIT and WebAssembly.
 
 Rust
 ----
