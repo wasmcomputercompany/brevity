@@ -5,43 +5,49 @@ import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
-import com.github.ajalt.clikt.parameters.types.path
+import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.kotlin.generator.ApiGenerator
 import dev.wasmo.brevity.kotlin.generator.GuestGenerator
 import dev.wasmo.brevity.kotlin.generator.HostGenerator
 import dev.wasmo.brevity.kotlin.generator.KtMapper
-import java.nio.file.Path
 import okio.FileSystem
-import okio.Path.Companion.toOkioPath
+import okio.Path
 
-class GenerateKotlinCommand : CliktCommand(
+class GenerateKotlinCommand(
+  private val fileSystem: FileSystem,
+) : CliktCommand(
   name = "generate-kotlin",
 ) {
   val inputWitDirectories: List<Path> by option("--wit")
-    .path(mustExist = true, canBeFile = false, canBeDir = true)
+    .okioReadableDirectory(fileSystem)
     .multiple(required = true)
     .help("each directory should contain a single package")
   val outputKotlinCommonMain: Path by option("--commonMain")
-    .path(canBeFile = false, canBeDir = true)
+    .okioWritableDirectory(fileSystem)
     .required()
   val outputKotlinWasmWasiMain: Path by option("--wasmWasiMain")
-    .path(canBeFile = false, canBeDir = true)
+    .okioWritableDirectory(fileSystem)
     .required()
   val outputKotlinJvmMain: Path by option("--jvmMain")
-    .path(canBeFile = false, canBeDir = true)
+    .okioWritableDirectory(fileSystem)
     .required()
+  val world: List<String> by option("--world")
+    .multiple()
+    .help("the world name like 'command', 'wasi:cli/command', or 'wasi:cli/command@0.3.0'")
 
   override fun run() {
-    val packageReader = IoWitPackageReader(FileSystem.SYSTEM)
-    val ktMapper = KtMapper(onlyLongs = true)
+    val packageReader = IoWitPackageReader(fileSystem)
+    val ktMapper = KtMapper(
+      onlyLongs = true,
+    )
     val apiGenerator = ApiGenerator()
     val guestGenerator = GuestGenerator()
     val hostGenerator = HostGenerator()
 
     val ioWitPackages = inputWitDirectories.map {
-      packageReader.read(it.toOkioPath())
+      packageReader.read(it)
     }
 
     val commonMainDir = outputKotlinCommonMain.toFile()
@@ -53,7 +59,13 @@ class GenerateKotlinCommand : CliktCommand(
     val jvmMainDir = outputKotlinJvmMain.toFile()
     jvmMainDir.mkdirs()
 
-    val irPackages = IrMapper(ioWitPackages).map()
+    val allIrPackages = IrMapper(ioWitPackages).map()
+
+    val irPackages = when {
+      world.isEmpty() -> allIrPackages
+      else -> allIrPackages.filterNamedWorlds(world)
+    }
+
     for (irPackage in irPackages) {
       val ktPackage = ktMapper.map(irPackage)
 

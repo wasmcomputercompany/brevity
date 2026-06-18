@@ -23,7 +23,6 @@ import dev.wasmo.brevity.ir.IrWorld
  */
 class KtMapper(
   private val kotlinPackagePrefix: String = "wit",
-  private val worldFilter: (IrWorld) -> Boolean = { true },
   private val onlyLongs: Boolean = false,
 ) {
   private val typeMapper = TypeMapper(kotlinPackagePrefix)
@@ -178,8 +177,6 @@ class KtMapper(
 
   context(context: Context)
   internal fun IrWorld.worldToKt(): KtWorld? {
-    if (!worldFilter.invoke(this)) return null
-
     val kotlinName = context.kotlinName + name
     val hostName = kotlinName + Identifier("Host")
     val guestName = kotlinName + Identifier("Guest")

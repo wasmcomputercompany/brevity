@@ -53,7 +53,7 @@ $ docker run \
   --volume .:/workdir \
   --workdir /workdir \
   wasmo/brevity-ci \
-  gradle :jvmTest -Pbrevity.build.environment=ci
+  gradle check -Pbrevity.build.environment=ci
 ```
 
 Consider keeping a separate clone of the Brevity repo for doing Linux x64 builds. Our Gradle plugins
