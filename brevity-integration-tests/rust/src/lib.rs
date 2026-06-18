@@ -17,7 +17,7 @@ mod bindings {
 
 struct WasmoTesting;
 
-impl bindings::exports::wasmo::testing::calculator::Guest for WasmoTesting {
+impl bindings::exports::local::maths::calculator::Guest for WasmoTesting {
   fn multiply(a: i64, b: i64) -> i64 {
     a * b
   }

@@ -1,10 +1,12 @@
 package wasmo:testing;
 
-interface calculator {
-  multiply: func (a: s64, b: s64) -> s64;
+package local:maths {
+  interface calculator {
+    multiply: func (a: s64, b: s64) -> s64;
+  }
 }
 
 world wasmo-testing {
-  export calculator;
+  export local:maths/calculator;
   export sum: func (a: s64, b: s64) -> s64;
 }
