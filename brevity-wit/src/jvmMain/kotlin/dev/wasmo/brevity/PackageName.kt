@@ -25,4 +25,27 @@ data class PackageName(
       append(version.version)
     }
   }
+
+  val isLocal = namespaces == listOf(Identifier("local"))
+
+  /**
+   * Qualifies this package name using [packageName], a toplevel package name.
+   *
+   * If this package is already a toplevel package name, [qualify] noops.
+   *
+   * If [packageName] is itself a local package name, [qualify] throws.
+   */
+  fun qualify(packageName: PackageName): PackageName {
+    return if (isLocal) {
+      if (packageName.isLocal) {
+        throw IllegalArgumentException("Cannot qualify using a local package name: $packageName")
+      }
+      PackageName(
+        namespaces = packageName.namespaces,
+        names = packageName.names + this.names,
+      )
+    } else {
+      this
+    }
+  }
 }
