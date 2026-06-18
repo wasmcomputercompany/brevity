@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.generator
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.ir.IrMapper
@@ -225,10 +226,10 @@ class KotlinGeneratorTest {
       ),
     )
 
-    val irPackage = IrMapper(listOf(ioPackage)).map().single()
-    val ktPackage = KtMapper(
-      worldFilter = { world -> world.name.name == "command" },
-    ).map(irPackage)
+    val irPackage = IrMapper(listOf(ioPackage)).map()
+      .filterNamedWorlds(listOf("command"))
+      .single()
+    val ktPackage = KtMapper().map(irPackage)
 
     assertThat(ApiGenerator().generate(ktPackage).toString()).isEqualTo(
       """
@@ -346,10 +347,10 @@ class KotlinGeneratorTest {
       ),
     )
 
-    val irPackage = IrMapper(listOf(ioPackage)).map().single()
-    val ktPackage = KtMapper(
-      worldFilter = { world -> world.name.name == "command" },
-    ).map(irPackage)
+    val irPackage = IrMapper(listOf(ioPackage)).map()
+      .filterNamedWorlds(listOf("command"))
+      .single()
+    val ktPackage = KtMapper().map(irPackage)
 
     assertThat(ApiGenerator().generate(ktPackage).toString()).isEqualTo(
       """
