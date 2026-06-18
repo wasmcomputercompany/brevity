@@ -24,13 +24,13 @@ import dev.wasmo.brevity.io.IoTypeDeclaration
 import dev.wasmo.brevity.io.IoTypeName
 import dev.wasmo.brevity.io.IoUse
 import dev.wasmo.brevity.io.IoVariant
-import dev.wasmo.brevity.io.IoWitPackage
+import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.Keywords
 import dev.wasmo.brevity.io.UsePath
 
 class IrMapper(
-  private val packages: List<IoWitPackage>,
+  private val packages: List<IoToplevelWitPackage>,
 ) {
   private val packageNameToPackage = packages.associateBy { it.packageName }
   private val irPackages = mutableMapOf<PackageName, PackageBuilder>()
@@ -59,7 +59,7 @@ class IrMapper(
     }
   }
 
-  private fun addPackage(ioPackage: IoWitPackage) {
+  private fun addPackage(ioPackage: IoToplevelWitPackage) {
     val builder = irPackages.getOrPut(ioPackage.packageName) { PackageBuilder() }
 
     for ((_, ioFile) in ioPackage.files) {

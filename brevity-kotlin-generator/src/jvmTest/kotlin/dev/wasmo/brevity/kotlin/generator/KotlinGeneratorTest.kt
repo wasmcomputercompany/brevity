@@ -2,7 +2,7 @@ package dev.wasmo.brevity.kotlin.generator
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import dev.wasmo.brevity.io.IoWitPackage
+import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.toPackageName
@@ -12,7 +12,7 @@ import okio.Path.Companion.toPath
 class KotlinGeneratorTest {
   @Test
   fun `full interface`() {
-    val ioPackage = IoWitPackage(
+    val ioPackage = IoToplevelWitPackage(
       packageName = "wasi:clocks@0.2.12".toPackageName(),
       files = mapOf(
         "clock.wit".toPath() to """
@@ -190,7 +190,7 @@ class KotlinGeneratorTest {
 
   @Test
   fun `full world`() {
-    val ioPackage = IoWitPackage(
+    val ioPackage = IoToplevelWitPackage(
       packageName = "wasi:cli@0.3.0".toPackageName(),
       files = mapOf(
         "command.wit".toPath() to """
@@ -335,7 +335,7 @@ class KotlinGeneratorTest {
 
   @Test
   fun `world function`() {
-    val ioPackage = IoWitPackage(
+    val ioPackage = IoToplevelWitPackage(
       packageName = "wasi:cli@0.3.0".toPackageName(),
       files = mapOf(
         "command.wit".toPath() to """
@@ -438,7 +438,7 @@ class KotlinGeneratorTest {
   /** We had a bug where we used the wrong package name when following includes across packages. */
   @Test
   fun `imports across packages`() {
-    val cliPackage = IoWitPackage(
+    val cliPackage = IoToplevelWitPackage(
       packageName = "wasi:cli@0.3.0".toPackageName(),
       files = mapOf(
         "command.wit".toPath() to """
@@ -450,7 +450,7 @@ class KotlinGeneratorTest {
           """.trimMargin().toWitFile(),
       ),
     )
-    val clockPackage = IoWitPackage(
+    val clockPackage = IoToplevelWitPackage(
       packageName = "wasi:clocks@0.3.0".toPackageName(),
       files = mapOf(
         "clock.wit".toPath() to """
@@ -529,7 +529,7 @@ class KotlinGeneratorTest {
    */
   @Test
   fun `imports of interfaces without functions are skipped`() {
-    val socketsPackage = IoWitPackage(
+    val socketsPackage = IoToplevelWitPackage(
       packageName = "wasi:sockets@0.3.0".toPackageName(),
       files = mapOf(
         "sockets.wit".toPath() to """

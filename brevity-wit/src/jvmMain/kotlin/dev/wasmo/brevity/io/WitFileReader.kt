@@ -69,7 +69,7 @@ internal class WitFileReader(
 
     return IoWitFile(
       packageDocumentation = packageIdentifier?.documentation,
-      packageName = packageIdentifier?.name,
+      packageName = packageIdentifier?.packageName,
       items = items,
     )
   }
@@ -123,7 +123,7 @@ internal class WitFileReader(
       documentation = documentation,
       gate = gate,
       offset = offset,
-      name = name,
+      packageName = name,
       declarations = declarations,
     ) to packageKind
   }
