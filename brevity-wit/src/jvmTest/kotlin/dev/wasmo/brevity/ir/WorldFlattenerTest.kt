@@ -8,7 +8,7 @@ import dev.wasmo.brevity.io.IoFunction
 import dev.wasmo.brevity.io.IoInclude
 import dev.wasmo.brevity.io.IoInterface
 import dev.wasmo.brevity.io.IoWitFile
-import dev.wasmo.brevity.io.IoWitPackage
+import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
@@ -50,7 +50,7 @@ class WorldFlattenerTest {
       ),
     )
 
-    val wasiCommand = IoWitPackage(
+    val wasiCommand = IoToplevelWitPackage(
       packageName = "wasi:cli@0.3.0".toPackageName(),
       files = mapOf(
         "command.wit".toPath() to IoWitFile(

@@ -12,7 +12,7 @@ import kotlin.test.assertFailsWith
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 
-class IoWitPackageReaderTest {
+class IoToplevelWitPackageReaderTest {
   @Test
   fun happyPath() {
     val directory = "/my-package".toPath()
@@ -53,8 +53,8 @@ class IoWitPackageReaderTest {
     val ioWitPackage = packageReader.read(directory)
 
     assertThat(ioWitPackage).isEqualTo(
-      IoWitPackage(
-        packageDocumentation = Documentation(" command line interfaces!"),
+      IoToplevelWitPackage(
+        documentation = Documentation(" command line interfaces!"),
         packageName = "wasi:cli".toPackageName(),
         files = mapOf(
           "command.wit".toPath() to IoWitFile(

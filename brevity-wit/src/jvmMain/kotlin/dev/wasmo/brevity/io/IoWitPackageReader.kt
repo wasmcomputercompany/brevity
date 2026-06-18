@@ -15,7 +15,7 @@ import okio.Path
 class IoWitPackageReader(
   private val fileSystem: FileSystem,
 ) {
-  fun read(directory: Path): IoWitPackage {
+  fun read(directory: Path): IoToplevelWitPackage {
     val files = mutableMapOf<Path, IoWitFile>()
     for (path in fileSystem.list(directory)) {
       if (!path.name.endsWith(".wit", ignoreCase = true)) continue
@@ -47,8 +47,8 @@ class IoWitPackageReader(
       }
     }
 
-    return IoWitPackage(
-      packageDocumentation = files.values.mapNotNull { it.packageDocumentation }.concatenate(),
+    return IoToplevelWitPackage(
+      documentation = files.values.mapNotNull { it.packageDocumentation }.concatenate(),
       packageName = packageNames.single(),
       files = files,
     )

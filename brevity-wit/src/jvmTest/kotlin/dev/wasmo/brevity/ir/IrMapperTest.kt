@@ -10,7 +10,7 @@ import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.io.IoTypeName
-import dev.wasmo.brevity.io.IoWitPackage
+import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.toUsePath
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.toPackageName
@@ -22,7 +22,7 @@ class IrMapperTest {
   @Test
   fun `find local symbols`() {
     val ioPackages = listOf(
-      IoWitPackage(
+      IoToplevelWitPackage(
         packageName = "wasi:clocks".toPackageName(),
         files = mapOf(
           "clock.wit".toPath() to """
@@ -67,7 +67,7 @@ class IrMapperTest {
   @Test
   fun `find symbols across packages with use`() {
     val ioPackages = listOf(
-      IoWitPackage(
+      IoToplevelWitPackage(
         packageName = "wasi:cli".toPackageName(),
         files = mapOf(
           "stdio.wit".toPath() to """
@@ -79,7 +79,7 @@ class IrMapperTest {
             """.trimMargin().toWitFile(),
         ),
       ),
-      IoWitPackage(
+      IoToplevelWitPackage(
         packageName = "wasi:io@0.2.12".toPackageName(),
         files = mapOf(
           "streams.wit".toPath() to """
@@ -114,7 +114,7 @@ class IrMapperTest {
   @Test
   fun `imports across packages`() {
     val ioPackages = listOf(
-      IoWitPackage(
+      IoToplevelWitPackage(
         packageName = "wasi:cli@0.3.0".toPackageName(),
         files = mapOf(
           "command.wit".toPath() to """
@@ -133,7 +133,7 @@ class IrMapperTest {
             """.trimMargin().toWitFile(),
         ),
       ),
-      IoWitPackage(
+      IoToplevelWitPackage(
         packageName = "wasi:clocks@0.3.0".toPackageName(),
         files = mapOf(
           "world.wit".toPath() to """
@@ -243,7 +243,7 @@ class IrMapperTest {
   @Test
   fun `find symbols in same package with use`() {
     val ioPackages = listOf(
-      IoWitPackage(
+      IoToplevelWitPackage(
         packageName = "wasi:clocks@0.2.12".toPackageName(),
         files = mapOf(
           "timezone.wit".toPath() to """
@@ -286,7 +286,7 @@ class IrMapperTest {
 
   @Test
   fun `get world`() {
-    val wasiCli = IoWitPackage(
+    val wasiCli = IoToplevelWitPackage(
       packageName = "wasi:cli@0.2.12".toPackageName(),
       files = mapOf(
         "command.wit".toPath() to """
@@ -297,7 +297,7 @@ class IrMapperTest {
           """.trimMargin().toWitFile(),
       ),
     )
-    val wasiIo = IoWitPackage(
+    val wasiIo = IoToplevelWitPackage(
       packageName = "wasi:io@0.2.12".toPackageName(),
       files = mapOf(
         "world.wit".toPath() to """
@@ -323,7 +323,7 @@ class IrMapperTest {
   @Test
   fun `interface function abi names`() {
     val ioPackages = listOf(
-      IoWitPackage(
+      IoToplevelWitPackage(
         packageName = "wasi:clocks@0.3.0".toPackageName(),
         files = mapOf(
           "system-clock.wit".toPath() to """
@@ -351,7 +351,7 @@ class IrMapperTest {
   @Test
   fun `resource function abi names`() {
     val ioPackages = listOf(
-      IoWitPackage(
+      IoToplevelWitPackage(
         packageName = "wasi:http@0.3.0".toPackageName(),
         files = mapOf(
           "types.wit".toPath() to """

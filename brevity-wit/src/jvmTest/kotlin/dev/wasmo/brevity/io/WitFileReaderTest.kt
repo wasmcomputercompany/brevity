@@ -1278,7 +1278,7 @@ class WitFileReaderTest {
             documentation = Documentation(" This package is pasted from somewhere else."),
             gate = Gate(since = "1.0"),
             offset = Offset(3, 1),
-            name = "local:a".toPackageName(),
+            packageName = "local:a".toPackageName(),
             declarations = listOf(
               IoInterface(
                 documentation = " This interface is included in a package.",
@@ -1338,7 +1338,7 @@ class WitFileReaderTest {
         items = listOf(
           IoInlinePackage(
             offset = Offset(1, 1),
-            name = "local:a".toPackageName(),
+            packageName = "local:a".toPackageName(),
             declarations = listOf(
               IoTopLevelUse(
                 documentation = Documentation(" Use the Wasi HTTP types."),
@@ -1368,7 +1368,7 @@ class WitFileReaderTest {
         items = listOf(
           IoInlinePackage(
             offset = Offset(1, 1),
-            name = "local:a".toPackageName(),
+            packageName = "local:a".toPackageName(),
             declarations = listOf(
               IoWorld(
                 documentation = " a printer-scanner-fax thingy",

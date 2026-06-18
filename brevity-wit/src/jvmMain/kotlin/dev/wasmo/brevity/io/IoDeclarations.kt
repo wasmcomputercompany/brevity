@@ -10,11 +10,11 @@ import okio.Path
 /**
  * A collection of `.wit` files from a single file system directory.
  */
-data class IoWitPackage(
-  val packageDocumentation: Documentation? = null,
-  val packageName: PackageName,
+data class IoToplevelWitPackage(
+  override val documentation: Documentation? = null,
+  override val packageName: PackageName,
   val files: Map<Path, IoWitFile>,
-)
+): IoWitPackage
 
 data class IoWitFile(
   val packageDocumentation: Documentation? = null,
@@ -28,6 +28,11 @@ sealed interface IoDeclaration {
   val documentation: Documentation?
   val gate: Gate?
   val offset: Offset
+}
+
+sealed interface IoWitPackage {
+  val documentation: Documentation?
+  val packageName: PackageName
 }
 
 sealed interface IoTypeDeclaration : IoDeclaration, IoInterface.Item, IoWorld.Item {
@@ -47,9 +52,9 @@ data class IoInlinePackage(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  val name: PackageName,
+  override val packageName: PackageName,
   val declarations: List<IoWitFile.Item>,
-) : IoDeclaration, IoWitFile.Item
+) : IoDeclaration, IoWitFile.Item, IoWitPackage
 
 /**
  * Declarations may be:
