@@ -20,6 +20,7 @@ kotlin {
 
 brevity {
   generateKotlin {
+    worlds.add("wasi:http/service@0.3.0")
     inputWitPackageDirectories.from(
       File(project.rootDir, "submodules/WASI/proposals/cli/wit"),
       File(project.rootDir, "submodules/WASI/proposals/clocks/wit"),

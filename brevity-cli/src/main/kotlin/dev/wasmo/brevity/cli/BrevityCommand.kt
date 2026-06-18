@@ -3,6 +3,7 @@ package dev.wasmo.brevity.cli
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.core.subcommands
+import okio.FileSystem
 
 class BrevityCommand : CliktCommand(
   name = "brevity",
@@ -11,5 +12,5 @@ class BrevityCommand : CliktCommand(
 }
 
 fun main(args: Array<String>) = BrevityCommand()
-  .subcommands(GenerateKotlinCommand())
+  .subcommands(GenerateKotlinCommand(FileSystem.SYSTEM))
   .main(args)
