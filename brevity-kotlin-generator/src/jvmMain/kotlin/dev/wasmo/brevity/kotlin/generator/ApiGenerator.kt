@@ -84,6 +84,7 @@ class ApiGenerator {
 
   private fun resourceToApi(value: KtResource) = TypeSpec.interfaceBuilder(value.type.simpleName)
     .setDeclaration(value)
+    .addSuperinterface(Symbols.Brevity.Resource)
     .apply {
       for (function in value.functions) {
         addFunction(functionToApi(function))

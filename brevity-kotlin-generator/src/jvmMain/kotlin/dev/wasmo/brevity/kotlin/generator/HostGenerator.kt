@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
+import dev.wasmo.brevity.ir.IrTypeName
 
 class HostGenerator {
   fun generate(witPackage: KtWitPackage): FileSpec {
@@ -67,7 +68,11 @@ class HostGenerator {
             }
 
             else -> {
-              addStatement("val %N = %T()", "guest", implementationGuestTypeName)
+              addStatement(
+                "val %N = %T(%T())", "guest",
+                implementationGuestTypeName,
+                Symbols.Brevity.Bridge,
+              )
             }
           }
           addStatement("val %N = hostFactory(%N)", "host", "guest")
@@ -86,6 +91,16 @@ class HostGenerator {
       implementationBuilder.addType(
         TypeSpec.classBuilder(implementationGuestTypeName)
           .addSuperinterface(guestType)
+          .primaryConstructor(
+            FunSpec.constructorBuilder()
+              .addParameter("bridge", Symbols.Brevity.Bridge)
+              .build()
+          )
+          .addProperty(
+            PropertySpec.builder("bridge", Symbols.Brevity.Bridge)
+              .initializer("bridge")
+              .build()
+          )
           .apply {
             for (api in guestApis) {
               addGuestApi(implementationTypeName, api)
@@ -145,6 +160,16 @@ class HostGenerator {
         val type = worldClassName.nestedClass(api.type.simpleName)
         addType(
           TypeSpec.classBuilder(type)
+            .primaryConstructor(
+              FunSpec.constructorBuilder()
+                .addParameter("bridge", Symbols.Brevity.Bridge)
+                .build()
+            )
+            .addProperty(
+              PropertySpec.builder("bridge", Symbols.Brevity.Bridge)
+                .initializer("bridge")
+                .build()
+            )
             .addSuperinterface(api.type)
             .apply {
               for (function in api.functions) {
@@ -167,7 +192,7 @@ class HostGenerator {
         addProperty(
           PropertySpec.builder(api.name, type)
             .addModifiers(KModifier.OVERRIDE)
-            .initializer("%T()", type)
+            .initializer("%T(%N)", type, "bridge")
             .build(),
         )
       }
@@ -190,13 +215,32 @@ class HostGenerator {
       FunSpec.builder(value.ktName)
         .addModifiers(KModifier.OVERRIDE)
         .apply {
-          addCode("return %N.apply(", value.ktName)
+          if (value.returnType != UNIT) {
+            addCode("return ")
+          }
+          addCode("%N.apply(", value.ktName)
+
           for ((index, parameter) in value.parameters.withIndex()) {
             if (index > 0) addCode(", ")
-            addCode("%N", parameter.name)
+            when (parameter.codec) {
+              is IrTypeName.Declared.Codec.Resource -> {
+                addCode(
+                  "%N.toId(%N).toLong()",
+                  "bridge",
+                  parameter.name,
+                )
+              }
+
+              else -> {
+                addCode("%N", parameter.name)
+              }
+            }
             addParameter(parameter.name, parameter.type)
           }
-          addCode(")[0]")
+          addCode(")")
+          if (value.returnType != UNIT) {
+            addCode("[0]")
+          }
         }
         .returns(value.returnType)
         .build(),

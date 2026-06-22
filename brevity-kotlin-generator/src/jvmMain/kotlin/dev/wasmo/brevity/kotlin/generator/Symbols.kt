@@ -14,6 +14,8 @@ object Symbols {
   }
 
   object Brevity {
+    val Bridge = ClassName("dev.wasmo.brevity", "Bridge")
+    val Resource = ClassName("dev.wasmo.brevity", "Resource")
     val World = ClassName("dev.wasmo.brevity", "World")
   }
 }

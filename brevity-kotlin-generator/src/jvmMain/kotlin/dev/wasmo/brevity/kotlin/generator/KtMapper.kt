@@ -13,6 +13,7 @@ import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrRecord
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeAlias
+import dev.wasmo.brevity.ir.IrTypeName
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
@@ -161,9 +162,11 @@ class KtMapper(
         documentation = parameter.documentation?.content,
         name = parameter.name.name.toCamelCase(upperCamel = false),
         type = typeMapper.map(parameter.type),
+        codec = (parameter.type as? IrTypeName.Declared)?.codec
       )
     },
     returnType = returnType?.let { typeMapper.map(it) } ?: UNIT,
+    returnTypeCodec = (returnType as? IrTypeName.Declared)?.codec,
   )
 
   context(context: Context)
