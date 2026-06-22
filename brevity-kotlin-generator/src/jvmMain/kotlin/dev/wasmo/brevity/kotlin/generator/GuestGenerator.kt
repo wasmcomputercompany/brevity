@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.UNIT
 
 class GuestGenerator {
   fun generate(witPackage: KtWitPackage): FileSpec {
@@ -96,7 +97,7 @@ class GuestGenerator {
           .build(),
       )
       .apply {
-        if (value.returnType != null) {
+        if (value.returnType != UNIT) {
           addCode("return ")
           returns(value.returnType)
         }

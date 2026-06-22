@@ -193,10 +193,7 @@ class ApiGenerator {
       for (parameter in value.parameters) {
         addParameter(parameter.name, parameter.type)
       }
-      val returnType = value.returnType
-      if (returnType != null) {
-        returns(returnType)
-      }
+      returns(value.returnType)
     }
     .build()
 

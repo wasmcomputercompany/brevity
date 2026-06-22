@@ -198,7 +198,7 @@ class HostGenerator {
           }
           addCode(")[0]")
         }
-        .returns(value.returnType ?: UNIT)
+        .returns(value.returnType)
         .build(),
     )
   }

@@ -318,9 +318,17 @@ class IrMapper(
           // Direct match.
           if (declaration.name == name) {
             return IrTypeName.Declared(
-              witPackage.packageName,
-              context.parentName,
-              declaration.name,
+              packageName = witPackage.packageName,
+              parentName = context.parentName,
+              name = declaration.name,
+              codec = when (declaration) {
+                is IoEnum -> IrTypeName.Declared.Codec.Enum
+                is IoFlags -> IrTypeName.Declared.Codec.Flags
+                is IoRecord -> IrTypeName.Declared.Codec.Record
+                is IoResource -> IrTypeName.Declared.Codec.Resource
+                is IoTypeAlias -> IrTypeName.Declared.Codec.Alias(declaration.target.typeNameToIr())
+                is IoVariant -> IrTypeName.Declared.Codec.Variant
+              }
             )
           }
         }

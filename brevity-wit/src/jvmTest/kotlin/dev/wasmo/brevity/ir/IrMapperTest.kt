@@ -50,6 +50,7 @@ class IrMapperTest {
         packageName = "wasi:clocks".toPackageName(),
         parentName = Identifier("wall-clock"),
         name = Identifier("datetime"),
+        codec = IrTypeName.Declared.Codec.Record,
       ),
     )
 
@@ -107,6 +108,7 @@ class IrMapperTest {
         packageName = "wasi:io@0.2.12".toPackageName(),
         parentName = Identifier("streams"),
         name = Identifier("input-stream"),
+        codec = IrTypeName.Declared.Codec.Resource,
       ),
     )
   }
@@ -146,6 +148,7 @@ class IrMapperTest {
         packageName = "wasi:cli".toPackageName(),
         parentName = Identifier("streams"),
         name = Identifier("input-stream"),
+        codec = IrTypeName.Declared.Codec.Resource,
       ),
     )
   }
@@ -213,8 +216,8 @@ class IrMapperTest {
                     name = "now",
                     packageName = "wasi:clocks@0.3.0",
                     parentName = "monotonic-clock",
-                  )
-                )
+                  ),
+                ),
               ),
             ),
           ),
@@ -232,8 +235,8 @@ class IrMapperTest {
                     name = "now",
                     packageName = "wasi:clocks@0.3.0",
                     parentName = "monotonic-clock",
-                  )
-                )
+                  ),
+                ),
               ),
             ),
           ),
@@ -256,8 +259,8 @@ class IrMapperTest {
                     name = "now",
                     packageName = "wasi:clocks@0.3.0",
                     parentName = "monotonic-clock",
-                  )
-                )
+                  ),
+                ),
               ),
             ),
           ),
@@ -319,6 +322,7 @@ class IrMapperTest {
         packageName = "wasi:clocks@0.2.12".toPackageName(),
         parentName = Identifier("wall-clock"),
         name = Identifier("datetime"),
+        codec = IrTypeName.Declared.Codec.Record,
       ),
     )
   }
@@ -437,6 +441,143 @@ class IrMapperTest {
         name = "clone",
         resourceName = "fields",
         annotation = Annotation.Method,
+      ),
+    )
+  }
+
+  @Test
+  fun `resolve all type codecs`() {
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "test:types".toPackageName(),
+        files = mapOf(
+          "types.wit".toPath() to """
+            |package test:types;
+            |
+            |world all-types {
+            |    type my-alias = tuple<my-resource, list<my-enum>>;
+            |    record my-record {
+            |        field: u64,
+            |    }
+            |    enum my-enum {
+            |        red,
+            |        blue,
+            |    }
+            |    resource my-resource {
+            |        write: func(bytes: list<u8>);
+            |    }
+            |    variant my-variant {
+            |        none,
+            |        some(list<my-record>),
+            |    }
+            |}
+            """.trimMargin().toWitFile(),
+        ),
+      ),
+    )
+
+    val irMapper = IrMapper(ioPackages)
+    val packages = irMapper.map()
+    assertThat(packages).containsExactly(
+      IrWitPackage(
+        packageName = "test:types".toPackageName(),
+        items = listOf(
+          IrWorld(
+            name = "all-types",
+            offset = Offset(3, 1),
+            items = listOf(
+              IrTypeAlias(
+                name = "my-alias",
+                offset = Offset(4, 5),
+                target = IrTypeName.Tuple(
+                  types = listOf(
+                    IrTypeNameDeclared(
+                      packageName = "test:types",
+                      parentName = "all-types",
+                      typeName = "my-resource",
+                      codec = IrTypeName.Declared.Codec.Resource,
+                    ),
+                    IrTypeName.List(
+                      IrTypeNameDeclared(
+                        packageName = "test:types",
+                        parentName = "all-types",
+                        typeName = "my-enum",
+                        codec = IrTypeName.Declared.Codec.Enum,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              IrRecord(
+                name = "my-record",
+                offset = Offset(5, 5),
+                fields = listOf(
+                  IrField(
+                    offset = Offset(6, 9),
+                    name = "field",
+                    type = IrTypeName.U64,
+                  ),
+                ),
+              ),
+              IrEnum(
+                name = "my-enum",
+                offset = Offset(8, 5),
+                cases = listOf(
+                  IrCase(
+                    offset = Offset(9, 9),
+                    name = "red",
+                  ),
+                  IrCase(
+                    offset = Offset(10, 9),
+                    name = "blue",
+                  ),
+                ),
+              ),
+              IrResource(
+                name = "my-resource",
+                offset = Offset(12, 5),
+                functions = listOf(
+                  IrFunction(
+                    offset = Offset(13, 9),
+                    name = "write",
+                    parameters = listOf(
+                      IrParameter(
+                        offset = Offset(13, 21),
+                        name = "bytes",
+                        type = IrTypeName.List(IrTypeName.U8),
+                      ),
+                    ),
+                    packageName = "test:types",
+                    parentName = "all-types",
+                    resourceName = "my-resource",
+                  ),
+                ),
+
+                ),
+              IrVariant(
+                name = "my-variant",
+                offset = Offset(15, 5),
+                cases = listOf(
+                  IrCase(
+                    offset = Offset(16, 9),
+                    name = "none",
+                  ),
+                  IrCase(
+                    offset = Offset(17, 9),
+                    name = "some",
+                    type = IrTypeName.List(
+                      IrTypeNameDeclared(
+                        packageName = "test:types",
+                        parentName = "all-types",
+                        typeName = "my-record",
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     )
   }

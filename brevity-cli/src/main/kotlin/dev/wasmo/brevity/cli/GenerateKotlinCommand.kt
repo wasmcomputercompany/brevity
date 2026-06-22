@@ -39,9 +39,7 @@ class GenerateKotlinCommand(
 
   override fun run() {
     val packageReader = IoWitPackageReader(fileSystem)
-    val ktMapper = KtMapper(
-      onlyLongs = true,
-    )
+    val ktMapper = KtMapper()
     val apiGenerator = ApiGenerator()
     val guestGenerator = GuestGenerator()
     val hostGenerator = HostGenerator()

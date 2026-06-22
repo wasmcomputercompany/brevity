@@ -27,10 +27,12 @@ fun IrTypeNameDeclared(
   packageName: String,
   parentName: String,
   typeName: String,
+  codec: IrTypeName.Declared.Codec = IrTypeName.Declared.Codec.Record,
 ) = IrTypeName.Declared(
   packageName = packageName.toPackageName(),
   parentName = Identifier(parentName),
   name = Identifier(typeName),
+  codec = codec,
 )
 
 fun IrEnum(
