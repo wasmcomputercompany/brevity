@@ -1,9 +1,7 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.TypeName
 import dev.wasmo.brevity.FunctionName
-import dev.wasmo.brevity.ir.IrTypeName
 
 sealed interface KtDeclaration {
   val documentation: String?
@@ -78,7 +76,7 @@ data class KtRecord(
   data class Field(
     override val documentation: String?,
     val name: String,
-    val type: TypeName,
+    val type: KtTypeName,
   ) : KtDeclaration
 }
 
@@ -91,7 +89,7 @@ data class KtResource(
 data class KtTypeAlias(
   override val documentation: String?,
   override val type: ClassName,
-  val target: TypeName,
+  val target: KtTypeName,
 ) : KtTypeDeclaration
 
 data class KtVariant(
@@ -102,7 +100,7 @@ data class KtVariant(
   data class Case(
     override val documentation: String?,
     val name: String,
-    val type: TypeName?,
+    val type: KtTypeName?,
   ) : KtDeclaration
 }
 
@@ -122,13 +120,11 @@ data class KtFunction(
   val ktName: String,
   val name: FunctionName,
   val parameters: List<Parameter>,
-  val returnType: TypeName,
-  val returnTypeCodec: IrTypeName.Declared.Codec? = null,
+  val returnType: KtTypeName?,
 ) : KtDeclaration, KtInterface.Item, KtWorld.Api {
   data class Parameter(
     override val documentation: String?,
     val name: String,
-    val type: TypeName,
-    val codec: IrTypeName.Declared.Codec? = null,
+    val type: KtTypeName,
   ) : KtDeclaration
 }
