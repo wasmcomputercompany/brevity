@@ -9,8 +9,8 @@ import dev.wasmo.brevity.Annotation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
-import dev.wasmo.brevity.io.IoTypeName
 import dev.wasmo.brevity.io.IoToplevelWitPackage
+import dev.wasmo.brevity.io.IoTypeName
 import dev.wasmo.brevity.io.toUsePath
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.toPackageName
@@ -41,8 +41,8 @@ class IrMapperTest {
 
     assertThat(
       irMapper.getType(
-        packageName = "wasi:clocks",
-        parentName = "wall-clock",
+        contextPackageName = "wasi:clocks",
+        contextParentName = "wall-clock",
         typeName = IoTypeName.Declared("datetime"),
       ),
     ).isEqualTo(
@@ -56,8 +56,8 @@ class IrMapperTest {
     assertThat(
       assertFailsWith<IllegalArgumentException> {
         irMapper.getType(
-          packageName = "wasi:clocks",
-          parentName = "wall-clock",
+          contextPackageName = "wasi:clocks",
+          contextParentName = "wall-clock",
           typeName = IoTypeName.Declared("instant"),
         )
       },
@@ -98,13 +98,52 @@ class IrMapperTest {
 
     assertThat(
       irMapper.getType(
-        packageName = "wasi:cli",
-        parentName = "stdin",
+        contextPackageName = "wasi:cli",
+        contextParentName = "stdin",
         typeName = IoTypeName.Declared("input-stream"),
       ),
     ).isEqualTo(
       IrTypeName.Declared(
         packageName = "wasi:io@0.2.12".toPackageName(),
+        parentName = Identifier("streams"),
+        name = Identifier("input-stream"),
+      ),
+    )
+  }
+
+  @Test
+  fun `find symbols across parents with use`() {
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "wasi:cli".toPackageName(),
+        files = mapOf(
+          "stdio.wit".toPath() to """
+            |world stdin {
+            |  use streams.{input-stream};
+            |
+            |  export get-stdin: func() -> input-stream;
+            |}
+            |
+            |interface streams {
+            |    resource input-stream {
+            |        read: func(len: u64) -> result;
+            |    }
+            |}
+            """.trimMargin().toWitFile(),
+        ),
+      ),
+    )
+    val irMapper = IrMapper(ioPackages)
+
+    assertThat(
+      irMapper.getType(
+        contextPackageName = "wasi:cli",
+        contextParentName = "stdin",
+        typeName = IoTypeName.Declared("input-stream"),
+      ),
+    ).isEqualTo(
+      IrTypeName.Declared(
+        packageName = "wasi:cli".toPackageName(),
         parentName = Identifier("streams"),
         name = Identifier("input-stream"),
       ),
@@ -271,8 +310,8 @@ class IrMapperTest {
 
     assertThat(
       irMapper.getType(
-        packageName = "wasi:clocks@0.2.12",
-        parentName = "timezone",
+        contextPackageName = "wasi:clocks@0.2.12",
+        contextParentName = "timezone",
         typeName = IoTypeName.Declared("datetime"),
       ),
     ).isEqualTo(
@@ -403,14 +442,14 @@ class IrMapperTest {
   }
 
   private fun IrMapper.getType(
-    packageName: String,
-    parentName: String,
+    contextPackageName: String,
+    contextParentName: String,
     typeName: IoTypeName,
   ): IrTypeName {
     context(
       IrMapper.Context(
-        packageName = packageName.toPackageName(),
-        parentName = Identifier(parentName),
+        packageName = contextPackageName.toPackageName(),
+        parentName = Identifier(contextParentName),
       ),
     ) {
       return typeName.typeNameToIr()

@@ -19,12 +19,12 @@ import dev.wasmo.brevity.io.IoParameter
 import dev.wasmo.brevity.io.IoRecord
 import dev.wasmo.brevity.io.IoResource
 import dev.wasmo.brevity.io.IoTopLevelUse
+import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoTypeAlias
 import dev.wasmo.brevity.io.IoTypeDeclaration
 import dev.wasmo.brevity.io.IoTypeName
 import dev.wasmo.brevity.io.IoUse
 import dev.wasmo.brevity.io.IoVariant
-import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.Keywords
 import dev.wasmo.brevity.io.UsePath
@@ -300,11 +300,17 @@ class IrMapper(
   context(context: Context)
   internal fun IoTypeName.Declared.declaredTypeToIrOrNull(): IrTypeName.Declared? {
     val witPackage = packageNameToPackage[context.packageName] ?: return null
-    val declarations = witPackage.files.values
-      .flatMap { it.items }
-      .filterIsInstance<IoInterface>()
-      .filter { it.name == context.parentName }
-      .flatMap { it.items }
+    val declarations = sequence {
+      for (file in witPackage.files.values) {
+        for (parent in file.items) {
+          when (parent) {
+            is IoInterface if parent.name == context.parentName -> yieldAll(parent.items)
+            is IoWorld if parent.name == context.parentName -> yieldAll(parent.items)
+            else -> {}
+          }
+        }
+      }
+    }
 
     for (declaration in declarations) {
       when (declaration) {
