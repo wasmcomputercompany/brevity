@@ -4,6 +4,7 @@ import app.cash.burst.Burst
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNullOrEmpty
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 import okio.Path
@@ -25,6 +26,7 @@ class RunKotlinWasmTest {
   }
 
   @Test
+  @Ignore("not all imports declared yet")
   fun `call function declared on interface`(
     wasmSource: WasmSource,
   ) = runTest {

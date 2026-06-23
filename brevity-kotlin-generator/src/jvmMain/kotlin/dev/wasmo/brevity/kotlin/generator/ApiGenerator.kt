@@ -8,6 +8,7 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.UNIT
 
 class ApiGenerator {
   fun generate(witPackage: KtWitPackage): FileSpec {
@@ -66,12 +67,12 @@ class ApiGenerator {
 
       for (field in value.fields) {
         val name = field.name
-        val parameter = ParameterSpec.builder(name, field.type)
+        val parameter = ParameterSpec.builder(name, field.type.apiType)
           .build()
         constructorBuilder.addParameter(parameter)
 
         addProperty(
-          PropertySpec.builder(name, field.type)
+          PropertySpec.builder(name, field.type.apiType)
             .initializer("%N", parameter)
             .setDeclaration(field)
             .build(),
@@ -84,6 +85,7 @@ class ApiGenerator {
 
   private fun resourceToApi(value: KtResource) = TypeSpec.interfaceBuilder(value.type.simpleName)
     .setDeclaration(value)
+    .addSuperinterface(Symbols.Brevity.Resource)
     .apply {
       for (function in value.functions) {
         addFunction(functionToApi(function))
@@ -104,11 +106,11 @@ class ApiGenerator {
               .addSuperinterface(value.type)
               .primaryConstructor(
                 FunSpec.constructorBuilder()
-                  .addParameter("value", case.type)
+                  .addParameter("value", case.type.apiType)
                   .build(),
               )
               .addProperty(
-                PropertySpec.builder("value", case.type)
+                PropertySpec.builder("value", case.type.apiType)
                   .initializer("%N", "value")
                   .build(),
               )
@@ -147,7 +149,7 @@ class ApiGenerator {
     .addAnnotation(JvmInline::class)
     .setDeclaration(value)
     .apply {
-      val parameter = ParameterSpec.builder("value", value.target)
+      val parameter = ParameterSpec.builder("value", value.target.apiType)
         .build()
 
       primaryConstructor(
@@ -157,7 +159,7 @@ class ApiGenerator {
       )
 
       addProperty(
-        PropertySpec.builder("value", value.target)
+        PropertySpec.builder("value", value.target.apiType)
           .initializer("%N", parameter)
           .build(),
       )
@@ -191,12 +193,9 @@ class ApiGenerator {
     .setDeclaration(value)
     .apply {
       for (parameter in value.parameters) {
-        addParameter(parameter.name, parameter.type)
+        addParameter(parameter.name, parameter.type.apiType)
       }
-      val returnType = value.returnType
-      if (returnType != null) {
-        returns(returnType)
-      }
+      returns(value.returnType?.apiType ?: UNIT)
     }
     .build()
 

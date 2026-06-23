@@ -8,23 +8,32 @@ mod bindings {
     //! (and interfaces/worlds) there-in.
     wit_bindgen::generate!({
         path: "../src/commonMain/wit/wasmo-testing.wit",
-
     });
 
-  use super::WasmoTesting;
-  export!(WasmoTesting);
+    use super::WasmoTesting;
+    export!(WasmoTesting);
 }
 
 struct WasmoTesting;
 
 impl bindings::exports::wasmo::testing::calculator::Guest for WasmoTesting {
-  fn multiply(a: i64, b: i64) -> i64 {
-    a * b
-  }
+    fn multiply(a: i64, b: i64) -> i64 {
+        a * b
+    }
 }
 
 impl bindings::Guest for WasmoTesting {
-  fn sum(a: i64, b: i64) -> i64 {
-    a + b
-  }
+    fn sum(a: i64, b: i64) -> i64 {
+        a + b
+    }
+    fn concat(
+        a: bindings::wasmo::testing::types::StringArgument,
+        b: bindings::wasmo::testing::types::StringArgument,
+        callback: bindings::wasmo::testing::types::StringResult,
+    ) {
+        let x = a.get();
+        let y = b.get();
+        let z = x + &y;
+        callback.put(&z)
+    }
 }

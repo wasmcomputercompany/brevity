@@ -23,6 +23,7 @@ sealed class IrTypeName {
     val packageName: PackageName,
     val parentName: Identifier,
     val name: Identifier,
+    val codec: Codec,
   ) : IrTypeName() {
     override fun toString() = buildString {
       for (namespace in packageName.namespaces) {
@@ -39,6 +40,15 @@ sealed class IrTypeName {
         append(packageName.version)
       }
       append(".{$name}")
+    }
+
+    sealed class Codec {
+      data class Alias(val target: IrTypeName) : Codec()
+      data object Enum : Codec()
+      data object Flags : Codec()
+      data object Record : Codec()
+      data object Resource : Codec()
+      data object Variant : Codec()
     }
   }
 

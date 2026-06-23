@@ -5,6 +5,7 @@ chicory = "1.7.5"
 clikt = "5.0.1"
 dokka = "2.2.0"
 kotlin = "2.4.0"
+kotlinx-coroutines = "1.10.2"
 maven-publish = "0.36.0"
 okhttp = "5.3.0"
 okio = "3.16.4"
@@ -22,6 +23,7 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 kotlin-test-js = { module = "org.jetbrains.kotlin:kotlin-test-js", version.ref = "kotlin" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 kotlinpoet = { module = "com.squareup:kotlinpoet", version = "2.3.0" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 maven-publish = { module = "com.vanniktech.maven.publish.base:com.vanniktech.maven.publish.base.gradle.plugin", version.ref = "maven-publish" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }

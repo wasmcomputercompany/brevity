@@ -3,7 +3,7 @@ package dev.wasmo.brevity.kotlin.generator
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.STRING
 import com.squareup.kotlinpoet.U_INT
 import dev.wasmo.brevity.ir.IrTypeName
@@ -17,13 +17,22 @@ class TypeMapperTest {
 
     assertThat(
       typeMapper.map(IrTypeNameDeclared("wasi:clocks", "wall-clock", "datetime")),
-    ).isEqualTo(ClassName("wit.wasi.clocks", "WallClock", "Datetime"))
+    ).isEqualTo(
+      KtTypeName.Declared(
+        ClassName("wit.wasi.clocks", "WallClock", "Datetime"),
+        codec = KtTypeName.Declared.Codec.Record,
+      ),
+    )
 
     assertThat(
       typeMapper.map(IrTypeName.List(IrTypeNameDeclared("wasi:clocks", "wall-clock", "datetime"))),
     ).isEqualTo(
-      ClassName("kotlin.collections", "List")
-        .parameterizedBy(ClassName("wit.wasi.clocks", "WallClock", "Datetime")),
+      KtTypeName.List(
+        KtTypeName.Declared(
+          apiType = ClassName("wit.wasi.clocks", "WallClock", "Datetime"),
+          codec = KtTypeName.Declared.Codec.Record,
+        ),
+      ),
     )
   }
 
@@ -31,10 +40,15 @@ class TypeMapperTest {
   fun `map built in types`() {
     val typeMapper = TypeMapper(kotlinPackagePrefix = "wit")
 
-    assertThat(typeMapper.map(IrTypeName.U32)).isEqualTo(U_INT)
+    assertThat(typeMapper.map(IrTypeName.U32)).isEqualTo(KtTypeName.Simple(U_INT, INT))
     assertThat(typeMapper.map(IrTypeName.List(IrTypeName.U32)))
-      .isEqualTo(ClassName("kotlin", "UIntArray"))
+      .isEqualTo(
+        KtTypeName.Simple(
+          ClassName("kotlin", "UIntArray"),
+          INT,
+        ),
+      )
     assertThat(typeMapper.map(IrTypeName.List(IrTypeName.String)))
-      .isEqualTo(ClassName("kotlin.collections", "List").parameterizedBy(STRING))
+      .isEqualTo(KtTypeName.List(KtTypeName.Simple(STRING, INT)))
   }
 }

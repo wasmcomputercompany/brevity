@@ -1,7 +1,6 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.TypeName
 import dev.wasmo.brevity.FunctionName
 
 sealed interface KtDeclaration {
@@ -31,6 +30,10 @@ data class KtInterface(
   sealed interface Item : KtDeclaration
 }
 
+sealed interface KtTypeDeclaration : KtDeclaration, KtInterface.Item, KtWorld.Item {
+  val type: ClassName
+}
+
 data class KtWorld(
   override val documentation: String?,
   val type: ClassName,
@@ -56,9 +59,9 @@ data class KtWorld(
 
 data class KtEnum(
   override val documentation: String?,
-  val type: ClassName,
+  override val type: ClassName,
   val cases: List<Case>,
-) : KtDeclaration, KtInterface.Item, KtWorld.Item {
+) : KtTypeDeclaration {
   data class Case(
     override val documentation: String?,
     val name: String,
@@ -67,45 +70,45 @@ data class KtEnum(
 
 data class KtRecord(
   override val documentation: String?,
-  val type: ClassName,
+  override val type: ClassName,
   val fields: List<Field>,
-) : KtDeclaration, KtInterface.Item, KtWorld.Item {
+) : KtTypeDeclaration {
   data class Field(
     override val documentation: String?,
     val name: String,
-    val type: TypeName,
+    val type: KtTypeName,
   ) : KtDeclaration
 }
 
 data class KtResource(
   override val documentation: String?,
-  val type: ClassName,
+  override val type: ClassName,
   val functions: List<KtFunction>,
-) : KtDeclaration, KtInterface.Item, KtWorld.Item
+) : KtTypeDeclaration
 
 data class KtTypeAlias(
   override val documentation: String?,
-  val type: ClassName,
-  val target: TypeName,
-) : KtDeclaration, KtInterface.Item, KtWorld.Item
+  override val type: ClassName,
+  val target: KtTypeName,
+) : KtTypeDeclaration
 
 data class KtVariant(
   override val documentation: String?,
-  val type: ClassName,
+  override val type: ClassName,
   val cases: List<Case>,
-) : KtDeclaration, KtInterface.Item, KtWorld.Item {
+) : KtTypeDeclaration {
   data class Case(
     override val documentation: String?,
     val name: String,
-    val type: TypeName?,
+    val type: KtTypeName?,
   ) : KtDeclaration
 }
 
 data class KtFlags(
   override val documentation: String?,
-  val type: ClassName,
+  override val type: ClassName,
   val flags: List<Flag>,
-) : KtDeclaration, KtInterface.Item, KtWorld.Item {
+) : KtTypeDeclaration {
   data class Flag(
     override val documentation: String?,
     val name: String,
@@ -117,11 +120,11 @@ data class KtFunction(
   val ktName: String,
   val name: FunctionName,
   val parameters: List<Parameter>,
-  val returnType: TypeName?,
+  val returnType: KtTypeName?,
 ) : KtDeclaration, KtInterface.Item, KtWorld.Api {
   data class Parameter(
     override val documentation: String?,
     val name: String,
-    val type: TypeName,
+    val type: KtTypeName,
   ) : KtDeclaration
 }

@@ -1,6 +1,5 @@
 package dev.wasmo.brevity.kotlin.generator
 
-import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.NameAllocator
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.io.IoFunction
@@ -23,7 +22,6 @@ import dev.wasmo.brevity.ir.IrWorld
  */
 class KtMapper(
   private val kotlinPackagePrefix: String = "wit",
-  private val onlyLongs: Boolean = false,
 ) {
   private val typeMapper = TypeMapper(kotlinPackagePrefix)
 
@@ -161,18 +159,10 @@ class KtMapper(
       KtFunction.Parameter(
         documentation = parameter.documentation?.content,
         name = parameter.name.name.toCamelCase(upperCamel = false),
-        type = when {
-          onlyLongs -> LONG
-          else -> typeMapper.map(parameter.type)
-        },
+        type = typeMapper.map(parameter.type),
       )
     },
-    returnType = returnType?.let {
-      when {
-        onlyLongs -> LONG
-        else -> typeMapper.map(it)
-      }
-    },
+    returnType = returnType?.let { typeMapper.map(it) },
   )
 
   context(context: Context)

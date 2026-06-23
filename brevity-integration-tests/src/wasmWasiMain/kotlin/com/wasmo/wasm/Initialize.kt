@@ -1,6 +1,7 @@
 package com.wasmo.wasm
 
 import wit.wasmo.testing.Calculator
+import wit.wasmo.testing.Types
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.guest
 
@@ -12,6 +13,14 @@ import wit.wasmo.testing.guest
 @EagerInitialization
 val actuallyInitialize = run {
   WasmoTesting.guest = object : WasmoTesting.Guest {
+    override fun concat(
+      a: Types.StringArgument,
+      b: Types.StringArgument,
+      callback: Types.StringResult,
+    ) {
+      TODO("Not yet implemented")
+    }
+
     override val calculator = object : Calculator {
       override fun multiply(a: Long, b: Long) = a * b
     }

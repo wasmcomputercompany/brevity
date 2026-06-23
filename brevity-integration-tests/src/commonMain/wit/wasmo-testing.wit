@@ -1,10 +1,21 @@
 package wasmo:testing;
 
+interface types {
+  resource string-argument {
+    get: func() -> string;
+  }
+  resource string-result {
+    put: func(value: string);
+  }
+}
+
 interface calculator {
   multiply: func (a: s64, b: s64) -> s64;
 }
 
 world wasmo-testing {
+  use types.{string-argument, string-result};
   export calculator;
   export sum: func (a: s64, b: s64) -> s64;
+  export concat: func (a: string-argument, b: string-argument, callback: string-result);
 }

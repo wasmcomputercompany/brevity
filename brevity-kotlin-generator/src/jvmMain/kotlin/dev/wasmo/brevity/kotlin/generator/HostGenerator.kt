@@ -1,8 +1,10 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LambdaTypeName
 import com.squareup.kotlinpoet.MemberSpecHolder
@@ -11,6 +13,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
+import com.squareup.kotlinpoet.joinToCode
 
 class HostGenerator {
   fun generate(witPackage: KtWitPackage): FileSpec {
@@ -26,8 +29,21 @@ class HostGenerator {
 
   private fun FileSpec.Builder.addPackageItem(value: KtWitPackage.Item) {
     when (value) {
-      is KtInterface -> {}
+      is KtInterface -> addInterface(value)
       is KtWorld -> addWorld(value)
+    }
+  }
+
+  private fun FileSpec.Builder.addInterface(value: KtInterface) {
+    for (item in value.items) {
+      addInterfaceItem(item)
+    }
+  }
+
+  private fun FileSpec.Builder.addInterfaceItem(value: KtInterface.Item) {
+    when (value) {
+      is KtResource -> addType(resourceToHostBridge(value))
+      else -> {}
     }
   }
 
@@ -47,30 +63,36 @@ class HostGenerator {
       else -> implementationTypeName.nestedClass("Guest")
     }
 
+    val hostFactory = ParameterSpec.builder(
+      "hostFactory",
+      LambdaTypeName.get(
+        parameters = listOf(ParameterSpec.unnamed(guestType)),
+        returnType = hostTypeName,
+      ),
+    ).build()
     addFunction(
       FunSpec.builder("World")
         .receiver(value.type)
         .returns(Symbols.Brevity.World.parameterizedBy(hostTypeName, guestType))
-        .addParameter(
-          ParameterSpec.builder(
-            "hostFactory",
-            LambdaTypeName.get(
-              parameters = listOf(ParameterSpec.unnamed(guestType)),
-              returnType = hostTypeName,
-            ),
-          ).build(),
-        )
+        .addParameter(hostFactory)
         .apply {
+          addStatement("val %N = %T()", "bridge", Symbols.Brevity.HostBridge)
+
           when {
             value.guest.apis.isEmpty() -> {
               addStatement("val %N = %T", "guest", implementationGuestTypeName)
             }
 
             else -> {
-              addStatement("val %N = %T()", "guest", implementationGuestTypeName)
+              addStatement(
+                "val %N = %T(%N)",
+                "guest",
+                implementationGuestTypeName,
+                "bridge",
+              )
             }
           }
-          addStatement("val %N = hostFactory(%N)", "host", "guest")
+          addStatement("val %N = %N(%N)", "host", hostFactory, "guest")
           addStatement("return %T(%N, %N)", implementationTypeName, "host", "guest")
         }
         .build(),
@@ -86,9 +108,25 @@ class HostGenerator {
       implementationBuilder.addType(
         TypeSpec.classBuilder(implementationGuestTypeName)
           .addSuperinterface(guestType)
+          .primaryConstructor(
+            FunSpec.constructorBuilder()
+              .addParameter("bridge", Symbols.Brevity.HostBridge)
+              .build(),
+          )
+          .addProperty(
+            PropertySpec.builder("bridge", Symbols.Brevity.HostBridge)
+              .initializer("bridge")
+              .build(),
+          )
+          .addProperty(
+            PropertySpec.builder("store", Symbols.ChicoryRuntime.Store)
+              .addModifiers(KModifier.LATEINIT)
+              .mutable(true)
+              .build(),
+          )
           .apply {
             for (api in guestApis) {
-              addGuestApi(implementationTypeName, api)
+              addGuestApi(implementationTypeName, CodeBlock.of("%N", "bridge"), api)
             }
           }
           .build(),
@@ -132,23 +170,55 @@ class HostGenerator {
           FunSpec.builder("initImports")
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("store", Symbols.ChicoryRuntime.Store)
+            .apply {
+              for (api in value.host.apis) {
+                initImport(api)
+              }
+            }
             .build(),
         )
         .build(),
     )
+
+    for (item in value.items) {
+      when (item) {
+        is KtResource -> addType(resourceToHostBridge(item))
+        else -> {}
+      }
+    }
   }
 
   /** Declares implementations of guest interfaces. */
-  private fun TypeSpec.Builder.declareGuestTypes(worldClassName: ClassName, api: KtWorld.Api) {
+  private fun TypeSpec.Builder.declareGuestTypes(
+    worldClassName: ClassName,
+    api: KtWorld.Api,
+  ) {
     when (api) {
       is KtExternalApi -> {
         val type = worldClassName.nestedClass(api.type.simpleName)
+        val bridge = CodeBlock.of("%N", "bridge")
         addType(
           TypeSpec.classBuilder(type)
+            .primaryConstructor(
+              FunSpec.constructorBuilder()
+                .addParameter("bridge", Symbols.Brevity.HostBridge)
+                .build(),
+            )
+            .addProperty(
+              PropertySpec.builder("bridge", Symbols.Brevity.HostBridge)
+                .initializer("bridge")
+                .build(),
+            )
             .addSuperinterface(api.type)
+            .addProperty(
+              PropertySpec.builder("store", Symbols.ChicoryRuntime.Store)
+                .addModifiers(KModifier.LATEINIT)
+                .mutable(true)
+                .build(),
+            )
             .apply {
               for (function in api.functions) {
-                addGuestFunction(function)
+                addGuestFunction(bridge, function)
               }
             }
             .build(),
@@ -160,25 +230,32 @@ class HostGenerator {
   }
 
   /** Adds symbols to the Guest implementation. */
-  private fun TypeSpec.Builder.addGuestApi(worldClassName: ClassName, api: KtWorld.Api) {
+  private fun TypeSpec.Builder.addGuestApi(
+    worldClassName: ClassName,
+    bridge: CodeBlock,
+    api: KtWorld.Api,
+  ) {
     when (api) {
       is KtExternalApi -> {
         val type = worldClassName.nestedClass(api.type.simpleName)
         addProperty(
           PropertySpec.builder(api.name, type)
             .addModifiers(KModifier.OVERRIDE)
-            .initializer("%T()", type)
+            .initializer("%T(%L)", type, bridge)
             .build(),
         )
       }
 
-      is KtFunction -> addGuestFunction(api)
+      is KtFunction -> addGuestFunction(bridge, api)
 
       is KtInterface -> {}
     }
   }
 
-  private fun MemberSpecHolder.Builder<*>.addGuestFunction(value: KtFunction) {
+  private fun MemberSpecHolder.Builder<*>.addGuestFunction(
+    bridge: CodeBlock,
+    value: KtFunction,
+  ) {
     addProperty(
       PropertySpec.builder(value.ktName, Symbols.ChicoryRuntime.ExportFunction)
         .addModifiers(KModifier.LATEINIT)
@@ -190,15 +267,22 @@ class HostGenerator {
       FunSpec.builder(value.ktName)
         .addModifiers(KModifier.OVERRIDE)
         .apply {
-          addCode("return %N.apply(", value.ktName)
-          for ((index, parameter) in value.parameters.withIndex()) {
-            if (index > 0) addCode(", ")
-            addCode("%N", parameter.name)
-            addParameter(parameter.name, parameter.type)
+          if (value.returnType != null) {
+            addCode("val %N = ", "result")
           }
-          addCode(")[0]")
+          addCode("%N.apply(⇥\n", value.ktName)
+
+          for (parameter in value.parameters) {
+            addCode(hostApiToAbi(bridge, parameter.type, CodeBlock.of("%N", parameter.name)))
+            addParameter(parameter.name, parameter.type.apiType)
+            addCode(",\n")
+          }
+          addCode("⇤)\n")
+          if (value.returnType != null) {
+            addCode("return result[0] as %T", value.returnType.apiType)
+          }
         }
-        .returns(value.returnType ?: UNIT)
+        .returns(value.returnType?.apiType ?: UNIT)
         .build(),
     )
   }
@@ -221,4 +305,79 @@ class HostGenerator {
       is KtInterface -> {}
     }
   }
+
+  private fun FunSpec.Builder.initImport(api: KtWorld.Api) {
+    when (api) {
+      is KtExternalApi -> {
+        for (function in api.functions) {
+          addHostFunction(function)
+        }
+      }
+
+      is KtFunction -> {
+        addHostFunction(api)
+      }
+
+      is KtInterface -> {}
+    }
+  }
+
+  private fun FunSpec.Builder.addHostFunction(function: KtFunction) {
+    addCode(
+      """
+      |%N.addFunction(
+      |  %T(
+      |    %L,
+      |    %S,
+      |    %T.of(
+      |      listOf(%L),
+      |      listOf(%L),
+      |    ),
+      |    %T { instance, args ->
+      |      ⇥⇥%L⇤⇤
+      |    },
+      |  )
+      |)
+      |
+      """.trimMargin(),
+      "store",
+      Symbols.ChicoryRuntime.HostFunction,
+      function.name.moduleName?.let { CodeBlock.of("%S", it) } ?: CodeBlock.of("null"),
+      function.name.abiName,
+      Symbols.ChicoryRuntime.FunctionType,
+      function.parameters.map { it.type.toValType() }.joinToCode(),
+      function.returnType?.toValType() ?: CodeBlock.of(""),
+      Symbols.ChicoryRuntime.WasmFunctionHandle,
+      CodeBlock.of("error(%S)", "TODO"),
+    )
+  }
+
+  private fun KtTypeName.toValType() = CodeBlock.of("%T.I32", Symbols.ChicoryRuntime.ValType)
+
+  private fun resourceToHostBridge(value: KtResource): TypeSpec {
+    return TypeSpec.classBuilder(bridgedType(value.type))
+      .addSuperinterface(value.type)
+      .primaryConstructor(
+        FunSpec.constructorBuilder()
+          .addParameter(ParameterSpec.builder("id", INT).build())
+          .build(),
+      )
+      .apply {
+        for (function in value.functions) {
+          addFunction(resourceFunctionToHostBridge(function))
+        }
+      }
+      .build()
+  }
+
+  private fun resourceFunctionToHostBridge(value: KtFunction) = FunSpec.builder(value.ktName)
+    .addModifiers(KModifier.OVERRIDE)
+    .apply {
+      for (parameter in value.parameters) {
+        addParameter(parameter.name, parameter.type.apiType)
+      }
+      returns(value.returnType?.apiType ?: UNIT)
+    }
+    .addCode("error(%S)", "TODO")
+    .build()
 }
