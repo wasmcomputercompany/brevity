@@ -146,7 +146,7 @@ class GuestGenerator {
         for ((index, parameter) in value.parameters.withIndex()) {
           if (index > 0) addCode(", ")
           addParameter(ParameterSpec.builder(parameter.name, parameter.type.abiType).build())
-          addCode(abiToApi(guestBridge, parameter.type, CodeBlock.of("%N", parameter.name)))
+          addCode(guestAbiToApi(guestBridge, parameter.type, CodeBlock.of("%N", parameter.name)))
         }
         addCode(")")
       }

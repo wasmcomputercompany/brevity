@@ -117,6 +117,12 @@ class HostGenerator {
               .initializer("bridge")
               .build(),
           )
+          .addProperty(
+            PropertySpec.builder("store", Symbols.ChicoryRuntime.Store)
+              .addModifiers(KModifier.LATEINIT)
+              .mutable(true)
+              .build(),
+          )
           .apply {
             for (api in guestApis) {
               addGuestApi(implementationTypeName, CodeBlock.of("%N", "bridge"), api)
@@ -163,6 +169,11 @@ class HostGenerator {
           FunSpec.builder("initImports")
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("store", Symbols.ChicoryRuntime.Store)
+            .apply {
+              for (api in guestApis) {
+                initImport(api)
+              }
+            }
             .build(),
         )
         .build(),
@@ -198,6 +209,12 @@ class HostGenerator {
                 .build(),
             )
             .addSuperinterface(api.type)
+            .addProperty(
+              PropertySpec.builder("store", Symbols.ChicoryRuntime.Store)
+                .addModifiers(KModifier.LATEINIT)
+                .mutable(true)
+                .build(),
+            )
             .apply {
               for (function in api.functions) {
                 addGuestFunction(bridge, function)
@@ -250,18 +267,18 @@ class HostGenerator {
         .addModifiers(KModifier.OVERRIDE)
         .apply {
           if (value.returnType != null) {
-            addCode("return ")
+            addCode("val %N = ", "result")
           }
-          addCode("%N.apply(", value.ktName)
+          addCode("%N.apply(⇥\n", value.ktName)
 
-          for ((index, parameter) in value.parameters.withIndex()) {
-            if (index > 0) addCode(", ")
-            addCode(apiToAbi(bridge, parameter.type, CodeBlock.of("%N", parameter.name)))
+          for (parameter in value.parameters) {
+            addCode(hostApiToAbi(bridge, parameter.type, CodeBlock.of("%N", parameter.name)))
             addParameter(parameter.name, parameter.type.apiType)
+            addCode(",\n")
           }
-          addCode(")")
+          addCode("⇤)\n")
           if (value.returnType != null) {
-            addCode("[0]")
+            addCode("return result[0]")
           }
         }
         .returns(value.returnType?.apiType ?: UNIT)
@@ -284,6 +301,14 @@ class HostGenerator {
         addStatement("guest.%N = %N.export(%S)", api.ktName, "instance", api.name)
       }
 
+      is KtInterface -> {}
+    }
+  }
+
+  private fun FunSpec.Builder.initImport(api: KtWorld.Api) {
+    when (api) {
+      is KtExternalApi -> addStatement("guest.%N.%N = %N", api.name, "store", "store")
+      is KtFunction -> {}
       is KtInterface -> {}
     }
   }

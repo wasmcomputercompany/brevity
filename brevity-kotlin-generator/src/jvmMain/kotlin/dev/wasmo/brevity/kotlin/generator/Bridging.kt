@@ -4,7 +4,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 
 /** Lift an ABI value like a memory address to an API value like a resource instance. */
-internal fun abiToApi(
+internal fun guestAbiToApi(
   bridge: CodeBlock,
   type: KtTypeName,
   abiValue: CodeBlock,
@@ -28,7 +28,7 @@ internal fun abiToApi(
 }
 
 /** Lower an API value like a resource instance to an ABI value like a memory address. */
-internal fun apiToAbi(
+internal fun hostApiToAbi(
   bridge: CodeBlock,
   type: KtTypeName,
   apiValue: CodeBlock,
