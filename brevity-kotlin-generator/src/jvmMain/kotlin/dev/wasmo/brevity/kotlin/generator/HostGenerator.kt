@@ -13,6 +13,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
+import com.squareup.kotlinpoet.joinToCode
 
 class HostGenerator {
   fun generate(witPackage: KtWitPackage): FileSpec {
@@ -170,7 +171,7 @@ class HostGenerator {
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("store", Symbols.ChicoryRuntime.Store)
             .apply {
-              for (api in guestApis) {
+              for (api in value.host.apis) {
                 initImport(api)
               }
             }
@@ -278,7 +279,7 @@ class HostGenerator {
           }
           addCode("⇤)\n")
           if (value.returnType != null) {
-            addCode("return result[0]")
+            addCode("return result[0] as %T", value.returnType.apiType)
           }
         }
         .returns(value.returnType?.apiType ?: UNIT)
@@ -307,11 +308,51 @@ class HostGenerator {
 
   private fun FunSpec.Builder.initImport(api: KtWorld.Api) {
     when (api) {
-      is KtExternalApi -> addStatement("guest.%N.%N = %N", api.name, "store", "store")
-      is KtFunction -> {}
+      is KtExternalApi -> {
+        for (function in api.functions) {
+          addHostFunction(function)
+        }
+      }
+
+      is KtFunction -> {
+        addHostFunction(api)
+      }
+
       is KtInterface -> {}
     }
   }
+
+  private fun FunSpec.Builder.addHostFunction(function: KtFunction) {
+    addCode(
+      """
+      |%N.addFunction(
+      |  %T(
+      |    %L,
+      |    %S,
+      |    %T.of(
+      |      listOf(%L),
+      |      listOf(%L),
+      |    ),
+      |    %T { instance, args ->
+      |      ⇥⇥%L⇤⇤
+      |    },
+      |  )
+      |)
+      |
+      """.trimMargin(),
+      "store",
+      Symbols.ChicoryRuntime.HostFunction,
+      function.name.moduleName?.let { CodeBlock.of("%S", it) } ?: CodeBlock.of("null"),
+      function.name.abiName,
+      Symbols.ChicoryRuntime.FunctionType,
+      function.parameters.map { it.type.toValType() }.joinToCode(),
+      function.returnType?.toValType() ?: CodeBlock.of(""),
+      Symbols.ChicoryRuntime.WasmFunctionHandle,
+      CodeBlock.of("error(%S)", "TODO"),
+    )
+  }
+
+  private fun KtTypeName.toValType() = CodeBlock.of("%T.I32", Symbols.ChicoryRuntime.ValType)
 
   private fun resourceToHostBridge(value: KtResource): TypeSpec {
     return TypeSpec.classBuilder(bridgedType(value.type))

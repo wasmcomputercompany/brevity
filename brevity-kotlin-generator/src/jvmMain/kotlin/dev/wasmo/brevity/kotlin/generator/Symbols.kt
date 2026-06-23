@@ -35,8 +35,12 @@ object Symbols {
 
   object ChicoryRuntime {
     val ExportFunction = ClassName("com.dylibso.chicory.runtime", "ExportFunction")
+    val FunctionType = ClassName("com.dylibso.chicory.wasm.types", "FunctionType")
+    val HostFunction = ClassName("com.dylibso.chicory.runtime", "HostFunction")
     val Instance = ClassName("com.dylibso.chicory.runtime", "Instance")
     val Store = ClassName("com.dylibso.chicory.runtime", "Store")
+    val ValType = ClassName("com.dylibso.chicory.wasm.types", "ValType")
+    val WasmFunctionHandle = ClassName("com.dylibso.chicory.runtime", "WasmFunctionHandle")
   }
 
   object Brevity {
