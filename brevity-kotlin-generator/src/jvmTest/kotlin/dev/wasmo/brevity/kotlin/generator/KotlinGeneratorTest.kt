@@ -307,7 +307,7 @@ class KotlinGeneratorTest {
       |  }
       |
       |@WasmExport("wasi:cli/run@0.3.0#run")
-      |private fun Command_guest_run(): Int = Command_guest.run.run()
+      |private fun Command_guest_run(): Int = Command_guest.run.run() as Int
       |
       """.trimMargin()
     )
@@ -452,7 +452,7 @@ class KotlinGeneratorTest {
       |  }
       |
       |@WasmExport("run")
-      |private fun Command_guest_run(args: Int): Int = Command_guest.run(args)
+      |private fun Command_guest_run(args: Int): Int = Command_guest.run(args) as Int
       |
       """.trimMargin()
     )

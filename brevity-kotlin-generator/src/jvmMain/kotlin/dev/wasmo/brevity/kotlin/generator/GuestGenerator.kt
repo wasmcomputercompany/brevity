@@ -149,6 +149,10 @@ class GuestGenerator {
           addCode(guestAbiToApi(guestBridge, parameter.type, CodeBlock.of("%N", parameter.name)))
         }
         addCode(")")
+        if (value.returnType != null) {
+          addCode(" as %T", value.returnType.abiType)
+        }
+        addCode("\n")
       }
 
       .build()
