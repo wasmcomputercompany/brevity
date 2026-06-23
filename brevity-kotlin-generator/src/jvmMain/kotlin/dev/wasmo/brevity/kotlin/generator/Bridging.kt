@@ -37,7 +37,7 @@ internal fun apiToAbi(
     is KtTypeName.Declared -> {
       when (type.codec) {
         KtTypeName.Declared.Codec.Resource -> CodeBlock.of(
-          "%L.toId(%L).toLong()",
+          "%L.toId(%L)",
           bridge,
           apiValue,
         )

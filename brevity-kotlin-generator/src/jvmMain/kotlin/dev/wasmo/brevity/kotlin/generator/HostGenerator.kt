@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LambdaTypeName
 import com.squareup.kotlinpoet.MemberSpecHolder
@@ -27,8 +28,21 @@ class HostGenerator {
 
   private fun FileSpec.Builder.addPackageItem(value: KtWitPackage.Item) {
     when (value) {
-      is KtInterface -> {}
+      is KtInterface -> addInterface(value)
       is KtWorld -> addWorld(value)
+    }
+  }
+
+  private fun FileSpec.Builder.addInterface(value: KtInterface) {
+    for (item in value.items) {
+      addInterfaceItem(item)
+    }
+  }
+
+  private fun FileSpec.Builder.addInterfaceItem(value: KtInterface.Item) {
+    when (value) {
+      is KtResource -> addType(resourceToHostBridge(value))
+      else -> {}
     }
   }
 
@@ -48,20 +62,21 @@ class HostGenerator {
       else -> implementationTypeName.nestedClass("Guest")
     }
 
+    val hostFactory = ParameterSpec.builder(
+      "hostFactory",
+      LambdaTypeName.get(
+        parameters = listOf(ParameterSpec.unnamed(guestType)),
+        returnType = hostTypeName,
+      ),
+    ).build()
     addFunction(
       FunSpec.builder("World")
         .receiver(value.type)
         .returns(Symbols.Brevity.World.parameterizedBy(hostTypeName, guestType))
-        .addParameter(
-          ParameterSpec.builder(
-            "hostFactory",
-            LambdaTypeName.get(
-              parameters = listOf(ParameterSpec.unnamed(guestType)),
-              returnType = hostTypeName,
-            ),
-          ).build(),
-        )
+        .addParameter(hostFactory)
         .apply {
+          addStatement("val %N = %T()", "bridge", Symbols.Brevity.HostBridge)
+
           when {
             value.guest.apis.isEmpty() -> {
               addStatement("val %N = %T", "guest", implementationGuestTypeName)
@@ -69,13 +84,14 @@ class HostGenerator {
 
             else -> {
               addStatement(
-                "val %N = %T(%T())", "guest",
+                "val %N = %T(%N)",
+                "guest",
                 implementationGuestTypeName,
-                Symbols.Brevity.Bridge,
+                "bridge",
               )
             }
           }
-          addStatement("val %N = hostFactory(%N)", "host", "guest")
+          addStatement("val %N = %N(%N)", "host", hostFactory, "guest")
           addStatement("return %T(%N, %N)", implementationTypeName, "host", "guest")
         }
         .build(),
@@ -93,11 +109,11 @@ class HostGenerator {
           .addSuperinterface(guestType)
           .primaryConstructor(
             FunSpec.constructorBuilder()
-              .addParameter("bridge", Symbols.Brevity.Bridge)
+              .addParameter("bridge", Symbols.Brevity.HostBridge)
               .build(),
           )
           .addProperty(
-            PropertySpec.builder("bridge", Symbols.Brevity.Bridge)
+            PropertySpec.builder("bridge", Symbols.Brevity.HostBridge)
               .initializer("bridge")
               .build(),
           )
@@ -151,6 +167,13 @@ class HostGenerator {
         )
         .build(),
     )
+
+    for (item in value.items) {
+      when (item) {
+        is KtResource -> addType(resourceToHostBridge(item))
+        else -> {}
+      }
+    }
   }
 
   /** Declares implementations of guest interfaces. */
@@ -166,11 +189,11 @@ class HostGenerator {
           TypeSpec.classBuilder(type)
             .primaryConstructor(
               FunSpec.constructorBuilder()
-                .addParameter("bridge", Symbols.Brevity.Bridge)
+                .addParameter("bridge", Symbols.Brevity.HostBridge)
                 .build(),
             )
             .addProperty(
-              PropertySpec.builder("bridge", Symbols.Brevity.Bridge)
+              PropertySpec.builder("bridge", Symbols.Brevity.HostBridge)
                 .initializer("bridge")
                 .build(),
             )
@@ -264,4 +287,31 @@ class HostGenerator {
       is KtInterface -> {}
     }
   }
+
+  private fun resourceToHostBridge(value: KtResource): TypeSpec {
+    return TypeSpec.classBuilder(bridgedType(value.type))
+      .addSuperinterface(value.type)
+      .primaryConstructor(
+        FunSpec.constructorBuilder()
+          .addParameter(ParameterSpec.builder("id", INT).build())
+          .build(),
+      )
+      .apply {
+        for (function in value.functions) {
+          addFunction(resourceFunctionToHostBridge(function))
+        }
+      }
+      .build()
+  }
+
+  private fun resourceFunctionToHostBridge(value: KtFunction) = FunSpec.builder(value.ktName)
+    .addModifiers(KModifier.OVERRIDE)
+    .apply {
+      for (parameter in value.parameters) {
+        addParameter(parameter.name, parameter.type.apiType)
+      }
+      returns(value.returnType?.apiType ?: UNIT)
+    }
+    .addCode("error(%S)", "TODO")
+    .build()
 }

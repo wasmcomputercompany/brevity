@@ -41,7 +41,8 @@ object Symbols {
 
   object Brevity {
     val Borrow = ClassName("dev.wasmo.brevity", "Borrow")
-    val Bridge = ClassName("dev.wasmo.brevity", "Bridge")
+    val GuestBridge = ClassName("dev.wasmo.brevity", "GuestBridge")
+    val HostBridge = ClassName("dev.wasmo.brevity", "HostBridge")
     val Quad = ClassName("dev.wasmo.brevity", "Quad")
     val Resource = ClassName("dev.wasmo.brevity", "Resource")
     val Stream = ClassName("dev.wasmo.brevity", "Stream")
