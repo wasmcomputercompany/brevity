@@ -33,7 +33,7 @@ wasm-tools
 You'll need [wasm-tools] to process generated `.wasm` files.
 
 ```bash
-$ cargo binstall wasm-tools
+$ cargo install wasm-tools
 ```
 
 [rustup]: https://rust-lang.org/tools/install/
