@@ -13,4 +13,13 @@ class HostBridge {
   fun <T : Resource> fromId(id: Long, constructor: (Int) -> T): T {
     return constructor(id.toInt())
   }
+
+  @PublishedApi
+  internal fun getInternal(id: Long): Resource? {
+    return idToResource[id]
+  }
+}
+
+inline operator fun <reified T : Resource> HostBridge.get(id: Long): T {
+  return getInternal(id) as T
 }

@@ -1,15 +1,18 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.MemberName
 
 object Symbols {
   object Kotlin {
     val Boolean = ClassName("kotlin", "Boolean")
     val Byte = ClassName("kotlin", "Byte")
     val Double = ClassName("kotlin", "Double")
+    val ExperimentalUnsignedTypes = ClassName("kotlin", "ExperimentalUnsignedTypes")
     val Float = ClassName("kotlin", "Float")
     val Int = ClassName("kotlin", "Int")
     val Long = ClassName("kotlin", "Long")
+    val OptIn = ClassName("kotlin", "OptIn")
     val Pair = ClassName("kotlin", "Pair")
     val Short = ClassName("kotlin", "Short")
     val String = ClassName("kotlin", "String")
@@ -47,6 +50,7 @@ object Symbols {
     val Borrow = ClassName("dev.wasmo.brevity", "Borrow")
     val GuestBridge = ClassName("dev.wasmo.brevity", "GuestBridge")
     val HostBridge = ClassName("dev.wasmo.brevity", "HostBridge")
+    val HostBridgeGet = MemberName("dev.wasmo.brevity", "get")
     val Quad = ClassName("dev.wasmo.brevity", "Quad")
     val Resource = ClassName("dev.wasmo.brevity", "Resource")
     val Stream = ClassName("dev.wasmo.brevity", "Stream")

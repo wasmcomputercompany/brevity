@@ -12,7 +12,9 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 
-class GuestGenerator {
+class GuestGenerator(
+  private val packages: List<KtWitPackage>,
+) {
   private val guestBridge = CodeBlock.of(
     "%M",
     MemberName(
@@ -31,7 +33,6 @@ class GuestGenerator {
       }
       .build()
   }
-
 
   private fun FileSpec.Builder.addPackageItem(
     value: KtWitPackage.Item,
