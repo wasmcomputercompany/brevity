@@ -41,8 +41,6 @@ class GenerateKotlinCommand(
     val packageReader = IoWitPackageReader(fileSystem)
     val ktMapper = KtMapper()
     val apiGenerator = ApiGenerator()
-    val guestGenerator = GuestGenerator()
-    val hostGenerator = HostGenerator()
 
     val ioWitPackages = inputWitDirectories.map {
       packageReader.read(it)
@@ -64,9 +62,11 @@ class GenerateKotlinCommand(
       else -> allIrPackages.filterNamedWorlds(world)
     }
 
-    for (irPackage in irPackages) {
-      val ktPackage = ktMapper.map(irPackage)
+    val ktPackages = irPackages.map { ktMapper.map(it) }
+    val guestGenerator = GuestGenerator(ktPackages)
+    val hostGenerator = HostGenerator(ktPackages)
 
+    for (ktPackage in ktPackages) {
       val apiFileSpec = apiGenerator.generate(ktPackage)
       apiFileSpec.writeTo(commonMainDir)
 
