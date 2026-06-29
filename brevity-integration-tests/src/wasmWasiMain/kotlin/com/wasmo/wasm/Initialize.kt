@@ -18,7 +18,7 @@ val actuallyInitialize = run {
       b: Types.StringArgument,
       callback: Types.StringResult,
     ) {
-      TODO("Not yet implemented")
+      callback.put(a.get() + b.get())
     }
 
     override val calculator = object : Calculator {

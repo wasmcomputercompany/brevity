@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.LONG
 
 /** Lift an ABI value like a memory address to an API value like a resource instance. */
 internal fun guestAbiToApi(
@@ -12,18 +13,49 @@ internal fun guestAbiToApi(
   return when (type) {
     is KtTypeName.Declared -> {
       when (type.codec) {
-        KtTypeName.Declared.Codec.Resource -> CodeBlock.of(
-          "%L.fromId(%L, ::%T)",
-          bridge,
+        else -> CodeBlock.of(
+          "%L as %T",
           abiValue,
-          bridgedType(type.apiType),
+          type.apiType,
         )
-
-        else -> abiValue
       }
     }
 
-    else -> abiValue
+    else -> CodeBlock.of(
+      "%L as %T",
+      abiValue,
+      type.apiType,
+    )
+  }
+}
+
+/** Lower an API value like a resource instance to an ABI value like a memory address. */
+internal fun guestApiToAbi(
+  bridge: CodeBlock,
+  type: KtTypeName,
+  abiValue: CodeBlock,
+): CodeBlock {
+  return when (type) {
+    else -> CodeBlock.of(
+      "%L as %T",
+      abiValue,
+      type.abiType,
+    )
+  }
+}
+
+/** Lift an ABI value like a memory address to an API value like a resource instance. */
+internal fun hostAbiToApi(
+  bridge: CodeBlock,
+  type: KtTypeName,
+  abiValue: CodeBlock,
+): CodeBlock {
+  return when (type) {
+    else -> CodeBlock.of(
+      "%L as %T",
+      abiValue,
+      type.apiType,
+    )
   }
 }
 
@@ -42,11 +74,19 @@ internal fun hostApiToAbi(
           apiValue,
         )
 
-        else -> apiValue
+        else -> CodeBlock.of(
+          "%L as %T",
+          apiValue,
+          LONG,
+        )
       }
     }
 
-    else -> apiValue
+    else -> CodeBlock.of(
+      "%L as %T",
+      apiValue,
+      LONG,
+    )
   }
 }
 
