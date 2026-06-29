@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.kotlin.generator
 
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.NameAllocator
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.io.IoFunction
@@ -12,33 +13,40 @@ import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrRecord
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeAlias
+import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 
 /**
  * Directly converts WIT model types ([IoWorld], [IoFunction], etc.) to a Kotlin equivalents
- * ([KtWorld], [KtFunction], etc.).
+ * ([KtService], [KtFunction], etc.).
  */
 class KtMapper(
   private val kotlinPackagePrefix: String = "wit",
 ) {
   private val typeMapper = TypeMapper(kotlinPackagePrefix)
 
-  fun map(witPackage: IrWitPackage): KtWitPackage {
-    val kotlinName = witPackage.packageName.toKotlin(kotlinPackagePrefix)
-    context(Context(kotlinName, NameAllocator())) {
-      return KtWitPackage(
-        packageName = kotlinName.name,
-        items = witPackage.items.mapNotNull { declaration ->
-          declaration.packageItemToKt()
-        },
-      )
+  fun map(witPackages: List<IrWitPackage>): List<KtService> {
+    val servicesNoCodecs = witPackages.flatMap { witPackage ->
+      val kotlinName = witPackage.packageName.toKotlin(kotlinPackagePrefix)
+      context(Context(kotlinName, NameAllocator())) {
+        witPackage.items.mapNotNull { declaration ->
+          declaration.toServiceNoCodecs()
+        }
+      }
+    }
+
+    val typeIndex = sequence { servicesNoCodecs.yieldTypeDeclarations() }
+      .associateBy { it.type }
+
+    return servicesNoCodecs.map { service ->
+      service.plusCodecs(typeIndex)
     }
   }
 
   context(context: Context)
-  internal fun IrWitPackage.Item.packageItemToKt(): KtWitPackage.Item? {
+  internal fun IrWitPackage.Item.toServiceNoCodecs(): KtService? {
     return when (this) {
       is IrInterface -> interfaceToKt()
       is IrWorld -> worldToKt()
@@ -46,20 +54,7 @@ class KtMapper(
   }
 
   context(context: Context)
-  internal fun IrInterface.Item.interfaceItemToKt(): KtInterface.Item? {
-    return when (this) {
-      is IrEnum -> enumToKt()
-      is IrFlags -> flagsToKt()
-      is IrFunction -> functionToKt()
-      is IrRecord -> recordToKt()
-      is IrResource -> resourceToKt()
-      is IrTypeAlias -> typeAliasToKt()
-      is IrVariant -> variantToKt()
-    }
-  }
-
-  context(context: Context)
-  internal fun IrWorld.Item.worldItemToKt(): KtWorld.Item? {
+  internal fun IrTypeDeclaration.typeDeclarationToKt(): KtTypeDeclaration {
     return when (this) {
       is IrEnum -> enumToKt()
       is IrFlags -> flagsToKt()
@@ -71,17 +66,17 @@ class KtMapper(
   }
 
   context(context: Context)
-  internal fun IrInterface.interfaceToKt(): KtInterface {
+  internal fun IrInterface.interfaceToKt(): KtService? {
     val kotlinName = context.kotlinName + name
     context(context.copy(kotlinName = kotlinName)) {
-      return KtInterface(
-        documentation = documentation?.content,
+      return KtService(
+        kind = KtService.Kind.Interface,
+        documentation = documentation?.content?.trimIndent(),
         type = kotlinName.name,
         instanceName = name.name.toCamelCase(upperCamel = false),
-        items = items.mapNotNull {
-          it.interfaceItemToKt()
-        },
-      )
+        functions = items.filterIsInstance<IrFunction>().map { it.functionToKt() },
+        types = items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() },
+      ).toNullIfEmpty()
     }
   }
 
@@ -166,47 +161,56 @@ class KtMapper(
   )
 
   context(context: Context)
-  internal fun IrWorld.worldToKt(): KtWorld? {
+  internal fun IrWorld.worldToKt(): KtService? {
     val kotlinName = context.kotlinName + name
-    val hostName = kotlinName + Identifier("Host")
+
     val guestName = kotlinName + Identifier("Guest")
-    return KtWorld(
-      documentation = documentation?.content,
+    val guest = context(context.copy(kotlinName = guestName)) {
+      KtService(
+        kind = KtService.Kind.Guest,
+        instanceName = "guest",
+        type = guestName.name,
+        functions = exports.filterIsInstance<IrFunction>().map { it.functionToKt() },
+        services = exports.mapNotNull { it.worldApiToKt() },
+      ).toNullIfEmpty()
+    }
+
+    val hostName = kotlinName + Identifier("Host")
+    val host = context(context.copy(kotlinName = hostName)) {
+      KtService(
+        kind = KtService.Kind.Host,
+        instanceName = "host",
+        type = hostName.name,
+        functions = imports.filterIsInstance<IrFunction>().map { it.functionToKt() },
+        services = imports.mapNotNull { it.worldApiToKt() },
+      ).toNullIfEmpty()
+    }
+
+    return KtService(
+      kind = KtService.Kind.World,
+      documentation = documentation?.content?.trimIndent(),
+      instanceName = name.name.toCamelCase(upperCamel = false),
       type = kotlinName.name,
-      items = context(context.copy(kotlinName = kotlinName)) {
-        items.mapNotNull { it.worldItemToKt() }
+      services = listOfNotNull(guest, host),
+      types = context(context.copy(kotlinName = kotlinName)) {
+        items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() }
       },
-      host = context(context.copy(kotlinName = hostName)) {
-        KtWorld.Host(
-          name = context.nameAllocator.newName("host"),
-          type = hostName.name,
-          apis = imports.map { it.worldApiToKt() },
-        )
-      },
-      guest = context(context.copy(kotlinName = guestName)) {
-        KtWorld.Guest(
-          name = context.nameAllocator.newName("guest"),
-          type = guestName.name,
-          apis = exports.map { it.worldApiToKt() },
-        )
-      },
-    )
+    ).toNullIfEmpty()
   }
 
   context(context: Context)
-  private fun IrWorld.Api.worldApiToKt(): KtWorld.Api {
+  private fun IrWorld.Api.worldApiToKt(): KtService? {
     return when (this) {
-      is IrExternalApi -> {
-        KtExternalApi(
-          documentation = documentation?.content,
-          name = (plainName ?: path.name).name.toCamelCase(upperCamel = false),
-          type = typeMapper.map(path),
-          functions = functions.map { it.functionToKt() },
-        )
-      }
+      is IrExternalApi -> KtService(
+        kind = KtService.Kind.Interface,
+        documentation = documentation?.content?.trimIndent(),
+        instanceName = (plainName ?: path.name).name.toCamelCase(upperCamel = false),
+        type = typeMapper.map(path),
+        functions = functions.map { it.functionToKt() },
+      ).toNullIfEmpty()
 
-      is IrFunction -> functionToKt()
       is IrInterface -> interfaceToKt()
+      is IrFunction -> null
     }
   }
 
@@ -215,3 +219,124 @@ class KtMapper(
     val nameAllocator: NameAllocator,
   )
 }
+
+internal fun KtService.toNullIfEmpty(): KtService? {
+  return when {
+    functions.isEmpty() && services.isEmpty() && types.isEmpty() -> null
+    else -> this
+  }
+}
+
+/**
+ * Returns a copy of this service with the [KtService.codecs] field populated. We do this as a
+ * follow-up step because we need to index the converted [KtTypeDeclaration]s before we can
+ * collect the codecs.
+ */
+private fun KtService.plusCodecs(
+  typeIndex: Map<ClassName, KtTypeDeclaration>,
+) = copy(
+  codecs = buildList {
+    val hostToGuestTypes = hostToGuestTypes.toSet()
+    val guestToHostTypes = guestToHostTypes.toSet()
+    for (type in (hostToGuestTypes + guestToHostTypes).toSet()) {
+      add(
+        KtService.KtCodec(
+          declaration = typeIndex[type.apiType] ?: continue,
+          hostToGuest = type in hostToGuestTypes,
+          guestToHost = type in guestToHostTypes,
+        ),
+      )
+    }
+  },
+)
+
+context(scope: SequenceScope<KtTypeDeclaration>)
+private suspend fun Iterable<KtService>.yieldTypeDeclarations() {
+  for (service in this) {
+    service.yieldTypeDeclarations()
+  }
+}
+
+context(scope: SequenceScope<KtTypeDeclaration>)
+private suspend fun KtService.yieldTypeDeclarations() {
+  for (declaration in types) {
+    scope.yield(declaration)
+  }
+  services.yieldTypeDeclarations()
+}
+
+private val KtService.guestToHostTypes: Sequence<KtTypeName>
+  get() = sequence {
+    for (service in services) {
+      yieldAll(service.guestToHostTypes)
+    }
+    when (kind) {
+      KtService.Kind.Guest -> yieldAll(parameterTypes)
+      KtService.Kind.Host -> yieldAll(returnValueTypes)
+      else -> {}
+    }
+  }
+
+private val KtService.hostToGuestTypes: Sequence<KtTypeName>
+  get() = sequence {
+    for (service in services) {
+      yieldAll(service.hostToGuestTypes)
+    }
+    when (kind) {
+      KtService.Kind.Guest -> yieldAll(returnValueTypes)
+      KtService.Kind.Host -> yieldAll(parameterTypes)
+      else -> {}
+    }
+  }
+
+private val KtService.parameterTypes: Sequence<KtTypeName>
+  get() = sequence {
+    for (function in functions) {
+      yieldAll(function.parameters.map { it.type })
+    }
+    for (spec in services) {
+      yieldAll(spec.parameterTypes)
+    }
+  }
+
+private val KtService.returnValueTypes: Sequence<KtTypeName>
+  get() = sequence {
+    for (function in functions) {
+      val returnType = function.returnType ?: continue
+      yield(returnType)
+    }
+    for (spec in services) {
+      yieldAll(spec.returnValueTypes)
+    }
+  }
+
+private val KtTypeName.declaredTypes: Sequence<KtTypeName.Declared>
+  get() = sequence {
+    when (this@declaredTypes) {
+      is KtTypeName.Borrow -> yieldAll(type.declaredTypes)
+      is KtTypeName.Declared -> yield(this@declaredTypes)
+      is KtTypeName.Future -> type?.let { yieldAll(it.declaredTypes) }
+
+      is KtTypeName.List -> yieldAll(type.declaredTypes)
+      is KtTypeName.Map -> {
+        yieldAll(key.declaredTypes)
+        yieldAll(value.declaredTypes)
+      }
+
+      is KtTypeName.Option -> yieldAll(type.declaredTypes)
+
+      is KtTypeName.Result -> {
+        ok?.let { okTypeName -> yieldAll(okTypeName.declaredTypes) }
+        err?.let { errTypeName -> yieldAll(errTypeName.declaredTypes) }
+      }
+
+      is KtTypeName.Simple -> {}
+      is KtTypeName.Stream -> type?.let { yieldAll(it.declaredTypes) }
+
+      is KtTypeName.Tuple -> {
+        for (name in types) {
+          yieldAll(name.declaredTypes)
+        }
+      }
+    }
+  }

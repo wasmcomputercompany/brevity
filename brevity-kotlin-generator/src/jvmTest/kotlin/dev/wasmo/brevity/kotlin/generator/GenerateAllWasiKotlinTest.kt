@@ -34,9 +34,10 @@ class GenerateAllWasiKotlinTest {
 
     val directory = File("build/GenerateAllWasiKotlinTest")
     directory.mkdirs()
-    for (irPackage in irPackages) {
-      val ktPackage = ktMapper.map(irPackage)
-      val fileSpec = apiGenerator.generate(ktPackage)
+
+    val ktServices = ktMapper.map(irPackages)
+    val fileSpecs = apiGenerator.generate(ktServices)
+    for (fileSpec in fileSpecs) {
       fileSpec.writeTo(directory)
     }
   }

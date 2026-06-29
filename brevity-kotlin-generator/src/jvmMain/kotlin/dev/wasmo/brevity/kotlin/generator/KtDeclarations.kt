@@ -7,54 +7,35 @@ sealed interface KtDeclaration {
   val documentation: String?
 }
 
-data class KtWitPackage(
-  val packageName: String,
-  val items: List<Item>,
-) {
-  sealed interface Item
-}
-
-data class KtExternalApi(
-  override val documentation: String?,
-  val name: String,
-  val type: ClassName,
-  val functions: List<KtFunction>,
-) : KtDeclaration, KtWorld.Api
-
-data class KtInterface(
-  override val documentation: String?,
-  val type: ClassName,
+data class KtService(
+  val kind: Kind,
   val instanceName: String,
-  val items: List<Item>,
-) : KtDeclaration, KtWorld.Api, KtWitPackage.Item {
-  sealed interface Item : KtDeclaration
-}
-
-sealed interface KtTypeDeclaration : KtDeclaration, KtInterface.Item, KtWorld.Item {
-  val type: ClassName
-}
-
-data class KtWorld(
-  override val documentation: String?,
+  val documentation: String? = null,
   val type: ClassName,
-  val items: List<Item>,
-  val host: Host,
-  val guest: Guest,
-) : KtDeclaration, KtWitPackage.Item {
-  data class Host(
-    val name: String,
-    val type: ClassName,
-    val apis: List<Api>,
-  )
+  val functions: List<KtFunction> = listOf(),
+  val services: List<KtService> = listOf(),
+  val types: List<KtTypeDeclaration> = listOf(),
+  val codecs: List<KtCodec> = listOf(),
+) : Comparable<KtService> {
+  override fun compareTo(other: KtService) = type.compareTo(other.type)
 
-  data class Guest(
-    val name: String,
-    val type: ClassName,
-    val apis: List<Api>,
-  )
+  enum class Kind {
+    World,
+    Guest,
+    Host,
+    Interface,
+    Resource
+  }
 
-  sealed interface Item : KtDeclaration
-  sealed interface Api : KtDeclaration
+  data class KtCodec(
+    val declaration: KtTypeDeclaration,
+    val hostToGuest: Boolean,
+    val guestToHost: Boolean,
+  )
+}
+
+sealed interface KtTypeDeclaration : KtDeclaration {
+  val type: ClassName
 }
 
 data class KtEnum(
@@ -121,7 +102,7 @@ data class KtFunction(
   val name: FunctionName,
   val parameters: List<Parameter>,
   val returnType: KtTypeName?,
-) : KtDeclaration, KtInterface.Item, KtWorld.Api {
+) : KtDeclaration {
   data class Parameter(
     override val documentation: String?,
     val name: String,
