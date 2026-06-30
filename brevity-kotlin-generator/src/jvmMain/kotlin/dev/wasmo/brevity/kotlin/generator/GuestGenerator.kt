@@ -198,9 +198,7 @@ class GuestGenerator(
     ) : Receiver {
       override val codeBlock: CodeBlock
         get() = CodeBlock.of(
-          "%T.fromId<%T>(%N, ::%T)",
-          Symbols.Brevity.GuestBridge,
-          type.apiType,
+          "(%N as %T)",
           name,
           type.apiType,
         )
