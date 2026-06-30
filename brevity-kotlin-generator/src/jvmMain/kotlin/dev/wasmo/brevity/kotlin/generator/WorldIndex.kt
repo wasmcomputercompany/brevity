@@ -10,6 +10,9 @@ import com.squareup.kotlinpoet.TypeName
  *
  * For value types, we generate an encoder, a decoder, or both, depending on how that type is used.
  * This follows function declarations to see how values are actually used.
+ *
+ * TODO: resources are currently always imported. This is inconsistent with wit-bindgen, but
+ *    produces the behavior we want. We need something more sophisticated here!
  */
 class WorldIndex(
   val map: Map<ClassName, Entry>,
@@ -71,8 +74,8 @@ internal class TypeTraverser(
   private val guestQueue = ArrayDeque<KtTypeDeclaration>()
   private val hostQueue = ArrayDeque<KtTypeDeclaration>()
 
-  private val guest = Collector(guestQueue, guestTypes, hostQueue, hostTypes)
-  private val host = Collector(hostQueue, hostTypes, guestQueue, guestTypes)
+  private val guest = Collector(guestQueue, guestTypes, hostQueue, hostTypes, hostQueue, hostTypes)
+  private val host = Collector(hostQueue, hostTypes, guestQueue, guestTypes, hostQueue, hostTypes)
 
   fun collectAll(services: List<KtService>) {
     val worlds = services.filterIsInstance<KtWorld>()
@@ -96,8 +99,8 @@ internal class TypeTraverser(
     private val valueTypes: MutableSet<ClassName>,
     private val peerValueQueue: ArrayDeque<KtTypeDeclaration>,
     private val peerValueTypes: MutableSet<ClassName>,
-    private val resourcesQueue: ArrayDeque<KtTypeDeclaration> = valueQueue,
-    private val resourcesTypes: MutableSet<ClassName> = valueTypes,
+    private val resourcesQueue: ArrayDeque<KtTypeDeclaration>,
+    private val resourcesTypes: MutableSet<ClassName>,
   ) {
     /**
      * When collecting parameter types, we flip the guest/host role because parameter values are

@@ -284,7 +284,7 @@ class KotlinGeneratorTest {
       |  }
       |
       |@WasmExport("wasi:cli/run@0.3.0#run")
-      |private fun wasi_cli_v0_3_0_run_run(): Int {
+      |private fun wasi_cli_v0_3_0_run_run_export(): Int {
       |  val result = guest_.run.run()
       |  return result as Int
       |}
@@ -534,7 +534,7 @@ class KotlinGeneratorTest {
       |  }
       |
       |@WasmExport("run")
-      |private fun run(args: Int): Int {
+      |private fun run_export(args: Int): Int {
       |  val result = guest_.run(args as List<String>)
       |  return result as Int
       |}

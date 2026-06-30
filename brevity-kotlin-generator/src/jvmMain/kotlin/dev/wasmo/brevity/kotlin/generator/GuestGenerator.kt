@@ -7,8 +7,8 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
+import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.Annotation
 
 class GuestGenerator(
@@ -27,7 +27,7 @@ class GuestGenerator(
               }
 
               if (service is KtWorld) {
-                addWasmExportFunctions(
+                addExternalFunctions(
                   enclosing = null,
                   value = service,
                 )
@@ -81,18 +81,25 @@ class GuestGenerator(
   }
 
   private fun FileSpec.Builder.addCodec(entry: WorldIndex.Entry) {
-    if (!entry.guest) return // TODO: add decoder for these.
-
     when (entry.declaration) {
       is KtResource -> {
         for (function in entry.declaration.functions) {
-          addWasmExportFunction(
-            receiver = Receiver.Id(
-              name = "self",
-              type = KtTypeName.Simple(entry.declaration.type, INT),
-            ),
-            value = function,
+          val receiver = Receiver.Id(
+            type = KtTypeName.Simple(entry.declaration.type, INT),
           )
+
+          if (entry.guest) {
+            addWasmExportFunction(
+              receiver = receiver,
+              value = function,
+            )
+          }
+          if (entry.host) {
+            addWasmImportFunction(
+              receiver = receiver,
+              value = function,
+            )
+          }
         }
       }
 
@@ -104,7 +111,7 @@ class GuestGenerator(
    * Generate top-level `@WasmExport`-annotated functions for all exported functions in [value],
    * and functions recursively held by [value].
    */
-  private fun FileSpec.Builder.addWasmExportFunctions(
+  private fun FileSpec.Builder.addExternalFunctions(
     enclosing: CodeBlock?,
     value: KtService,
   ) {
@@ -129,7 +136,7 @@ class GuestGenerator(
     }
 
     for (service in value.services) {
-      addWasmExportFunctions(
+      addExternalFunctions(
         enclosing = instance?.codeBlock,
         value = service,
       )
@@ -146,21 +153,21 @@ class GuestGenerator(
     }
 
     addFunction(
-      FunSpec.builder(value.name.fullyQualifiedKotlinName)
-        .addModifiers(KModifier.PRIVATE)
+      FunSpec.builder(value.name.exportFunctionName)
         .addAnnotation(
           AnnotationSpec.builder(Symbols.KotlinWasm.WasmExport)
             .addMember("%S", value.name)
             .build(),
         )
+        .addModifiers(KModifier.PRIVATE)
+        .returns(value.returnType?.abiType ?: UNIT)
         .apply {
-          if (value.returnType != null) {
-            addCode("val %N = ", "result")
-            returns(value.returnType.abiType)
-          }
-
           if (receiver is Receiver.Id) {
             addParameter(receiver.name, receiver.type.abiType)
+          }
+
+          if (value.returnType != null) {
+            addCode("val %N = ", "result")
           }
 
           addCode("%L", receiver.codeBlock)
@@ -168,9 +175,15 @@ class GuestGenerator(
           val guestBridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
           addCode(".%N(", value.ktName)
           for ((index, parameter) in value.parameters.withIndex()) {
+            addParameter(parameter.name, parameter.type.abiType)
             if (index > 0) addCode(", ")
-            addParameter(ParameterSpec.builder(parameter.name, parameter.type.abiType).build())
-            addCode(guestAbiToApi(guestBridge, parameter.type, CodeBlock.of("%N", parameter.name)))
+            addCode(
+              guestAbiToApi(
+                guestBridge,
+                parameter.type,
+                CodeBlock.of("%N", parameter.name),
+              ),
+            )
           }
           addCode(")\n")
 
@@ -185,6 +198,44 @@ class GuestGenerator(
     )
   }
 
+  private fun FileSpec.Builder.addWasmImportFunction(
+    receiver: Receiver,
+    value: KtFunction,
+  ) {
+    when (value.name.annotation) {
+      Annotation.Constructor, Annotation.Static -> return // TODO.
+      else -> {}
+    }
+
+    addFunction(
+      FunSpec.builder(value.name.importFunctionName)
+        .addAnnotation(
+          AnnotationSpec.builder(Symbols.KotlinWasm.WasmImport)
+            .apply {
+              val moduleName = value.name.moduleName
+              if (moduleName != null) {
+                addMember("module = %S", moduleName)
+                addMember("name = %S", value.name.abiName)
+              } else {
+                addMember("module = %S", value.name.abiName)
+              }
+            }
+            .build(),
+        )
+        .addModifiers(KModifier.PRIVATE, KModifier.EXTERNAL)
+        .apply {
+          if (receiver is Receiver.Id) {
+            addParameter(receiver.name, receiver.type.abiType)
+          }
+          for (parameter in value.parameters) {
+            addParameter(parameter.name, parameter.type.abiType)
+          }
+        }
+        .returns(value.returnType?.abiType ?: UNIT)
+        .build(),
+    )
+  }
+
   internal sealed interface Receiver {
     val codeBlock: CodeBlock
 
@@ -193,13 +244,17 @@ class GuestGenerator(
     ) : Receiver
 
     data class Id(
-      val name: String,
       val type: KtTypeName,
     ) : Receiver {
+      val name: String
+        get() = "self"
+
       override val codeBlock: CodeBlock
         get() = CodeBlock.of(
-          "(%N as %T)",
-          name,
+          "%T.fromId<%T>(%N, ::%T)",
+          Symbols.Brevity.GuestBridge,
+          type.apiType,
+          "self",
           type.apiType,
         )
     }

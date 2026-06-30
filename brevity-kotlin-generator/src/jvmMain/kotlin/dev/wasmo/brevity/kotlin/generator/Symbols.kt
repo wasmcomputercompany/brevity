@@ -34,6 +34,7 @@ object Symbols {
 
   object KotlinWasm {
     val WasmExport = ClassName("kotlin.wasm", "WasmExport")
+    val WasmImport = ClassName("kotlin.wasm", "WasmImport")
   }
 
   object ChicoryRuntime {

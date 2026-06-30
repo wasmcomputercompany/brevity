@@ -15,6 +15,7 @@ import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.Annotation
 
 class HostGenerator(
+  private val index: WorldIndex,
   private val services: List<KtService>,
 ) {
   fun generate(): List<FileSpec> {
@@ -168,7 +169,7 @@ class HostGenerator(
           .apply {
             if (value.guest != null) {
               initExports(
-                bridge = CodeBlock.of("%N", "guest"),
+                guest = CodeBlock.of("%N", "guest"),
                 instance = CodeBlock.of("%N", "instance"),
                 value = value.guest,
               )
@@ -183,11 +184,21 @@ class HostGenerator(
           .addParameter("store", Symbols.ChicoryRuntime.Store)
           .apply {
             if (value.host != null) {
+              val receiver = Receiver.Instance(
+                codeBlock = CodeBlock.of("%N", "host"),
+              )
               initImports(
-                bridge = CodeBlock.of("%N", "guest"),
+                bridge = CodeBlock.of("%N", "bridge"),
                 store = CodeBlock.of("%N", "store"),
-                self = CodeBlock.of("%N", "host"),
+                receiver = receiver,
                 value = value.host,
+              )
+            }
+            for (entry in index.map.values) {
+              initImports(
+                bridge = CodeBlock.of("%N", "bridge"),
+                store = CodeBlock.of("%N", "store"),
+                value = entry,
               )
             }
           }
@@ -227,14 +238,14 @@ class HostGenerator(
   }
 
   private fun FunSpec.Builder.initExports(
-    bridge: CodeBlock,
+    guest: CodeBlock,
     instance: CodeBlock,
     value: KtService,
   ) {
     for (function in value.functions) {
       addStatement(
         "%L.%N = %L.export(%S)",
-        bridge,
+        guest,
         function.ktName,
         instance,
         function.name,
@@ -242,9 +253,9 @@ class HostGenerator(
     }
     for (service in value.services) {
       initExports(
-        CodeBlock.of("%L.%N", bridge, service.instanceName),
-        instance,
-        service,
+        guest = CodeBlock.of("%L.%N", guest, service.instanceName),
+        instance = instance,
+        value = service,
       )
     }
   }
@@ -252,17 +263,47 @@ class HostGenerator(
   private fun FunSpec.Builder.initImports(
     bridge: CodeBlock,
     store: CodeBlock,
-    self: CodeBlock,
+    value: WorldIndex.Entry,
+  ) {
+    when (value.declaration) {
+      is KtResource -> {
+        val receiver = Receiver.Id(
+          bridge = bridge,
+          type = value.declaration.type,
+        )
+
+        for (function in value.declaration.functions) {
+          if (value.host) {
+            addHostFunction(
+              bridge,
+              store,
+              receiver,
+              function,
+            )
+          }
+        }
+      }
+
+      else -> {} // TODO
+    }
+  }
+
+  private fun FunSpec.Builder.initImports(
+    bridge: CodeBlock,
+    store: CodeBlock,
+    receiver: Receiver.Instance,
     value: KtService,
   ) {
     for (function in value.functions) {
-      addHostFunction(bridge, store, self, function)
+      addHostFunction(bridge, store, receiver, function)
     }
     for (service in value.services) {
       initImports(
-        bridge = CodeBlock.of("%L.%N", bridge, service.instanceName),
+        bridge = bridge,
         store = store,
-        self = CodeBlock.of("%L.%N", self, service.instanceName),
+        receiver = Receiver.Instance(
+          CodeBlock.of("%L.%N", receiver.codeBlock, service.instanceName),
+        ),
         value = service,
       )
     }
@@ -271,7 +312,7 @@ class HostGenerator(
   private fun FunSpec.Builder.addHostFunction(
     bridge: CodeBlock,
     store: CodeBlock,
-    self: CodeBlock,
+    receiver: Receiver,
     value: KtFunction,
   ) {
     when (value.name.annotation) {
@@ -280,11 +321,10 @@ class HostGenerator(
     }
 
     val block = CodeBlock.builder()
-    var argIndex = 0
 
     val abiParameterTypes = buildCodeBlock {
-      when (value.name.annotation) {
-        Annotation.Method, Annotation.ResourceDrop -> add("%T.I32", Symbols.ChicoryRuntime.ValType)
+      when (receiver) {
+        is Receiver.Id -> add("%T.I32", Symbols.ChicoryRuntime.ValType)
         else -> {}
       }
       for (parameter in value.parameters) {
@@ -293,10 +333,23 @@ class HostGenerator(
       }
     }
 
-    block.addStatement("val %N = %L", "self", self)
-    when (value.name.annotation) {
-      Annotation.Method, Annotation.ResourceDrop -> argIndex++
-      else -> {}
+    var argIndex = 0
+    when (receiver) {
+      is Receiver.Id -> {
+        block.addStatement(
+          "val %N = %L",
+          "self",
+          receiver.codeBlock(CodeBlock.of("%N[%L]", "args", argIndex++)),
+        )
+      }
+
+      is Receiver.Instance -> {
+        block.addStatement(
+          "val %N = %L",
+          "self",
+          receiver.codeBlock,
+        )
+      }
     }
 
     if (value.returnType != null) {
@@ -354,6 +407,28 @@ class HostGenerator(
       Symbols.ChicoryRuntime.WasmFunctionHandle,
       block.build(),
     )
+  }
+
+  internal sealed interface Receiver {
+    data class Instance(
+      val codeBlock: CodeBlock,
+    ) : Receiver
+
+    data class Id(
+      val bridge: CodeBlock,
+      val type: ClassName,
+    ) : Receiver {
+      val name: String
+        get() = "self"
+
+      fun codeBlock(id: CodeBlock) = CodeBlock.of(
+        "%L.%M<%T>(%L)",
+        bridge,
+        Symbols.Brevity.HostBridgeGet,
+        type,
+        id,
+      )
+    }
   }
 }
 

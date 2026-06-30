@@ -71,7 +71,7 @@ class GenerateKotlinCommand(
     for (fileSpec in GuestGenerator(worldIndex, ktServices).generate()) {
       fileSpec.writeTo(wasmWasiMainDir)
     }
-    for (fileSpec in HostGenerator(ktServices).generate()) {
+    for (fileSpec in HostGenerator(worldIndex, ktServices).generate()) {
       fileSpec.writeTo(jvmMainDir)
     }
   }
