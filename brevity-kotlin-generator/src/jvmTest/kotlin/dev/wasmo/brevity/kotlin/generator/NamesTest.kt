@@ -12,7 +12,8 @@ class NamesTest {
     val function = FunctionName(
       name = "sum",
     )
-    assertThat(function.fullyQualifiedKotlinName).isEqualTo("sum")
+    assertThat(function.importFunctionName).isEqualTo("sum_import")
+    assertThat(function.exportFunctionName).isEqualTo("sum_export")
   }
 
   @Test
@@ -22,7 +23,8 @@ class NamesTest {
       parentName = "types",
       name = "has",
     )
-    assertThat(function.fullyQualifiedKotlinName).isEqualTo("wasi_http_v0_3_0_types_has")
+    assertThat(function.importFunctionName).isEqualTo("wasi_http_v0_3_0_types_has_import")
+    assertThat(function.exportFunctionName).isEqualTo("wasi_http_v0_3_0_types_has_export")
   }
 
   @Test
@@ -33,7 +35,8 @@ class NamesTest {
       name = "fields",
       annotation = Annotation.Constructor,
     )
-    assertThat(function.fullyQualifiedKotlinName).isEqualTo("wasi_http_v0_3_0_types_fields")
+    assertThat(function.importFunctionName).isEqualTo("wasi_http_v0_3_0_types_fields_import")
+    assertThat(function.exportFunctionName).isEqualTo("wasi_http_v0_3_0_types_fields_export")
   }
 
   @Test
@@ -45,8 +48,8 @@ class NamesTest {
       resourceName = "fields",
       annotation = Annotation.Static,
     )
-    assertThat(function.fullyQualifiedKotlinName)
-      .isEqualTo("wasi_http_v0_3_0_types_fields_fromList")
+    assertThat(function.importFunctionName).isEqualTo("wasi_http_v0_3_0_types_fields_fromList_import")
+    assertThat(function.exportFunctionName).isEqualTo("wasi_http_v0_3_0_types_fields_fromList_export")
   }
 
   @Test
@@ -58,6 +61,7 @@ class NamesTest {
       resourceName = "fields",
       annotation = Annotation.Method,
     )
-    assertThat(function.fullyQualifiedKotlinName).isEqualTo("wasi_http_v0_3_0_types_fields_has")
+    assertThat(function.importFunctionName).isEqualTo("wasi_http_v0_3_0_types_fields_has_import")
+    assertThat(function.exportFunctionName).isEqualTo("wasi_http_v0_3_0_types_fields_has_export")
   }
 }

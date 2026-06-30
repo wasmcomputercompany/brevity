@@ -15,12 +15,7 @@ class GenerateAllWasiKotlinTest {
   @Test
   fun generate() {
     val directories = mutableListOf(
-      wasiProposals / "cli/wit",
-      wasiProposals / "clocks/wit",
-      wasiProposals / "filesystem/wit",
-      wasiProposals / "http/wit",
-      wasiProposals / "random/wit",
-      wasiProposals / "sockets/wit",
+      "/Volumes/Development/brevity/brevity-integration-tests/src/commonMain/wit".toPath()
     )
 
     val packageReader = IoWitPackageReader(fileSystem)
