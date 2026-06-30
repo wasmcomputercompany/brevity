@@ -2,21 +2,29 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.kotlin.generator.KtService.Kind
 
 sealed interface KtDeclaration {
   val documentation: String?
 }
 
-data class KtService(
-  val kind: Kind,
-  val instanceName: String,
-  val documentation: String? = null,
-  val type: ClassName,
-  val functions: List<KtFunction> = listOf(),
-  val services: List<KtService> = listOf(),
-  val types: List<KtTypeDeclaration> = listOf(),
-  val codecs: List<KtCodec> = listOf(),
-) : Comparable<KtService> {
+sealed interface KtTypeDeclaration : KtDeclaration {
+  val type: ClassName
+}
+
+sealed interface KtService : KtTypeDeclaration, Comparable<KtService> {
+  val kind: Kind
+  val instanceName: String
+  override val documentation: String?
+  val functions: List<KtFunction>
+  val types: List<KtTypeDeclaration>
+
+  val services: List<KtService>
+    get() = types.filterIsInstance<KtService>()
+
+  val hasInstanceMembers: Boolean
+    get() = functions.isNotEmpty() || types.any { it is KtService }
+
   override fun compareTo(other: KtService) = type.compareTo(other.type)
 
   enum class Kind {
@@ -26,16 +34,33 @@ data class KtService(
     Interface,
     Resource
   }
-
-  data class KtCodec(
-    val declaration: KtTypeDeclaration,
-    val hostToGuest: Boolean,
-    val guestToHost: Boolean,
-  )
 }
 
-sealed interface KtTypeDeclaration : KtDeclaration {
-  val type: ClassName
+data class KtInterface(
+  override val kind: Kind,
+  override val instanceName: String,
+  override val documentation: String? = null,
+  override val type: ClassName,
+  override val functions: List<KtFunction> = listOf(),
+  override val types: List<KtTypeDeclaration> = listOf(),
+) : KtService
+
+data class KtWorld(
+  override val instanceName: String,
+  override val documentation: String? = null,
+  override val type: ClassName,
+  override val functions: List<KtFunction> = listOf(),
+  val guest: KtService?,
+  val host: KtService?,
+  override val types: List<KtTypeDeclaration> = listOf(),
+) : KtService {
+  init {
+    require(guest == null || guest in types)
+    require(host == null || host in types)
+  }
+
+  override val kind: Kind
+    get() = Kind.World
 }
 
 data class KtEnum(

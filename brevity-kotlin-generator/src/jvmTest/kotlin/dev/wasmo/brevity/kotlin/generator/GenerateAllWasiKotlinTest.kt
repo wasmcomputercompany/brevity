@@ -30,14 +30,20 @@ class GenerateAllWasiKotlinTest {
 
     val irPackages = IrMapper(ioWitPackages).map()
     val ktMapper = KtMapper()
-    val apiGenerator = ApiGenerator()
 
     val directory = File("build/GenerateAllWasiKotlinTest")
     directory.mkdirs()
 
     val ktServices = ktMapper.map(irPackages)
-    val fileSpecs = apiGenerator.generate(ktServices)
-    for (fileSpec in fileSpecs) {
+    val worldIndex = WorldIndex(ktServices)
+
+    for (fileSpec in ApiGenerator(ktServices).generate()) {
+      fileSpec.writeTo(directory)
+    }
+    for (fileSpec in GuestGenerator(worldIndex, ktServices).generate()) {
+      fileSpec.writeTo(directory)
+    }
+    for (fileSpec in HostGenerator(ktServices).generate()) {
       fileSpec.writeTo(directory)
     }
   }

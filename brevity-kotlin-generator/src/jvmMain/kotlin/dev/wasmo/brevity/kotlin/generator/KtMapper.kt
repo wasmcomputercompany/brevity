@@ -1,6 +1,5 @@
 package dev.wasmo.brevity.kotlin.generator
 
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.NameAllocator
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.io.IoFunction
@@ -28,20 +27,13 @@ class KtMapper(
   private val typeMapper = TypeMapper(kotlinPackagePrefix)
 
   fun map(witPackages: List<IrWitPackage>): List<KtService> {
-    val servicesNoCodecs = witPackages.flatMap { witPackage ->
+    return witPackages.flatMap { witPackage ->
       val kotlinName = witPackage.packageName.toKotlin(kotlinPackagePrefix)
       context(Context(kotlinName, NameAllocator())) {
         witPackage.items.mapNotNull { declaration ->
           declaration.toServiceNoCodecs()
         }
       }
-    }
-
-    val typeIndex = sequence { servicesNoCodecs.yieldTypeDeclarations() }
-      .associateBy { it.type }
-
-    return servicesNoCodecs.map { service ->
-      service.plusCodecs(typeIndex)
     }
   }
 
@@ -69,11 +61,11 @@ class KtMapper(
   internal fun IrInterface.interfaceToKt(): KtService? {
     val kotlinName = context.kotlinName + name
     context(context.copy(kotlinName = kotlinName)) {
-      return KtService(
+      return KtInterface(
         kind = KtService.Kind.Interface,
         documentation = documentation?.content?.trimIndent(),
         type = kotlinName.name,
-        instanceName = name.name.toCamelCase(upperCamel = false),
+        instanceName = name.toCamelCase(upperCamel = false),
         functions = items.filterIsInstance<IrFunction>().map { it.functionToKt() },
         types = items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() },
       ).toNullIfEmpty()
@@ -87,7 +79,7 @@ class KtMapper(
     fields = fields.map { field ->
       KtRecord.Field(
         documentation = field.documentation?.content,
-        name = field.name.name.toCamelCase(upperCamel = false),
+        name = field.name.toCamelCase(upperCamel = false),
         type = typeMapper.map(field.type),
       )
     },
@@ -114,7 +106,7 @@ class KtMapper(
     cases = cases.map { case ->
       KtVariant.Case(
         documentation = case.documentation?.content,
-        name = case.name.name.toCamelCase(upperCamel = true),
+        name = case.name.toCamelCase(upperCamel = true),
         type = case.type?.let { typeMapper.map(it) },
       )
     },
@@ -128,7 +120,7 @@ class KtMapper(
       check(it.type == null)
       KtEnum.Case(
         documentation = it.documentation?.content,
-        name = it.name.name.toCamelCase(upperCamel = true),
+        name = it.name.toCamelCase(upperCamel = true),
       )
     },
   )
@@ -140,7 +132,7 @@ class KtMapper(
     flags = flags.map { flag ->
       KtFlags.Flag(
         documentation = flag.documentation?.content,
-        name = flag.name.name.toCamelCase(upperCamel = false),
+        name = flag.name.toCamelCase(upperCamel = false),
       )
     },
   )
@@ -148,12 +140,12 @@ class KtMapper(
   context(context: Context)
   internal fun IrFunction.functionToKt() = KtFunction(
     documentation = documentation?.content,
-    ktName = functionName.name.name.toCamelCase(upperCamel = false),
+    ktName = functionName.name.toCamelCase(upperCamel = false),
     name = functionName,
     parameters = parameters.map { parameter ->
       KtFunction.Parameter(
         documentation = parameter.documentation?.content,
-        name = parameter.name.name.toCamelCase(upperCamel = false),
+        name = parameter.name.toCamelCase(upperCamel = false),
         type = typeMapper.map(parameter.type),
       )
     },
@@ -166,34 +158,40 @@ class KtMapper(
 
     val guestName = kotlinName + Identifier("Guest")
     val guest = context(context.copy(kotlinName = guestName)) {
-      KtService(
+      KtInterface(
         kind = KtService.Kind.Guest,
         instanceName = "guest",
         type = guestName.name,
         functions = exports.filterIsInstance<IrFunction>().map { it.functionToKt() },
-        services = exports.mapNotNull { it.worldApiToKt() },
+        types = exports.mapNotNull { it.worldApiToKt() },
       ).toNullIfEmpty()
     }
 
     val hostName = kotlinName + Identifier("Host")
     val host = context(context.copy(kotlinName = hostName)) {
-      KtService(
+      KtInterface(
         kind = KtService.Kind.Host,
         instanceName = "host",
         type = hostName.name,
         functions = imports.filterIsInstance<IrFunction>().map { it.functionToKt() },
-        services = imports.mapNotNull { it.worldApiToKt() },
+        types = imports.mapNotNull { it.worldApiToKt() },
       ).toNullIfEmpty()
     }
 
-    return KtService(
-      kind = KtService.Kind.World,
+    return KtWorld(
       documentation = documentation?.content?.trimIndent(),
-      instanceName = name.name.toCamelCase(upperCamel = false),
+      instanceName = name.toCamelCase(upperCamel = false),
       type = kotlinName.name,
-      services = listOfNotNull(guest, host),
-      types = context(context.copy(kotlinName = kotlinName)) {
-        items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() }
+      guest = guest,
+      host = host,
+      types = buildList {
+        if (host != null) add(host)
+        if (guest != null) add(guest)
+        addAll(
+          context(context.copy(kotlinName = kotlinName)) {
+            items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() }
+          },
+        )
       },
     ).toNullIfEmpty()
   }
@@ -201,10 +199,10 @@ class KtMapper(
   context(context: Context)
   private fun IrWorld.Api.worldApiToKt(): KtService? {
     return when (this) {
-      is IrExternalApi -> KtService(
+      is IrExternalApi -> KtInterface(
         kind = KtService.Kind.Interface,
         documentation = documentation?.content?.trimIndent(),
-        instanceName = (plainName ?: path.name).name.toCamelCase(upperCamel = false),
+        instanceName = (plainName ?: path.name).toCamelCase(upperCamel = false),
         type = typeMapper.map(path),
         functions = functions.map { it.functionToKt() },
       ).toNullIfEmpty()
@@ -222,121 +220,7 @@ class KtMapper(
 
 internal fun KtService.toNullIfEmpty(): KtService? {
   return when {
-    functions.isEmpty() && services.isEmpty() && types.isEmpty() -> null
+    functions.isEmpty() && types.isEmpty() -> null
     else -> this
   }
 }
-
-/**
- * Returns a copy of this service with the [KtService.codecs] field populated. We do this as a
- * follow-up step because we need to index the converted [KtTypeDeclaration]s before we can
- * collect the codecs.
- */
-private fun KtService.plusCodecs(
-  typeIndex: Map<ClassName, KtTypeDeclaration>,
-) = copy(
-  codecs = buildList {
-    val hostToGuestTypes = hostToGuestTypes.toSet()
-    val guestToHostTypes = guestToHostTypes.toSet()
-    for (type in (hostToGuestTypes + guestToHostTypes).toSet()) {
-      add(
-        KtService.KtCodec(
-          declaration = typeIndex[type.apiType] ?: continue,
-          hostToGuest = type in hostToGuestTypes,
-          guestToHost = type in guestToHostTypes,
-        ),
-      )
-    }
-  },
-)
-
-context(scope: SequenceScope<KtTypeDeclaration>)
-private suspend fun Iterable<KtService>.yieldTypeDeclarations() {
-  for (service in this) {
-    service.yieldTypeDeclarations()
-  }
-}
-
-context(scope: SequenceScope<KtTypeDeclaration>)
-private suspend fun KtService.yieldTypeDeclarations() {
-  for (declaration in types) {
-    scope.yield(declaration)
-  }
-  services.yieldTypeDeclarations()
-}
-
-private val KtService.guestToHostTypes: Sequence<KtTypeName>
-  get() = sequence {
-    for (service in services) {
-      yieldAll(service.guestToHostTypes)
-    }
-    when (kind) {
-      KtService.Kind.Guest -> yieldAll(parameterTypes)
-      KtService.Kind.Host -> yieldAll(returnValueTypes)
-      else -> {}
-    }
-  }
-
-private val KtService.hostToGuestTypes: Sequence<KtTypeName>
-  get() = sequence {
-    for (service in services) {
-      yieldAll(service.hostToGuestTypes)
-    }
-    when (kind) {
-      KtService.Kind.Guest -> yieldAll(returnValueTypes)
-      KtService.Kind.Host -> yieldAll(parameterTypes)
-      else -> {}
-    }
-  }
-
-private val KtService.parameterTypes: Sequence<KtTypeName>
-  get() = sequence {
-    for (function in functions) {
-      yieldAll(function.parameters.map { it.type })
-    }
-    for (spec in services) {
-      yieldAll(spec.parameterTypes)
-    }
-  }
-
-private val KtService.returnValueTypes: Sequence<KtTypeName>
-  get() = sequence {
-    for (function in functions) {
-      val returnType = function.returnType ?: continue
-      yield(returnType)
-    }
-    for (spec in services) {
-      yieldAll(spec.returnValueTypes)
-    }
-  }
-
-private val KtTypeName.declaredTypes: Sequence<KtTypeName.Declared>
-  get() = sequence {
-    when (this@declaredTypes) {
-      is KtTypeName.Borrow -> yieldAll(type.declaredTypes)
-      is KtTypeName.Declared -> yield(this@declaredTypes)
-      is KtTypeName.Future -> type?.let { yieldAll(it.declaredTypes) }
-
-      is KtTypeName.List -> yieldAll(type.declaredTypes)
-      is KtTypeName.Map -> {
-        yieldAll(key.declaredTypes)
-        yieldAll(value.declaredTypes)
-      }
-
-      is KtTypeName.Option -> yieldAll(type.declaredTypes)
-
-      is KtTypeName.Result -> {
-        ok?.let { okTypeName -> yieldAll(okTypeName.declaredTypes) }
-        err?.let { errTypeName -> yieldAll(errTypeName.declaredTypes) }
-      }
-
-      is KtTypeName.Simple -> {}
-      is KtTypeName.Stream -> type?.let { yieldAll(it.declaredTypes) }
-
-      is KtTypeName.Tuple -> {
-        for (name in types) {
-          yieldAll(name.declaredTypes)
-        }
-      }
-    }
-  }
