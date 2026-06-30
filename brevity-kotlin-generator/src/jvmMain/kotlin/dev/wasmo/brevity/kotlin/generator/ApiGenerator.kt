@@ -10,8 +10,10 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 
-class ApiGenerator {
-  fun generate(services: List<KtService>): List<FileSpec> {
+class ApiGenerator(
+  private val services: List<KtService>,
+) {
+  fun generate(): List<FileSpec> {
     return services.groupBy { it.type.packageName }
       .map { (`package`, packageServices) ->
         FileSpec.builder(`package`, "Api")
@@ -176,50 +178,41 @@ class ApiGenerator {
     .build()
 
   private fun serviceToApi(value: KtService): TypeSpec? {
-    if (value.functions.isEmpty() && value.services.isEmpty() && value.types.isEmpty()) return null
+    if (value.functions.isEmpty() && value.types.isEmpty()) return null
 
     val builder = when {
-      value.kind == KtService.Kind.World -> {
-        TypeSpec.objectBuilder(value.type.simpleName)
-      }
-
-      value.functions.isEmpty() && value.services.isEmpty() -> {
-        TypeSpec.objectBuilder(value.type.simpleName)
-      }
-
+      !value.hasInstanceMembers || value is KtWorld -> TypeSpec.objectBuilder(value.type.simpleName)
       else -> TypeSpec.interfaceBuilder(value.type.simpleName)
     }
 
-    if (value.documentation != null) {
-      builder.addKdoc(value.documentation)
+    value.documentation?.let {
+      builder.addKdoc(it)
     }
 
     for (type in value.types) {
-      when (type) {
-        is KtEnum -> builder.addType(enumToApi(type))
-        is KtFlags -> builder.addType(flagsToApi(type))
-        is KtRecord -> builder.addType(recordToApi(type))
-        is KtResource -> builder.addType(resourceToApi(type))
-        is KtTypeAlias -> builder.addType(typeAliasToApi(type))
-        is KtVariant -> builder.addType(variantToApi(type))
+      if (type is KtService && value !is KtWorld) {
+        builder.addProperty(type.instanceName, type.type)
+      }
+
+      if (value.type == type.type.enclosingClassName()) {
+        val typeSpec = when (type) {
+          is KtEnum -> enumToApi(type)
+          is KtFlags -> flagsToApi(type)
+          is KtRecord -> recordToApi(type)
+          is KtResource -> resourceToApi(type)
+          is KtTypeAlias -> typeAliasToApi(type)
+          is KtVariant -> variantToApi(type)
+          is KtService -> serviceToApi(type)
+        }
+
+        if (typeSpec != null) {
+          builder.addType(typeSpec)
+        }
       }
     }
 
     for (function in value.functions) {
       builder.addFunction(functionToApi(function))
-    }
-
-    for (service in value.services) {
-      if (value.kind != KtService.Kind.World) {
-        builder.addProperty(service.instanceName, service.type)
-      }
-
-      if (value.type == service.type.enclosingClassName()) {
-        val spec = serviceToApi(service)
-        if (spec != null) {
-          builder.addType(spec)
-        }
-      }
     }
 
     return builder.build()

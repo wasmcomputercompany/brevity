@@ -1,12 +1,14 @@
 package dev.wasmo.brevity.kotlin.generator
 
+import dev.wasmo.brevity.Identifier
+
 /**
- * Converts a `kabob-case` to `UpperCamelCase` or `lowerCamelCase`.
+ * Converts `kabob-case` to `UpperCamelCase` or `lowerCamelCase`.
  */
-internal fun String.toCamelCase(upperCamel: Boolean): String {
+internal fun Identifier.toCamelCase(upperCamel: Boolean): String {
   return buildString {
     var uppercase = upperCamel
-    for (char in this@toCamelCase) {
+    for (char in name) {
       when (char) {
         '%' -> continue
         '-' -> {

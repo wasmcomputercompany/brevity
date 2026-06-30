@@ -12,6 +12,7 @@ import dev.wasmo.brevity.kotlin.generator.ApiGenerator
 import dev.wasmo.brevity.kotlin.generator.GuestGenerator
 import dev.wasmo.brevity.kotlin.generator.HostGenerator
 import dev.wasmo.brevity.kotlin.generator.KtMapper
+import dev.wasmo.brevity.kotlin.generator.WorldIndex
 import okio.FileSystem
 import okio.Path
 
@@ -40,9 +41,6 @@ class GenerateKotlinCommand(
   override fun run() {
     val packageReader = IoWitPackageReader(fileSystem)
     val ktMapper = KtMapper()
-    val apiGenerator = ApiGenerator()
-    val guestGenerator = GuestGenerator()
-    val hostGenerator = HostGenerator()
 
     val ioWitPackages = inputWitDirectories.map {
       packageReader.read(it)
@@ -65,14 +63,15 @@ class GenerateKotlinCommand(
     }
 
     val ktServices = ktMapper.map(irPackages)
+    val worldIndex = WorldIndex(ktServices)
 
-    for (fileSpec in apiGenerator.generate(ktServices)) {
+    for (fileSpec in ApiGenerator(ktServices).generate()) {
       fileSpec.writeTo(commonMainDir)
     }
-    for (fileSpec in guestGenerator.generate(ktServices)) {
+    for (fileSpec in GuestGenerator(worldIndex, ktServices).generate()) {
       fileSpec.writeTo(wasmWasiMainDir)
     }
-    for (fileSpec in hostGenerator.generate(ktServices)) {
+    for (fileSpec in HostGenerator(ktServices).generate()) {
       fileSpec.writeTo(jvmMainDir)
     }
   }
