@@ -41,7 +41,9 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call concatenate`() = runTest {
+    val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
+      .addWorld(world)
       .moduleWasm()
       .build()
 
@@ -56,7 +58,9 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call printGreeting`() = runTest {
+    val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
+      .addWorld(world)
       .moduleWasm()
       .build()
 
@@ -71,7 +75,9 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call printError`() = runTest {
+    val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
+      .addWorld(world)
       .moduleWasm()
       .build()
     val nameId = tester.bridge.put("Jesse")

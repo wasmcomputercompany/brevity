@@ -85,7 +85,6 @@ class GuestGenerator(
       is KtResource -> {
         for (function in entry.declaration.functions) {
           val receiver = Receiver.Id(
-            name = "self",
             type = KtTypeName.Simple(entry.declaration.type, INT),
           )
 
@@ -245,15 +244,17 @@ class GuestGenerator(
     ) : Receiver
 
     data class Id(
-      val name: String,
       val type: KtTypeName,
     ) : Receiver {
+      val name: String
+        get() = "self"
+
       override val codeBlock: CodeBlock
         get() = CodeBlock.of(
           "%T.fromId<%T>(%N, ::%T)",
           Symbols.Brevity.GuestBridge,
           type.apiType,
-          name,
+          "self",
           type.apiType,
         )
     }

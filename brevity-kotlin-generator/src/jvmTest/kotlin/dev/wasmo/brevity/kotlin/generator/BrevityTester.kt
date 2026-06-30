@@ -47,7 +47,7 @@ class BrevityTester(
   }
 
   val hostFiles = buildMap {
-    val hostGenerator = HostGenerator(ktServices)
+    val hostGenerator = HostGenerator(worldIndex, ktServices)
     for (fileSpec in hostGenerator.generate()) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }

@@ -43,7 +43,7 @@ class GenerateAllWasiKotlinTest {
     for (fileSpec in GuestGenerator(worldIndex, ktServices).generate()) {
       fileSpec.writeTo(directory)
     }
-    for (fileSpec in HostGenerator(ktServices).generate()) {
+    for (fileSpec in HostGenerator(worldIndex, ktServices).generate()) {
       fileSpec.writeTo(directory)
     }
   }
