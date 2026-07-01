@@ -146,14 +146,14 @@ class IrMapper(
 
       constructor && resourceName != null && name == Keywords.constructor -> FunctionName(
         packageName = context.packageName,
-        parentName = context.parentName,
+        serviceName = context.serviceName,
         name = resourceName,
         annotation = Annotation.Constructor,
       )
 
       static && resourceName != null -> FunctionName(
         packageName = context.packageName,
-        parentName = context.parentName,
+        serviceName = context.serviceName,
         resourceName = resourceName,
         name = name,
         annotation = Annotation.Static,
@@ -161,7 +161,7 @@ class IrMapper(
 
       resourceName != null -> FunctionName(
         packageName = context.packageName,
-        parentName = context.parentName,
+        serviceName = context.serviceName,
         resourceName = resourceName,
         name = name,
         annotation = Annotation.Method,
@@ -169,7 +169,7 @@ class IrMapper(
 
       else -> FunctionName(
         packageName = context.packageName,
-        parentName = context.parentName,
+        serviceName = context.serviceName,
         name = name,
       )
     },
@@ -241,22 +241,22 @@ class IrMapper(
 
   context(context: Context)
   private fun IoExternalApi.externalUsePathToIr(): IrExternalApi {
-    val parentName = path.usePathToIr()
+    val serviceName = path.usePathToIr()
     return IrExternalApi(
       documentation = documentation,
       gate = gate,
       offset = offset,
       plainName = plainName,
-      path = parentName,
-      functions = context(Context(parentName.packageName, parentName.name)) {
-        val interfaceItems = getInterfaceOrNull(parentName.usePath)?.items ?: listOf()
+      path = serviceName,
+      functions = context(Context(serviceName.packageName, serviceName.name)) {
+        val interfaceItems = getInterfaceOrNull(serviceName.usePath)?.items ?: listOf()
         interfaceItems.filterIsInstance<IoFunction>().map { it.functionToIr() }
       },
     )
   }
 
   context(context: Context)
-  private fun UsePath.usePathToIr() = IrParentName(
+  private fun UsePath.usePathToIr() = IrServiceName(
     packageName = packageName ?: context.packageName,
     name = name,
   )
@@ -293,7 +293,7 @@ class IrMapper(
   private fun IoTypeName.Declared.declaredTypeToIr(): IrTypeName.Declared {
     return declaredTypeToIrOrNull()
       ?: throw IllegalArgumentException(
-        "unable to find $this in ${UsePath(context.packageName, context.parentName)}",
+        "unable to find $this in ${UsePath(context.packageName, context.serviceName)}",
       )
   }
 
@@ -302,10 +302,10 @@ class IrMapper(
     val witPackage = packageNameToPackage[context.packageName] ?: return null
     val declarations = sequence {
       for (file in witPackage.files.values) {
-        for (parent in file.items) {
-          when (parent) {
-            is IoInterface if parent.name == context.parentName -> yieldAll(parent.items)
-            is IoWorld if parent.name == context.parentName -> yieldAll(parent.items)
+        for (service in file.items) {
+          when (service) {
+            is IoInterface if service.name == context.serviceName -> yieldAll(service.items)
+            is IoWorld if service.name == context.serviceName -> yieldAll(service.items)
             else -> {}
           }
         }
@@ -319,7 +319,7 @@ class IrMapper(
           if (declaration.name == name) {
             return IrTypeName.Declared(
               packageName = witPackage.packageName,
-              parentName = context.parentName,
+              serviceName = context.serviceName,
               name = declaration.name,
               codec = when (declaration) {
                 is IoEnum -> IrTypeName.Declared.Codec.Enum
@@ -339,7 +339,7 @@ class IrMapper(
           if (itemMatch != null) {
             val useContext = Context(
               packageName = declaration.path.packageName ?: context.packageName,
-              parentName = declaration.path.name,
+              serviceName = declaration.path.name,
             )
             context(useContext) {
               return itemMatch.type.declaredTypeToIrOrNull()
@@ -457,9 +457,9 @@ class IrMapper(
 
   internal class Context(
     val packageName: PackageName,
-    val parentName: Identifier,
+    val serviceName: Identifier,
   ) {
-    override fun toString() = UsePath(packageName, parentName).toString()
+    override fun toString() = UsePath(packageName, serviceName).toString()
   }
 
   private data class IncludedWorld(

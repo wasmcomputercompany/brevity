@@ -20,7 +20,7 @@ class NamesTest {
   fun `function on interface`() {
     val function = FunctionName(
       packageName = "wasi:http@0.3.0",
-      parentName = "types",
+      serviceName = "types",
       name = "has",
     )
     assertThat(function.importFunctionName).isEqualTo("types_has_import")
@@ -31,7 +31,7 @@ class NamesTest {
   fun `package name with sem ver`() {
     val function = FunctionName(
       packageName = "wasi:http@0.3.0",
-      parentName = "types",
+      serviceName = "types",
       name = "fields",
       annotation = Annotation.Constructor,
     )
@@ -43,7 +43,7 @@ class NamesTest {
   fun `function on resource`() {
     val function = FunctionName(
       packageName = "wasi:http@0.3.0",
-      parentName = "types",
+      serviceName = "types",
       name = "from-list",
       resourceName = "fields",
       annotation = Annotation.Static,
@@ -56,7 +56,7 @@ class NamesTest {
   fun `static function`() {
     val function = FunctionName(
       packageName = "wasi:http@0.3.0",
-      parentName = "types",
+      serviceName = "types",
       name = "has",
       resourceName = "fields",
       annotation = Annotation.Method,

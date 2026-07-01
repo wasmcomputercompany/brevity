@@ -25,12 +25,12 @@ fun IrCase(
 
 fun IrTypeNameDeclared(
   packageName: String,
-  parentName: String,
+  serviceName: String,
   typeName: String,
   codec: IrTypeName.Declared.Codec = IrTypeName.Declared.Codec.Record,
 ) = IrTypeName.Declared(
   packageName = packageName.toPackageName(),
-  parentName = Identifier(parentName),
+  serviceName = Identifier(serviceName),
   name = Identifier(typeName),
   codec = codec,
 )
@@ -55,14 +55,14 @@ fun IrExternalApi(
   offset: Offset = Offset(1, 1),
   plainName: String? = null,
   packageName: String,
-  parentName: String,
+  serviceName: String,
   functions: List<IrFunction> = listOf(),
 ) = IrExternalApi(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
   plainName = plainName?.let { Identifier(it) },
-  path = IrParentName(packageName, parentName),
+  path = IrServiceName(packageName, serviceName),
   functions = functions,
 )
 
@@ -115,7 +115,7 @@ fun IrFunction(
   parameters: List<IrParameter> = listOf(),
   returnType: IrTypeName? = null,
   packageName: String,
-  parentName: String,
+  serviceName: String,
   resourceName: String? = null,
   annotation: Annotation? = resourceName?.let { Annotation.Method },
 ) = IrFunction(
@@ -127,7 +127,7 @@ fun IrFunction(
   returnType = returnType,
   functionName = FunctionName(
     packageName = packageName.toPackageName(),
-    parentName = Identifier(parentName),
+    serviceName = Identifier(serviceName),
     name = Identifier(name),
     resourceName = resourceName?.let { Identifier(it) },
     annotation = annotation,
@@ -160,10 +160,10 @@ fun IrParameter(
   type = type,
 )
 
-fun IrParentName(
+fun IrServiceName(
   packageName: String,
   name: String,
-) = IrParentName(
+) = IrServiceName(
   packageName = packageName.toPackageName(),
   name = Identifier(name),
 )

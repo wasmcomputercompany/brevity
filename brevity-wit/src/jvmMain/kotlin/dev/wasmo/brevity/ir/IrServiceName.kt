@@ -5,9 +5,9 @@ import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.io.UsePath
 
 /**
- * The name of either an interface or a world.
+ * The name of an interface or a world.
  */
-data class IrParentName(
+data class IrServiceName(
   val packageName: PackageName,
   val name: Identifier,
 ) {

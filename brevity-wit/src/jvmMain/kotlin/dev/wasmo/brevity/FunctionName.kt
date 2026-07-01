@@ -8,13 +8,13 @@ import dev.wasmo.brevity.io.UsePath
 data class FunctionName(
   val packageName: PackageName? = null,
   val name: Identifier,
-  val parentName: Identifier? = null,
+  val serviceName: Identifier? = null,
   val resourceName: Identifier? = null,
   val annotation: Annotation? = null,
 ) {
   val moduleName: String?
     get() = when {
-      packageName != null && parentName != null -> UsePath(packageName, parentName).toString()
+      packageName != null && serviceName != null -> UsePath(packageName, serviceName).toString()
       packageName != null -> packageName.toString()
       else -> null
     }

@@ -1,6 +1,6 @@
 package dev.wasmo.brevity
 
-import dev.wasmo.brevity.ir.IrParentName
+import dev.wasmo.brevity.ir.IrServiceName
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import java.util.TreeSet
@@ -50,7 +50,7 @@ fun Collection<IrWitPackage>.filterNamedWorlds(
 fun worldNames(packageName: PackageName, irWorld: IrWorld): Set<String> {
   return setOf(
     irWorld.name.name,
-    IrParentName(packageName, irWorld.name).toString(),
-    IrParentName(packageName.copy(version = null), irWorld.name).toString(),
+    IrServiceName(packageName, irWorld.name).toString(),
+    IrServiceName(packageName.copy(version = null), irWorld.name).toString(),
   )
 }

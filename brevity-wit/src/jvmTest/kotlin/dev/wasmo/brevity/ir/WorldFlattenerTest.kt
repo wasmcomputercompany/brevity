@@ -78,11 +78,11 @@ class WorldFlattenerTest {
         exports = listOf(
           IrExternalApi(
             packageName = "wasi:cli@0.3.0",
-            parentName = "run",
+            serviceName = "run",
             functions = listOf(
               IrFunction(
                 packageName = "wasi:cli@0.3.0",
-                parentName = "run",
+                serviceName = "run",
                 name = "run",
               ),
             ),
@@ -91,11 +91,11 @@ class WorldFlattenerTest {
         imports = listOf(
           IrExternalApi(
             packageName = "wasi:cli@0.3.0",
-            parentName = "exit",
+            serviceName = "exit",
             functions = listOf(
               IrFunction(
                 packageName = "wasi:cli@0.3.0",
-                parentName = "exit",
+                serviceName = "exit",
                 name = "exit",
               ),
             ),
