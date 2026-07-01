@@ -66,6 +66,7 @@ class ApiGenerator(
     .addSuperinterface(Symbols.Brevity.Resource)
     .apply {
       for (function in value.functions) {
+        if (!function.isSupported) continue
         addFunction(functionToApi(function))
       }
     }
