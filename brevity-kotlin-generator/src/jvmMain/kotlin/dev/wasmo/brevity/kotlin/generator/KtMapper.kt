@@ -202,8 +202,8 @@ class KtMapper(
       is IrExternalApi -> KtInterface(
         kind = KtService.Kind.Interface,
         documentation = documentation?.content?.trimIndent(),
-        instanceName = (plainName ?: path.name).toCamelCase(upperCamel = false),
-        type = typeMapper.map(path),
+        instanceName = (plainName ?: type.name).toCamelCase(upperCamel = false),
+        type = typeMapper.map(type).apiType,
         functions = functions.map { it.functionToKt() },
       ).toNullIfEmpty()
 

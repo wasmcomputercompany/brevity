@@ -3,7 +3,7 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.LONG
-import dev.wasmo.brevity.ir.IrServiceName
+import com.squareup.kotlinpoet.NOTHING
 import dev.wasmo.brevity.ir.IrTypeName
 import dev.wasmo.brevity.kotlin.generator.KtTypeName.Borrow
 import dev.wasmo.brevity.kotlin.generator.KtTypeName.Declared
@@ -33,10 +33,6 @@ class TypeMapper(
     IrTypeName.List(IrTypeName.F32) to KtTypeName.Simple(ClassName("kotlin", "FloatArray"), INT),
     IrTypeName.List(IrTypeName.F64) to KtTypeName.Simple(ClassName("kotlin", "DoubleArray"), INT),
   )
-
-  fun map(typeName: IrServiceName): ClassName {
-    return (typeName.packageName.toKotlin(kotlinPackagePrefix) + typeName.name).name
-  }
 
   fun map(typeName: IrTypeName): KtTypeName {
     val specialCase = specialCases[typeName]
@@ -82,6 +78,12 @@ class TypeMapper(
 
       is IrTypeName.Stream -> Stream(typeName.type?.let { map(it) })
       is IrTypeName.Tuple -> Tuple(typeName.types.map { map(it) })
+      is IrTypeName.Service -> map(typeName)
     }
   }
+
+  fun map(typeName: IrTypeName.Service) = KtTypeName.Simple(
+    apiType = (typeName.packageName.toKotlin(kotlinPackagePrefix) + typeName.name).name,
+    abiType = NOTHING,
+  )
 }

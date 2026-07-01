@@ -35,6 +35,14 @@ fun IrTypeNameDeclared(
   codec = codec,
 )
 
+fun IrTypeNameService(
+  packageName: String,
+  name: String,
+) = IrTypeName.Service(
+  packageName = packageName.toPackageName(),
+  name = Identifier(name),
+)
+
 fun IrEnum(
   documentation: String? = null,
   gate: Gate? = null,
@@ -62,7 +70,7 @@ fun IrExternalApi(
   gate = gate,
   offset = offset,
   plainName = plainName?.let { Identifier(it) },
-  path = IrServiceName(packageName, serviceName),
+  type = IrTypeNameService(packageName, serviceName),
   functions = functions,
 )
 
@@ -158,14 +166,6 @@ fun IrParameter(
   offset = offset,
   name = Identifier(name),
   type = type,
-)
-
-fun IrServiceName(
-  packageName: String,
-  name: String,
-) = IrServiceName(
-  packageName = packageName.toPackageName(),
-  name = Identifier(name),
 )
 
 fun IrRecord(

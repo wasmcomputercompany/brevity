@@ -2,6 +2,7 @@ package dev.wasmo.brevity.ir
 
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.io.UsePath
 
 sealed class IrTypeName {
   data object Bool : IrTypeName()
@@ -17,6 +18,17 @@ sealed class IrTypeName {
   data object F64 : IrTypeName()
   data object Char : IrTypeName()
   data object String : IrTypeName()
+
+  /** Identifies an interface or a world. */
+  data class Service(
+    val packageName: PackageName,
+    val name: Identifier,
+  ) : IrTypeName() {
+    val usePath: UsePath
+      get() = UsePath(packageName, name)
+
+    override fun toString() = usePath.toString()
+  }
 
   /** Identifies a [IrTypeDeclaration]. */
   data class Declared(

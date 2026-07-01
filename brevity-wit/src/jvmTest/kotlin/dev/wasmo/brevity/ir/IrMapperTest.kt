@@ -208,7 +208,7 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = IrServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
+                type = IrTypeNameService("wasi:clocks@0.3.0", "monotonic-clock"),
                 functions = listOf(
                   IrFunction(
                     offset = Offset(4, 3),
@@ -227,7 +227,7 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = IrServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
+                type = IrTypeNameService("wasi:clocks@0.3.0", "monotonic-clock"),
                 functions = listOf(
                   IrFunction(
                     offset = Offset(4, 3),
@@ -251,7 +251,7 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = IrServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
+                type = IrTypeNameService("wasi:clocks@0.3.0", "monotonic-clock"),
                 functions = listOf(
                   IrFunction(
                     offset = Offset(4, 3),

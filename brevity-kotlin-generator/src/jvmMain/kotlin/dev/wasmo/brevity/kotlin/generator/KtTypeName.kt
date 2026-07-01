@@ -12,7 +12,7 @@ sealed class KtTypeName {
   abstract val abiType: TypeName
 
   data class Simple(
-    override val apiType: TypeName,
+    override val apiType: ClassName,
     override val abiType: TypeName,
   ) : KtTypeName()
 

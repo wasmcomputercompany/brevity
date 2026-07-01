@@ -247,7 +247,7 @@ class IrMapper(
       gate = gate,
       offset = offset,
       plainName = plainName,
-      path = serviceName,
+      type = serviceName,
       functions = context(Context(serviceName.packageName, serviceName.name)) {
         val interfaceItems = getInterfaceOrNull(serviceName.usePath)?.items ?: listOf()
         interfaceItems.filterIsInstance<IoFunction>().map { it.functionToIr() }
@@ -256,7 +256,7 @@ class IrMapper(
   }
 
   context(context: Context)
-  private fun UsePath.usePathToIr() = IrServiceName(
+  private fun UsePath.usePathToIr() = IrTypeName.Service(
     packageName = packageName ?: context.packageName,
     name = name,
   )
@@ -410,7 +410,7 @@ class IrMapper(
   private fun IoWorld.Api.worldApiToIr(): IrWorld.Api? {
     return when (this) {
       is IoExternalApi -> externalUsePathToIr()
-        .takeIf { getInterfaceOrNull(it.path.usePath)?.declaresApis() ?: false }
+        .takeIf { getInterfaceOrNull(it.type.usePath)?.declaresApis() ?: false }
 
       is IoFunction -> functionToIr(worldFunction = true)
       is IoInterface -> interfaceToIr(context.packageName)
