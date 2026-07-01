@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.LONG
+import dev.wasmo.brevity.Annotation
 
 /** Lift an ABI value like a memory address to an API value like a resource instance. */
 internal fun guestAbiToApi(
@@ -13,6 +14,13 @@ internal fun guestAbiToApi(
   return when (type) {
     is KtTypeName.Declared -> {
       when (type.codec) {
+        KtTypeName.Declared.Codec.Resource -> CodeBlock.of(
+          "%L.fromId(%L, ::%T)",
+          bridge,
+          abiValue,
+          type.handleName,
+        )
+
         else -> CodeBlock.of(
           "%L as %T",
           abiValue,
@@ -90,5 +98,14 @@ internal fun hostApiToAbi(
   }
 }
 
-internal fun bridgedType(resourceType: ClassName): ClassName =
-  ClassName(resourceType.packageName, "Bridged${resourceType.simpleName}")
+val KtResource.handleName: ClassName
+  get() = ClassName(type.packageName, "${type.simpleName}Handle")
+
+val KtTypeName.Declared.handleName: ClassName
+  get() = ClassName(apiType.packageName, "${apiType.simpleName}Handle")
+
+/** Returns true if we've done the work to implement this. */
+val KtFunction.isSupported: Boolean
+  get() = name.annotation == null ||
+    name.annotation == Annotation.Method ||
+    name.annotation == Annotation.ResourceDrop

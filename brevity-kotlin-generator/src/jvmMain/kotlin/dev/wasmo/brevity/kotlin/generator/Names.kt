@@ -11,12 +11,6 @@ val FunctionName.exportFunctionName: String
 
 private fun FunctionName.toExternalName(suffix: Identifier): String {
   val segments = buildList {
-    val packageName = packageName
-    if (packageName != null) {
-      addAll(packageName.namespaces)
-      addAll(packageName.names)
-      add(packageName.version?.let { Identifier("v${it.version}") })
-    }
     add(parentName)
     add(resourceName)
     add(name)

@@ -12,7 +12,6 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.buildCodeBlock
-import dev.wasmo.brevity.Annotation
 
 class HostGenerator(
   private val index: WorldIndex,
@@ -315,10 +314,7 @@ class HostGenerator(
     receiver: Receiver,
     value: KtFunction,
   ) {
-    when (value.name.annotation) {
-      Annotation.Static, Annotation.Constructor -> return // TODO
-      else -> {}
-    }
+    if (!value.isSupported) return // TODO
 
     val block = CodeBlock.builder()
 

@@ -47,12 +47,15 @@ class GenerateKotlinCommand(
     }
 
     val commonMainDir = outputKotlinCommonMain.toFile()
+    commonMainDir.deleteRecursively()
     commonMainDir.mkdirs()
 
     val wasmWasiMainDir = outputKotlinWasmWasiMain.toFile()
+    wasmWasiMainDir.deleteRecursively()
     wasmWasiMainDir.mkdirs()
 
     val jvmMainDir = outputKotlinJvmMain.toFile()
+    jvmMainDir.deleteRecursively()
     jvmMainDir.mkdirs()
 
     val allIrPackages = IrMapper(ioWitPackages).map()
