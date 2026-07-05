@@ -42,13 +42,13 @@ class IrMapperTest {
     assertThat(
       irMapper.getType(
         contextPackageName = "wasi:clocks",
-        contextParentName = "wall-clock",
+        contextServiceName = "wall-clock",
         typeName = IoTypeName.Declared("datetime"),
       ),
     ).isEqualTo(
       IrTypeName.Declared(
         packageName = "wasi:clocks".toPackageName(),
-        parentName = Identifier("wall-clock"),
+        serviceName = Identifier("wall-clock"),
         name = Identifier("datetime"),
         codec = IrTypeName.Declared.Codec.Record,
       ),
@@ -58,7 +58,7 @@ class IrMapperTest {
       assertFailsWith<IllegalArgumentException> {
         irMapper.getType(
           contextPackageName = "wasi:clocks",
-          contextParentName = "wall-clock",
+          contextServiceName = "wall-clock",
           typeName = IoTypeName.Declared("instant"),
         )
       },
@@ -100,13 +100,13 @@ class IrMapperTest {
     assertThat(
       irMapper.getType(
         contextPackageName = "wasi:cli",
-        contextParentName = "stdin",
+        contextServiceName = "stdin",
         typeName = IoTypeName.Declared("input-stream"),
       ),
     ).isEqualTo(
       IrTypeName.Declared(
         packageName = "wasi:io@0.2.12".toPackageName(),
-        parentName = Identifier("streams"),
+        serviceName = Identifier("streams"),
         name = Identifier("input-stream"),
         codec = IrTypeName.Declared.Codec.Resource,
       ),
@@ -114,7 +114,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `find symbols across parents with use`() {
+  fun `find symbols across services with use`() {
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "wasi:cli".toPackageName(),
@@ -140,13 +140,13 @@ class IrMapperTest {
     assertThat(
       irMapper.getType(
         contextPackageName = "wasi:cli",
-        contextParentName = "stdin",
+        contextServiceName = "stdin",
         typeName = IoTypeName.Declared("input-stream"),
       ),
     ).isEqualTo(
       IrTypeName.Declared(
         packageName = "wasi:cli".toPackageName(),
-        parentName = Identifier("streams"),
+        serviceName = Identifier("streams"),
         name = Identifier("input-stream"),
         codec = IrTypeName.Declared.Codec.Resource,
       ),
@@ -208,14 +208,14 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = IrParentName("wasi:clocks@0.3.0", "monotonic-clock"),
+                path = IrServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
                 functions = listOf(
                   IrFunction(
                     offset = Offset(4, 3),
                     returnType = IrTypeName.S64,
                     name = "now",
                     packageName = "wasi:clocks@0.3.0",
-                    parentName = "monotonic-clock",
+                    serviceName = "monotonic-clock",
                   ),
                 ),
               ),
@@ -227,14 +227,14 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = IrParentName("wasi:clocks@0.3.0", "monotonic-clock"),
+                path = IrServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
                 functions = listOf(
                   IrFunction(
                     offset = Offset(4, 3),
                     returnType = IrTypeName.S64,
                     name = "now",
                     packageName = "wasi:clocks@0.3.0",
-                    parentName = "monotonic-clock",
+                    serviceName = "monotonic-clock",
                   ),
                 ),
               ),
@@ -251,14 +251,14 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = IrParentName("wasi:clocks@0.3.0", "monotonic-clock"),
+                path = IrServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
                 functions = listOf(
                   IrFunction(
                     offset = Offset(4, 3),
                     returnType = IrTypeName.S64,
                     name = "now",
                     packageName = "wasi:clocks@0.3.0",
-                    parentName = "monotonic-clock",
+                    serviceName = "monotonic-clock",
                   ),
                 ),
               ),
@@ -273,7 +273,7 @@ class IrMapperTest {
                 name = "now",
                 returnType = IrTypeName.S64,
                 packageName = "wasi:clocks@0.3.0",
-                parentName = "monotonic-clock",
+                serviceName = "monotonic-clock",
               ),
             ),
           ),
@@ -314,13 +314,13 @@ class IrMapperTest {
     assertThat(
       irMapper.getType(
         contextPackageName = "wasi:clocks@0.2.12",
-        contextParentName = "timezone",
+        contextServiceName = "timezone",
         typeName = IoTypeName.Declared("datetime"),
       ),
     ).isEqualTo(
       IrTypeName.Declared(
         packageName = "wasi:clocks@0.2.12".toPackageName(),
-        parentName = Identifier("wall-clock"),
+        serviceName = Identifier("wall-clock"),
         name = Identifier("datetime"),
         codec = IrTypeName.Declared.Codec.Record,
       ),
@@ -385,7 +385,7 @@ class IrMapperTest {
       FunctionName(
         name = "now",
         packageName = "wasi:clocks@0.3.0",
-        parentName = "system-clock",
+        serviceName = "system-clock",
       ),
     )
     assertThat(irFunction.functionName.abiName).isEqualTo("now")
@@ -417,27 +417,27 @@ class IrMapperTest {
     assertThat(irResource.functions.map { it.functionName }).containsExactly(
       FunctionName(
         packageName = "wasi:http@0.3.0",
-        parentName = "types",
+        serviceName = "types",
         name = "fields",
         annotation = Annotation.Constructor,
       ),
       FunctionName(
         packageName = "wasi:http@0.3.0",
-        parentName = "types",
+        serviceName = "types",
         name = "from-list",
         resourceName = "fields",
         annotation = Annotation.Static,
       ),
       FunctionName(
         packageName = "wasi:http@0.3.0",
-        parentName = "types",
+        serviceName = "types",
         name = "has",
         resourceName = "fields",
         annotation = Annotation.Method,
       ),
       FunctionName(
         packageName = "wasi:http@0.3.0",
-        parentName = "types",
+        serviceName = "types",
         name = "clone",
         resourceName = "fields",
         annotation = Annotation.Method,
@@ -493,14 +493,14 @@ class IrMapperTest {
                   types = listOf(
                     IrTypeNameDeclared(
                       packageName = "test:types",
-                      parentName = "all-types",
+                      serviceName = "all-types",
                       typeName = "my-resource",
                       codec = IrTypeName.Declared.Codec.Resource,
                     ),
                     IrTypeName.List(
                       IrTypeNameDeclared(
                         packageName = "test:types",
-                        parentName = "all-types",
+                        serviceName = "all-types",
                         typeName = "my-enum",
                         codec = IrTypeName.Declared.Codec.Enum,
                       ),
@@ -548,7 +548,7 @@ class IrMapperTest {
                       ),
                     ),
                     packageName = "test:types",
-                    parentName = "all-types",
+                    serviceName = "all-types",
                     resourceName = "my-resource",
                   ),
                 ),
@@ -568,7 +568,7 @@ class IrMapperTest {
                     type = IrTypeName.List(
                       IrTypeNameDeclared(
                         packageName = "test:types",
-                        parentName = "all-types",
+                        serviceName = "all-types",
                         typeName = "my-record",
                       ),
                     ),
@@ -584,13 +584,13 @@ class IrMapperTest {
 
   private fun IrMapper.getType(
     contextPackageName: String,
-    contextParentName: String,
+    contextServiceName: String,
     typeName: IoTypeName,
   ): IrTypeName {
     context(
       IrMapper.Context(
         packageName = contextPackageName.toPackageName(),
-        parentName = Identifier(contextParentName),
+        serviceName = Identifier(contextServiceName),
       ),
     ) {
       return typeName.typeNameToIr()

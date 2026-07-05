@@ -27,13 +27,13 @@ fun String.toSemVer(): SemVer {
 
 fun FunctionName(
   packageName: String? = null,
-  parentName: String? = null,
+  serviceName: String? = null,
   name: String,
   resourceName: String? = null,
   annotation: Annotation? = resourceName?.let { Annotation.Method },
 ) = FunctionName(
   packageName = packageName?.toPackageName(),
-  parentName = parentName?.let { Identifier(it) },
+  serviceName = serviceName?.let { Identifier(it) },
   name = Identifier(name),
   resourceName = resourceName?.let { Identifier(it) },
   annotation = annotation,

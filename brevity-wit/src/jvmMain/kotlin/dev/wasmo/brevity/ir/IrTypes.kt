@@ -21,7 +21,7 @@ sealed class IrTypeName {
   /** Identifies a [IrTypeDeclaration]. */
   data class Declared(
     val packageName: PackageName,
-    val parentName: Identifier,
+    val serviceName: Identifier,
     val name: Identifier,
     val codec: Codec,
   ) : IrTypeName() {
@@ -34,7 +34,7 @@ sealed class IrTypeName {
         append(packageName)
         append('/')
       }
-      append(parentName)
+      append(serviceName)
       if (packageName.version != null) {
         append('@')
         append(packageName.version)
