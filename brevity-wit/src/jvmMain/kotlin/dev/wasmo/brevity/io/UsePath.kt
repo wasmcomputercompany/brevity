@@ -3,6 +3,7 @@ package dev.wasmo.brevity.io
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
+import dev.wasmo.brevity.ServiceName
 
 /**
  * This is a package name plus an interface name, or just an interface name. The encoded form always
@@ -30,21 +31,10 @@ data class UsePath(
     operator fun invoke(name: Identifier) = UsePath(null, name)
   }
 
-  override fun toString() = buildString {
-    if (packageName != null) {
-      for (namespace in packageName.namespaces) {
-        append(namespace)
-        append(':')
-      }
-      for (packageName in packageName.names) {
-        append(packageName)
-        append('/')
-      }
-    }
-    append(name)
-    if (packageName?.version != null) {
-      append('@')
-      append(packageName.version)
+  override fun toString(): String {
+    return when {
+      packageName != null -> ServiceName(packageName, name).toString()
+      else -> name.name
     }
   }
 }

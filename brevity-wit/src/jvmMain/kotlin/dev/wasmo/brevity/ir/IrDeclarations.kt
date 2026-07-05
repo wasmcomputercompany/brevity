@@ -6,6 +6,7 @@ import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.ServiceName
 
 data class IrWitPackage(
   val packageDocumentation: Documentation? = null,
@@ -141,6 +142,6 @@ data class IrExternalApi(
   override val gate: Gate? = null,
   override val offset: Offset,
   val plainName: Identifier? = null,
-  val path: IrServiceName,
+  val path: ServiceName,
   val functions: List<IrFunction>,
 ) : IrDeclaration, IrWorld.Api

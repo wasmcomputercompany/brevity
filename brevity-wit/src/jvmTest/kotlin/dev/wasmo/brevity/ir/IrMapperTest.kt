@@ -9,6 +9,7 @@ import dev.wasmo.brevity.Annotation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoTypeName
 import dev.wasmo.brevity.io.toUsePath
@@ -208,7 +209,7 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = IrServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
+                path = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
                 functions = listOf(
                   IrFunction(
                     offset = Offset(4, 3),
@@ -227,7 +228,7 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = IrServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
+                path = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
                 functions = listOf(
                   IrFunction(
                     offset = Offset(4, 3),
@@ -251,7 +252,7 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = IrServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
+                path = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
                 functions = listOf(
                   IrFunction(
                     offset = Offset(4, 3),
