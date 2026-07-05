@@ -16,7 +16,7 @@ class TypeMapperTest {
     val typeMapper = TypeMapper(kotlinPackagePrefix = "wit")
 
     assertThat(
-      typeMapper.map(IrTypeNameDeclared("wasi:clocks", "wall-clock", "datetime")),
+      typeMapper.map(IrTypeNameDeclared("wasi:clocks/wall-clock", "datetime")),
     ).isEqualTo(
       KtTypeName.Declared(
         ClassName("wit.wasi.clocks", "WallClock", "Datetime"),
@@ -25,7 +25,7 @@ class TypeMapperTest {
     )
 
     assertThat(
-      typeMapper.map(IrTypeName.List(IrTypeNameDeclared("wasi:clocks", "wall-clock", "datetime"))),
+      typeMapper.map(IrTypeName.List(IrTypeNameDeclared("wasi:clocks/wall-clock", "datetime"))),
     ).isEqualTo(
       KtTypeName.List(
         KtTypeName.Declared(
