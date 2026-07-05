@@ -3,7 +3,7 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.LONG
-import dev.wasmo.brevity.ir.IrServiceName
+import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.ir.IrTypeName
 import dev.wasmo.brevity.kotlin.generator.KtTypeName.Borrow
 import dev.wasmo.brevity.kotlin.generator.KtTypeName.Declared
@@ -34,7 +34,7 @@ class TypeMapper(
     IrTypeName.List(IrTypeName.F64) to KtTypeName.Simple(ClassName("kotlin", "DoubleArray"), INT),
   )
 
-  fun map(typeName: IrServiceName): ClassName {
+  fun map(typeName: ServiceName): ClassName {
     return (typeName.packageName.toKotlin(kotlinPackagePrefix) + typeName.name).name
   }
 

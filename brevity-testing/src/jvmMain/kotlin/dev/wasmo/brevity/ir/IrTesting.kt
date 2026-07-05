@@ -6,6 +6,7 @@ import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.io.IoFlag
 import dev.wasmo.brevity.toPackageName
 
@@ -62,7 +63,7 @@ fun IrExternalApi(
   gate = gate,
   offset = offset,
   plainName = plainName?.let { Identifier(it) },
-  path = IrServiceName(packageName, serviceName),
+  path = ServiceName(packageName, serviceName),
   functions = functions,
 )
 
@@ -158,14 +159,6 @@ fun IrParameter(
   offset = offset,
   name = Identifier(name),
   type = type,
-)
-
-fun IrServiceName(
-  packageName: String,
-  name: String,
-) = IrServiceName(
-  packageName = packageName.toPackageName(),
-  name = Identifier(name),
 )
 
 fun IrRecord(

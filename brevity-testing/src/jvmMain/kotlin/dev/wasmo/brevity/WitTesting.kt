@@ -48,3 +48,11 @@ fun Gate(
   since = since?.toSemVer(),
   deprecated = deprecated?.toSemVer(),
 )
+
+fun ServiceName(
+  packageName: String,
+  name: String,
+) = ServiceName(
+  packageName = packageName.toPackageName(),
+  name = Identifier(name),
+)

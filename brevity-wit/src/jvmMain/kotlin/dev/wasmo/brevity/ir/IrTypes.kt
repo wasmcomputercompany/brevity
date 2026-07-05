@@ -2,6 +2,7 @@ package dev.wasmo.brevity.ir
 
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.ServiceName
 
 sealed class IrTypeName {
   data object Bool : IrTypeName()
@@ -26,19 +27,7 @@ sealed class IrTypeName {
     val codec: Codec,
   ) : IrTypeName() {
     override fun toString() = buildString {
-      for (namespace in packageName.namespaces) {
-        append(namespace)
-        append(':')
-      }
-      for (packageName in packageName.names) {
-        append(packageName)
-        append('/')
-      }
-      append(serviceName)
-      if (packageName.version != null) {
-        append('@')
-        append(packageName.version)
-      }
+      append(ServiceName(packageName, name))
       append(".{$name}")
     }
 

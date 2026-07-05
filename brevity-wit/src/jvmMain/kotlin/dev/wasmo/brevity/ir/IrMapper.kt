@@ -5,6 +5,7 @@ import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.io.IoCase
 import dev.wasmo.brevity.io.IoEnum
 import dev.wasmo.brevity.io.IoExternalApi
@@ -256,7 +257,7 @@ class IrMapper(
   }
 
   context(context: Context)
-  private fun UsePath.usePathToIr() = IrServiceName(
+  private fun UsePath.usePathToIr() = ServiceName(
     packageName = packageName ?: context.packageName,
     name = name,
   )
@@ -328,7 +329,7 @@ class IrMapper(
                 is IoResource -> IrTypeName.Declared.Codec.Resource
                 is IoTypeAlias -> IrTypeName.Declared.Codec.Alias(declaration.target.typeNameToIr())
                 is IoVariant -> IrTypeName.Declared.Codec.Variant
-              }
+              },
             )
           }
         }
