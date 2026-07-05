@@ -2,6 +2,7 @@
 
 package dev.wasmo.brevity.io
 
+import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.WitCoreInternalApi
 
 fun String.toIoTypeName(): IoTypeName {
@@ -16,4 +17,10 @@ fun String.toUsePath(): UsePath {
   val result = reader.readUsePath()
   check(reader.exhausted)
   return result
+}
+
+fun String.toServiceName(): ServiceName {
+  val usePath = toUsePath()
+  val packageName = usePath.packageName ?: error("expected a fully-qualified service name")
+  return ServiceName(packageName, usePath.name)
 }

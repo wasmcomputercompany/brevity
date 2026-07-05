@@ -464,6 +464,10 @@ class IrMapperTest {
             |        red,
             |        blue,
             |    }
+            |    flags my-flags {
+            |        loaded,
+            |        enabled,
+            |    }
             |    resource my-resource {
             |        write: func(bytes: list<u8>);
             |    }
@@ -479,6 +483,7 @@ class IrMapperTest {
 
     val irMapper = IrMapper(ioPackages)
     val packages = irMapper.map()
+    val serviceName = "test:types/all-types"
     assertThat(packages).containsExactly(
       IrWitPackage(
         packageName = "test:types".toPackageName(),
@@ -488,20 +493,19 @@ class IrMapperTest {
             offset = Offset(3, 1),
             items = listOf(
               IrTypeAlias(
+                serviceName = serviceName,
                 name = "my-alias",
                 offset = Offset(4, 5),
                 target = IrTypeName.Tuple(
                   types = listOf(
                     IrTypeNameDeclared(
-                      packageName = "test:types",
-                      serviceName = "all-types",
+                      serviceName = serviceName,
                       typeName = "my-resource",
                       codec = IrTypeName.Declared.Codec.Resource,
                     ),
                     IrTypeName.List(
                       IrTypeNameDeclared(
-                        packageName = "test:types",
-                        serviceName = "all-types",
+                        serviceName = serviceName,
                         typeName = "my-enum",
                         codec = IrTypeName.Declared.Codec.Enum,
                       ),
@@ -510,6 +514,7 @@ class IrMapperTest {
                 ),
               ),
               IrRecord(
+                serviceName = serviceName,
                 name = "my-record",
                 offset = Offset(5, 5),
                 fields = listOf(
@@ -521,6 +526,7 @@ class IrMapperTest {
                 ),
               ),
               IrEnum(
+                serviceName = serviceName,
                 name = "my-enum",
                 offset = Offset(8, 5),
                 cases = listOf(
@@ -534,16 +540,32 @@ class IrMapperTest {
                   ),
                 ),
               ),
-              IrResource(
-                name = "my-resource",
+              IrFlags(
+                serviceName = serviceName,
+                name = "my-flags",
                 offset = Offset(12, 5),
+                flags = listOf(
+                  IrFlag(
+                    offset = Offset(13, 9),
+                    name = "loaded",
+                  ),
+                  IrFlag(
+                    offset = Offset(14, 9),
+                    name = "enabled",
+                  ),
+                ),
+              ),
+              IrResource(
+                serviceName = serviceName,
+                name = "my-resource",
+                offset = Offset(16, 5),
                 functions = listOf(
                   IrFunction(
-                    offset = Offset(13, 9),
+                    offset = Offset(17, 9),
                     name = "write",
                     parameters = listOf(
                       IrParameter(
-                        offset = Offset(13, 21),
+                        offset = Offset(17, 21),
                         name = "bytes",
                         type = IrTypeName.List(IrTypeName.U8),
                       ),
@@ -556,20 +578,20 @@ class IrMapperTest {
 
                 ),
               IrVariant(
+                serviceName = serviceName,
                 name = "my-variant",
-                offset = Offset(15, 5),
+                offset = Offset(19, 5),
                 cases = listOf(
                   IrCase(
-                    offset = Offset(16, 9),
+                    offset = Offset(20, 9),
                     name = "none",
                   ),
                   IrCase(
-                    offset = Offset(17, 9),
+                    offset = Offset(21, 9),
                     name = "some",
                     type = IrTypeName.List(
                       IrTypeNameDeclared(
-                        packageName = "test:types",
-                        serviceName = "all-types",
+                        serviceName = "test:types/all-types",
                         typeName = "my-record",
                       ),
                     ),

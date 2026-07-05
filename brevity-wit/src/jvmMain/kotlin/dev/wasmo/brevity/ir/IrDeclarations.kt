@@ -23,7 +23,9 @@ sealed interface IrDeclaration {
 }
 
 sealed interface IrTypeDeclaration : IrDeclaration, IrInterface.Item, IrWorld.Item {
+  val type: IrTypeName.Declared
   val name: Identifier
+    get() = type.name
 }
 
 data class IrInterface(
@@ -53,7 +55,7 @@ data class IrResource(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val name: Identifier,
+  override val type: IrTypeName.Declared,
   val functions: List<IrFunction>,
 ) : IrTypeDeclaration
 
@@ -61,7 +63,7 @@ data class IrRecord(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val name: Identifier,
+  override val type: IrTypeName.Declared,
   val fields: List<IrField>,
 ) : IrTypeDeclaration
 
@@ -87,7 +89,7 @@ data class IrVariant(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val name: Identifier,
+  override val type: IrTypeName.Declared,
   val cases: List<IrCase>,
 ) : IrTypeDeclaration
 
@@ -95,7 +97,7 @@ data class IrEnum(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val name: Identifier,
+  override val type: IrTypeName.Declared,
   val cases: List<IrCase>,
 ) : IrTypeDeclaration
 
@@ -118,7 +120,7 @@ data class IrFlags(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val name: Identifier,
+  override val type: IrTypeName.Declared,
   val flags: List<IrFlag>,
 ) : IrTypeDeclaration
 
@@ -133,9 +135,10 @@ data class IrTypeAlias(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val name: Identifier,
-  val target: IrTypeName,
-) : IrTypeDeclaration, IrInterface.Item
+  override val type: IrTypeName.Declared,
+) : IrTypeDeclaration, IrInterface.Item {
+  val target: IrTypeName = (type.codec as IrTypeName.Declared.Codec.Alias).target
+}
 
 data class IrExternalApi(
   override val documentation: Documentation? = null,

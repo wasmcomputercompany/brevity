@@ -7,7 +7,7 @@ import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.ServiceName
-import dev.wasmo.brevity.io.IoFlag
+import dev.wasmo.brevity.io.toServiceName
 import dev.wasmo.brevity.toPackageName
 
 fun IrCase(
@@ -25,28 +25,31 @@ fun IrCase(
 )
 
 fun IrTypeNameDeclared(
-  packageName: String,
   serviceName: String,
   typeName: String,
   codec: IrTypeName.Declared.Codec = IrTypeName.Declared.Codec.Record,
-) = IrTypeName.Declared(
-  packageName = packageName.toPackageName(),
-  serviceName = Identifier(serviceName),
-  name = Identifier(typeName),
-  codec = codec,
-)
+): IrTypeName.Declared {
+  val (packageName, name) = serviceName.toServiceName()
+  return IrTypeName.Declared(
+    packageName = packageName,
+    serviceName = name,
+    name = Identifier(typeName),
+    codec = codec,
+  )
+}
 
 fun IrEnum(
   documentation: String? = null,
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
+  serviceName: String,
   name: String,
   cases: List<IrCase>,
 ) = IrEnum(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  name = Identifier(name),
+  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Enum),
   cases = cases,
 )
 
@@ -71,13 +74,14 @@ fun IrFlags(
   documentation: String? = null,
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
+  serviceName: String,
   name: String,
   flags: List<IrFlag>,
 ) = IrFlags(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  name = Identifier(name),
+  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Flags),
   flags = flags,
 )
 
@@ -100,7 +104,7 @@ fun IrFlag(
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
   name: String,
-) = IoFlag(
+) = IrFlag(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
@@ -165,13 +169,14 @@ fun IrRecord(
   documentation: String? = null,
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
+  serviceName: String,
   name: String,
   fields: List<IrField>,
 ) = IrRecord(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  name = Identifier(name),
+  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Record),
   fields = fields,
 )
 
@@ -179,13 +184,14 @@ fun IrResource(
   documentation: String? = null,
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
+  serviceName: String,
   name: String,
   functions: List<IrFunction> = listOf(),
 ) = IrResource(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  name = Identifier(name),
+  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Resource),
   functions = functions,
 )
 
@@ -193,27 +199,28 @@ fun IrTypeAlias(
   documentation: String? = null,
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
+  serviceName: String,
   name: String,
   target: IrTypeName,
 ) = IrTypeAlias(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  name = Identifier(name),
-  target = target,
+  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Alias(target)),
 )
 
 fun IrVariant(
   documentation: String? = null,
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
+  serviceName: String,
   name: String,
   cases: List<IrCase>,
 ) = IrVariant(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  name = Identifier(name),
+  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Variant),
   cases = cases,
 )
 
