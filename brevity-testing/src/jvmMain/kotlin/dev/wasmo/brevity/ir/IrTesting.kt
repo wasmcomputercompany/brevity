@@ -206,7 +206,11 @@ fun IrTypeAlias(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Alias(target)),
+  type = IrTypeNameDeclared(
+    serviceName = serviceName,
+    typeName = name,
+    codec = IrTypeName.Declared.Codec.Alias(target),
+  ),
 )
 
 fun IrVariant(
