@@ -233,21 +233,21 @@ class KotlinGeneratorTest {
       |import kotlin.String
       |import kotlin.collections.List
       |
+      |public interface Platform {
+      |  public fun log(message: String)
+      |}
+      |
       |public object Command {
+      |  public interface Guest {
+      |    public val run: Run
+      |  }
+      |
       |  public interface Host {
       |    public val platform: Platform
       |
       |    public val exit: Exit
       |
       |    public fun args(): List<String>
-      |
-      |    public interface Platform {
-      |      public fun log(message: String)
-      |    }
-      |  }
-      |
-      |  public interface Guest {
-      |    public val run: Run
       |  }
       |}
       |
@@ -315,6 +315,18 @@ class KotlinGeneratorTest {
       |import kotlin.String
       |import kotlin.Unit
       |import kotlin.collections.List
+      |
+      |internal class BridgePlatform(
+      |  private val bridge: HostBridge,
+      |) : Platform {
+      |  internal lateinit var log: ExportFunction
+      |
+      |  override fun log(message: String) {
+      |    log.apply(
+      |      message as Long,
+      |    )
+      |  }
+      |}
       |
       |public fun Command.World(hostFactory: (Command.Guest) -> Command.Host): World<Command.Host, Command.Guest> {
       |  val bridge = HostBridge()
@@ -385,38 +397,26 @@ class KotlinGeneratorTest {
       |    )
       |  }
       |
+      |  internal class BridgeGuest(
+      |    private val bridge: HostBridge,
+      |  ) : Command.Guest {
+      |    override val run: BridgeRun = BridgeRun(bridge)
+      |  }
+      |
       |  internal class BridgeHost(
       |    private val bridge: HostBridge,
       |  ) : Command.Host {
+      |    internal lateinit var args: ExportFunction
+      |
       |    override val platform: BridgePlatform = BridgePlatform(bridge)
       |
       |    override val exit: BridgeExit = BridgeExit(bridge)
-      |
-      |    internal lateinit var args: ExportFunction
       |
       |    override fun args(): List<String> {
       |      val result = args.apply(
       |      )
       |      return result[0] as List<String>
       |    }
-      |
-      |    internal class BridgePlatform(
-      |      private val bridge: HostBridge,
-      |    ) : Command.Host.Platform {
-      |      internal lateinit var log: ExportFunction
-      |
-      |      override fun log(message: String) {
-      |        log.apply(
-      |          message as Long,
-      |        )
-      |      }
-      |    }
-      |  }
-      |
-      |  internal class BridgeGuest(
-      |    private val bridge: HostBridge,
-      |  ) : Command.Guest {
-      |    override val run: BridgeRun = BridgeRun(bridge)
       |  }
       |}
       |
@@ -833,12 +833,12 @@ class KotlinGeneratorTest {
       |import kotlin.String
       |
       |public object Test {
-      |  public interface Guest {
-      |    public fun greet(recipient: Person)
-      |  }
-      |
       |  public interface Person : Resource {
       |    public fun getName(): String
+      |  }
+      |
+      |  public interface Guest {
+      |    public fun greet(recipient: Person)
       |  }
       |}
       |

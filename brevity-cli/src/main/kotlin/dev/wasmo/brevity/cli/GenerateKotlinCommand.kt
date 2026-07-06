@@ -9,6 +9,7 @@ import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.kotlin.generator.ApiGenerator
+import dev.wasmo.brevity.kotlin.generator.DeclarationIndex
 import dev.wasmo.brevity.kotlin.generator.GuestGenerator
 import dev.wasmo.brevity.kotlin.generator.HostGenerator
 import dev.wasmo.brevity.kotlin.generator.KtMapper
@@ -66,12 +67,13 @@ class GenerateKotlinCommand(
     }
 
     val ktServices = ktMapper.map(irPackages)
-    val worldIndex = WorldIndex(ktServices)
+    val declarationIndex = DeclarationIndex(ktServices)
+    val worldIndex = WorldIndex(declarationIndex, ktServices)
 
     for (fileSpec in ApiGenerator(ktServices).generate()) {
       fileSpec.writeTo(commonMainDir)
     }
-    for (fileSpec in GuestGenerator(worldIndex, ktServices).generate()) {
+    for (fileSpec in GuestGenerator(declarationIndex, worldIndex, ktServices).generate()) {
       fileSpec.writeTo(wasmWasiMainDir)
     }
     for (fileSpec in HostGenerator(worldIndex, ktServices).generate()) {

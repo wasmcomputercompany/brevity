@@ -34,7 +34,7 @@ data class IrInterface(
   override val offset: Offset,
   val name: Identifier,
   val items: List<Item>,
-) : IrDeclaration, IrWorld.Api, IrWitPackage.Item {
+) : IrDeclaration, IrWitPackage.Item {
   sealed interface Item : IrDeclaration
 }
 
@@ -151,5 +151,4 @@ data class IrExternalApi(
   override val offset: Offset,
   val plainName: Identifier? = null,
   val path: ServiceName,
-  val functions: List<IrFunction>,
 ) : IrDeclaration, IrWorld.Api

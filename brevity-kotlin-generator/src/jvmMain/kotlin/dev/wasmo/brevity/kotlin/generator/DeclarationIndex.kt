@@ -4,13 +4,13 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.TypeName
 
 /** Associate classes with their declarations. */
-internal class DeclarationIndex(
+class DeclarationIndex(
   private val map: Map<ClassName, KtTypeDeclaration>,
 ) {
   operator fun get(typeName: TypeName): KtTypeDeclaration? = map[typeName]
 
   companion object {
-    operator fun invoke(services: List<KtService>): DeclarationIndex {
+    operator fun invoke(services: List<KtNewService>): DeclarationIndex {
       val classToDeclaration = sequence { services.yieldTypeDeclarations() }
         .associateBy { it.type }
 
@@ -18,12 +18,12 @@ internal class DeclarationIndex(
     }
 
     context(scope: SequenceScope<KtTypeDeclaration>)
-    private suspend fun Iterable<KtTypeDeclaration>.yieldTypeDeclarations() {
+    private suspend fun Iterable<KtNewService>.yieldTypeDeclarations() {
       for (declaration in this) {
-        scope.yield(declaration)
-        if (declaration is KtService) {
-          declaration.types.yieldTypeDeclarations()
+        if (declaration is KtInterface) {
+          scope.yield(declaration)
         }
+        scope.yieldAll(declaration.types)
       }
     }
   }

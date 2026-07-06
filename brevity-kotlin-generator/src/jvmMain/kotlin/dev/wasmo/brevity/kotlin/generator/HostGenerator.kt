@@ -15,7 +15,7 @@ import com.squareup.kotlinpoet.buildCodeBlock
 
 class HostGenerator(
   private val index: WorldIndex,
-  private val services: List<KtService>,
+  private val services: List<KtNewService>,
 ) {
   fun generate(): List<FileSpec> {
     return services.groupBy { it.type.packageName }
@@ -25,7 +25,10 @@ class HostGenerator(
           .apply {
             for (service in packageServices) {
               if (service is KtWorld) {
-                addFunction(worldFactoryFunction(service))
+                val worldFactoryFunction = worldFactoryFunction(service)
+                if (worldFactoryFunction != null) {
+                  addFunction(worldFactoryFunction)
+                }
               }
 
               val typeSpec = serviceToHost(service) ?: continue
@@ -37,19 +40,21 @@ class HostGenerator(
       }
   }
 
-  private fun worldFactoryFunction(value: KtWorld): FunSpec {
+  private fun worldFactoryFunction(value: KtWorld): FunSpec? {
+    if (value.guestApis == null && value.hostApis == null) return null
+
     // The implemented World interface uses the interface types; everything else uses the
     // implementation types.
     val worldType = Symbols.Brevity.World.parameterizedBy(
-      value.host?.type ?: UNIT,
-      value.guest?.type ?: UNIT,
+      value.hostApis?.type ?: UNIT,
+      value.guestApis?.type ?: UNIT,
     )
 
     val hostFactory = ParameterSpec.builder(
       "hostFactory",
       LambdaTypeName.get(
-        parameters = listOf(ParameterSpec.unnamed(value.guest?.type ?: UNIT)),
-        returnType = value.host?.type ?: UNIT,
+        parameters = listOf(ParameterSpec.unnamed(value.guestApis?.type ?: UNIT)),
+        returnType = value.hostApis?.type ?: UNIT,
       ),
     ).build()
 
@@ -60,8 +65,8 @@ class HostGenerator(
       .apply {
         addStatement("val %N = %T()", "bridge", Symbols.Brevity.HostBridge)
 
-        if (value.guest != null) {
-          addStatement("val %N = %T(%N)", "guest", value.guest.bridgeType, "bridge")
+        if (value.guestApis != null) {
+          addStatement("val %N = %T(%N)", "guest", value.guestApis.bridgeType, "bridge")
         } else {
           addStatement("val %N = %T", "guest", UNIT)
         }
@@ -114,7 +119,7 @@ class HostGenerator(
     }
     .build()
 
-  private fun serviceToHost(value: KtService): TypeSpec? {
+  private fun serviceToHost(value: KtNewService): TypeSpec? {
     if (!value.hasInstanceMembers) return null
 
     val builder = TypeSpec.classBuilder(value.bridgeType)
@@ -135,13 +140,13 @@ class HostGenerator(
     )
 
     if (value is KtWorld) {
-      val guestType = value.guest?.bridgeType ?: UNIT
-      val hostType = value.host?.type ?: UNIT
+      val guestType = value.guestApis?.bridgeType ?: UNIT
+      val hostType = value.hostApis?.type ?: UNIT
 
       builder.addSuperinterface(
         Symbols.Brevity.World.parameterizedBy(
-          value.host?.type ?: UNIT,
-          value.guest?.type ?: UNIT,
+          value.hostApis?.type ?: UNIT,
+          value.guestApis?.type ?: UNIT,
         ),
       )
 
@@ -166,11 +171,11 @@ class HostGenerator(
           .addModifiers(KModifier.OVERRIDE)
           .addParameter("instance", Symbols.ChicoryRuntime.Instance)
           .apply {
-            if (value.guest != null) {
+            if (value.guestApis != null) {
               initExports(
                 guest = CodeBlock.of("%N", "guest"),
                 instance = CodeBlock.of("%N", "instance"),
-                value = value.guest,
+                value = value.guestApis,
               )
             }
           }
@@ -182,7 +187,7 @@ class HostGenerator(
           .addModifiers(KModifier.OVERRIDE)
           .addParameter("store", Symbols.ChicoryRuntime.Store)
           .apply {
-            if (value.host != null) {
+            if (value.hostApis != null) {
               val receiver = Receiver.Instance(
                 codeBlock = CodeBlock.of("%N", "host"),
               )
@@ -190,7 +195,7 @@ class HostGenerator(
                 bridge = CodeBlock.of("%N", "bridge"),
                 store = CodeBlock.of("%N", "store"),
                 receiver = receiver,
-                value = value.host,
+                value = value.hostApis,
               )
             }
             for (entry in index.map.values) {
@@ -205,30 +210,27 @@ class HostGenerator(
       )
     }
 
-    for (service in value.services) {
-      if (value !is KtWorld) {
-        builder.addProperty(
-          PropertySpec.builder(service.instanceName, service.bridgeType)
-            .addModifiers(KModifier.OVERRIDE)
-            .initializer("%T(%N)", service.bridgeType, "bridge")
-            .build(),
-        )
+    when (value) {
+      is KtWorld -> {
+        if (value.guestApis != null) {
+          builder.addExternalApis(value.guestApis)
+        }
+        if (value.hostApis != null) {
+          builder.addExternalApis(value.hostApis)
+        }
       }
 
-      if (value.type == service.type.enclosingClassName()) {
-        val typeSpec = serviceToHost(service) ?: continue
-        builder.addType(typeSpec)
+      is KtInterface -> {
+        for (item in value.functions) {
+          builder.addFunction(functionToHost(item))
+          builder.addProperty(
+            PropertySpec.builder(item.ktName, Symbols.ChicoryRuntime.ExportFunction)
+              .addModifiers(KModifier.INTERNAL, KModifier.LATEINIT)
+              .mutable(true)
+              .build(),
+          )
+        }
       }
-    }
-
-    for (function in value.functions) {
-      builder.addFunction(functionToHost(function))
-      builder.addProperty(
-        PropertySpec.builder(function.ktName, Symbols.ChicoryRuntime.ExportFunction)
-          .addModifiers(KModifier.INTERNAL, KModifier.LATEINIT)
-          .mutable(true)
-          .build(),
-      )
     }
 
     builder.primaryConstructor(constructor.build())
@@ -236,26 +238,88 @@ class HostGenerator(
     return builder.build()
   }
 
+  private fun TypeSpec.Builder.addExternalApis(externalApis: KtWorld.ExternalApis) {
+    addType(
+      TypeSpec.classBuilder(externalApis.bridgeType)
+        .addModifiers(KModifier.INTERNAL)
+        .addSuperinterface(externalApis.type)
+        .primaryConstructor(
+          FunSpec.constructorBuilder()
+            .addParameter("bridge", Symbols.Brevity.HostBridge)
+            .build(),
+        )
+        .addProperty(
+          PropertySpec.builder("bridge", Symbols.Brevity.HostBridge)
+            .addModifiers(KModifier.PRIVATE)
+            .initializer("bridge")
+            .build(),
+        )
+        .apply {
+          for (item in externalApis.items) {
+            addExternalApisItem(externalApis, item)
+          }
+        }
+        .build(),
+    )
+  }
+
+  private fun TypeSpec.Builder.addExternalApisItem(
+    externalApis: KtWorld.ExternalApis,
+    item: KtWorld.ExternalApis.Item,
+  ) {
+    when (item) {
+      is KtWorld.ExternalApis.InterfaceProperty -> {
+        addProperty(
+          PropertySpec.builder(item.instanceName, item.bridgeType)
+            .addModifiers(KModifier.OVERRIDE)
+            .initializer("%T(%N)", item.bridgeType, "bridge")
+            .build(),
+        )
+      }
+
+      is KtFunction -> {
+        addFunction(functionToHost(item))
+        addProperty(
+          PropertySpec.builder(item.ktName, Symbols.ChicoryRuntime.ExportFunction)
+            .addModifiers(KModifier.INTERNAL, KModifier.LATEINIT)
+            .mutable(true)
+            .build(),
+        )
+      }
+    }
+  }
+
   private fun FunSpec.Builder.initExports(
     guest: CodeBlock,
     instance: CodeBlock,
-    value: KtService,
+    value: KtWorld.ExternalApis,
   ) {
-    for (function in value.functions) {
-      addStatement(
-        "%L.%N = %L.export(%S)",
-        guest,
-        function.ktName,
-        instance,
-        function.name,
-      )
-    }
-    for (service in value.services) {
-      initExports(
-        guest = CodeBlock.of("%L.%N", guest, service.instanceName),
-        instance = instance,
-        value = service,
-      )
+    for (item in value.items) {
+      when (item) {
+        is KtFunction -> {
+          addStatement(
+            "%L.%N = %L.export(%S)",
+            guest,
+            item.ktName,
+            instance,
+            item.name,
+          )
+        }
+
+        is KtWorld.ExternalApis.InterfaceProperty -> {
+          val type = index[item.type]?.declaration as KtInterface
+          for (function in type.functions) {
+            addStatement(
+              "%L.%N.%N = %L.export(%S)",
+              guest,
+              type.instanceName,
+              function.ktName,
+              instance,
+              function.name,
+            )
+          }
+        }
+      }
     }
   }
 
@@ -291,20 +355,32 @@ class HostGenerator(
     bridge: CodeBlock,
     store: CodeBlock,
     receiver: Receiver.Instance,
-    value: KtService,
+    value: KtWorld.ExternalApis,
   ) {
-    for (function in value.functions) {
-      addHostFunction(bridge, store, receiver, function)
-    }
-    for (service in value.services) {
-      initImports(
-        bridge = bridge,
-        store = store,
-        receiver = Receiver.Instance(
-          CodeBlock.of("%L.%N", receiver.codeBlock, service.instanceName),
-        ),
-        value = service,
-      )
+    for (item in value.items) {
+      when (item) {
+        is KtFunction -> {
+          addHostFunction(
+            bridge = bridge,
+            store = store,
+            receiver = receiver,
+            value = item,
+          )
+        }
+
+        is KtWorld.ExternalApis.InterfaceProperty -> {
+          val type = index[item.type]?.declaration as KtInterface
+          for (function in type.functions) {
+            addHostFunction(
+              bridge = bridge, store = store,
+              receiver = Receiver.Instance(
+                CodeBlock.of("%L.%N", receiver.codeBlock, item.instanceName),
+              ),
+              value = function,
+            )
+          }
+        }
+      }
     }
   }
 
@@ -428,7 +504,19 @@ class HostGenerator(
   }
 }
 
-private val KtService.bridgeType: ClassName
+private val KtWorld.ExternalApis.InterfaceProperty.bridgeType: ClassName
+  get() = ClassName(
+    packageName = type.packageName,
+    simpleNames = type.simpleNames.map { "Bridge${it}" },
+  )
+
+private val KtNewService.bridgeType: ClassName
+  get() = ClassName(
+    packageName = type.packageName,
+    simpleNames = type.simpleNames.map { "Bridge${it}" },
+  )
+
+private val KtWorld.ExternalApis.bridgeType: ClassName
   get() = ClassName(
     packageName = type.packageName,
     simpleNames = type.simpleNames.map { "Bridge${it}" },

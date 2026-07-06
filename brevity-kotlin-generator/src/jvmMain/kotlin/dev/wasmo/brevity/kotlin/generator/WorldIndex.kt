@@ -30,9 +30,10 @@ class WorldIndex(
   )
 
   companion object {
-    operator fun invoke(services: List<KtService>): WorldIndex {
-      val declarationIndex = DeclarationIndex(services)
-
+    operator fun invoke(
+      declarationIndex: DeclarationIndex,
+      services: List<KtNewService>,
+    ): WorldIndex {
       val traverser = TypeTraverser(declarationIndex)
       traverser.collectAll(services)
 
@@ -77,13 +78,13 @@ internal class TypeTraverser(
   private val guest = Collector(guestQueue, guestTypes, hostQueue, hostTypes, hostQueue, hostTypes)
   private val host = Collector(hostQueue, hostTypes, guestQueue, guestTypes, hostQueue, hostTypes)
 
-  fun collectAll(services: List<KtService>) {
+  fun collectAll(services: List<KtNewService>) {
     val worlds = services.filterIsInstance<KtWorld>()
 
     // Seed the traversal with the world's hosts and guests.
     for (world in worlds) {
-      world.host?.let { host += it.type }
-      world.guest?.let { guest += it.type }
+      world.hostApis?.let { host.collectExternalApis(it) }
+      world.guestApis?.let { guest.collectExternalApis(it) }
     }
 
     // Collect everything by recursively following all type references.
@@ -126,6 +127,15 @@ internal class TypeTraverser(
       return true
     }
 
+    fun collectExternalApis(value: KtWorld.ExternalApis) {
+      for (item in value.items) {
+        when (item) {
+          is KtFunction -> collectFunction(item)
+          is KtWorld.ExternalApis.InterfaceProperty -> this += item.type
+        }
+      }
+    }
+
     fun collectTypeDeclaration(value: KtTypeDeclaration) {
       when (value) {
         is KtEnum -> {} // No members.
@@ -143,8 +153,8 @@ internal class TypeTraverser(
           }
         }
 
-        is KtService -> {
-          for (service in value.services) {
+        is KtInterface -> {
+          for (service in value.types) {
             this += service.type
           }
           for (function in value.functions) {

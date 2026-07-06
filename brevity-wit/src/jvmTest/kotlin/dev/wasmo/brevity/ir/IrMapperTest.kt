@@ -210,15 +210,6 @@ class IrMapperTest {
               IrExternalApi(
                 offset = Offset(4, 3),
                 path = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
-                functions = listOf(
-                  IrFunction(
-                    offset = Offset(4, 3),
-                    returnType = IrTypeName.S64,
-                    name = "now",
-                    packageName = "wasi:clocks@0.3.0",
-                    serviceName = "monotonic-clock",
-                  ),
-                ),
               ),
             ),
           ),
@@ -229,15 +220,6 @@ class IrMapperTest {
               IrExternalApi(
                 offset = Offset(4, 3),
                 path = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
-                functions = listOf(
-                  IrFunction(
-                    offset = Offset(4, 3),
-                    returnType = IrTypeName.S64,
-                    name = "now",
-                    packageName = "wasi:clocks@0.3.0",
-                    serviceName = "monotonic-clock",
-                  ),
-                ),
               ),
             ),
           ),
@@ -253,15 +235,6 @@ class IrMapperTest {
               IrExternalApi(
                 offset = Offset(4, 3),
                 path = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
-                functions = listOf(
-                  IrFunction(
-                    offset = Offset(4, 3),
-                    returnType = IrTypeName.S64,
-                    name = "now",
-                    packageName = "wasi:clocks@0.3.0",
-                    serviceName = "monotonic-clock",
-                  ),
-                ),
               ),
             ),
           ),
@@ -275,6 +248,60 @@ class IrMapperTest {
                 returnType = IrTypeName.S64,
                 packageName = "wasi:clocks@0.3.0",
                 serviceName = "monotonic-clock",
+              ),
+            ),
+          ),
+        ),
+      ),
+    )
+  }
+
+  @Test
+  fun `inline interface is flattened`() {
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "local:demo".toPackageName(),
+        files = mapOf(
+          "world.wit".toPath() to """
+            |package local:demo;
+            |
+            |world your-world {
+            |    import out-of-line: interface {
+            |        the-function: func();
+            |    }
+            |}
+            """.trimMargin().toWitFile(),
+        ),
+      ),
+    )
+    val irMapper = IrMapper(ioPackages)
+    val irPackages = irMapper.map()
+
+    assertThat(irPackages).containsExactly(
+      IrWitPackage(
+        packageName = "local:demo".toPackageName(),
+        items = listOf(
+          IrInterface(
+            offset = Offset(4, 5),
+            name = "out-of-line",
+            items = listOf(
+              IrFunction(
+                offset = Offset(5, 9),
+                name = "the-function",
+                packageName = "local:demo",
+                serviceName = "out-of-line",
+              ),
+            ),
+          ),
+          IrWorld(
+            offset = Offset(3, 1),
+            name = "your-world",
+            imports = listOf(
+              IrExternalApi(
+                offset = Offset(4, 5),
+                packageName = "local:demo",
+                serviceName = "out-of-line",
+                plainName = "out-of-line",
               ),
             ),
           ),

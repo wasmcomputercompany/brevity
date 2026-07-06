@@ -64,21 +64,24 @@ class IrMapper(
   private fun addPackage(ioPackage: IoToplevelWitPackage) {
     val builder = irPackages.getOrPut(ioPackage.packageName) { PackageBuilder() }
 
-    for ((_, ioFile) in ioPackage.files) {
-      for (item in ioFile.items) {
-        when (item) {
-          is IoInterface -> builder.items += item.interfaceToIr(ioPackage.packageName)
-          is IoWorld -> builder.items += item.worldToIr(ioPackage.packageName)
-          is IoTopLevelUse -> {}
-          is IoInlinePackage -> {}
+    context(builder) {
+      for ((_, ioFile) in ioPackage.files) {
+        for (item in ioFile.items) {
+          when (item) {
+            is IoInterface -> item.interfaceToIr(ioPackage.packageName)
+            is IoWorld -> item.worldToIr(ioPackage.packageName)
+            is IoTopLevelUse -> {}
+            is IoInlinePackage -> {}
+          }
         }
       }
     }
   }
 
-  private fun IoInterface.interfaceToIr(packageName: PackageName): IrInterface {
+  context(builder: PackageBuilder)
+  private fun IoInterface.interfaceToIr(packageName: PackageName) {
     context(Context(packageName, name)) {
-      return IrInterface(
+      builder.items += IrInterface(
         documentation = documentation,
         gate = gate,
         offset = offset,
@@ -254,10 +257,6 @@ class IrMapper(
       offset = offset,
       plainName = plainName,
       path = serviceName,
-      functions = context(Context(serviceName.packageName, serviceName.name)) {
-        val interfaceItems = getInterfaceOrNull(serviceName.usePath)?.items ?: listOf()
-        interfaceItems.filterIsInstance<IoFunction>().map { it.functionToIr() }
-      },
     )
   }
 
@@ -361,7 +360,8 @@ class IrMapper(
   }
 
   /** Collect includes recursively. */
-  private fun IoWorld.worldToIr(packageName: PackageName): IrWorld {
+  context(builder: PackageBuilder)
+  private fun IoWorld.worldToIr(packageName: PackageName) {
     val seed = IncludedWorld(
       packageName = packageName,
       world = this,
@@ -370,7 +370,7 @@ class IrMapper(
     val set = LinkedHashSet<IncludedWorld>()
     seed.collectIncludesRecursively(set)
 
-    return IrWorld(
+    builder.items += IrWorld(
       documentation = documentation,
       gate = gate,
       offset = offset,
@@ -409,17 +409,25 @@ class IrMapper(
 
   /**
    * Returns null if the external API doesn't declare any functions. This is perfectly reasonable
-   * to express in WIT, but not useful for generating bindings. It also triggers name collisions
-   * because some WASI worlds import multiple 'types' interfaces.
+   * to express in WIT, but not useful for generating bindings. (It also triggers name collisions
+   * because some WASI worlds import multiple 'types' interfaces.)
    */
-  context(context: Context)
+  context(context: Context, builder: PackageBuilder)
   private fun IoWorld.Api.worldApiToIr(): IrWorld.Api? {
     return when (this) {
       is IoExternalApi -> externalUsePathToIr()
         .takeIf { getInterfaceOrNull(it.path.usePath)?.declaresApis() ?: false }
 
       is IoFunction -> functionToIr(worldFunction = true)
-      is IoInterface -> interfaceToIr(context.packageName)
+      is IoInterface -> {
+        if (!declaresApis()) return null
+        interfaceToIr(context.packageName)
+        IrExternalApi(
+          offset = offset,
+          plainName = name,
+          path = ServiceName(context.packageName, name),
+        )
+      }
     }
   }
 

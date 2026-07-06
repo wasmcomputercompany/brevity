@@ -19,14 +19,14 @@ import dev.wasmo.brevity.ir.IrWorld
 
 /**
  * Directly converts WIT model types ([IoWorld], [IoFunction], etc.) to a Kotlin equivalents
- * ([KtService], [KtFunction], etc.).
+ * ([KtWorld], [KtFunction], etc.).
  */
 class KtMapper(
   private val kotlinPackagePrefix: String = "wit",
 ) {
   private val typeMapper = TypeMapper(kotlinPackagePrefix)
 
-  fun map(witPackages: List<IrWitPackage>): List<KtService> {
+  fun map(witPackages: List<IrWitPackage>): List<KtNewService> {
     return witPackages.flatMap { witPackage ->
       val kotlinName = witPackage.packageName.toKotlin(kotlinPackagePrefix)
       context(Context(kotlinName, NameAllocator())) {
@@ -38,7 +38,7 @@ class KtMapper(
   }
 
   context(context: Context)
-  internal fun IrWitPackage.Item.toServiceNoCodecs(): KtService? {
+  internal fun IrWitPackage.Item.toServiceNoCodecs(): KtNewService? {
     return when (this) {
       is IrInterface -> interfaceToKt()
       is IrWorld -> worldToKt()
@@ -58,17 +58,16 @@ class KtMapper(
   }
 
   context(context: Context)
-  internal fun IrInterface.interfaceToKt(): KtService? {
+  internal fun IrInterface.interfaceToKt(): KtNewService {
     val kotlinName = context.kotlinName + name
     context(context.copy(kotlinName = kotlinName)) {
       return KtInterface(
-        kind = KtService.Kind.Interface,
         documentation = documentation?.content?.trimIndent(),
         type = kotlinName.name,
         instanceName = name.toCamelCase(upperCamel = false),
         functions = items.filterIsInstance<IrFunction>().map { it.functionToKt() },
         types = items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() },
-      ).toNullIfEmpty()
+      )
     }
   }
 
@@ -153,62 +152,53 @@ class KtMapper(
   )
 
   context(context: Context)
-  internal fun IrWorld.worldToKt(): KtService? {
+  internal fun IrWorld.worldToKt(): KtNewService {
     val kotlinName = context.kotlinName + name
 
     val guestName = kotlinName + Identifier("Guest")
-    val guest = context(context.copy(kotlinName = guestName)) {
-      KtInterface(
-        kind = KtService.Kind.Guest,
+    val guestApis = context(context.copy(kotlinName = guestName)) {
+      KtWorld.ExternalApis(
         instanceName = "guest",
         type = guestName.name,
-        functions = exports.filterIsInstance<IrFunction>().map { it.functionToKt() },
-        types = exports.mapNotNull { it.worldApiToKt() },
-      ).toNullIfEmpty()
+        items = exports.map { it.worldApiToKt() },
+      ).takeIf { it.items.isNotEmpty() }
     }
 
     val hostName = kotlinName + Identifier("Host")
-    val host = context(context.copy(kotlinName = hostName)) {
-      KtInterface(
-        kind = KtService.Kind.Host,
+    val hostApis = context(context.copy(kotlinName = hostName)) {
+      KtWorld.ExternalApis(
         instanceName = "host",
         type = hostName.name,
-        functions = imports.filterIsInstance<IrFunction>().map { it.functionToKt() },
-        types = imports.mapNotNull { it.worldApiToKt() },
-      ).toNullIfEmpty()
+        items = imports.map { it.worldApiToKt() },
+      ).takeIf { it.items.isNotEmpty() }
     }
 
     return KtWorld(
       documentation = documentation?.content?.trimIndent(),
       instanceName = name.toCamelCase(upperCamel = false),
       type = kotlinName.name,
-      guest = guest,
-      host = host,
+      guestApis = guestApis,
+      hostApis = hostApis,
       types = buildList {
-        if (host != null) add(host)
-        if (guest != null) add(guest)
         addAll(
           context(context.copy(kotlinName = kotlinName)) {
             items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() }
           },
         )
       },
-    ).toNullIfEmpty()
+    )
   }
 
   context(context: Context)
-  private fun IrWorld.Api.worldApiToKt(): KtService? {
+  private fun IrWorld.Api.worldApiToKt(): KtWorld.ExternalApis.Item {
     return when (this) {
-      is IrExternalApi -> KtInterface(
-        kind = KtService.Kind.Interface,
+      is IrExternalApi -> KtWorld.ExternalApis.InterfaceProperty(
         documentation = documentation?.content?.trimIndent(),
         instanceName = (plainName ?: path.name).toCamelCase(upperCamel = false),
         type = typeMapper.map(path),
-        functions = functions.map { it.functionToKt() },
-      ).toNullIfEmpty()
+      )
 
-      is IrInterface -> interfaceToKt()
-      is IrFunction -> null
+      is IrFunction -> functionToKt()
     }
   }
 
@@ -216,11 +206,4 @@ class KtMapper(
     val kotlinName: KotlinName,
     val nameAllocator: NameAllocator,
   )
-}
-
-internal fun KtService.toNullIfEmpty(): KtService? {
-  return when {
-    functions.isEmpty() && types.isEmpty() -> null
-    else -> this
-  }
 }
