@@ -5,6 +5,8 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.buildCodeBlock
+import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
 
 internal class HostBridgeBuilder(
@@ -173,8 +175,8 @@ internal class HostBridgeBuilder(
   ): CodeBlock {
     return when (type) {
       is KtTypeName.Declared -> {
-        when (index[type.apiType]) {
-          is KtResource -> CodeBlock.of(
+        when (index[type.witType]) {
+          is IrResource -> CodeBlock.of(
             "%L.toId(%L)",
             bridge,
             apiValue,

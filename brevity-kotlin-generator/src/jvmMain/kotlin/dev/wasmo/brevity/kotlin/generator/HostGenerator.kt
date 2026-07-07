@@ -11,9 +11,13 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
+import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.WorldIndex
+import dev.wasmo.brevity.ir.IrTypeName
 
 class HostGenerator(
-  private val declarationIndex: DeclarationIndex,
+  declarationIndex: DeclarationIndex,
+  private val ktIndex: KtIndex,
   private val worldIndex: WorldIndex,
   private val services: List<KtService>,
 ) {
@@ -165,8 +169,9 @@ class HostGenerator(
                 value = value.hostApis,
               )
             }
-            for (entry in worldIndex.map.values) {
+            for ((typeName, entry) in worldIndex.types) {
               initImports(
+                typeName = typeName,
                 bridge = CodeBlock.of("%N", "bridge"),
                 store = CodeBlock.of("%N", "store"),
                 value = entry,
@@ -274,7 +279,7 @@ class HostGenerator(
         }
 
         is KtWorld.ExternalApis.InterfaceProperty -> {
-          val type = worldIndex[item.type]?.declaration as KtInterface
+          val type = ktIndex[item.serviceName] as KtInterface
           for (function in type.functions) {
             addStatement(
               "%L.%N.%N = %L.export(%S)",
@@ -291,18 +296,19 @@ class HostGenerator(
   }
 
   private fun FunSpec.Builder.initImports(
+    typeName: IrTypeName.Declared,
     bridge: CodeBlock,
     store: CodeBlock,
     value: WorldIndex.Entry,
   ) {
-    when (value.declaration) {
+    when (val typeDeclaration = ktIndex[typeName]) {
       is KtResource -> {
         val receiver = Receiver.Id(
           bridge = bridge,
-          type = value.declaration.type,
+          type = typeDeclaration.type,
         )
 
-        for (function in value.declaration.functions) {
+        for (function in typeDeclaration.functions) {
           if (value.host) {
             addCode(
               bridgeBuilder.declareHostFunction(
@@ -340,7 +346,7 @@ class HostGenerator(
         }
 
         is KtWorld.ExternalApis.InterfaceProperty -> {
-          val type = worldIndex[item.type]?.declaration as KtInterface
+          val type = ktIndex[item.serviceName] as KtInterface
           for (function in type.functions) {
             addCode(
               bridgeBuilder.declareHostFunction(

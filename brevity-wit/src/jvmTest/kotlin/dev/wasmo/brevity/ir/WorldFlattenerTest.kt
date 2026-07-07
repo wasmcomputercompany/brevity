@@ -159,7 +159,7 @@ class WorldFlattenerTest {
           IrWorld(
             offset = Offset(3, 1),
             serviceName = "test:exported/exported-world",
-            items = listOf(
+            types = listOf(
               IrTypeAlias(
                 offset = Offset(4, 5),
                 serviceName = "test:subject/subject-world",

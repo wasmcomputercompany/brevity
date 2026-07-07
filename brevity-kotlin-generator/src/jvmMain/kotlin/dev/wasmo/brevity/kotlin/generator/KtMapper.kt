@@ -21,14 +21,12 @@ import dev.wasmo.brevity.ir.IrWorld
  * Directly converts WIT model types ([IoWorld], [IoFunction], etc.) to a Kotlin equivalents
  * ([KtWorld], [KtFunction], etc.).
  */
-class KtMapper(
-  private val kotlinPackagePrefix: String = "wit",
-) {
-  private val typeMapper = TypeMapper(kotlinPackagePrefix)
+class KtMapper {
+  private val typeMapper = TypeMapper()
 
   fun map(witPackages: List<IrWitPackage>): List<KtService> {
     return witPackages.flatMap { witPackage ->
-      val kotlinName = witPackage.packageName.toKotlin(kotlinPackagePrefix)
+      val kotlinName = witPackage.packageName.toKotlin()
       context(Context(kotlinName, NameAllocator())) {
         witPackage.items.mapNotNull { declaration ->
           declaration.toServiceNoCodecs()
@@ -64,7 +62,7 @@ class KtMapper(
       return KtInterface(
         documentation = documentation?.content?.trimIndent(),
         type = kotlinName.name,
-        instanceName = name.name.toCamelCase(upperCamel = false),
+        serviceName = name,
         functions = items.filterIsInstance<IrFunction>().map { it.functionToKt() },
         types = items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() },
       )
@@ -74,7 +72,10 @@ class KtMapper(
   context(context: Context)
   internal fun IrRecord.recordToKt() = KtRecord(
     documentation = documentation?.content,
-    type = (context.kotlinName + name).name,
+    ktType = KtTypeName.Declared(
+      witType = type,
+      apiType = (context.kotlinName + name).name,
+    ),
     fields = fields.map { field ->
       KtRecord.Field(
         documentation = field.documentation?.content,
@@ -87,21 +88,30 @@ class KtMapper(
   context(context: Context)
   internal fun IrResource.resourceToKt() = KtResource(
     documentation = documentation?.content,
-    type = (context.kotlinName + name).name,
+    ktType = KtTypeName.Declared(
+      witType = type,
+      apiType = (context.kotlinName + name).name,
+    ),
     functions = functions.map { it.functionToKt() },
   )
 
   context(context: Context)
   internal fun IrTypeAlias.typeAliasToKt() = KtTypeAlias(
     documentation = documentation?.content,
-    type = (context.kotlinName + name).name,
+    ktType = KtTypeName.Declared(
+      witType = type,
+      apiType = (context.kotlinName + name).name,
+    ),
     target = typeMapper.map(target),
   )
 
   context(context: Context)
   internal fun IrVariant.variantToKt() = KtVariant(
     documentation = documentation?.content,
-    type = (context.kotlinName + name).name,
+    ktType = KtTypeName.Declared(
+      witType = type,
+      apiType = (context.kotlinName + name).name,
+    ),
     cases = cases.map { case ->
       KtVariant.Case(
         documentation = case.documentation?.content,
@@ -114,7 +124,10 @@ class KtMapper(
   context(context: Context)
   internal fun IrEnum.enumToKt() = KtEnum(
     documentation = documentation?.content,
-    type = (context.kotlinName + name).name,
+    ktType = KtTypeName.Declared(
+      witType = type,
+      apiType = (context.kotlinName + name).name,
+    ),
     cases = cases.map {
       check(it.type == null)
       KtEnum.Case(
@@ -127,7 +140,10 @@ class KtMapper(
   context(context: Context)
   internal fun IrFlags.flagsToKt() = KtFlags(
     documentation = documentation?.content,
-    type = (context.kotlinName + name).name,
+    ktType = KtTypeName.Declared(
+      witType = type,
+      apiType = (context.kotlinName + name).name,
+    ),
     flags = flags.map { flag ->
       KtFlags.Flag(
         documentation = flag.documentation?.content,
@@ -175,14 +191,14 @@ class KtMapper(
 
     return KtWorld(
       documentation = documentation?.content?.trimIndent(),
-      instanceName = name.name.toCamelCase(upperCamel = false),
       type = kotlinName.name,
+      serviceName = name,
       guestApis = guestApis,
       hostApis = hostApis,
       types = buildList {
         addAll(
           context(context.copy(kotlinName = kotlinName)) {
-            items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() }
+            types.map { it.typeDeclarationToKt() }
           },
         )
       },
@@ -196,6 +212,7 @@ class KtMapper(
         documentation = documentation?.content?.trimIndent(),
         instanceName = (plainName ?: path.name).toCamelCase(upperCamel = false),
         type = typeMapper.map(path),
+        serviceName = path,
       )
 
       is IrFunction -> functionToKt()

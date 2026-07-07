@@ -198,7 +198,6 @@ class ApiGenerator(
         is KtResource -> resourceToApi(type)
         is KtTypeAlias -> typeAliasToApi(type)
         is KtVariant -> variantToApi(type)
-        is KtInterface -> error("unexpected nested interface")
       }
 
       builder.addType(typeSpec)

@@ -10,7 +10,7 @@ import kotlin.test.Test
 class KotlinNameTest {
   @Test
   fun `package name mapping`() {
-    val value = "wasi:clocks".toPackageName().toKotlin("wit")
+    val value = "wasi:clocks".toPackageName().toKotlin()
     assertThat(value.name).isEqualTo("wit.wasi.clocks")
     assertThat((value + Identifier("wall-clock")).name)
       .isEqualTo(ClassName("wit.wasi.clocks", "WallClock"))
@@ -18,7 +18,7 @@ class KotlinNameTest {
 
   @Test
   fun `package name mapping with version`() {
-    val value = "wasi:clocks@0.2.12".toPackageName().toKotlin("wit")
+    val value = "wasi:clocks@0.2.12".toPackageName().toKotlin()
     assertThat(value.name).isEqualTo("wit.wasi.clocks.v0_2_12")
     assertThat((value + Identifier("wall-clock")).name)
       .isEqualTo(ClassName("wit.wasi.clocks.v0_2_12", "WallClock"))

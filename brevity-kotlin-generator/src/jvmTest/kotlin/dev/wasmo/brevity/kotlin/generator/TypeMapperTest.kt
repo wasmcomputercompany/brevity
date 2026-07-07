@@ -13,12 +13,13 @@ import kotlin.test.Test
 class TypeMapperTest {
   @Test
   fun `map declared types`() {
-    val typeMapper = TypeMapper(kotlinPackagePrefix = "wit")
+    val typeMapper = TypeMapper()
 
     assertThat(
       typeMapper.map(IrTypeNameDeclared("wasi:clocks/wall-clock", "datetime")),
     ).isEqualTo(
       KtTypeName.Declared(
+        IrTypeNameDeclared("wasi:clocks/wall-clock", "datetime"),
         ClassName("wit.wasi.clocks", "WallClock", "Datetime"),
       ),
     )
@@ -27,7 +28,9 @@ class TypeMapperTest {
       typeMapper.map(IrTypeName.List(IrTypeNameDeclared("wasi:clocks/wall-clock", "datetime"))),
     ).isEqualTo(
       KtTypeName.List(
+        IrTypeName.List(IrTypeNameDeclared("wasi:clocks/wall-clock", "datetime")),
         KtTypeName.Declared(
+          witType = IrTypeNameDeclared("wasi:clocks/wall-clock", "datetime"),
           apiType = ClassName("wit.wasi.clocks", "WallClock", "Datetime"),
         ),
       ),
@@ -36,17 +39,24 @@ class TypeMapperTest {
 
   @Test
   fun `map built in types`() {
-    val typeMapper = TypeMapper(kotlinPackagePrefix = "wit")
+    val typeMapper = TypeMapper()
 
-    assertThat(typeMapper.map(IrTypeName.U32)).isEqualTo(KtTypeName.Simple(U_INT, INT))
+    assertThat(typeMapper.map(IrTypeName.U32))
+      .isEqualTo(KtTypeName.Simple(IrTypeName.U32, U_INT, INT))
     assertThat(typeMapper.map(IrTypeName.List(IrTypeName.U32)))
       .isEqualTo(
         KtTypeName.Simple(
+          IrTypeName.List(IrTypeName.U32),
           ClassName("kotlin", "UIntArray"),
           INT,
         ),
       )
     assertThat(typeMapper.map(IrTypeName.List(IrTypeName.String)))
-      .isEqualTo(KtTypeName.List(KtTypeName.Simple(STRING, INT)))
+      .isEqualTo(
+        KtTypeName.List(
+          IrTypeName.List(IrTypeName.String),
+          KtTypeName.Simple(IrTypeName.String, STRING, INT),
+        ),
+      )
   }
 }

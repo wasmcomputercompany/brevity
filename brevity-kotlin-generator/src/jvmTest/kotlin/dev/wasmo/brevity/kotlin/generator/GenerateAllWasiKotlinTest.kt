@@ -1,5 +1,7 @@
 package dev.wasmo.brevity.kotlin.generator
 
+import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.WorldIndex
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.ir.IrMapper
 import java.io.File
@@ -35,16 +37,17 @@ class GenerateAllWasiKotlinTest {
     directory.mkdirs()
 
     val ktServices = ktMapper.map(irPackages)
-    val declarationIndex = DeclarationIndex(ktServices)
-    val worldIndex = WorldIndex(declarationIndex, ktServices)
+    val declarationIndex = DeclarationIndex(irPackages)
+    val worldIndex = WorldIndex(declarationIndex, irPackages)
+    val ktIndex = KtIndex(ktServices)
 
     for (fileSpec in ApiGenerator(ktServices).generate()) {
       fileSpec.writeTo(directory)
     }
-    for (fileSpec in GuestGenerator(declarationIndex, worldIndex, ktServices).generate()) {
+    for (fileSpec in GuestGenerator(declarationIndex, ktIndex, worldIndex, ktServices).generate()) {
       fileSpec.writeTo(directory)
     }
-    for (fileSpec in HostGenerator(declarationIndex, worldIndex, ktServices).generate()) {
+    for (fileSpec in HostGenerator(declarationIndex, ktIndex, worldIndex, ktServices).generate()) {
       fileSpec.writeTo(directory)
     }
   }

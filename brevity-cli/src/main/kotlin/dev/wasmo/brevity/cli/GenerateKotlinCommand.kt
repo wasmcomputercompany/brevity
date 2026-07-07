@@ -5,15 +5,16 @@ import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
+import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.WorldIndex
 import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.kotlin.generator.ApiGenerator
-import dev.wasmo.brevity.kotlin.generator.DeclarationIndex
 import dev.wasmo.brevity.kotlin.generator.GuestGenerator
 import dev.wasmo.brevity.kotlin.generator.HostGenerator
+import dev.wasmo.brevity.kotlin.generator.KtIndex
 import dev.wasmo.brevity.kotlin.generator.KtMapper
-import dev.wasmo.brevity.kotlin.generator.WorldIndex
 import okio.FileSystem
 import okio.Path
 
@@ -66,17 +67,18 @@ class GenerateKotlinCommand(
       else -> allIrPackages.filterNamedWorlds(world)
     }
 
+    val declarationIndex = DeclarationIndex(irPackages)
+    val worldIndex = WorldIndex(declarationIndex, irPackages)
     val ktServices = ktMapper.map(irPackages)
-    val declarationIndex = DeclarationIndex(ktServices)
-    val worldIndex = WorldIndex(declarationIndex, ktServices)
+    val ktIndex = KtIndex(ktServices)
 
     for (fileSpec in ApiGenerator(ktServices).generate()) {
       fileSpec.writeTo(commonMainDir)
     }
-    for (fileSpec in GuestGenerator(declarationIndex, worldIndex, ktServices).generate()) {
+    for (fileSpec in GuestGenerator(declarationIndex, ktIndex, worldIndex, ktServices).generate()) {
       fileSpec.writeTo(wasmWasiMainDir)
     }
-    for (fileSpec in HostGenerator(declarationIndex, worldIndex, ktServices).generate()) {
+    for (fileSpec in HostGenerator(declarationIndex, ktIndex, worldIndex, ktServices).generate()) {
       fileSpec.writeTo(jvmMainDir)
     }
   }

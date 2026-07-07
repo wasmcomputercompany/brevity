@@ -6,17 +6,21 @@ import com.squareup.kotlinpoet.LIST
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName
+import dev.wasmo.brevity.ir.IrTypeName
 
 sealed class KtTypeName {
+  abstract val witType: IrTypeName
   abstract val apiType: TypeName
   abstract val abiType: TypeName
 
   data class Simple(
+    override val witType: IrTypeName,
     override val apiType: TypeName,
     override val abiType: TypeName,
   ) : KtTypeName()
 
   data class Declared(
+    override val witType: IrTypeName.Declared,
     override val apiType: ClassName,
   ) : KtTypeName() {
     override val abiType: TypeName
@@ -24,6 +28,7 @@ sealed class KtTypeName {
   }
 
   data class Tuple(
+    override val witType: IrTypeName.Tuple,
     val types: kotlin.collections.List<KtTypeName>,
   ) : KtTypeName() {
     override val apiType: TypeName
@@ -42,6 +47,7 @@ sealed class KtTypeName {
   }
 
   data class List(
+    override val witType: IrTypeName.List,
     val type: KtTypeName,
     val size: UInt? = null,
   ) : KtTypeName() {
@@ -52,6 +58,7 @@ sealed class KtTypeName {
   }
 
   data class Option(
+    override val witType: IrTypeName.Option,
     val type: KtTypeName,
   ) : KtTypeName() {
     override val apiType: TypeName
@@ -61,6 +68,7 @@ sealed class KtTypeName {
   }
 
   data class Borrow(
+    override val witType: IrTypeName.Borrow,
     val type: KtTypeName,
   ) : KtTypeName() {
     override val apiType: TypeName
@@ -70,6 +78,7 @@ sealed class KtTypeName {
   }
 
   data class Result(
+    override val witType: IrTypeName.Result,
     val ok: KtTypeName? = null,
     val err: KtTypeName? = null,
   ) : KtTypeName() {
@@ -83,6 +92,7 @@ sealed class KtTypeName {
   }
 
   data class Map(
+    override val witType: IrTypeName.Map,
     val key: KtTypeName,
     val value: KtTypeName,
   ) : KtTypeName() {
@@ -93,6 +103,7 @@ sealed class KtTypeName {
   }
 
   data class Future(
+    override val witType: IrTypeName.Future,
     val type: KtTypeName? = null,
   ) : KtTypeName() {
     override val apiType: TypeName
@@ -102,6 +113,7 @@ sealed class KtTypeName {
   }
 
   data class Stream(
+    override val witType: IrTypeName.Stream,
     val type: KtTypeName? = null,
   ) : KtTypeName() {
     override val apiType: TypeName
