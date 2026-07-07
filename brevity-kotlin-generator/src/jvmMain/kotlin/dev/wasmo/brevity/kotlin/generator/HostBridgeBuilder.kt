@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeName
 import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
@@ -14,38 +15,39 @@ internal class HostBridgeBuilder(
   private val index: DeclarationIndex,
 ) {
   /** Returns a function that calls the guest. It implements the friendly API. */
-  fun callGuestFunction(value: KtFunction): FunSpec {
-    return FunSpec.builder(value.ktName)
+  fun callGuestFunction(value: IrFunction): FunSpec {
+    return FunSpec.builder(value.kotlinName)
       .addModifiers(KModifier.OVERRIDE)
       .apply {
-        if (value.returnType != null) {
+        val returnType = value.returnType
+        if (returnType != null) {
           addCode("val %N = ", "result")
         }
-        addCode("%N.apply(⇥\n", value.ktName)
+        addCode("%N.apply(⇥\n", value.kotlinName)
 
         for (parameter in value.parameters) {
-          addParameter(parameter.name, parameter.irType.kotlinApi)
+          addParameter(parameter.kotlinName, parameter.type.kotlinApi)
           addCode(
             hostApiToAbi(
               bridge = CodeBlock.of("%N", "bridge"),
-              type = parameter.irType,
-              apiValue = CodeBlock.of("%N", parameter.name),
+              type = parameter.type,
+              apiValue = CodeBlock.of("%N", parameter.kotlinName),
             ),
           )
           addCode(",\n")
         }
         addCode("⇤)\n")
 
-        if (value.returnType != null) {
+        if (returnType != null) {
           addCode(
             "return %L",
             hostAbiToApi(
               bridge = CodeBlock.of("%N", "bridge"),
-              type = value.returnType,
+              type = returnType,
               abiValue = CodeBlock.of("result[%L]", 0),
             ),
           )
-          returns(value.returnType.kotlinApi)
+          returns(returnType.kotlinApi)
         }
       }
       .build()
@@ -56,9 +58,9 @@ internal class HostBridgeBuilder(
     bridge: CodeBlock,
     store: CodeBlock,
     receiver: Receiver,
-    value: KtFunction,
+    value: IrFunction,
   ): CodeBlock {
-    if (!value.isSupported) return CodeBlock.of("/* TODO: ${value.ktName} */\n")
+    if (!value.isSupported) return CodeBlock.of("/* TODO: ${value.kotlinName} */\n")
 
     val block = CodeBlock.builder()
 
@@ -69,7 +71,7 @@ internal class HostBridgeBuilder(
       }
       for (parameter in value.parameters) {
         if (isNotEmpty()) add(", ")
-        add(parameter.irType.toValType())
+        add(parameter.type.toValType())
       }
     }
 
@@ -92,28 +94,29 @@ internal class HostBridgeBuilder(
       }
     }
 
-    if (value.returnType != null) {
+    val returnType = value.returnType
+    if (returnType != null) {
       block.add("val %N = ", "result")
     }
-    block.add("%N.%N(⇥\n", "self", value.ktName)
+    block.add("%N.%N(⇥\n", "self", value.kotlinName)
     for (parameter in value.parameters) {
       block.add(
         "%L,\n",
         hostAbiToApi(
           bridge = bridge,
-          type = parameter.irType,
+          type = parameter.type,
           abiValue = CodeBlock.of("%N[%L]", "args", argIndex++),
         ),
       )
     }
     block.add("⇤)\n")
-    if (value.returnType != null) {
+    if (returnType != null) {
       block.add(
         "return@%T longArrayOf(%L)",
         Symbols.ChicoryRuntime.WasmFunctionHandle,
         hostApiToAbi(
           bridge = bridge,
-          type = value.returnType,
+          type = returnType,
           apiValue = CodeBlock.of("%N", "result"),
         ),
       )
@@ -143,11 +146,11 @@ internal class HostBridgeBuilder(
       """.trimMargin(),
       store,
       Symbols.ChicoryRuntime.HostFunction,
-      value.name.moduleName?.let { CodeBlock.of("%S", it) } ?: CodeBlock.of("null"),
-      value.name.abiName,
+      value.functionName.moduleName?.let { CodeBlock.of("%S", it) } ?: CodeBlock.of("null"),
+      value.functionName.abiName,
       Symbols.ChicoryRuntime.FunctionType,
       abiParameterTypes,
-      value.returnType?.toValType() ?: CodeBlock.of(""),
+      returnType?.toValType() ?: CodeBlock.of(""),
       Symbols.ChicoryRuntime.WasmFunctionHandle,
       block.build(),
     )

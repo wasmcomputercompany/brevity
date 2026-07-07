@@ -3,7 +3,6 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.PackageName
-import dev.wasmo.brevity.ir.IrTypeName
 
 /** Maps type names in WIT to type names in Kotlin. */
 sealed interface KotlinName {

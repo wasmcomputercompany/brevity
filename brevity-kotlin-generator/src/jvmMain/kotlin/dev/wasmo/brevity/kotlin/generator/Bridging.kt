@@ -9,10 +9,42 @@ import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName
 import dev.wasmo.brevity.Annotation
 import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.ir.IrCase
+import dev.wasmo.brevity.ir.IrExternalApi
+import dev.wasmo.brevity.ir.IrField
+import dev.wasmo.brevity.ir.IrFlag
+import dev.wasmo.brevity.ir.IrFunction
+import dev.wasmo.brevity.ir.IrParameter
 import dev.wasmo.brevity.ir.IrTypeName
+
+const val kotlinPackagePrefix: String = "wit"
+
+val IrCase.kotlinName: String
+  get() = name.toCamelCase(upperCamel = true)
+
+val IrParameter.kotlinName: String
+  get() = name.toCamelCase(upperCamel = false)
+
+val IrField.kotlinName: String
+  get() = name.toCamelCase(upperCamel = false)
+
+val IrFlag.kotlinName: String
+  get() = name.toCamelCase(upperCamel = false)
+
+val IrFunction.kotlinName: String
+  get() = functionName.name.toCamelCase(upperCamel = false)
+
+val IrExternalApi.instanceName: String
+  get() = (plainName ?: path.name).toCamelCase(upperCamel = false)
 
 val ServiceName.kotlinApi: ClassName
   get() = (packageName.toKotlin() + name).name
+
+val ServiceName.bridgeType: ClassName
+  get() = ClassName(
+    kotlinApi.packageName,
+    "Bridge${name.toCamelCase(upperCamel = true)}",
+  )
 
 val IrTypeName.kotlinAbi: TypeName
   get() = when (this) {
@@ -20,11 +52,8 @@ val IrTypeName.kotlinAbi: TypeName
     else -> INT
   }
 
-/** Returns true if we've done the work to implement this. */
-val KtFunction.isSupported: Boolean
-  get() = name.annotation == null ||
-    name.annotation == Annotation.Method ||
-    name.annotation == Annotation.ResourceDrop
+val IrTypeName.Declared.handleName: ClassName
+  get() = ClassName(kotlinApi.packageName, "${kotlinApi.simpleName}Handle")
 
 private val specialCases = mapOf(
   IrTypeName.List(IrTypeName.S8) to ClassName("kotlin", "ByteArray"),
@@ -94,10 +123,9 @@ val IrTypeName.kotlinApi: TypeName
     }
   }
 
-val KtResource.handleName: ClassName
-  get() = ClassName(className.packageName, "${className.simpleName}Handle")
+/** Returns true if we've done the work to implement this. */
+val IrFunction.isSupported: Boolean
+  get() = functionName.annotation == null ||
+    functionName.annotation == Annotation.Method ||
+    functionName.annotation == Annotation.ResourceDrop
 
-val IrTypeName.Declared.handleName: ClassName
-  get() = ClassName(kotlinApi.packageName, "${kotlinApi.simpleName}Handle")
-
-const val kotlinPackagePrefix: String = "wit"
