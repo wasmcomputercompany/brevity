@@ -3,15 +3,16 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.ir.IrTypeName
 
 sealed interface KtDeclaration {
   val documentation: String?
 }
 
 sealed interface KtTypeDeclaration : KtDeclaration {
-  val ktType: KtTypeName.Declared
-  val type: ClassName
-    get() = ktType.apiType
+  val type: IrTypeName.Declared
+  val className: ClassName
+    get() = type.kotlinApi
 }
 
 sealed interface KtService : KtDeclaration {
@@ -64,7 +65,7 @@ data class KtWorld(
 
 data class KtEnum(
   override val documentation: String?,
-  override val ktType: KtTypeName.Declared,
+  override val type: IrTypeName.Declared,
   val cases: List<Case>,
 ) : KtTypeDeclaration {
   data class Case(
@@ -75,43 +76,43 @@ data class KtEnum(
 
 data class KtRecord(
   override val documentation: String?,
-  override val ktType: KtTypeName.Declared,
+  override val type: IrTypeName.Declared,
   val fields: List<Field>,
 ) : KtTypeDeclaration {
   data class Field(
     override val documentation: String?,
     val name: String,
-    val type: KtTypeName,
+    val irType: IrTypeName,
   ) : KtDeclaration
 }
 
 data class KtResource(
   override val documentation: String?,
-  override val ktType: KtTypeName.Declared,
+  override val type: IrTypeName.Declared,
   val functions: List<KtFunction>,
 ) : KtTypeDeclaration
 
 data class KtTypeAlias(
   override val documentation: String?,
-  override val ktType: KtTypeName.Declared,
-  val target: KtTypeName,
+  override val type: IrTypeName.Declared,
+  val irTarget: IrTypeName,
 ) : KtTypeDeclaration
 
 data class KtVariant(
   override val documentation: String?,
-  override val ktType: KtTypeName.Declared,
+  override val type: IrTypeName.Declared,
   val cases: List<Case>,
 ) : KtTypeDeclaration {
   data class Case(
     override val documentation: String?,
     val name: String,
-    val type: KtTypeName?,
+    val irType: IrTypeName?,
   ) : KtDeclaration
 }
 
 data class KtFlags(
   override val documentation: String?,
-  override val ktType: KtTypeName.Declared,
+  override val type: IrTypeName.Declared,
   val flags: List<Flag>,
 ) : KtTypeDeclaration {
   data class Flag(
@@ -125,11 +126,11 @@ data class KtFunction(
   val ktName: String,
   val name: FunctionName,
   val parameters: List<Parameter>,
-  val returnType: KtTypeName?,
+  val returnType: IrTypeName?,
 ) : KtDeclaration, KtWorld.ExternalApis.Item {
   data class Parameter(
     override val documentation: String?,
     val name: String,
-    val type: KtTypeName,
+    val irType: IrTypeName,
   ) : KtDeclaration
 }

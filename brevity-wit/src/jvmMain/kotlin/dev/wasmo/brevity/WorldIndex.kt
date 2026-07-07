@@ -48,7 +48,7 @@ class WorldIndex(
     ): WorldIndex {
       val traverser = TypeTraverser(declarationIndex)
       for (witPackage in witPackages) {
-        traverser.collectAll(witPackage.items)
+        traverser.collectAll(witPackage.services)
       }
 
       return WorldIndex(
@@ -126,7 +126,7 @@ internal class TypeTraverser(
     services = hostInterfaces,
   )
 
-  fun collectAll(services: List<IrWitPackage.Item>) {
+  fun collectAll(services: List<IrWitPackage.Service>) {
     val worlds = services.filterIsInstance<IrWorld>()
 
     // Seed the traversal with the world's hosts and guests.

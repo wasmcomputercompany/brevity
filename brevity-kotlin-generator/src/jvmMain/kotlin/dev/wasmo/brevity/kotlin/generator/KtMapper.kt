@@ -1,7 +1,5 @@
 package dev.wasmo.brevity.kotlin.generator
 
-import com.squareup.kotlinpoet.NameAllocator
-import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.io.IoFunction
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.ir.IrEnum
@@ -22,28 +20,21 @@ import dev.wasmo.brevity.ir.IrWorld
  * ([KtWorld], [KtFunction], etc.).
  */
 class KtMapper {
-  private val typeMapper = TypeMapper()
-
   fun map(witPackages: List<IrWitPackage>): List<KtService> {
     return witPackages.flatMap { witPackage ->
-      val kotlinName = witPackage.packageName.toKotlin()
-      context(Context(kotlinName, NameAllocator())) {
-        witPackage.items.mapNotNull { declaration ->
-          declaration.toServiceNoCodecs()
-        }
+      witPackage.services.mapNotNull { declaration ->
+        declaration.toServiceNoCodecs()
       }
     }
   }
 
-  context(context: Context)
-  internal fun IrWitPackage.Item.toServiceNoCodecs(): KtService? {
+  internal fun IrWitPackage.Service.toServiceNoCodecs(): KtService? {
     return when (this) {
       is IrInterface -> interfaceToKt()
       is IrWorld -> worldToKt()
     }
   }
 
-  context(context: Context)
   internal fun IrTypeDeclaration.typeDeclarationToKt(): KtTypeDeclaration {
     return when (this) {
       is IrEnum -> enumToKt()
@@ -55,79 +46,53 @@ class KtMapper {
     }
   }
 
-  context(context: Context)
-  internal fun IrInterface.interfaceToKt(): KtService {
-    val kotlinName = context.kotlinName + name.name
-    context(context.copy(kotlinName = kotlinName)) {
-      return KtInterface(
-        documentation = documentation?.content?.trimIndent(),
-        type = kotlinName.name,
-        serviceName = name,
-        functions = items.filterIsInstance<IrFunction>().map { it.functionToKt() },
-        types = items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() },
-      )
-    }
-  }
+  internal fun IrInterface.interfaceToKt() = KtInterface(
+    documentation = documentation?.content?.trimIndent(),
+    type = serviceName.kotlinApi,
+    serviceName = serviceName,
+    functions = items.filterIsInstance<IrFunction>().map { it.functionToKt() },
+    types = items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() },
+  )
 
-  context(context: Context)
   internal fun IrRecord.recordToKt() = KtRecord(
     documentation = documentation?.content,
-    ktType = KtTypeName.Declared(
-      witType = type,
-      apiType = (context.kotlinName + name).name,
-    ),
+    type = type,
     fields = fields.map { field ->
       KtRecord.Field(
         documentation = field.documentation?.content,
         name = field.name.toCamelCase(upperCamel = false),
-        type = typeMapper.map(field.type),
+        irType = field.type,
       )
     },
   )
 
-  context(context: Context)
   internal fun IrResource.resourceToKt() = KtResource(
     documentation = documentation?.content,
-    ktType = KtTypeName.Declared(
-      witType = type,
-      apiType = (context.kotlinName + name).name,
-    ),
+    type = type,
     functions = functions.map { it.functionToKt() },
   )
 
-  context(context: Context)
   internal fun IrTypeAlias.typeAliasToKt() = KtTypeAlias(
     documentation = documentation?.content,
-    ktType = KtTypeName.Declared(
-      witType = type,
-      apiType = (context.kotlinName + name).name,
-    ),
-    target = typeMapper.map(target),
+    type = type,
+    irTarget = target,
   )
 
-  context(context: Context)
   internal fun IrVariant.variantToKt() = KtVariant(
     documentation = documentation?.content,
-    ktType = KtTypeName.Declared(
-      witType = type,
-      apiType = (context.kotlinName + name).name,
-    ),
+    type = type,
     cases = cases.map { case ->
       KtVariant.Case(
         documentation = case.documentation?.content,
         name = case.name.toCamelCase(upperCamel = true),
-        type = case.type?.let { typeMapper.map(it) },
+        irType = case.type,
       )
     },
   )
 
-  context(context: Context)
   internal fun IrEnum.enumToKt() = KtEnum(
     documentation = documentation?.content,
-    ktType = KtTypeName.Declared(
-      witType = type,
-      apiType = (context.kotlinName + name).name,
-    ),
+    type = type,
     cases = cases.map {
       check(it.type == null)
       KtEnum.Case(
@@ -137,13 +102,9 @@ class KtMapper {
     },
   )
 
-  context(context: Context)
   internal fun IrFlags.flagsToKt() = KtFlags(
     documentation = documentation?.content,
-    ktType = KtTypeName.Declared(
-      witType = type,
-      apiType = (context.kotlinName + name).name,
-    ),
+    type = type,
     flags = flags.map { flag ->
       KtFlags.Flag(
         documentation = flag.documentation?.content,
@@ -152,7 +113,6 @@ class KtMapper {
     },
   )
 
-  context(context: Context)
   internal fun IrFunction.functionToKt() = KtFunction(
     documentation = documentation?.content,
     ktName = functionName.name.toCamelCase(upperCamel = false),
@@ -161,66 +121,46 @@ class KtMapper {
       KtFunction.Parameter(
         documentation = parameter.documentation?.content,
         name = parameter.name.toCamelCase(upperCamel = false),
-        type = typeMapper.map(parameter.type),
+        irType = parameter.type,
       )
     },
-    returnType = returnType?.let { typeMapper.map(it) },
+    returnType = returnType,
   )
 
-  context(context: Context)
   internal fun IrWorld.worldToKt(): KtService {
-    val kotlinName = context.kotlinName + name.name
+    val kotlinName = serviceName.kotlinApi
+    val guestApis = KtWorld.ExternalApis(
+      instanceName = "guest",
+      type = kotlinName.nestedClass("Guest"),
+      items = exports.map { it.worldApiToKt() },
+    ).takeIf { it.items.isNotEmpty() }
 
-    val guestName = kotlinName + Identifier("Guest")
-    val guestApis = context(context.copy(kotlinName = guestName)) {
-      KtWorld.ExternalApis(
-        instanceName = "guest",
-        type = guestName.name,
-        items = exports.map { it.worldApiToKt() },
-      ).takeIf { it.items.isNotEmpty() }
-    }
-
-    val hostName = kotlinName + Identifier("Host")
-    val hostApis = context(context.copy(kotlinName = hostName)) {
-      KtWorld.ExternalApis(
-        instanceName = "host",
-        type = hostName.name,
-        items = imports.map { it.worldApiToKt() },
-      ).takeIf { it.items.isNotEmpty() }
-    }
+    val hostApis = KtWorld.ExternalApis(
+      instanceName = "host",
+      type = kotlinName.nestedClass("Host"),
+      items = imports.map { it.worldApiToKt() },
+    ).takeIf { it.items.isNotEmpty() }
 
     return KtWorld(
       documentation = documentation?.content?.trimIndent(),
-      type = kotlinName.name,
-      serviceName = name,
+      type = kotlinName,
+      serviceName = serviceName,
       guestApis = guestApis,
       hostApis = hostApis,
-      types = buildList {
-        addAll(
-          context(context.copy(kotlinName = kotlinName)) {
-            types.map { it.typeDeclarationToKt() }
-          },
-        )
-      },
+      types = types.map { it.typeDeclarationToKt() },
     )
   }
 
-  context(context: Context)
   private fun IrWorld.Api.worldApiToKt(): KtWorld.ExternalApis.Item {
     return when (this) {
       is IrExternalApi -> KtWorld.ExternalApis.InterfaceProperty(
         documentation = documentation?.content?.trimIndent(),
         instanceName = (plainName ?: path.name).toCamelCase(upperCamel = false),
-        type = typeMapper.map(path),
+        type = path.kotlinApi,
         serviceName = path,
       )
 
       is IrFunction -> functionToKt()
     }
   }
-
-  internal data class Context(
-    val kotlinName: KotlinName,
-    val nameAllocator: NameAllocator,
-  )
 }

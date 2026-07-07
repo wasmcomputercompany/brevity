@@ -73,7 +73,7 @@ class WorldFlattenerTest {
     val mapped = irMapper.map()
 
     assertThat(
-      mapped.single().items.single { (it as? IrWorld)?.name?.name == Identifier("command") },
+      mapped.single().services.single { (it as? IrWorld)?.serviceName?.name == Identifier("command") },
     ).isEqualTo(
       IrWorld(
         serviceName = "wasi:cli/command@0.3.0",
@@ -155,7 +155,7 @@ class WorldFlattenerTest {
     assertThat(mapped.single { it.packageName == "test:exported".toPackageName() }).isEqualTo(
       IrWitPackage(
         packageName = "test:exported".toPackageName(),
-        items = listOf(
+        services = listOf(
           IrWorld(
             offset = Offset(3, 1),
             serviceName = "test:exported/exported-world",

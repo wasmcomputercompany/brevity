@@ -37,9 +37,6 @@ fun PackageName.toKotlin(): KotlinName.Package {
   return KotlinName.Package(segments.joinToString(separator = "."))
 }
 
-fun IrTypeName.Declared.toKotlin(): KotlinName.Class =
-  serviceName.packageName.toKotlin() + serviceName.name + name
-
 private fun String.toPackageSegment(): String {
   return map { char ->
     when (char) {
