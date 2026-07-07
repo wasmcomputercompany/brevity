@@ -73,10 +73,10 @@ class WorldFlattenerTest {
     val mapped = irMapper.map()
 
     assertThat(
-      mapped.single().items.single { (it as? IrWorld)?.name == Identifier("command") },
+      mapped.single().items.single { (it as? IrWorld)?.name?.name == Identifier("command") },
     ).isEqualTo(
       IrWorld(
-        name = "command",
+        serviceName = "wasi:cli/command@0.3.0",
         exports = listOf(
           IrExternalApi(
             packageName = "wasi:cli@0.3.0",
@@ -158,7 +158,7 @@ class WorldFlattenerTest {
         items = listOf(
           IrWorld(
             offset = Offset(3, 1),
-            name = "exported-world",
+            serviceName = "test:exported/exported-world",
             items = listOf(
               IrTypeAlias(
                 offset = Offset(4, 5),
@@ -233,8 +233,7 @@ class WorldFlattenerTest {
                   IrFunction(
                     offset = Offset(17, 9),
                     name = "write",
-                    packageName = "test:subject",
-                    serviceName = "subject-world",
+                    serviceName = "test:subject/subject-world",
                     resourceName = "my-resource",
                     parameters = listOf(
                       IrParameter(

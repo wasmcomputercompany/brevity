@@ -18,8 +18,7 @@ class FunctionNameTest {
   @Test
   fun `function on interface`() {
     val function = FunctionName(
-      packageName = "wasi:http@0.3.0",
-      serviceName = "types",
+      serviceName = "wasi:http/types@0.3.0",
       name = "has",
     )
     assertThat(function.moduleName).isEqualTo("wasi:http/types@0.3.0")
@@ -29,8 +28,7 @@ class FunctionNameTest {
   @Test
   fun `package name with sem ver`() {
     val function = FunctionName(
-      packageName = "wasi:http@0.3.0",
-      serviceName = "types",
+      serviceName = "wasi:http/types@0.3.0",
       name = "fields",
       annotation = Annotation.Constructor,
     )
@@ -41,8 +39,7 @@ class FunctionNameTest {
   @Test
   fun `function on resource`() {
     val function = FunctionName(
-      packageName = "wasi:http@0.3.0",
-      serviceName = "types",
+      serviceName = "wasi:http/types@0.3.0",
       name = "from-list",
       resourceName = "fields",
       annotation = Annotation.Static,
@@ -54,8 +51,7 @@ class FunctionNameTest {
   @Test
   fun `static function`() {
     val function = FunctionName(
-      packageName = "wasi:http@0.3.0",
-      serviceName = "types",
+      serviceName = "wasi:http/types@0.3.0",
       name = "has",
       resourceName = "fields",
       annotation = Annotation.Method,

@@ -80,12 +80,13 @@ class IrMapper(
 
   context(builder: PackageBuilder)
   private fun IoInterface.interfaceToIr(packageName: PackageName) {
-    context(Context(packageName, name)) {
+    val serviceName = ServiceName(packageName, name)
+    context(Context(serviceName)) {
       builder.items += IrInterface(
         documentation = documentation,
         gate = gate,
         offset = offset,
-        name = name,
+        name = serviceName,
         items = items.mapNotNull { item ->
           item.interfaceItemToIrOrNull()
         },
@@ -150,14 +151,12 @@ class IrMapper(
       )
 
       constructor && resourceName != null && name == Keywords.constructor -> FunctionName(
-        packageName = context.packageName,
         serviceName = context.serviceName,
         name = resourceName,
         annotation = Annotation.Constructor,
       )
 
       static && resourceName != null -> FunctionName(
-        packageName = context.packageName,
         serviceName = context.serviceName,
         resourceName = resourceName,
         name = name,
@@ -165,7 +164,6 @@ class IrMapper(
       )
 
       resourceName != null -> FunctionName(
-        packageName = context.packageName,
         serviceName = context.serviceName,
         resourceName = resourceName,
         name = name,
@@ -173,7 +171,6 @@ class IrMapper(
       )
 
       else -> FunctionName(
-        packageName = context.packageName,
         serviceName = context.serviceName,
         name = name,
       )
@@ -193,7 +190,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.packageName, context.serviceName, name, Codec.Enum),
+    type = IrTypeName.Declared(context.serviceName, name, Codec.Enum),
     cases = cases.map { it.caseToIr() },
   )
 
@@ -202,7 +199,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.packageName, context.serviceName, name, Codec.Flags),
+    type = IrTypeName.Declared(context.serviceName, name, Codec.Flags),
     flags = flags.map { it.flagToIr() },
   )
 
@@ -211,7 +208,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.packageName, context.serviceName, name, Codec.Record),
+    type = IrTypeName.Declared(context.serviceName, name, Codec.Record),
     fields = fields.map { it.fieldToIr() },
   )
 
@@ -220,7 +217,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.packageName, context.serviceName, name, Codec.Resource),
+    type = IrTypeName.Declared(context.serviceName, name, Codec.Resource),
     functions = functions.map {
       it.functionToIr(resourceName = name)
     },
@@ -231,12 +228,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(
-      context.packageName, context.serviceName, name,
-      Codec.Alias(
-        target.typeNameToIr(),
-      ),
-    ),
+    type = IrTypeName.Declared(context.serviceName, name, Codec.Alias(target.typeNameToIr())),
   )
 
   context(context: Context)
@@ -244,7 +236,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.packageName, context.serviceName, name, Codec.Variant),
+    type = IrTypeName.Declared(context.serviceName, name, Codec.Variant),
     cases = cases.map { it.caseToIr() },
   )
 
@@ -262,7 +254,7 @@ class IrMapper(
 
   context(context: Context)
   private fun UsePath.usePathToIr() = ServiceName(
-    packageName = packageName ?: context.packageName,
+    packageName = packageName ?: context.serviceName.packageName,
     name = name,
   )
 
@@ -298,19 +290,19 @@ class IrMapper(
   private fun IoTypeName.Declared.declaredTypeToIr(): IrTypeName.Declared {
     return declaredTypeToIrOrNull()
       ?: throw IllegalArgumentException(
-        "unable to find $this in ${UsePath(context.packageName, context.serviceName)}",
+        "unable to find $this in ${context.serviceName}",
       )
   }
 
   context(context: Context)
   internal fun IoTypeName.Declared.declaredTypeToIrOrNull(): IrTypeName.Declared? {
-    val witPackage = packageNameToPackage[context.packageName] ?: return null
+    val witPackage = packageNameToPackage[context.serviceName.packageName] ?: return null
     val declarations = sequence {
       for (file in witPackage.files.values) {
         for (service in file.items) {
           when (service) {
-            is IoInterface if service.name == context.serviceName -> yieldAll(service.items)
-            is IoWorld if service.name == context.serviceName -> yieldAll(service.items)
+            is IoInterface if service.name == context.serviceName.name -> yieldAll(service.items)
+            is IoWorld if service.name == context.serviceName.name -> yieldAll(service.items)
             else -> {}
           }
         }
@@ -323,8 +315,7 @@ class IrMapper(
           // Direct match.
           if (declaration.name == name) {
             return IrTypeName.Declared(
-              packageName = witPackage.packageName,
-              serviceName = context.serviceName,
+              serviceName = ServiceName(witPackage.packageName, context.serviceName.name),
               name = declaration.name,
               codec = when (declaration) {
                 is IoEnum -> Codec.Enum
@@ -343,8 +334,10 @@ class IrMapper(
           val itemMatch = declaration.items.firstOrNull { it.matches(this) }
           if (itemMatch != null) {
             val useContext = Context(
-              packageName = declaration.path.packageName ?: context.packageName,
-              serviceName = declaration.path.name,
+              ServiceName(
+                packageName = declaration.path.packageName ?: context.serviceName.packageName,
+                name = declaration.path.name,
+              ),
             )
             context(useContext) {
               return itemMatch.type.declaredTypeToIrOrNull()
@@ -374,7 +367,7 @@ class IrMapper(
       documentation = documentation,
       gate = gate,
       offset = offset,
-      name = name,
+      name = ServiceName(packageName, name),
       items = set.flatMap { included ->
         context(included.context) {
           included.world.items.mapNotNull { it.worldItemToIrOrNull() }
@@ -421,11 +414,11 @@ class IrMapper(
       is IoFunction -> functionToIr(worldFunction = true)
       is IoInterface -> {
         if (!declaresApis()) return null
-        interfaceToIr(context.packageName)
+        interfaceToIr(context.serviceName.packageName)
         IrExternalApi(
           offset = offset,
           plainName = name,
-          path = ServiceName(context.packageName, name),
+          path = ServiceName(context.serviceName.packageName, name),
         )
       }
     }
@@ -470,10 +463,9 @@ class IrMapper(
   }
 
   internal class Context(
-    val packageName: PackageName,
-    val serviceName: Identifier,
+    val serviceName: ServiceName,
   ) {
-    override fun toString() = UsePath(packageName, serviceName).toString()
+    override fun toString() = serviceName.toString()
   }
 
   private data class IncludedWorld(
@@ -481,7 +473,7 @@ class IrMapper(
     val world: IoWorld,
   ) {
     val context: Context
-      get() = Context(packageName, world.name)
+      get() = Context(ServiceName(packageName, world.name))
 
     override fun toString() = context.toString()
   }

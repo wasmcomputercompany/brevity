@@ -32,7 +32,7 @@ data class IrInterface(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  val name: Identifier,
+  val name: ServiceName,
   val items: List<Item>,
 ) : IrDeclaration, IrWitPackage.Item {
   sealed interface Item : IrDeclaration
@@ -42,7 +42,7 @@ data class IrWorld(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  val name: Identifier,
+  val name: ServiceName,
   val items: List<Item>,
   val imports: List<Api>,
   val exports: List<Api>,

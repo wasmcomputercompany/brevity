@@ -11,7 +11,7 @@ val FunctionName.exportFunctionName: String
 
 private fun FunctionName.toExternalName(suffix: Identifier): String {
   val segments = buildList {
-    add(serviceName)
+    add(serviceName?.name)
     add(resourceName)
     add(name)
     add(suffix)

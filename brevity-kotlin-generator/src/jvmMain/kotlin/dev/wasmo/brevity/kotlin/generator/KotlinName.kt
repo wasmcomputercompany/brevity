@@ -38,7 +38,7 @@ fun PackageName.toKotlin(prefix: String): KotlinName.Package {
 }
 
 fun IrTypeName.Declared.toKotlin(prefix: String): KotlinName.Class =
-  packageName.toKotlin(prefix) + serviceName + name
+  serviceName.packageName.toKotlin(prefix) + serviceName.name + name
 
 private fun String.toPackageSegment(): String {
   return map { char ->

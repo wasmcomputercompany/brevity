@@ -8,7 +8,6 @@ import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.io.toServiceName
-import dev.wasmo.brevity.toPackageName
 
 fun IrCase(
   documentation: String? = null,
@@ -28,15 +27,11 @@ fun IrTypeNameDeclared(
   serviceName: String,
   typeName: String,
   codec: IrTypeName.Declared.Codec = IrTypeName.Declared.Codec.Record,
-): IrTypeName.Declared {
-  val (packageName, name) = serviceName.toServiceName()
-  return IrTypeName.Declared(
-    packageName = packageName,
-    serviceName = name,
-    name = Identifier(typeName),
-    codec = codec,
-  )
-}
+) = IrTypeName.Declared(
+  serviceName = serviceName.toServiceName(),
+  name = Identifier(typeName),
+  codec = codec,
+)
 
 fun IrEnum(
   documentation: String? = null,
@@ -117,7 +112,6 @@ fun IrFunction(
   name: String,
   parameters: List<IrParameter> = listOf(),
   returnType: IrTypeName? = null,
-  packageName: String,
   serviceName: String,
   resourceName: String? = null,
   annotation: Annotation? = resourceName?.let { Annotation.Method },
@@ -129,8 +123,7 @@ fun IrFunction(
   parameters = parameters,
   returnType = returnType,
   functionName = FunctionName(
-    packageName = packageName.toPackageName(),
-    serviceName = Identifier(serviceName),
+    serviceName = serviceName.toServiceName(),
     name = Identifier(name),
     resourceName = resourceName?.let { Identifier(it) },
     annotation = annotation,
@@ -141,13 +134,13 @@ fun IrInterface(
   documentation: String? = null,
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
-  name: String,
+  serviceName: String,
   items: List<IrInterface.Item> = listOf(),
 ) = IrInterface(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  name = Identifier(name),
+  name = serviceName.toServiceName(),
   items = items,
 )
 
@@ -230,7 +223,7 @@ fun IrWorld(
   documentation: String? = null,
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
-  name: String,
+  serviceName: String,
   items: List<IrWorld.Item> = listOf(),
   imports: List<IrWorld.Api> = listOf(),
   exports: List<IrWorld.Api> = listOf(),
@@ -238,7 +231,7 @@ fun IrWorld(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  name = Identifier(name),
+  name = serviceName.toServiceName(),
   items = items,
   imports = imports,
   exports = exports,

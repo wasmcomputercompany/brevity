@@ -36,7 +36,7 @@ class WorldFilterTest {
   fun filterSuccess() {
     val irPackages = IrMapper(ioPackages).map()
     val commandWorld = irPackages.single().items.single {
-      (it as? IrWorld)?.name?.name == "command"
+      (it as? IrWorld)?.name?.name?.name == "command"
     }
 
     assertThat(irPackages.filterNamedWorlds(listOf("command")).single().items)
