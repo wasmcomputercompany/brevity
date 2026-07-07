@@ -1,21 +1,17 @@
 package dev.wasmo.brevity
 
-import dev.wasmo.brevity.io.UsePath
-
 /**
  * An external function name, used as a unique identifier in a .wasm files.
  */
 data class FunctionName(
-  val packageName: PackageName? = null,
+  val serviceName: ServiceName? = null,
   val name: Identifier,
-  val serviceName: Identifier? = null,
   val resourceName: Identifier? = null,
   val annotation: Annotation? = null,
 ) {
   val moduleName: String?
     get() = when {
-      packageName != null && serviceName != null -> UsePath(packageName, serviceName).toString()
-      packageName != null -> packageName.toString()
+      serviceName != null -> serviceName.toString()
       else -> null
     }
 

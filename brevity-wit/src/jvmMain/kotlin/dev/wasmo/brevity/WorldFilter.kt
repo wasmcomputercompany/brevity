@@ -20,7 +20,7 @@ fun Collection<IrWitPackage>.filterNamedWorlds(
       items = irPackage.items.filter { item ->
         when (item) {
           is IrWorld -> {
-            val itemAcceptableWorldNames = worldNames(irPackage.packageName, item)
+            val itemAcceptableWorldNames = worldNames(item)
             acceptableWorldNames += itemAcceptableWorldNames
 
             // Returns true if this world name matches.
@@ -46,10 +46,14 @@ fun Collection<IrWitPackage>.filterNamedWorlds(
 }
 
 /** Returns all acceptable names for [irWorld]. */
-fun worldNames(packageName: PackageName, irWorld: IrWorld): Set<String> {
+fun worldNames(irWorld: IrWorld): Set<String> {
   return setOf(
-    irWorld.name.name,
-    ServiceName(packageName, irWorld.name).toString(),
-    ServiceName(packageName.copy(version = null), irWorld.name).toString(),
+    irWorld.name.name.name,
+    irWorld.name.toString(),
+    irWorld.name.stripVersion().toString(),
   )
 }
+
+private fun ServiceName.stripVersion() = copy(
+  packageName = packageName.copy(version = null),
+)

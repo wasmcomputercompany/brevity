@@ -3,6 +3,7 @@
 package dev.wasmo.brevity
 
 import dev.wasmo.brevity.io.WitSyntaxReader
+import dev.wasmo.brevity.io.toServiceName
 
 fun String.toIdentifier(): Identifier {
   val reader = WitSyntaxReader(this)
@@ -26,14 +27,12 @@ fun String.toSemVer(): SemVer {
 }
 
 fun FunctionName(
-  packageName: String? = null,
   serviceName: String? = null,
   name: String,
   resourceName: String? = null,
   annotation: Annotation? = resourceName?.let { Annotation.Method },
 ) = FunctionName(
-  packageName = packageName?.toPackageName(),
-  serviceName = serviceName?.let { Identifier(it) },
+  serviceName = serviceName?.toServiceName(),
   name = Identifier(name),
   resourceName = resourceName?.let { Identifier(it) },
   annotation = annotation,

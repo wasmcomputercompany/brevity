@@ -1,7 +1,6 @@
 package dev.wasmo.brevity.ir
 
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
 
 sealed class IrTypeName {
@@ -21,15 +20,11 @@ sealed class IrTypeName {
 
   /** Identifies a [IrTypeDeclaration]. */
   data class Declared(
-    val packageName: PackageName,
-    val serviceName: Identifier,
+    val serviceName: ServiceName,
     val name: Identifier,
     val codec: Codec,
   ) : IrTypeName() {
-    override fun toString() = buildString {
-      append(ServiceName(packageName, name))
-      append(".{$name}")
-    }
+    override fun toString() = "$serviceName.{$name}"
 
     sealed class Codec {
       data class Alias(val target: IrTypeName) : Codec()

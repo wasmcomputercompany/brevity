@@ -59,12 +59,12 @@ class KtMapper(
 
   context(context: Context)
   internal fun IrInterface.interfaceToKt(): KtNewService {
-    val kotlinName = context.kotlinName + name
+    val kotlinName = context.kotlinName + name.name
     context(context.copy(kotlinName = kotlinName)) {
       return KtInterface(
         documentation = documentation?.content?.trimIndent(),
         type = kotlinName.name,
-        instanceName = name.toCamelCase(upperCamel = false),
+        instanceName = name.name.toCamelCase(upperCamel = false),
         functions = items.filterIsInstance<IrFunction>().map { it.functionToKt() },
         types = items.filterIsInstance<IrTypeDeclaration>().map { it.typeDeclarationToKt() },
       )
@@ -153,7 +153,7 @@ class KtMapper(
 
   context(context: Context)
   internal fun IrWorld.worldToKt(): KtNewService {
-    val kotlinName = context.kotlinName + name
+    val kotlinName = context.kotlinName + name.name
 
     val guestName = kotlinName + Identifier("Guest")
     val guestApis = context(context.copy(kotlinName = guestName)) {
@@ -175,7 +175,7 @@ class KtMapper(
 
     return KtWorld(
       documentation = documentation?.content?.trimIndent(),
-      instanceName = name.toCamelCase(upperCamel = false),
+      instanceName = name.name.toCamelCase(upperCamel = false),
       type = kotlinName.name,
       guestApis = guestApis,
       hostApis = hostApis,
