@@ -10,11 +10,11 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.RoleTracker
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
-import dev.wasmo.brevity.ir.IrTypeName
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.generator.GuestBridgeBuilder.Receiver
@@ -92,7 +92,7 @@ class GuestGenerator(
   }
 
   private fun FileSpec.Builder.addCodec(
-    typeName: IrTypeName.Declared,
+    typeName: TypeName.Declared,
     entry: RoleTracker.Entry,
   ) {
     when (val typeDeclaration = declarationIndex[typeName]) {
