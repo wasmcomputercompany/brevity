@@ -31,23 +31,20 @@ class GenerateAllWasiKotlinTest {
     }
 
     val irPackages = IrMapper(ioWitPackages).map()
-    val ktMapper = KtMapper()
 
     val directory = File("build/GenerateAllWasiKotlinTest")
     directory.mkdirs()
 
-    val ktServices = ktMapper.map(irPackages)
     val declarationIndex = DeclarationIndex(irPackages)
     val worldIndex = WorldIndex(declarationIndex, irPackages)
-    val ktIndex = KtIndex(ktServices)
 
-    for (fileSpec in ApiGenerator(ktServices).generate()) {
+    for (fileSpec in ApiGenerator(irPackages).generate()) {
       fileSpec.writeTo(directory)
     }
-    for (fileSpec in GuestGenerator(declarationIndex, ktIndex, worldIndex, ktServices).generate()) {
+    for (fileSpec in GuestGenerator(declarationIndex, worldIndex, irPackages).generate()) {
       fileSpec.writeTo(directory)
     }
-    for (fileSpec in HostGenerator(declarationIndex, ktIndex, worldIndex, ktServices).generate()) {
+    for (fileSpec in HostGenerator(declarationIndex, worldIndex, irPackages).generate()) {
       fileSpec.writeTo(directory)
     }
   }

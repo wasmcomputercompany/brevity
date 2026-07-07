@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeName
 
@@ -15,40 +16,41 @@ internal class GuestBridgeBuilder(
   /** Returns a function that calls the host. It implements the friendly API. */
   fun callHostFunction(
     receiver: Receiver.Id,
-    value: KtFunction,
+    value: IrFunction,
   ): FunSpec {
-    return FunSpec.builder(value.ktName)
+    return FunSpec.builder(value.kotlinName)
       .addModifiers(KModifier.OVERRIDE)
       .returns(value.returnType?.kotlinApi ?: UNIT)
       .apply {
-        if (value.returnType != null) {
+        val returnType = value.returnType
+        if (returnType != null) {
           addCode("val %N = ", "result")
         }
 
-        addCode("%N(⇥\n", value.name.importFunctionName)
+        addCode("%N(⇥\n", value.functionName.importFunctionName)
         addCode("%N = %N,\n", receiver.name, "id")
 
         for (parameter in value.parameters) {
-          addParameter(parameter.name, parameter.irType.kotlinApi)
+          addParameter(parameter.kotlinName, parameter.type.kotlinApi)
           addCode(
             "%N = %L,\n",
-            parameter.name,
+            parameter.kotlinName,
             guestApiToAbi(
               bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-              type = parameter.irType,
-              abiValue = CodeBlock.of("%N", parameter.name),
+              type = parameter.type,
+              abiValue = CodeBlock.of("%N", parameter.kotlinName),
             ),
           )
         }
 
         addCode("⇤)\n")
 
-        if (value.returnType != null) {
+        if (returnType != null) {
           addCode(
             "return %L",
             guestAbiToApi(
               bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-              type = value.returnType,
+              type = returnType,
               abiValue = CodeBlock.of("%N", "result"),
             ),
           )
@@ -60,18 +62,18 @@ internal class GuestBridgeBuilder(
   /** Returns the `@WasmImport`-annotated function. It must be added directly to a file. */
   fun wasmImportFunction(
     receiver: Receiver,
-    value: KtFunction,
+    value: IrFunction,
   ): FunSpec {
-    return FunSpec.builder(value.name.importFunctionName)
+    return FunSpec.builder(value.functionName.importFunctionName)
       .addAnnotation(
         AnnotationSpec.builder(Symbols.KotlinWasm.WasmImport)
           .apply {
-            val moduleName = value.name.moduleName
+            val moduleName = value.functionName.moduleName
             if (moduleName != null) {
               addMember("module = %S", moduleName)
-              addMember("name = %S", value.name.abiName)
+              addMember("name = %S", value.functionName.abiName)
             } else {
-              addMember("module = %S", value.name.abiName)
+              addMember("module = %S", value.functionName.abiName)
             }
           }
           .build(),
@@ -82,7 +84,7 @@ internal class GuestBridgeBuilder(
           addParameter(receiver.name, receiver.type.kotlinAbi)
         }
         for (parameter in value.parameters) {
-          addParameter(parameter.name, parameter.irType.kotlinAbi)
+          addParameter(parameter.kotlinName, parameter.type.kotlinAbi)
         }
       }
       .returns(value.returnType?.kotlinAbi ?: UNIT)
@@ -92,12 +94,12 @@ internal class GuestBridgeBuilder(
   /** Returns the `@WasmExport`-annotated function. It must be added directly to a file. */
   fun wasmExportFunction(
     receiver: Receiver,
-    value: KtFunction,
+    value: IrFunction,
   ): FunSpec {
-    return FunSpec.builder(value.name.exportFunctionName)
+    return FunSpec.builder(value.functionName.exportFunctionName)
       .addAnnotation(
         AnnotationSpec.builder(Symbols.KotlinWasm.WasmExport)
-          .addMember("%S", value.name)
+          .addMember("%S", value.functionName)
           .build(),
       )
       .addModifiers(KModifier.PRIVATE)
@@ -107,34 +109,35 @@ internal class GuestBridgeBuilder(
           addParameter(receiver.name, receiver.type.kotlinAbi)
         }
 
-        if (value.returnType != null) {
+        val returnType = value.returnType
+        if (returnType != null) {
           addCode("val %N = ", "result")
         }
 
         addCode("%L", receiver.codeBlock)
 
         val guestBridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
-        addCode(".%N(⇥\n", value.ktName)
+        addCode(".%N(⇥\n", value.kotlinName)
         for (parameter in value.parameters) {
-          addParameter(parameter.name, parameter.irType.kotlinAbi)
+          addParameter(parameter.kotlinName, parameter.type.kotlinAbi)
           addCode(
             "%N = %L,\n",
-            parameter.name,
+            parameter.kotlinName,
             guestAbiToApi(
               bridge = guestBridge,
-              type = parameter.irType,
-              abiValue = CodeBlock.of("%N", parameter.name),
+              type = parameter.type,
+              abiValue = CodeBlock.of("%N", parameter.kotlinName),
             ),
           )
         }
         addCode("⇤)\n")
 
-        if (value.returnType != null) {
+        if (returnType != null) {
           addCode(
             "return %L\n",
             guestApiToAbi(
               bridge = guestBridge,
-              type = value.returnType,
+              type = returnType,
               abiValue = CodeBlock.of("%N", "result"),
             ),
           )

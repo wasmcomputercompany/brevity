@@ -32,8 +32,6 @@ We have several different representations of the `.wit` code, that fit together 
   fully-qualified values. Includes are applied, so worlds contain their full transitive
   dependencies. This representation doesn’t model syntactic sugar like `Use` and `Include`. Use
   `IrMapper` to transform `io` into this model.
-* **kt**: an general-purpose Kotlin model of the project, with Kotlin names for all symbols. Use
-  `KtMapper` to transform `ir` into this model.
 * **api**: a user-facing Kotlin API for a project, represented as `KotlinPoet` files.
 
 

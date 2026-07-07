@@ -16,6 +16,7 @@ data class IrWitPackage(
   sealed interface Service : IrDeclaration {
     val serviceName: ServiceName
     val types: List<IrTypeDeclaration>
+    val hasInstanceMembers: Boolean
   }
 }
 
@@ -41,6 +42,12 @@ data class IrInterface(
   override val types: List<IrTypeDeclaration>
     get() = items.filterIsInstance<IrTypeDeclaration>()
 
+  val functions: List<IrFunction>
+    get() = items.filterIsInstance<IrFunction>()
+
+  override val hasInstanceMembers: Boolean
+    get() = items.any { it is IrFunction }
+
   sealed interface Item : IrDeclaration
 }
 
@@ -55,6 +62,9 @@ data class IrWorld(
 ) : IrDeclaration, IrWitPackage.Service {
   sealed interface Api : IrDeclaration
   sealed interface Item : IrDeclaration
+
+  override val hasInstanceMembers: Boolean
+    get() = imports.isNotEmpty() || exports.isNotEmpty()
 }
 
 data class IrResource(
@@ -150,5 +160,5 @@ data class IrExternalApi(
   override val gate: Gate? = null,
   override val offset: Offset,
   val plainName: Identifier? = null,
-  val path: ServiceName,
+  val serviceName: ServiceName,
 ) : IrDeclaration, IrWorld.Api

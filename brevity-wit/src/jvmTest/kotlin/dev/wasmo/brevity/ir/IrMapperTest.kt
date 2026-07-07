@@ -199,7 +199,7 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
+                serviceName = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
               ),
             ),
           ),
@@ -209,7 +209,7 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
+                serviceName = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
               ),
             ),
           ),
@@ -224,7 +224,7 @@ class IrMapperTest {
             imports = listOf(
               IrExternalApi(
                 offset = Offset(4, 3),
-                path = "wasi:clocks/monotonic-clock@0.3.0".toServiceName(),
+                serviceName = "wasi:clocks/monotonic-clock@0.3.0".toServiceName(),
               ),
             ),
           ),

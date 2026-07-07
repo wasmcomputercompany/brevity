@@ -189,9 +189,9 @@ internal class TypeTraverser(
     }
 
     private fun collectExternalApi(value: IrExternalApi) {
-      services += value.path
+      services += value.serviceName
 
-      val service = index[value.path] as IrInterface
+      val service = index[value.serviceName] as IrInterface
       for (item in service.items) {
         if (item is IrFunction) {
           collectFunction(item)
