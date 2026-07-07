@@ -81,26 +81,12 @@ class WorldFlattenerTest {
           IrExternalApi(
             packageName = "wasi:cli@0.3.0",
             serviceName = "run",
-            functions = listOf(
-              IrFunction(
-                packageName = "wasi:cli@0.3.0",
-                serviceName = "run",
-                name = "run",
-              ),
-            ),
           ),
         ),
         imports = listOf(
           IrExternalApi(
             packageName = "wasi:cli@0.3.0",
             serviceName = "exit",
-            functions = listOf(
-              IrFunction(
-                packageName = "wasi:cli@0.3.0",
-                serviceName = "exit",
-                name = "exit",
-              ),
-            ),
           ),
         ),
       ),

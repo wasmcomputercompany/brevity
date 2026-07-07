@@ -30,7 +30,8 @@ class BrevityTester(
 
   val irPackages = IrMapper(witPackages).map()
   val ktServices = KtMapper().map(irPackages)
-  val worldIndex = WorldIndex(ktServices)
+  val declarationIndex = DeclarationIndex(ktServices)
+  val worldIndex = WorldIndex(declarationIndex, ktServices)
 
   val apiFiles = buildMap {
     val apiGenerator = ApiGenerator(ktServices)
@@ -40,7 +41,7 @@ class BrevityTester(
   }
 
   val guestFiles = buildMap {
-    val guestGenerator = GuestGenerator(worldIndex, ktServices)
+    val guestGenerator = GuestGenerator(declarationIndex, worldIndex, ktServices)
     for (fileSpec in guestGenerator.generate()) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }

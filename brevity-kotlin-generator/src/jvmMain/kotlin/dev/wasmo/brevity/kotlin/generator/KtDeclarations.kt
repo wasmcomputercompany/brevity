@@ -2,7 +2,6 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.FunctionName
-import dev.wasmo.brevity.kotlin.generator.KtService.Kind
 
 sealed interface KtDeclaration {
   val documentation: String?
@@ -12,55 +11,50 @@ sealed interface KtTypeDeclaration : KtDeclaration {
   val type: ClassName
 }
 
-sealed interface KtService : KtTypeDeclaration, Comparable<KtService> {
-  val kind: Kind
+sealed interface KtNewService : KtDeclaration {
   val instanceName: String
   override val documentation: String?
-  val functions: List<KtFunction>
+  val type: ClassName
   val types: List<KtTypeDeclaration>
 
-  val services: List<KtService>
-    get() = types.filterIsInstance<KtService>()
-
   val hasInstanceMembers: Boolean
-    get() = functions.isNotEmpty() || types.any { it is KtService }
-
-  override fun compareTo(other: KtService) = type.compareTo(other.type)
-
-  enum class Kind {
-    World,
-    Guest,
-    Host,
-    Interface,
-    Resource
-  }
 }
 
 data class KtInterface(
-  override val kind: Kind,
   override val instanceName: String,
   override val documentation: String? = null,
   override val type: ClassName,
-  override val functions: List<KtFunction> = listOf(),
+  val functions: List<KtFunction> = listOf(),
   override val types: List<KtTypeDeclaration> = listOf(),
-) : KtService
+) : KtNewService, KtTypeDeclaration {
+  override val hasInstanceMembers: Boolean
+    get() = functions.isNotEmpty()
+}
 
 data class KtWorld(
   override val instanceName: String,
   override val documentation: String? = null,
   override val type: ClassName,
-  override val functions: List<KtFunction> = listOf(),
-  val guest: KtService?,
-  val host: KtService?,
+  val guestApis: ExternalApis? = null,
+  val hostApis: ExternalApis? = null,
   override val types: List<KtTypeDeclaration> = listOf(),
-) : KtService {
-  init {
-    require(guest == null || guest in types)
-    require(host == null || host in types)
+) : KtNewService {
+  data class ExternalApis(
+    val instanceName: String,
+    val type: ClassName,
+    val items: List<Item>,
+  ) {
+    sealed interface Item
+
+    data class InterfaceProperty(
+      val instanceName: String,
+      val documentation: String? = null,
+      val type: ClassName,
+    ) : Item
   }
 
-  override val kind: Kind
-    get() = Kind.World
+  override val hasInstanceMembers: Boolean
+    get() = guestApis != null || hostApis != null
 }
 
 data class KtEnum(
@@ -127,7 +121,7 @@ data class KtFunction(
   val name: FunctionName,
   val parameters: List<Parameter>,
   val returnType: KtTypeName?,
-) : KtDeclaration {
+) : KtDeclaration, KtWorld.ExternalApis.Item {
   data class Parameter(
     override val documentation: String?,
     val name: String,

@@ -35,12 +35,13 @@ class GenerateAllWasiKotlinTest {
     directory.mkdirs()
 
     val ktServices = ktMapper.map(irPackages)
-    val worldIndex = WorldIndex(ktServices)
+    val declarationIndex = DeclarationIndex(ktServices)
+    val worldIndex = WorldIndex(declarationIndex, ktServices)
 
     for (fileSpec in ApiGenerator(ktServices).generate()) {
       fileSpec.writeTo(directory)
     }
-    for (fileSpec in GuestGenerator(worldIndex, ktServices).generate()) {
+    for (fileSpec in GuestGenerator(declarationIndex, worldIndex, ktServices).generate()) {
       fileSpec.writeTo(directory)
     }
     for (fileSpec in HostGenerator(worldIndex, ktServices).generate()) {

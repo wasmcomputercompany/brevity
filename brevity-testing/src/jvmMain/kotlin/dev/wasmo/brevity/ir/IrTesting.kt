@@ -60,14 +60,12 @@ fun IrExternalApi(
   plainName: String? = null,
   packageName: String,
   serviceName: String,
-  functions: List<IrFunction> = listOf(),
 ) = IrExternalApi(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
   plainName = plainName?.let { Identifier(it) },
   path = ServiceName(packageName, serviceName),
-  functions = functions,
 )
 
 fun IrFlags(

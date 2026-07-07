@@ -11,7 +11,7 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 
 class ApiGenerator(
-  private val services: List<KtService>,
+  private val services: List<KtNewService>,
 ) {
   fun generate(): List<FileSpec> {
     return services.groupBy { it.type.packageName }
@@ -178,8 +178,8 @@ class ApiGenerator(
     }
     .build()
 
-  private fun serviceToApi(value: KtService): TypeSpec? {
-    if (value.functions.isEmpty() && value.types.isEmpty()) return null
+  private fun serviceToApi(value: KtNewService): TypeSpec? {
+    if (!value.hasInstanceMembers && value.types.isEmpty()) return null
 
     val builder = when {
       !value.hasInstanceMembers || value is KtWorld -> TypeSpec.objectBuilder(value.type.simpleName)
@@ -191,31 +191,49 @@ class ApiGenerator(
     }
 
     for (type in value.types) {
-      if (type is KtService && value !is KtWorld) {
-        builder.addProperty(type.instanceName, type.type)
+      val typeSpec = when (type) {
+        is KtEnum -> enumToApi(type)
+        is KtFlags -> flagsToApi(type)
+        is KtRecord -> recordToApi(type)
+        is KtResource -> resourceToApi(type)
+        is KtTypeAlias -> typeAliasToApi(type)
+        is KtVariant -> variantToApi(type)
+        is KtInterface -> error("unexpected nested interface")
       }
 
-      if (value.type == type.type.enclosingClassName()) {
-        val typeSpec = when (type) {
-          is KtEnum -> enumToApi(type)
-          is KtFlags -> flagsToApi(type)
-          is KtRecord -> recordToApi(type)
-          is KtResource -> resourceToApi(type)
-          is KtTypeAlias -> typeAliasToApi(type)
-          is KtVariant -> variantToApi(type)
-          is KtService -> serviceToApi(type)
-        }
-
-        if (typeSpec != null) {
-          builder.addType(typeSpec)
-        }
-      }
+      builder.addType(typeSpec)
     }
 
-    for (function in value.functions) {
-      builder.addFunction(functionToApi(function))
+    when (value) {
+      is KtInterface -> {
+        for (function in value.functions) {
+          builder.addFunction(functionToApi(function))
+        }
+      }
+
+      is KtWorld -> {
+        if (value.guestApis != null) {
+          builder.addType(externalApisToApi(value.guestApis))
+        }
+        if (value.hostApis != null) {
+          builder.addType(externalApisToApi(value.hostApis))
+        }
+      }
     }
 
     return builder.build()
+  }
+
+  private fun externalApisToApi(value: KtWorld.ExternalApis): TypeSpec {
+    return TypeSpec.interfaceBuilder(value.type.simpleName)
+      .apply {
+        for (item in value.items) {
+          when (item) {
+            is KtWorld.ExternalApis.InterfaceProperty -> addProperty(item.instanceName, item.type)
+            is KtFunction -> addFunction(functionToApi(item))
+          }
+        }
+      }
+      .build()
   }
 }
