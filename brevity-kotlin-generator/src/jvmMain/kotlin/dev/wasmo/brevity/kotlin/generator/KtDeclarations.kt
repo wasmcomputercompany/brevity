@@ -11,12 +11,10 @@ sealed interface KtTypeDeclaration : KtDeclaration {
   val type: ClassName
 }
 
-sealed interface KtNewService : KtDeclaration {
+sealed interface KtService : KtDeclaration {
   val instanceName: String
-  override val documentation: String?
   val type: ClassName
   val types: List<KtTypeDeclaration>
-
   val hasInstanceMembers: Boolean
 }
 
@@ -26,7 +24,7 @@ data class KtInterface(
   override val type: ClassName,
   val functions: List<KtFunction> = listOf(),
   override val types: List<KtTypeDeclaration> = listOf(),
-) : KtNewService, KtTypeDeclaration {
+) : KtService, KtTypeDeclaration {
   override val hasInstanceMembers: Boolean
     get() = functions.isNotEmpty()
 }
@@ -38,7 +36,7 @@ data class KtWorld(
   val guestApis: ExternalApis? = null,
   val hostApis: ExternalApis? = null,
   override val types: List<KtTypeDeclaration> = listOf(),
-) : KtNewService {
+) : KtService {
   data class ExternalApis(
     val instanceName: String,
     val type: ClassName,

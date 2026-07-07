@@ -26,7 +26,7 @@ class KtMapper(
 ) {
   private val typeMapper = TypeMapper(kotlinPackagePrefix)
 
-  fun map(witPackages: List<IrWitPackage>): List<KtNewService> {
+  fun map(witPackages: List<IrWitPackage>): List<KtService> {
     return witPackages.flatMap { witPackage ->
       val kotlinName = witPackage.packageName.toKotlin(kotlinPackagePrefix)
       context(Context(kotlinName, NameAllocator())) {
@@ -38,7 +38,7 @@ class KtMapper(
   }
 
   context(context: Context)
-  internal fun IrWitPackage.Item.toServiceNoCodecs(): KtNewService? {
+  internal fun IrWitPackage.Item.toServiceNoCodecs(): KtService? {
     return when (this) {
       is IrInterface -> interfaceToKt()
       is IrWorld -> worldToKt()
@@ -58,7 +58,7 @@ class KtMapper(
   }
 
   context(context: Context)
-  internal fun IrInterface.interfaceToKt(): KtNewService {
+  internal fun IrInterface.interfaceToKt(): KtService {
     val kotlinName = context.kotlinName + name.name
     context(context.copy(kotlinName = kotlinName)) {
       return KtInterface(
@@ -152,7 +152,7 @@ class KtMapper(
   )
 
   context(context: Context)
-  internal fun IrWorld.worldToKt(): KtNewService {
+  internal fun IrWorld.worldToKt(): KtService {
     val kotlinName = context.kotlinName + name.name
 
     val guestName = kotlinName + Identifier("Guest")

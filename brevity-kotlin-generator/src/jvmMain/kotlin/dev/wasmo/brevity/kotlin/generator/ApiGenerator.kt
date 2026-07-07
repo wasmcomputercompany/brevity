@@ -11,7 +11,7 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 
 class ApiGenerator(
-  private val services: List<KtNewService>,
+  private val services: List<KtService>,
 ) {
   fun generate(): List<FileSpec> {
     return services.groupBy { it.type.packageName }
@@ -178,7 +178,7 @@ class ApiGenerator(
     }
     .build()
 
-  private fun serviceToApi(value: KtNewService): TypeSpec? {
+  private fun serviceToApi(value: KtService): TypeSpec? {
     if (!value.hasInstanceMembers && value.types.isEmpty()) return null
 
     val builder = when {

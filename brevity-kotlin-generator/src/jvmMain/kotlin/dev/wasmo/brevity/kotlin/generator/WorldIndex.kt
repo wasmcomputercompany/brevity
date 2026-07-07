@@ -32,7 +32,7 @@ class WorldIndex(
   companion object {
     operator fun invoke(
       declarationIndex: DeclarationIndex,
-      services: List<KtNewService>,
+      services: List<KtService>,
     ): WorldIndex {
       val traverser = TypeTraverser(declarationIndex)
       traverser.collectAll(services)
@@ -78,7 +78,7 @@ internal class TypeTraverser(
   private val guest = Collector(guestQueue, guestTypes, hostQueue, hostTypes, hostQueue, hostTypes)
   private val host = Collector(hostQueue, hostTypes, guestQueue, guestTypes, hostQueue, hostTypes)
 
-  fun collectAll(services: List<KtNewService>) {
+  fun collectAll(services: List<KtService>) {
     val worlds = services.filterIsInstance<KtWorld>()
 
     // Seed the traversal with the world's hosts and guests.

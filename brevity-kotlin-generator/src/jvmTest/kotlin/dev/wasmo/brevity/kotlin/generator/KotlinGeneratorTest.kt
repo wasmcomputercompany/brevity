@@ -881,6 +881,12 @@ class KotlinGeneratorTest {
       |import kotlin.String
       |import kotlin.wasm.WasmImport
       |
+      |@WasmImport(
+      |  module = "namespace:package-name/test",
+      |  name = "[method]person.get-name",
+      |)
+      |private external fun test_person_getName_import(self: Int): Int
+      |
       |internal class PersonHandle(
       |  private val id: Int,
       |) : Test.Person {
@@ -891,12 +897,6 @@ class KotlinGeneratorTest {
       |    return result as String
       |  }
       |}
-      |
-      |@WasmImport(
-      |  module = "namespace:package-name/test",
-      |  name = "[method]person.get-name",
-      |)
-      |private external fun test_person_getName_import(self: Int): Int
       |
       """.trimMargin(),
     )
