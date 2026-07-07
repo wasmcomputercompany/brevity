@@ -20,7 +20,6 @@ class TypeMapperTest {
     ).isEqualTo(
       KtTypeName.Declared(
         ClassName("wit.wasi.clocks", "WallClock", "Datetime"),
-        codec = KtTypeName.Declared.Codec.Record,
       ),
     )
 
@@ -30,7 +29,6 @@ class TypeMapperTest {
       KtTypeName.List(
         KtTypeName.Declared(
           apiType = ClassName("wit.wasi.clocks", "WallClock", "Datetime"),
-          codec = KtTypeName.Declared.Codec.Record,
         ),
       ),
     )

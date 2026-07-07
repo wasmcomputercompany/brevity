@@ -18,22 +18,9 @@ sealed class KtTypeName {
 
   data class Declared(
     override val apiType: ClassName,
-    val codec: Codec,
   ) : KtTypeName() {
     override val abiType: TypeName
-      get() = when (codec) {
-        is Codec.Alias -> codec.target.abiType
-        else -> INT
-      }
-
-    sealed class Codec {
-      data class Alias(val target: KtTypeName) : Codec()
-      data object Enum : Codec()
-      data object Flags : Codec()
-      data object Record : Codec()
-      data object Resource : Codec()
-      data object Variant : Codec()
-    }
+      get() = INT
   }
 
   data class Tuple(

@@ -49,7 +49,6 @@ class IrMapperTest {
       IrTypeNameDeclared(
         serviceName = "wasi:clocks/wall-clock",
         typeName = "datetime",
-        codec = IrTypeName.Declared.Codec.Record,
       ),
     )
 
@@ -104,7 +103,6 @@ class IrMapperTest {
       IrTypeNameDeclared(
         serviceName = "wasi:io/streams@0.2.12",
         typeName = "input-stream",
-        codec = IrTypeName.Declared.Codec.Resource,
       ),
     )
   }
@@ -142,7 +140,6 @@ class IrMapperTest {
       IrTypeNameDeclared(
         serviceName = "wasi:cli/streams",
         typeName = "input-stream",
-        codec = IrTypeName.Declared.Codec.Resource,
       ),
     )
   }
@@ -339,7 +336,6 @@ class IrMapperTest {
       IrTypeNameDeclared(
         serviceName = "wasi:clocks/wall-clock@0.2.12",
         typeName = "datetime",
-        codec = IrTypeName.Declared.Codec.Record,
       ),
     )
   }
@@ -512,13 +508,11 @@ class IrMapperTest {
                     IrTypeNameDeclared(
                       serviceName = serviceName,
                       typeName = "my-resource",
-                      codec = IrTypeName.Declared.Codec.Resource,
                     ),
                     IrTypeName.List(
                       IrTypeNameDeclared(
                         serviceName = serviceName,
                         typeName = "my-enum",
-                        codec = IrTypeName.Declared.Codec.Enum,
                       ),
                     ),
                   ),

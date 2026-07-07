@@ -34,8 +34,8 @@ class TypeMapper(
     IrTypeName.List(IrTypeName.F64) to KtTypeName.Simple(ClassName("kotlin", "DoubleArray"), INT),
   )
 
-  fun map(typeName: ServiceName): ClassName {
-    return (typeName.packageName.toKotlin(kotlinPackagePrefix) + typeName.name).name
+  fun map(serviceName: ServiceName): ClassName {
+    return (serviceName.packageName.toKotlin(kotlinPackagePrefix) + serviceName.name).name
   }
 
   fun map(typeName: IrTypeName): KtTypeName {
@@ -66,20 +66,7 @@ class TypeMapper(
         typeName.err?.let { map(it) },
       )
 
-      is IrTypeName.Declared -> {
-        Declared(
-          apiType = typeName.toKotlin(kotlinPackagePrefix).name,
-          codec = when (val codec = typeName.codec) {
-            is IrTypeName.Declared.Codec.Alias -> Declared.Codec.Alias(map(codec.target))
-            IrTypeName.Declared.Codec.Enum -> Declared.Codec.Enum
-            IrTypeName.Declared.Codec.Flags -> Declared.Codec.Flags
-            IrTypeName.Declared.Codec.Record -> Declared.Codec.Record
-            IrTypeName.Declared.Codec.Resource -> Declared.Codec.Resource
-            IrTypeName.Declared.Codec.Variant -> Declared.Codec.Variant
-          },
-        )
-      }
-
+      is IrTypeName.Declared -> Declared(apiType = typeName.toKotlin(kotlinPackagePrefix).name)
       is IrTypeName.Stream -> Stream(typeName.type?.let { map(it) })
       is IrTypeName.Tuple -> Tuple(typeName.types.map { map(it) })
     }

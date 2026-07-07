@@ -185,6 +185,7 @@ class GuestGenerator(
         addCode(
           "return %L",
           guestAbiToApi(
+            declarationIndex,
             CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
             value.returnType,
             CodeBlock.of("%N", "result"),
@@ -282,6 +283,7 @@ class GuestGenerator(
               "%N = %L,\n",
               parameter.name,
               guestAbiToApi(
+                declarationIndex,
                 guestBridge,
                 parameter.type,
                 CodeBlock.of("%N", parameter.name),

@@ -26,11 +26,9 @@ fun IrCase(
 fun IrTypeNameDeclared(
   serviceName: String,
   typeName: String,
-  codec: IrTypeName.Declared.Codec = IrTypeName.Declared.Codec.Record,
 ) = IrTypeName.Declared(
   serviceName = serviceName.toServiceName(),
   name = Identifier(typeName),
-  codec = codec,
 )
 
 fun IrEnum(
@@ -44,7 +42,7 @@ fun IrEnum(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Enum),
+  type = IrTypeNameDeclared(serviceName, name),
   cases = cases,
 )
 
@@ -74,7 +72,7 @@ fun IrFlags(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Flags),
+  type = IrTypeNameDeclared(serviceName, name),
   flags = flags,
 )
 
@@ -167,7 +165,7 @@ fun IrRecord(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Record),
+  type = IrTypeNameDeclared(serviceName, name),
   fields = fields,
 )
 
@@ -182,7 +180,7 @@ fun IrResource(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Resource),
+  type = IrTypeNameDeclared(serviceName, name),
   functions = functions,
 )
 
@@ -200,8 +198,8 @@ fun IrTypeAlias(
   type = IrTypeNameDeclared(
     serviceName = serviceName,
     typeName = name,
-    codec = IrTypeName.Declared.Codec.Alias(target),
   ),
+  target = target,
 )
 
 fun IrVariant(
@@ -215,7 +213,7 @@ fun IrVariant(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name, IrTypeName.Declared.Codec.Variant),
+  type = IrTypeNameDeclared(serviceName, name),
   cases = cases,
 )
 
