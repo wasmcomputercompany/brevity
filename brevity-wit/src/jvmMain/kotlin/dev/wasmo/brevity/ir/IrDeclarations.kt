@@ -136,14 +136,8 @@ data class IrTypeAlias(
   override val gate: Gate? = null,
   override val offset: Offset,
   override val type: IrTypeName.Declared,
-) : IrTypeDeclaration, IrInterface.Item {
-  init {
-    require(type.codec is IrTypeName.Declared.Codec.Alias)
-  }
-
-  val target: IrTypeName
-    get() = (type.codec as IrTypeName.Declared.Codec.Alias).target
-}
+  val target: IrTypeName,
+) : IrTypeDeclaration, IrInterface.Item
 
 data class IrExternalApi(
   override val documentation: Documentation? = null,

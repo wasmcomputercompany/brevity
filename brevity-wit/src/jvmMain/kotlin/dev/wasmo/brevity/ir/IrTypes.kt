@@ -22,18 +22,8 @@ sealed class IrTypeName {
   data class Declared(
     val serviceName: ServiceName,
     val name: Identifier,
-    val codec: Codec,
   ) : IrTypeName() {
     override fun toString() = "$serviceName.{$name}"
-
-    sealed class Codec {
-      data class Alias(val target: IrTypeName) : Codec()
-      data object Enum : Codec()
-      data object Flags : Codec()
-      data object Record : Codec()
-      data object Resource : Codec()
-      data object Variant : Codec()
-    }
   }
 
   data class Tuple(

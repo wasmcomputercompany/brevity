@@ -169,12 +169,10 @@ class WorldFlattenerTest {
                     IrTypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-record",
-                      codec = IrTypeName.Declared.Codec.Record,
                     ),
                     IrTypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-enum",
-                      codec = IrTypeName.Declared.Codec.Enum,
                     ),
                   ),
                 ),
@@ -190,7 +188,6 @@ class WorldFlattenerTest {
                     type = IrTypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-flags",
-                      codec = IrTypeName.Declared.Codec.Flags,
                     ),
                   ),
                 ),
@@ -242,14 +239,12 @@ class WorldFlattenerTest {
                         type = IrTypeNameDeclared(
                           serviceName = "test:subject/subject-world",
                           typeName = "my-variant",
-                          codec = IrTypeName.Declared.Codec.Variant,
                         ),
                       ),
                     ),
                     returnType = IrTypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-flags",
-                      codec = IrTypeName.Declared.Codec.Flags,
                     ),
                   ),
                 ),
@@ -269,7 +264,6 @@ class WorldFlattenerTest {
                     type = IrTypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-resource",
-                      codec = IrTypeName.Declared.Codec.Resource,
                     ),
                   ),
                 ),

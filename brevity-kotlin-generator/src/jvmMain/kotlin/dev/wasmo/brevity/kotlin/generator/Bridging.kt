@@ -7,14 +7,15 @@ import dev.wasmo.brevity.Annotation
 
 /** Lift an ABI value like a memory address to an API value like a resource instance. */
 internal fun guestAbiToApi(
+  index: DeclarationIndex,
   bridge: CodeBlock,
   type: KtTypeName,
   abiValue: CodeBlock,
 ): CodeBlock {
   return when (type) {
     is KtTypeName.Declared -> {
-      when (type.codec) {
-        KtTypeName.Declared.Codec.Resource -> CodeBlock.of(
+      when (index[type.apiType]) {
+        is KtResource -> CodeBlock.of(
           "%L.fromId(%L, ::%T)",
           bridge,
           abiValue,
@@ -69,14 +70,15 @@ internal fun hostAbiToApi(
 
 /** Lower an API value like a resource instance to an ABI value like a memory address. */
 internal fun hostApiToAbi(
+  index: DeclarationIndex,
   bridge: CodeBlock,
   type: KtTypeName,
   apiValue: CodeBlock,
 ): CodeBlock {
   return when (type) {
     is KtTypeName.Declared -> {
-      when (type.codec) {
-        KtTypeName.Declared.Codec.Resource -> CodeBlock.of(
+      when (index[type.apiType]) {
+        is KtResource -> CodeBlock.of(
           "%L.toId(%L)",
           bridge,
           apiValue,

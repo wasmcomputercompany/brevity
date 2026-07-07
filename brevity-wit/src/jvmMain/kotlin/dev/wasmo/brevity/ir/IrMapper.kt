@@ -29,7 +29,6 @@ import dev.wasmo.brevity.io.IoVariant
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.Keywords
 import dev.wasmo.brevity.io.UsePath
-import dev.wasmo.brevity.ir.IrTypeName.Declared.Codec
 
 class IrMapper(
   private val packages: List<IoToplevelWitPackage>,
@@ -190,7 +189,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name, Codec.Enum),
+    type = IrTypeName.Declared(context.serviceName, name),
     cases = cases.map { it.caseToIr() },
   )
 
@@ -199,7 +198,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name, Codec.Flags),
+    type = IrTypeName.Declared(context.serviceName, name),
     flags = flags.map { it.flagToIr() },
   )
 
@@ -208,7 +207,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name, Codec.Record),
+    type = IrTypeName.Declared(context.serviceName, name),
     fields = fields.map { it.fieldToIr() },
   )
 
@@ -217,7 +216,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name, Codec.Resource),
+    type = IrTypeName.Declared(context.serviceName, name),
     functions = functions.map {
       it.functionToIr(resourceName = name)
     },
@@ -228,7 +227,8 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name, Codec.Alias(target.typeNameToIr())),
+    type = IrTypeName.Declared(context.serviceName, name),
+    target = target.typeNameToIr()
   )
 
   context(context: Context)
@@ -236,7 +236,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name, Codec.Variant),
+    type = IrTypeName.Declared(context.serviceName, name),
     cases = cases.map { it.caseToIr() },
   )
 
@@ -317,14 +317,6 @@ class IrMapper(
             return IrTypeName.Declared(
               serviceName = ServiceName(witPackage.packageName, context.serviceName.name),
               name = declaration.name,
-              codec = when (declaration) {
-                is IoEnum -> Codec.Enum
-                is IoFlags -> Codec.Flags
-                is IoRecord -> Codec.Record
-                is IoResource -> Codec.Resource
-                is IoTypeAlias -> Codec.Alias(declaration.target.typeNameToIr())
-                is IoVariant -> Codec.Variant
-              },
             )
           }
         }

@@ -14,7 +14,8 @@ import com.squareup.kotlinpoet.UNIT
 import com.squareup.kotlinpoet.buildCodeBlock
 
 class HostGenerator(
-  private val index: WorldIndex,
+  private val declarationIndex: DeclarationIndex,
+  private val worldIndex: WorldIndex,
   private val services: List<KtNewService>,
 ) {
   fun generate(): List<FileSpec> {
@@ -96,6 +97,7 @@ class HostGenerator(
         addParameter(parameter.name, parameter.type.apiType)
         addCode(
           hostApiToAbi(
+            index = declarationIndex,
             bridge = CodeBlock.of("%N", "bridge"),
             type = parameter.type,
             apiValue = CodeBlock.of("%N", parameter.name),
@@ -198,7 +200,7 @@ class HostGenerator(
                 value = value.hostApis,
               )
             }
-            for (entry in index.map.values) {
+            for (entry in worldIndex.map.values) {
               initImports(
                 bridge = CodeBlock.of("%N", "bridge"),
                 store = CodeBlock.of("%N", "store"),
@@ -307,7 +309,7 @@ class HostGenerator(
         }
 
         is KtWorld.ExternalApis.InterfaceProperty -> {
-          val type = index[item.type]?.declaration as KtInterface
+          val type = worldIndex[item.type]?.declaration as KtInterface
           for (function in type.functions) {
             addStatement(
               "%L.%N.%N = %L.export(%S)",
@@ -369,7 +371,7 @@ class HostGenerator(
         }
 
         is KtWorld.ExternalApis.InterfaceProperty -> {
-          val type = index[item.type]?.declaration as KtInterface
+          val type = worldIndex[item.type]?.declaration as KtInterface
           for (function in type.functions) {
             addHostFunction(
               bridge = bridge, store = store,
@@ -443,7 +445,7 @@ class HostGenerator(
       block.add(
         "return@%T longArrayOf(%L)",
         Symbols.ChicoryRuntime.WasmFunctionHandle,
-        hostApiToAbi(bridge, value.returnType, CodeBlock.of("%N", "result")),
+        hostApiToAbi(declarationIndex, bridge, value.returnType, CodeBlock.of("%N", "result")),
       )
     } else {
       block.add(
