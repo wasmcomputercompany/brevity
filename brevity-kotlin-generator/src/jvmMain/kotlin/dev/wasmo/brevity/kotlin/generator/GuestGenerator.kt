@@ -1,7 +1,6 @@
 package dev.wasmo.brevity.kotlin.generator
 
 
-import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
@@ -9,13 +8,15 @@ import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.UNIT
+import dev.wasmo.brevity.kotlin.generator.GuestBridgeBuilder.Receiver
 
 class GuestGenerator(
   private val declarationIndex: DeclarationIndex,
   private val worldIndex: WorldIndex,
-  private val services: List<KtNewService>,
+  private val services: List<KtService>,
 ) {
+  private val bridgeBuilder = GuestBridgeBuilder(declarationIndex)
+
   fun generate(): List<FileSpec> {
     val bridges = worldIndex.map.values.groupBy { it.declaration.type.packageName }
       .mapNotNull { (`package`, entries) ->
@@ -39,10 +40,7 @@ class GuestGenerator(
               generateService(service)
 
               if (service is KtWorld) {
-                addExternalFunctions(
-                  enclosing = null,
-                  value = service,
-                )
+                addExternalFunctions(service)
               }
             }
           }
@@ -53,9 +51,7 @@ class GuestGenerator(
     return bridges + services
   }
 
-  private fun FileSpec.Builder.generateService(
-    value: KtNewService,
-  ) {
+  private fun FileSpec.Builder.generateService(value: KtService) {
     if (value is KtWorld) {
       if (value.guestApis != null) {
         val service = value.guestApis
@@ -111,10 +107,8 @@ class GuestGenerator(
 
     if (guest) {
       for (function in value.functions) {
-        addWasmExportFunction(
-          receiver = receiver,
-          value = function,
-        )
+        if (!function.isSupported) continue // TODO
+        addFunction(bridgeBuilder.wasmExportFunction(receiver, function))
       }
     }
 
@@ -135,230 +129,53 @@ class GuestGenerator(
         )
 
       for (function in value.functions) {
-        if (!function.isSupported) continue
-        handleBuilder.addFunction(
-          resourceFunctionToBridge(receiver, function),
-        )
+        if (!function.isSupported) continue // TODO
+        handleBuilder.addFunction(bridgeBuilder.callHostFunction(receiver, function))
+        addFunction(bridgeBuilder.wasmImportFunction(receiver, function))
       }
 
       addType(handleBuilder.build())
-
-      for (function in value.functions) {
-        addWasmImportFunction(
-          receiver = receiver,
-          value = function,
-        )
-      }
     }
   }
-
-  private fun resourceFunctionToBridge(
-    receiver: Receiver.Id,
-    value: KtFunction,
-  ) = FunSpec.builder(value.ktName)
-    .addModifiers(KModifier.OVERRIDE)
-    .returns(value.returnType?.apiType ?: UNIT)
-    .apply {
-      if (value.returnType != null) {
-        addCode("val %N = ", "result")
-      }
-
-      addCode("%N(⇥\n", value.name.importFunctionName)
-      addCode("%N = %N,\n", receiver.name, "id")
-
-      for (parameter in value.parameters) {
-        addParameter(parameter.name, parameter.type.apiType)
-        addCode(
-          "%N = %L,\n",
-          parameter.name,
-          guestApiToAbi(
-            CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-            type = parameter.type,
-            abiValue = CodeBlock.of("%N", parameter.name),
-          ),
-        )
-      }
-
-      addCode("⇤)\n")
-
-      if (value.returnType != null) {
-        addCode(
-          "return %L",
-          guestAbiToApi(
-            declarationIndex,
-            CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-            value.returnType,
-            CodeBlock.of("%N", "result"),
-          ),
-        )
-      }
-    }
-    .build()
 
   /**
    * Generate top-level `@WasmExport`-annotated functions for all exported functions in [value],
    * and functions recursively held by [value].
    */
-  private fun FileSpec.Builder.addExternalFunctions(
-    enclosing: CodeBlock?,
-    value: KtNewService,
-  ) {
+  private fun FileSpec.Builder.addExternalFunctions(value: KtWorld) {
     // The object to dereference that defines the true implementation. This is either the guest
     // interface or one of its members.
-    val instance = when (value) {
-      is KtWorld if value.guestApis != null -> {
-        Receiver.Global(CodeBlock.of("%N_", value.guestApis.instanceName))
-      }
+    if (value.guestApis == null) return
 
-      is KtInterface if enclosing != null -> Receiver.Global(
-        CodeBlock.of("%L.%N", enclosing, value.instanceName),
-      )
-
-      else -> return
-    }
-
-    when (value) {
-      is KtInterface -> {
-        for (function in value.functions) {
-          addWasmExportFunction(
-            receiver = instance,
-            value = function,
+    for (item in value.guestApis.items) {
+      when (item) {
+        is KtFunction -> {
+          val receiver = Receiver.Global(
+            CodeBlock.of("%N_", value.guestApis.instanceName),
+          )
+          addFunction(
+            bridgeBuilder.wasmExportFunction(
+              receiver = receiver,
+              value = item,
+            ),
           )
         }
-      }
 
-      is KtWorld -> {
-        for (item in (value.guestApis?.items ?: listOf())) {
-          when (item) {
-            is KtFunction -> {
-              addWasmExportFunction(
-                receiver = instance,
-                value = item,
-              )
-            }
-
-            is KtWorld.ExternalApis.InterfaceProperty -> {
-              addExternalFunctions(
-                enclosing = instance.codeBlock,
-                value = declarationIndex[item.type] as KtNewService,
-              )
-            }
-          }
-        }
-      }
-    }
-  }
-
-  private fun FileSpec.Builder.addWasmExportFunction(
-    receiver: Receiver,
-    value: KtFunction,
-  ) {
-    if (!value.isSupported) return // TODO
-
-    addFunction(
-      FunSpec.builder(value.name.exportFunctionName)
-        .addAnnotation(
-          AnnotationSpec.builder(Symbols.KotlinWasm.WasmExport)
-            .addMember("%S", value.name)
-            .build(),
-        )
-        .addModifiers(KModifier.PRIVATE)
-        .returns(value.returnType?.abiType ?: UNIT)
-        .apply {
-          if (receiver is Receiver.Id) {
-            addParameter(receiver.name, receiver.type.abiType)
-          }
-
-          if (value.returnType != null) {
-            addCode("val %N = ", "result")
-          }
-
-          addCode("%L", receiver.codeBlock)
-
-          val guestBridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
-          addCode(".%N(⇥\n", value.ktName)
-          for (parameter in value.parameters) {
-            addParameter(parameter.name, parameter.type.abiType)
-            addCode(
-              "%N = %L,\n",
-              parameter.name,
-              guestAbiToApi(
-                declarationIndex,
-                guestBridge,
-                parameter.type,
-                CodeBlock.of("%N", parameter.name),
+        is KtWorld.ExternalApis.InterfaceProperty -> {
+          val ktInterface = declarationIndex[item.type] as KtInterface
+          val receiver = Receiver.Global(
+            CodeBlock.of("%N_.%N", value.guestApis.instanceName, item.instanceName),
+          )
+          for (function in ktInterface.functions) {
+            addFunction(
+              bridgeBuilder.wasmExportFunction(
+                receiver = receiver,
+                value = function,
               ),
             )
           }
-          addCode("⇤)\n")
-
-          if (value.returnType != null) {
-            addCode(
-              "return %L\n",
-              guestApiToAbi(guestBridge, value.returnType, CodeBlock.of("%N", "result")),
-            )
-          }
         }
-        .build(),
-    )
-  }
-
-  private fun FileSpec.Builder.addWasmImportFunction(
-    receiver: Receiver,
-    value: KtFunction,
-  ) {
-    if (!value.isSupported) return // TODO
-
-    addFunction(
-      FunSpec.builder(value.name.importFunctionName)
-        .addAnnotation(
-          AnnotationSpec.builder(Symbols.KotlinWasm.WasmImport)
-            .apply {
-              val moduleName = value.name.moduleName
-              if (moduleName != null) {
-                addMember("module = %S", moduleName)
-                addMember("name = %S", value.name.abiName)
-              } else {
-                addMember("module = %S", value.name.abiName)
-              }
-            }
-            .build(),
-        )
-        .addModifiers(KModifier.PRIVATE, KModifier.EXTERNAL)
-        .apply {
-          if (receiver is Receiver.Id) {
-            addParameter(receiver.name, receiver.type.abiType)
-          }
-          for (parameter in value.parameters) {
-            addParameter(parameter.name, parameter.type.abiType)
-          }
-        }
-        .returns(value.returnType?.abiType ?: UNIT)
-        .build(),
-    )
-  }
-
-  internal sealed interface Receiver {
-    val codeBlock: CodeBlock
-
-    data class Global(
-      override val codeBlock: CodeBlock,
-    ) : Receiver
-
-    data class Id(
-      val type: KtTypeName,
-    ) : Receiver {
-      val name: String
-        get() = "self"
-
-      override val codeBlock: CodeBlock
-        get() = CodeBlock.of(
-          "%T.fromId<%T>(%N, ::%T)",
-          Symbols.Brevity.GuestBridge,
-          type.apiType,
-          "self",
-          type.apiType,
-        )
+      }
     }
   }
 }

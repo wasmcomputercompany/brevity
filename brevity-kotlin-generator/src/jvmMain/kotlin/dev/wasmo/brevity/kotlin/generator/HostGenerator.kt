@@ -11,13 +11,14 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
-import com.squareup.kotlinpoet.buildCodeBlock
 
 class HostGenerator(
   private val declarationIndex: DeclarationIndex,
   private val worldIndex: WorldIndex,
-  private val services: List<KtNewService>,
+  private val services: List<KtService>,
 ) {
+  private val bridgeBuilder = HostBridgeBuilder(declarationIndex)
+
   fun generate(): List<FileSpec> {
     return services.groupBy { it.type.packageName }
       .mapNotNull { (`package`, packageServices) ->
@@ -85,43 +86,7 @@ class HostGenerator(
       .build()
   }
 
-  private fun functionToHost(value: KtFunction) = FunSpec.builder(value.ktName)
-    .addModifiers(KModifier.OVERRIDE)
-    .apply {
-      if (value.returnType != null) {
-        addCode("val %N = ", "result")
-      }
-      addCode("%N.apply(⇥\n", value.ktName)
-
-      for (parameter in value.parameters) {
-        addParameter(parameter.name, parameter.type.apiType)
-        addCode(
-          hostApiToAbi(
-            index = declarationIndex,
-            bridge = CodeBlock.of("%N", "bridge"),
-            type = parameter.type,
-            apiValue = CodeBlock.of("%N", parameter.name),
-          ),
-        )
-        addCode(",\n")
-      }
-      addCode("⇤)\n")
-
-      if (value.returnType != null) {
-        addCode(
-          "return %L",
-          hostAbiToApi(
-            bridge = CodeBlock.of("%N", "bridge"),
-            type = value.returnType,
-            abiValue = CodeBlock.of("result[%L]", 0),
-          ),
-        )
-        returns(value.returnType.apiType)
-      }
-    }
-    .build()
-
-  private fun serviceToHost(value: KtNewService): TypeSpec? {
+  private fun serviceToHost(value: KtService): TypeSpec? {
     if (!value.hasInstanceMembers) return null
 
     val builder = TypeSpec.classBuilder(value.bridgeType)
@@ -224,7 +189,7 @@ class HostGenerator(
 
       is KtInterface -> {
         for (item in value.functions) {
-          builder.addFunction(functionToHost(item))
+          builder.addFunction(bridgeBuilder.callGuestFunction(item))
           builder.addProperty(
             PropertySpec.builder(item.ktName, Symbols.ChicoryRuntime.ExportFunction)
               .addModifiers(KModifier.INTERNAL, KModifier.LATEINIT)
@@ -280,7 +245,7 @@ class HostGenerator(
       }
 
       is KtFunction -> {
-        addFunction(functionToHost(item))
+        addFunction(bridgeBuilder.callGuestFunction(item))
         addProperty(
           PropertySpec.builder(item.ktName, Symbols.ChicoryRuntime.ExportFunction)
             .addModifiers(KModifier.INTERNAL, KModifier.LATEINIT)
@@ -339,11 +304,13 @@ class HostGenerator(
 
         for (function in value.declaration.functions) {
           if (value.host) {
-            addHostFunction(
-              bridge,
-              store,
-              receiver,
-              function,
+            addCode(
+              bridgeBuilder.declareHostFunction(
+                bridge,
+                store,
+                receiver,
+                function,
+              ),
             )
           }
         }
@@ -362,125 +329,33 @@ class HostGenerator(
     for (item in value.items) {
       when (item) {
         is KtFunction -> {
-          addHostFunction(
-            bridge = bridge,
-            store = store,
-            receiver = receiver,
-            value = item,
+          addCode(
+            bridgeBuilder.declareHostFunction(
+              bridge = bridge,
+              store = store,
+              receiver = receiver,
+              value = item,
+            ),
           )
         }
 
         is KtWorld.ExternalApis.InterfaceProperty -> {
           val type = worldIndex[item.type]?.declaration as KtInterface
           for (function in type.functions) {
-            addHostFunction(
-              bridge = bridge, store = store,
-              receiver = Receiver.Instance(
-                CodeBlock.of("%L.%N", receiver.codeBlock, item.instanceName),
+            addCode(
+              bridgeBuilder.declareHostFunction(
+                bridge = bridge,
+                store = store,
+                receiver = Receiver.Instance(
+                  CodeBlock.of("%L.%N", receiver.codeBlock, item.instanceName),
+                ),
+                value = function,
               ),
-              value = function,
             )
           }
         }
       }
     }
-  }
-
-  private fun FunSpec.Builder.addHostFunction(
-    bridge: CodeBlock,
-    store: CodeBlock,
-    receiver: Receiver,
-    value: KtFunction,
-  ) {
-    if (!value.isSupported) return // TODO
-
-    val block = CodeBlock.builder()
-
-    val abiParameterTypes = buildCodeBlock {
-      when (receiver) {
-        is Receiver.Id -> add("%T.I32", Symbols.ChicoryRuntime.ValType)
-        else -> {}
-      }
-      for (parameter in value.parameters) {
-        if (isNotEmpty()) add(", ")
-        add(parameter.type.toValType())
-      }
-    }
-
-    var argIndex = 0
-    when (receiver) {
-      is Receiver.Id -> {
-        block.addStatement(
-          "val %N = %L",
-          "self",
-          receiver.codeBlock(CodeBlock.of("%N[%L]", "args", argIndex++)),
-        )
-      }
-
-      is Receiver.Instance -> {
-        block.addStatement(
-          "val %N = %L",
-          "self",
-          receiver.codeBlock,
-        )
-      }
-    }
-
-    if (value.returnType != null) {
-      block.add("val %N = ", "result")
-    }
-    block.add("%N.%N(⇥\n", "self", value.ktName)
-    for (parameter in value.parameters) {
-      block.add(
-        "%L,\n",
-        hostAbiToApi(
-          bridge = bridge,
-          type = parameter.type,
-          abiValue = CodeBlock.of("%N[%L]", "args", argIndex++),
-        ),
-      )
-    }
-    block.add("⇤)\n")
-    if (value.returnType != null) {
-      block.add(
-        "return@%T longArrayOf(%L)",
-        Symbols.ChicoryRuntime.WasmFunctionHandle,
-        hostApiToAbi(declarationIndex, bridge, value.returnType, CodeBlock.of("%N", "result")),
-      )
-    } else {
-      block.add(
-        "return@%T longArrayOf()",
-        Symbols.ChicoryRuntime.WasmFunctionHandle,
-      )
-    }
-
-    addCode(
-      """
-      |%L.addFunction(
-      |  %T(
-      |    %L,
-      |    %S,
-      |    %T.of(
-      |      listOf(%L),
-      |      listOf(%L),
-      |    ),
-      |    %T { instance, args ->
-      |      ⇥⇥⇥%L⇤⇤⇤
-      |    },
-      |  )
-      |)
-      |
-      """.trimMargin(),
-      store,
-      Symbols.ChicoryRuntime.HostFunction,
-      value.name.moduleName?.let { CodeBlock.of("%S", it) } ?: CodeBlock.of("null"),
-      value.name.abiName,
-      Symbols.ChicoryRuntime.FunctionType,
-      abiParameterTypes,
-      value.returnType?.toValType() ?: CodeBlock.of(""),
-      Symbols.ChicoryRuntime.WasmFunctionHandle,
-      block.build(),
-    )
   }
 
   internal sealed interface Receiver {
@@ -512,7 +387,7 @@ private val KtWorld.ExternalApis.InterfaceProperty.bridgeType: ClassName
     simpleNames = type.simpleNames.map { "Bridge${it}" },
   )
 
-private val KtNewService.bridgeType: ClassName
+private val KtService.bridgeType: ClassName
   get() = ClassName(
     packageName = type.packageName,
     simpleNames = type.simpleNames.map { "Bridge${it}" },
@@ -523,6 +398,3 @@ private val KtWorld.ExternalApis.bridgeType: ClassName
     packageName = type.packageName,
     simpleNames = type.simpleNames.map { "Bridge${it}" },
   )
-
-private fun KtTypeName.toValType() =
-  CodeBlock.of("%T.I32", Symbols.ChicoryRuntime.ValType)

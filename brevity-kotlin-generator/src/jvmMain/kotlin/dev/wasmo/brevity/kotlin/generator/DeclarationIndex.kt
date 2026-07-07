@@ -10,7 +10,7 @@ class DeclarationIndex(
   operator fun get(typeName: TypeName): KtTypeDeclaration? = map[typeName]
 
   companion object {
-    operator fun invoke(services: List<KtNewService>): DeclarationIndex {
+    operator fun invoke(services: List<KtService>): DeclarationIndex {
       val classToDeclaration = sequence { services.yieldTypeDeclarations() }
         .associateBy { it.type }
 
@@ -18,7 +18,7 @@ class DeclarationIndex(
     }
 
     context(scope: SequenceScope<KtTypeDeclaration>)
-    private suspend fun Iterable<KtNewService>.yieldTypeDeclarations() {
+    private suspend fun Iterable<KtService>.yieldTypeDeclarations() {
       for (declaration in this) {
         if (declaration is KtInterface) {
           scope.yield(declaration)
