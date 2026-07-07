@@ -25,7 +25,7 @@ import dev.wasmo.brevity.ir.IrWorld
  * TODO: resources are currently always imported. This is inconsistent with wit-bindgen, but
  *    produces the behavior we want. We need something more sophisticated here!
  */
-class WorldIndex(
+class RoleTracker(
   val types: Map<IrTypeName.Declared, Entry>,
   val interfaces: Map<ServiceName, Entry>,
 ) {
@@ -45,16 +45,15 @@ class WorldIndex(
     operator fun invoke(
       declarationIndex: DeclarationIndex,
       witPackages: List<IrWitPackage>,
-    ): WorldIndex {
+    ): RoleTracker {
       val traverser = TypeTraverser(declarationIndex)
       for (witPackage in witPackages) {
         traverser.collectAll(witPackage.services)
       }
 
-      return WorldIndex(
+      return RoleTracker(
         types = buildMap {
           for (type in traverser.allTypes) {
-            val declaration = declarationIndex[type] ?: continue
             put(
               type,
               Entry(
@@ -160,7 +159,7 @@ internal class TypeTraverser(
      * When collecting parameter types, we flip the guest/host role because parameter values are
      * produced by the peer.
      *
-     * We do not flip the role on [KtResource] types, because they're always produced by the
+     * We do not flip the role on [IrResource] types, because they're always produced by the
      * function's receiver, regardless of whether they're a parameter or a return value.
      */
     private val parametersCollector: Collector

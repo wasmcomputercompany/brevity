@@ -9,7 +9,7 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import dev.wasmo.brevity.DeclarationIndex
-import dev.wasmo.brevity.WorldIndex
+import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrInterface
@@ -21,13 +21,13 @@ import dev.wasmo.brevity.kotlin.generator.GuestBridgeBuilder.Receiver
 
 class GuestGenerator(
   private val declarationIndex: DeclarationIndex,
-  private val worldIndex: WorldIndex,
+  private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
 ) {
   private val bridgeBuilder = GuestBridgeBuilder(declarationIndex)
 
   fun generate(): List<FileSpec> {
-    val bridges = worldIndex.types.entries
+    val bridges = roleTracker.types.entries
       .groupBy { (key, _) -> key.serviceName.packageName.toKotlin().name }
       .mapNotNull { (`package`, entries) ->
         FileSpec.builder(`package`, "GuestTypes")
@@ -93,7 +93,7 @@ class GuestGenerator(
 
   private fun FileSpec.Builder.addCodec(
     typeName: IrTypeName.Declared,
-    entry: WorldIndex.Entry,
+    entry: RoleTracker.Entry,
   ) {
     when (val typeDeclaration = declarationIndex[typeName]) {
       is IrResource -> {

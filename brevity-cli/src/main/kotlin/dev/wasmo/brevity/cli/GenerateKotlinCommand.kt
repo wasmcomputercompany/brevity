@@ -6,7 +6,7 @@ import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import dev.wasmo.brevity.DeclarationIndex
-import dev.wasmo.brevity.WorldIndex
+import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.ir.IrMapper
@@ -65,15 +65,15 @@ class GenerateKotlinCommand(
     }
 
     val declarationIndex = DeclarationIndex(irPackages)
-    val worldIndex = WorldIndex(declarationIndex, irPackages)
+    val roleTracker = RoleTracker(declarationIndex, irPackages)
 
     for (fileSpec in ApiGenerator(irPackages).generate()) {
       fileSpec.writeTo(commonMainDir)
     }
-    for (fileSpec in GuestGenerator(declarationIndex, worldIndex, irPackages).generate()) {
+    for (fileSpec in GuestGenerator(declarationIndex, roleTracker, irPackages).generate()) {
       fileSpec.writeTo(wasmWasiMainDir)
     }
-    for (fileSpec in HostGenerator(declarationIndex, worldIndex, irPackages).generate()) {
+    for (fileSpec in HostGenerator(declarationIndex, roleTracker, irPackages).generate()) {
       fileSpec.writeTo(jvmMainDir)
     }
   }
