@@ -7,7 +7,7 @@ class KtIndex(services: List<KtService>) {
   val types: Map<IrTypeName.Declared, KtTypeDeclaration> = buildMap {
     for (service in services) {
       for (type in service.types) {
-        put(type.ktType.witType, type)
+        put(type.type, type)
       }
     }
   }

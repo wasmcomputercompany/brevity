@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.ir.IrResource
+import dev.wasmo.brevity.ir.IrTypeName
 
 internal class GuestBridgeBuilder(
   private val index: DeclarationIndex,
@@ -18,7 +19,7 @@ internal class GuestBridgeBuilder(
   ): FunSpec {
     return FunSpec.builder(value.ktName)
       .addModifiers(KModifier.OVERRIDE)
-      .returns(value.returnType?.apiType ?: UNIT)
+      .returns(value.returnType?.kotlinApi ?: UNIT)
       .apply {
         if (value.returnType != null) {
           addCode("val %N = ", "result")
@@ -28,13 +29,13 @@ internal class GuestBridgeBuilder(
         addCode("%N = %N,\n", receiver.name, "id")
 
         for (parameter in value.parameters) {
-          addParameter(parameter.name, parameter.type.apiType)
+          addParameter(parameter.name, parameter.irType.kotlinApi)
           addCode(
             "%N = %L,\n",
             parameter.name,
             guestApiToAbi(
               bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-              type = parameter.type,
+              type = parameter.irType,
               abiValue = CodeBlock.of("%N", parameter.name),
             ),
           )
@@ -78,13 +79,13 @@ internal class GuestBridgeBuilder(
       .addModifiers(KModifier.PRIVATE, KModifier.EXTERNAL)
       .apply {
         if (receiver is Receiver.Id) {
-          addParameter(receiver.name, receiver.type.abiType)
+          addParameter(receiver.name, receiver.type.kotlinAbi)
         }
         for (parameter in value.parameters) {
-          addParameter(parameter.name, parameter.type.abiType)
+          addParameter(parameter.name, parameter.irType.kotlinAbi)
         }
       }
-      .returns(value.returnType?.abiType ?: UNIT)
+      .returns(value.returnType?.kotlinAbi ?: UNIT)
       .build()
   }
 
@@ -100,10 +101,10 @@ internal class GuestBridgeBuilder(
           .build(),
       )
       .addModifiers(KModifier.PRIVATE)
-      .returns(value.returnType?.abiType ?: UNIT)
+      .returns(value.returnType?.kotlinAbi ?: UNIT)
       .apply {
         if (receiver is Receiver.Id) {
-          addParameter(receiver.name, receiver.type.abiType)
+          addParameter(receiver.name, receiver.type.kotlinAbi)
         }
 
         if (value.returnType != null) {
@@ -115,13 +116,13 @@ internal class GuestBridgeBuilder(
         val guestBridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
         addCode(".%N(⇥\n", value.ktName)
         for (parameter in value.parameters) {
-          addParameter(parameter.name, parameter.type.abiType)
+          addParameter(parameter.name, parameter.irType.kotlinAbi)
           addCode(
             "%N = %L,\n",
             parameter.name,
             guestAbiToApi(
               bridge = guestBridge,
-              type = parameter.type,
+              type = parameter.irType,
               abiValue = CodeBlock.of("%N", parameter.name),
             ),
           )
@@ -145,12 +146,12 @@ internal class GuestBridgeBuilder(
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
   fun guestAbiToApi(
     bridge: CodeBlock,
-    type: KtTypeName,
+    type: IrTypeName,
     abiValue: CodeBlock,
   ): CodeBlock {
     return when (type) {
-      is KtTypeName.Declared -> {
-        when (index[type.witType]) {
+      is IrTypeName.Declared -> {
+        when (index[type]) {
           is IrResource -> CodeBlock.of(
             "%L.fromId(%L, ::%T)",
             bridge,
@@ -161,7 +162,7 @@ internal class GuestBridgeBuilder(
           else -> CodeBlock.of(
             "%L as %T",
             abiValue,
-            type.apiType,
+            type.kotlinApi,
           )
         }
       }
@@ -169,7 +170,7 @@ internal class GuestBridgeBuilder(
       else -> CodeBlock.of(
         "%L as %T",
         abiValue,
-        type.apiType,
+        type.kotlinApi,
       )
     }
   }
@@ -177,14 +178,14 @@ internal class GuestBridgeBuilder(
   /** Lower an API value like a resource instance to an ABI value like a memory address. */
   fun guestApiToAbi(
     bridge: CodeBlock,
-    type: KtTypeName,
+    type: IrTypeName,
     abiValue: CodeBlock,
   ): CodeBlock {
     return when (type) {
       else -> CodeBlock.of(
         "%L as %T",
         abiValue,
-        type.abiType,
+        type.kotlinAbi,
       )
     }
   }
@@ -197,7 +198,7 @@ internal class GuestBridgeBuilder(
     ) : Receiver
 
     data class Id(
-      val type: KtTypeName,
+      val type: IrTypeName,
     ) : Receiver {
       val name: String
         get() = "self"
@@ -206,9 +207,9 @@ internal class GuestBridgeBuilder(
         get() = CodeBlock.of(
           "%T.fromId<%T>(%N, ::%T)",
           Symbols.Brevity.GuestBridge,
-          type.apiType,
+          type.kotlinApi,
           "self",
-          type.apiType,
+          type.kotlinApi,
         )
     }
   }

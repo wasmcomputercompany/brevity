@@ -192,7 +192,7 @@ class IrMapperTest {
     assertThat(irPackages).containsExactly(
       IrWitPackage(
         packageName = "wasi:cli@0.3.0".toPackageName(),
-        items = listOf(
+        services = listOf(
           IrWorld(
             offset = Offset(3, 1),
             serviceName = "wasi:cli/command@0.3.0",
@@ -217,7 +217,7 @@ class IrMapperTest {
       ),
       IrWitPackage(
         packageName = "wasi:clocks@0.3.0".toPackageName(),
-        items = listOf(
+        services = listOf(
           IrWorld(
             offset = Offset(3, 1),
             serviceName = "wasi:clocks/imports@0.3.0",
@@ -269,7 +269,7 @@ class IrMapperTest {
     assertThat(irPackages).containsExactly(
       IrWitPackage(
         packageName = "local:demo".toPackageName(),
-        items = listOf(
+        services = listOf(
           IrInterface(
             offset = Offset(4, 5),
             serviceName = "local:demo/out-of-line",
@@ -392,7 +392,7 @@ class IrMapperTest {
     )
 
     val irPackage = IrMapper(ioPackages).map().single()
-    val irInterface = irPackage.items.single() as IrInterface
+    val irInterface = irPackage.services.single() as IrInterface
     val irFunction = irInterface.items.single() as IrFunction
     assertThat(irFunction.functionName).isEqualTo(
       FunctionName(
@@ -424,7 +424,7 @@ class IrMapperTest {
     )
 
     val irPackage = IrMapper(ioPackages).map().single()
-    val irInterface = irPackage.items.single() as IrInterface
+    val irInterface = irPackage.services.single() as IrInterface
     val irResource = irInterface.items.single() as IrResource
     assertThat(irResource.functions.map { it.functionName }).containsExactly(
       FunctionName(
@@ -494,7 +494,7 @@ class IrMapperTest {
     assertThat(packages).containsExactly(
       IrWitPackage(
         packageName = "test:types".toPackageName(),
-        items = listOf(
+        services = listOf(
           IrWorld(
             serviceName = "test:types/all-types",
             offset = Offset(3, 1),

@@ -37,7 +37,7 @@ class ApiGenerator(
     }
   }
 
-  private fun recordToApi(value: KtRecord) = TypeSpec.classBuilder(value.type.simpleName)
+  private fun recordToApi(value: KtRecord) = TypeSpec.classBuilder(value.className.simpleName)
     .addModifiers(KModifier.DATA)
     .setDeclaration(value)
     .apply {
@@ -45,12 +45,12 @@ class ApiGenerator(
 
       for (field in value.fields) {
         val name = field.name
-        val parameter = ParameterSpec.builder(name, field.type.apiType)
+        val parameter = ParameterSpec.builder(name, field.irType.kotlinApi)
           .build()
         constructorBuilder.addParameter(parameter)
 
         addProperty(
-          PropertySpec.builder(name, field.type.apiType)
+          PropertySpec.builder(name, field.irType.kotlinApi)
             .initializer("%N", parameter)
             .setDeclaration(field)
             .build(),
@@ -61,7 +61,7 @@ class ApiGenerator(
     }
     .build()
 
-  private fun resourceToApi(value: KtResource) = TypeSpec.interfaceBuilder(value.type.simpleName)
+  private fun resourceToApi(value: KtResource) = TypeSpec.interfaceBuilder(value.className.simpleName)
     .setDeclaration(value)
     .addSuperinterface(Symbols.Brevity.Resource)
     .apply {
@@ -72,24 +72,24 @@ class ApiGenerator(
     }
     .build()
 
-  private fun variantToApi(value: KtVariant) = TypeSpec.interfaceBuilder(value.type.simpleName)
+  private fun variantToApi(value: KtVariant) = TypeSpec.interfaceBuilder(value.className.simpleName)
     .addModifiers(KModifier.SEALED)
     .setDeclaration(value)
     .apply {
       for (case in value.cases) {
-        val type = case.type
+        val type = case.irType
         if (type != null) {
           addType(
             TypeSpec.classBuilder(case.name)
               .addModifiers(KModifier.DATA)
-              .addSuperinterface(value.type)
+              .addSuperinterface(value.className)
               .primaryConstructor(
                 FunSpec.constructorBuilder()
-                  .addParameter("value", case.type.apiType)
+                  .addParameter("value", type.kotlinApi)
                   .build(),
               )
               .addProperty(
-                PropertySpec.builder("value", case.type.apiType)
+                PropertySpec.builder("value", type.kotlinApi)
                   .initializer("%N", "value")
                   .build(),
               )
@@ -100,7 +100,7 @@ class ApiGenerator(
           addType(
             TypeSpec.objectBuilder(case.name)
               .addModifiers(KModifier.DATA)
-              .addSuperinterface(value.type)
+              .addSuperinterface(value.className)
               .setDeclaration(case)
               .build(),
           )
@@ -109,7 +109,7 @@ class ApiGenerator(
     }
     .build()
 
-  private fun enumToApi(value: KtEnum) = TypeSpec.enumBuilder(value.type.simpleName)
+  private fun enumToApi(value: KtEnum) = TypeSpec.enumBuilder(value.className.simpleName)
     .setDeclaration(value)
     .apply {
       for (case in value.cases) {
@@ -123,12 +123,12 @@ class ApiGenerator(
     }
     .build()
 
-  private fun typeAliasToApi(value: KtTypeAlias) = TypeSpec.classBuilder(value.type.simpleName)
+  private fun typeAliasToApi(value: KtTypeAlias) = TypeSpec.classBuilder(value.className.simpleName)
     .addModifiers(KModifier.VALUE)
     .addAnnotation(JvmInline::class)
     .setDeclaration(value)
     .apply {
-      val parameter = ParameterSpec.builder("value", value.target.apiType)
+      val parameter = ParameterSpec.builder("value", value.irTarget.kotlinApi)
         .build()
 
       primaryConstructor(
@@ -138,14 +138,14 @@ class ApiGenerator(
       )
 
       addProperty(
-        PropertySpec.builder("value", value.target.apiType)
+        PropertySpec.builder("value", value.irTarget.kotlinApi)
           .initializer("%N", parameter)
           .build(),
       )
     }
     .build()
 
-  private fun flagsToApi(value: KtFlags) = TypeSpec.classBuilder(value.type.simpleName)
+  private fun flagsToApi(value: KtFlags) = TypeSpec.classBuilder(value.className.simpleName)
     .addModifiers(KModifier.DATA)
     .setDeclaration(value)
     .apply {
@@ -172,9 +172,9 @@ class ApiGenerator(
     .setDeclaration(value)
     .apply {
       for (parameter in value.parameters) {
-        addParameter(parameter.name, parameter.type.apiType)
+        addParameter(parameter.name, parameter.irType.kotlinApi)
       }
-      returns(value.returnType?.apiType ?: UNIT)
+      returns(value.returnType?.kotlinApi ?: UNIT)
     }
     .build()
 

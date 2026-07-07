@@ -35,15 +35,15 @@ class WorldFilterTest {
   @Test
   fun filterSuccess() {
     val irPackages = IrMapper(ioPackages).map()
-    val commandWorld = irPackages.single().items.single {
-      (it as? IrWorld)?.name?.name?.name == "command"
+    val commandWorld = irPackages.single().services.single {
+      (it as? IrWorld)?.serviceName?.name?.name == "command"
     }
 
-    assertThat(irPackages.filterNamedWorlds(listOf("command")).single().items)
+    assertThat(irPackages.filterNamedWorlds(listOf("command")).single().services)
       .containsExactly(commandWorld)
-    assertThat(irPackages.filterNamedWorlds(listOf("wasi:cli/command")).single().items)
+    assertThat(irPackages.filterNamedWorlds(listOf("wasi:cli/command")).single().services)
       .containsExactly(commandWorld)
-    assertThat(irPackages.filterNamedWorlds(listOf("wasi:cli/command@0.3.0")).single().items)
+    assertThat(irPackages.filterNamedWorlds(listOf("wasi:cli/command@0.3.0")).single().services)
       .containsExactly(commandWorld)
   }
 

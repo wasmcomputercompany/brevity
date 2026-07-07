@@ -11,10 +11,10 @@ import dev.wasmo.brevity.ServiceName
 data class IrWitPackage(
   val packageDocumentation: Documentation? = null,
   val packageName: PackageName,
-  val items: List<Item> = listOf(),
+  val services: List<Service> = listOf(),
 ) {
-  sealed interface Item : IrDeclaration {
-    val name: ServiceName
+  sealed interface Service : IrDeclaration {
+    val serviceName: ServiceName
     val types: List<IrTypeDeclaration>
   }
 }
@@ -35,9 +35,9 @@ data class IrInterface(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val name: ServiceName,
+  override val serviceName: ServiceName,
   val items: List<Item>,
-) : IrDeclaration, IrWitPackage.Item {
+) : IrDeclaration, IrWitPackage.Service {
   override val types: List<IrTypeDeclaration>
     get() = items.filterIsInstance<IrTypeDeclaration>()
 
@@ -48,11 +48,11 @@ data class IrWorld(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val name: ServiceName,
+  override val serviceName: ServiceName,
   override val types: List<IrTypeDeclaration>,
   val imports: List<Api>,
   val exports: List<Api>,
-) : IrDeclaration, IrWitPackage.Item {
+) : IrDeclaration, IrWitPackage.Service {
   sealed interface Api : IrDeclaration
   sealed interface Item : IrDeclaration
 }

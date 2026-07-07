@@ -38,7 +38,7 @@ class IrMapper(
 
   internal class PackageBuilder {
     val documentation = mutableListOf<Documentation>()
-    val items = mutableListOf<IrWitPackage.Item>()
+    val services = mutableListOf<IrWitPackage.Service>()
   }
 
   fun map(): List<IrWitPackage> {
@@ -55,7 +55,7 @@ class IrMapper(
           else -> Documentation(builder.documentation.joinToString("\n") { it.content })
         },
         packageName = name,
-        items = builder.items,
+        services = builder.services,
       )
     }
   }
@@ -81,11 +81,11 @@ class IrMapper(
   private fun IoInterface.interfaceToIr(packageName: PackageName) {
     val serviceName = ServiceName(packageName, name)
     context(Context(serviceName)) {
-      builder.items += IrInterface(
+      builder.services += IrInterface(
         documentation = documentation,
         gate = gate,
         offset = offset,
-        name = serviceName,
+        serviceName = serviceName,
         items = items.mapNotNull { item ->
           item.interfaceItemToIrOrNull()
         },
@@ -355,11 +355,11 @@ class IrMapper(
     val set = LinkedHashSet<IncludedWorld>()
     seed.collectIncludesRecursively(set)
 
-    builder.items += IrWorld(
+    builder.services += IrWorld(
       documentation = documentation,
       gate = gate,
       offset = offset,
-      name = ServiceName(packageName, name),
+      serviceName = ServiceName(packageName, name),
       types = set.flatMap { included ->
         context(included.context) {
           included.world.items.mapNotNull { it.worldItemToIrTypeDeclarationOrNull() }

@@ -138,7 +138,7 @@ fun IrInterface(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  name = serviceName.toServiceName(),
+  serviceName = serviceName.toServiceName(),
   items = items,
 )
 
@@ -229,7 +229,7 @@ fun IrWorld(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  name = serviceName.toServiceName(),
+  serviceName = serviceName.toServiceName(),
   types = types,
   imports = imports,
   exports = exports,

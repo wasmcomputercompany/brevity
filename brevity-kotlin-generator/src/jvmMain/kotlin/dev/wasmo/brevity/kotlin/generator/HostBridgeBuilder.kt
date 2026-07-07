@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.ir.IrResource
+import dev.wasmo.brevity.ir.IrTypeName
 import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
 
 internal class HostBridgeBuilder(
@@ -23,11 +24,11 @@ internal class HostBridgeBuilder(
         addCode("%N.apply(⇥\n", value.ktName)
 
         for (parameter in value.parameters) {
-          addParameter(parameter.name, parameter.type.apiType)
+          addParameter(parameter.name, parameter.irType.kotlinApi)
           addCode(
             hostApiToAbi(
               bridge = CodeBlock.of("%N", "bridge"),
-              type = parameter.type,
+              type = parameter.irType,
               apiValue = CodeBlock.of("%N", parameter.name),
             ),
           )
@@ -44,7 +45,7 @@ internal class HostBridgeBuilder(
               abiValue = CodeBlock.of("result[%L]", 0),
             ),
           )
-          returns(value.returnType.apiType)
+          returns(value.returnType.kotlinApi)
         }
       }
       .build()
@@ -68,7 +69,7 @@ internal class HostBridgeBuilder(
       }
       for (parameter in value.parameters) {
         if (isNotEmpty()) add(", ")
-        add(parameter.type.toValType())
+        add(parameter.irType.toValType())
       }
     }
 
@@ -100,7 +101,7 @@ internal class HostBridgeBuilder(
         "%L,\n",
         hostAbiToApi(
           bridge = bridge,
-          type = parameter.type,
+          type = parameter.irType,
           abiValue = CodeBlock.of("%N[%L]", "args", argIndex++),
         ),
       )
@@ -155,14 +156,14 @@ internal class HostBridgeBuilder(
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
   fun hostAbiToApi(
     bridge: CodeBlock,
-    type: KtTypeName,
+    type: IrTypeName,
     abiValue: CodeBlock,
   ): CodeBlock {
     return when (type) {
       else -> CodeBlock.of(
         "%L as %T",
         abiValue,
-        type.apiType,
+        type.kotlinApi,
       )
     }
   }
@@ -170,12 +171,12 @@ internal class HostBridgeBuilder(
   /** Lower an API value like a resource instance to an ABI value like a memory address. */
   fun hostApiToAbi(
     bridge: CodeBlock,
-    type: KtTypeName,
+    type: IrTypeName,
     apiValue: CodeBlock,
   ): CodeBlock {
     return when (type) {
-      is KtTypeName.Declared -> {
-        when (index[type.witType]) {
+      is IrTypeName.Declared -> {
+        when (index[type]) {
           is IrResource -> CodeBlock.of(
             "%L.toId(%L)",
             bridge,
@@ -198,6 +199,6 @@ internal class HostBridgeBuilder(
     }
   }
 
-  private fun KtTypeName.toValType() =
+  private fun IrTypeName.toValType() =
     CodeBlock.of("%T.I32", Symbols.ChicoryRuntime.ValType)
 }

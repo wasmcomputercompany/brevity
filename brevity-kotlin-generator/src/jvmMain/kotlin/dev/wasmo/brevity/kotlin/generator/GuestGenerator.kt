@@ -110,7 +110,7 @@ class GuestGenerator(
     guest: Boolean,
   ) {
     val receiver = Receiver.Id(
-      type = value.ktType,
+      type = value.type,
     )
 
     if (guest) {
@@ -123,7 +123,7 @@ class GuestGenerator(
     if (host) {
       val handleBuilder = TypeSpec.classBuilder(value.handleName)
         .addModifiers(KModifier.INTERNAL)
-        .addSuperinterface(value.type)
+        .addSuperinterface(value.className)
         .primaryConstructor(
           FunSpec.constructorBuilder()
             .addParameter("id", INT)

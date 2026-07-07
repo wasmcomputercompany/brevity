@@ -305,7 +305,7 @@ class HostGenerator(
       is KtResource -> {
         val receiver = Receiver.Id(
           bridge = bridge,
-          type = typeDeclaration.type,
+          type = typeDeclaration.className,
         )
 
         for (function in typeDeclaration.functions) {
