@@ -1,9 +1,10 @@
-package dev.wasmo.brevity.kotlin.generator
+package dev.wasmo.brevity
 
-import dev.wasmo.brevity.DeclarationIndex
-import dev.wasmo.brevity.WorldIndex
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.ir.IrMapper
+import dev.wasmo.brevity.kotlin.generator.ApiGenerator
+import dev.wasmo.brevity.kotlin.generator.GuestGenerator
+import dev.wasmo.brevity.kotlin.generator.HostGenerator
 import okio.Path
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
@@ -32,7 +33,7 @@ class BrevityTester(
 
   val irPackages = IrMapper(witPackages).map()
   val declarationIndex = DeclarationIndex(irPackages)
-  val worldIndex = WorldIndex(declarationIndex, irPackages)
+  val roleTracker = RoleTracker(declarationIndex, irPackages)
 
   val apiFiles = buildMap {
     val apiGenerator = ApiGenerator(irPackages)
@@ -42,14 +43,14 @@ class BrevityTester(
   }
 
   val guestFiles = buildMap {
-    val guestGenerator = GuestGenerator(declarationIndex, worldIndex, irPackages)
+    val guestGenerator = GuestGenerator(declarationIndex, roleTracker, irPackages)
     for (fileSpec in guestGenerator.generate()) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }
   }
 
   val hostFiles = buildMap {
-    val hostGenerator = HostGenerator(declarationIndex, worldIndex, irPackages)
+    val hostGenerator = HostGenerator(declarationIndex, roleTracker, irPackages)
     for (fileSpec in hostGenerator.generate()) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }

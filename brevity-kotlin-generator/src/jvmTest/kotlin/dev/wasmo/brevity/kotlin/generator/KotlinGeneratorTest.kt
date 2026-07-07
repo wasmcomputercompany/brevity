@@ -4,6 +4,7 @@ import assertk.assertThat
 import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
+import dev.wasmo.brevity.BrevityTester
 import kotlin.test.Test
 import okio.Path.Companion.toPath
 

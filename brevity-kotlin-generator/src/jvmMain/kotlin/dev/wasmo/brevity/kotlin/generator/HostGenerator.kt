@@ -12,7 +12,7 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.DeclarationIndex
-import dev.wasmo.brevity.WorldIndex
+import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrInterface
@@ -23,7 +23,7 @@ import dev.wasmo.brevity.ir.IrWorld
 
 class HostGenerator(
   private val declarationIndex: DeclarationIndex,
-  private val worldIndex: WorldIndex,
+  private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
 ) {
   private val bridgeBuilder = HostBridgeBuilder(declarationIndex)
@@ -178,7 +178,7 @@ class HostGenerator(
                   value = hostApis,
                 )
               }
-              for ((typeName, entry) in worldIndex.types) {
+              for ((typeName, entry) in roleTracker.types) {
                 initImports(
                   typeName = typeName,
                   bridge = CodeBlock.of("%N", "bridge"),
@@ -306,7 +306,7 @@ class HostGenerator(
     typeName: IrTypeName.Declared,
     bridge: CodeBlock,
     store: CodeBlock,
-    value: WorldIndex.Entry,
+    value: RoleTracker.Entry,
   ) {
     when (val typeDeclaration = declarationIndex[typeName]) {
       is IrResource -> {
