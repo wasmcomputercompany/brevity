@@ -249,9 +249,9 @@ class HostGenerator(
     when (item) {
       is IrExternalApi -> {
         addProperty(
-          PropertySpec.builder(item.instanceName, item.path.bridgeType)
+          PropertySpec.builder(item.instanceName, item.serviceName.bridgeType)
             .addModifiers(KModifier.OVERRIDE)
-            .initializer("%T(%N)", item.path.bridgeType, "bridge")
+            .initializer("%T(%N)", item.serviceName.bridgeType, "bridge")
             .build(),
         )
       }
@@ -286,7 +286,7 @@ class HostGenerator(
         }
 
         is IrExternalApi -> {
-          val type = declarationIndex[item.path] as IrInterface
+          val type = declarationIndex[item.serviceName] as IrInterface
           for (function in type.functions) {
             addStatement(
               "%L.%N.%N = %L.export(%S)",
@@ -353,7 +353,7 @@ class HostGenerator(
         }
 
         is IrExternalApi -> {
-          val type = declarationIndex[item.path] as IrInterface
+          val type = declarationIndex[item.serviceName] as IrInterface
           for (function in type.functions) {
             addCode(
               bridgeBuilder.declareHostFunction(

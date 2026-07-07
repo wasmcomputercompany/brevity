@@ -58,7 +58,7 @@ fun IrExternalApi(
   gate = gate,
   offset = offset,
   plainName = plainName?.let { Identifier(it) },
-  path = ServiceName(packageName, serviceName),
+  serviceName = ServiceName(packageName, serviceName),
 )
 
 fun IrFlags(

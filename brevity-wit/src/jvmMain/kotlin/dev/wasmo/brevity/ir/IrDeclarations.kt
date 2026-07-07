@@ -160,5 +160,5 @@ data class IrExternalApi(
   override val gate: Gate? = null,
   override val offset: Offset,
   val plainName: Identifier? = null,
-  val path: ServiceName,
+  val serviceName: ServiceName,
 ) : IrDeclaration, IrWorld.Api

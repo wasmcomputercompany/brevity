@@ -174,7 +174,7 @@ class GuestGenerator(
         }
 
         is IrExternalApi -> {
-          val irInterface = declarationIndex[item.path] as IrInterface
+          val irInterface = declarationIndex[item.serviceName] as IrInterface
           val receiver = Receiver.Global(
             CodeBlock.of("%N_.%N", guestApis.instanceName, item.instanceName),
           )

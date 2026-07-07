@@ -243,7 +243,7 @@ class ApiGenerator(
       .apply {
         for (item in value.items) {
           when (item) {
-            is IrExternalApi -> addProperty(item.instanceName, item.path.kotlinApi)
+            is IrExternalApi -> addProperty(item.instanceName, item.serviceName.kotlinApi)
             is IrFunction -> addFunction(functionToApi(item))
           }
         }

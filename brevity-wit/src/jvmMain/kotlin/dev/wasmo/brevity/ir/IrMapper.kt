@@ -248,7 +248,7 @@ class IrMapper(
       gate = gate,
       offset = offset,
       plainName = plainName,
-      path = serviceName,
+      serviceName = serviceName,
     )
   }
 
@@ -401,7 +401,7 @@ class IrMapper(
   private fun IoWorld.Api.worldApiToIr(): IrWorld.Api? {
     return when (this) {
       is IoExternalApi -> externalUsePathToIr()
-        .takeIf { getInterfaceOrNull(it.path.usePath)?.declaresApis() ?: false }
+        .takeIf { getInterfaceOrNull(it.serviceName.usePath)?.declaresApis() ?: false }
 
       is IoFunction -> functionToIr(worldFunction = true)
       is IoInterface -> {
@@ -410,7 +410,7 @@ class IrMapper(
         IrExternalApi(
           offset = offset,
           plainName = name,
-          path = ServiceName(context.serviceName.packageName, name),
+          serviceName = ServiceName(context.serviceName.packageName, name),
         )
       }
     }

@@ -35,7 +35,7 @@ val IrFunction.kotlinName: String
   get() = functionName.name.toCamelCase(upperCamel = false)
 
 val IrExternalApi.instanceName: String
-  get() = (plainName ?: path.name).toCamelCase(upperCamel = false)
+  get() = (plainName ?: serviceName.name).toCamelCase(upperCamel = false)
 
 val ServiceName.kotlinApi: ClassName
   get() = (packageName.toKotlin() + name).name
