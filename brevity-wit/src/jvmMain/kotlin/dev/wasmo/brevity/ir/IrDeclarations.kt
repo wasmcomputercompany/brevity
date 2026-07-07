@@ -13,7 +13,10 @@ data class IrWitPackage(
   val packageName: PackageName,
   val items: List<Item> = listOf(),
 ) {
-  sealed interface Item
+  sealed interface Item : IrDeclaration {
+    val name: ServiceName
+    val types: List<IrTypeDeclaration>
+  }
 }
 
 sealed interface IrDeclaration {
@@ -32,9 +35,12 @@ data class IrInterface(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  val name: ServiceName,
+  override val name: ServiceName,
   val items: List<Item>,
 ) : IrDeclaration, IrWitPackage.Item {
+  override val types: List<IrTypeDeclaration>
+    get() = items.filterIsInstance<IrTypeDeclaration>()
+
   sealed interface Item : IrDeclaration
 }
 
@@ -42,8 +48,8 @@ data class IrWorld(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  val name: ServiceName,
-  val items: List<Item>,
+  override val name: ServiceName,
+  override val types: List<IrTypeDeclaration>,
   val imports: List<Api>,
   val exports: List<Api>,
 ) : IrDeclaration, IrWitPackage.Item {

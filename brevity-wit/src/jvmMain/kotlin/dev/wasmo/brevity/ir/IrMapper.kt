@@ -360,9 +360,9 @@ class IrMapper(
       gate = gate,
       offset = offset,
       name = ServiceName(packageName, name),
-      items = set.flatMap { included ->
+      types = set.flatMap { included ->
         context(included.context) {
-          included.world.items.mapNotNull { it.worldItemToIrOrNull() }
+          included.world.items.mapNotNull { it.worldItemToIrTypeDeclarationOrNull() }
         }
       },
       imports = set.flatMap { included ->
@@ -379,7 +379,7 @@ class IrMapper(
   }
 
   context(context: Context)
-  private fun IoWorld.Item.worldItemToIrOrNull(): IrWorld.Item? {
+  private fun IoWorld.Item.worldItemToIrTypeDeclarationOrNull(): IrTypeDeclaration? {
     return when (this) {
       is IoInclude -> null
       is IoEnum -> enumToIr()

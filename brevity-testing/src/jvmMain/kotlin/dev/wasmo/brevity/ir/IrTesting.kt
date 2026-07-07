@@ -222,7 +222,7 @@ fun IrWorld(
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
   serviceName: String,
-  items: List<IrWorld.Item> = listOf(),
+  types: List<IrTypeDeclaration> = listOf(),
   imports: List<IrWorld.Api> = listOf(),
   exports: List<IrWorld.Api> = listOf(),
 ) = IrWorld(
@@ -230,7 +230,7 @@ fun IrWorld(
   gate = gate,
   offset = offset,
   name = serviceName.toServiceName(),
-  items = items,
+  types = types,
   imports = imports,
   exports = exports,
 )

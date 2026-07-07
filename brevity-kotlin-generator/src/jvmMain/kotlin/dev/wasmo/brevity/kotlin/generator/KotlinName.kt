@@ -25,9 +25,9 @@ sealed interface KotlinName {
   }
 }
 
-fun PackageName.toKotlin(prefix: String): KotlinName.Package {
+fun PackageName.toKotlin(): KotlinName.Package {
   val segments = buildList {
-    add(prefix)
+    add(kotlinPackagePrefix)
     addAll(namespaces.map { it.name.toPackageSegment() })
     addAll(names.map { it.name.toPackageSegment() })
     version?.let {
@@ -37,8 +37,8 @@ fun PackageName.toKotlin(prefix: String): KotlinName.Package {
   return KotlinName.Package(segments.joinToString(separator = "."))
 }
 
-fun IrTypeName.Declared.toKotlin(prefix: String): KotlinName.Class =
-  serviceName.packageName.toKotlin(prefix) + serviceName.name + name
+fun IrTypeName.Declared.toKotlin(): KotlinName.Class =
+  serviceName.packageName.toKotlin() + serviceName.name + name
 
 private fun String.toPackageSegment(): String {
   return map { char ->

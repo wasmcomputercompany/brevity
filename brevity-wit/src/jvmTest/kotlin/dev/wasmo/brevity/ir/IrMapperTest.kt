@@ -498,7 +498,7 @@ class IrMapperTest {
           IrWorld(
             serviceName = "test:types/all-types",
             offset = Offset(3, 1),
-            items = listOf(
+            types = listOf(
               IrTypeAlias(
                 serviceName = serviceName,
                 name = "my-alias",
