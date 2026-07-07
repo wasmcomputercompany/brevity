@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.LIST
+import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName
@@ -14,7 +15,10 @@ val ServiceName.kotlinApi: ClassName
   get() = (packageName.toKotlin() + name).name
 
 val IrTypeName.kotlinAbi: TypeName
-  get() = INT
+  get() = when (this) {
+    IrTypeName.S64 -> LONG
+    else -> INT
+  }
 
 /** Returns true if we've done the work to implement this. */
 val KtFunction.isSupported: Boolean
