@@ -9,9 +9,11 @@ import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrResource
+import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
 
 internal class HostBridgeBuilder(
+  private val encoderFactory: EncoderFactory,
   private val index: DeclarationIndex,
 ) {
   /** Returns a function that calls the guest. It implements the friendly API. */

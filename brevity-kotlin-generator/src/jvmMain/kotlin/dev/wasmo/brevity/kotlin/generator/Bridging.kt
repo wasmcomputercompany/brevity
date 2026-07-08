@@ -46,9 +46,9 @@ val ServiceName.bridgeType: ClassName
     "Bridge${name.toCamelCase(upperCamel = true)}",
   )
 
-val TypeName.kotlinAbi: KtTypeName
+val CoreType.kotlinCoreType: KtTypeName
   get() = when (this) {
-    TypeName.S64 -> LONG
+    CoreType.I64 -> LONG
     else -> INT
   }
 

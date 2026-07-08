@@ -5,13 +5,12 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.UNIT
-import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
-import dev.wasmo.brevity.ir.IrResource
+import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 
 internal class GuestBridgeBuilder(
-  private val index: DeclarationIndex,
+  private val encoderFactory: EncoderFactory,
 ) {
   /** Returns a function that calls the host. It implements the friendly API. */
   fun callHostFunction(
@@ -31,14 +30,14 @@ internal class GuestBridgeBuilder(
         addCode("%N = %N,\n", receiver.name, "id")
 
         for (parameter in value.parameters) {
+          val encoder = encoderFactory.get(typeName = parameter.type)
           addParameter(parameter.kotlinName, parameter.type.kotlinApi)
           addCode(
             "%N = %L,\n",
             parameter.kotlinName,
-            guestApiToAbi(
+            encoder.valueToCoreType(
               bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-              type = parameter.type,
-              abiValue = CodeBlock.of("%N", parameter.kotlinName),
+              value = CodeBlock.of("%N", parameter.kotlinName),
             ),
           )
         }
@@ -46,12 +45,12 @@ internal class GuestBridgeBuilder(
         addCode("⇤)\n")
 
         if (returnType != null) {
+          val encoder = encoderFactory.get(typeName = returnType)
           addCode(
             "return %L",
-            guestAbiToApi(
+            encoder.coreTypeToValue(
               bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-              type = returnType,
-              abiValue = CodeBlock.of("%N", "result"),
+              coreType = CodeBlock.of("%N", "result"),
             ),
           )
         }
@@ -81,13 +80,19 @@ internal class GuestBridgeBuilder(
       .addModifiers(KModifier.PRIVATE, KModifier.EXTERNAL)
       .apply {
         if (receiver is Receiver.Id) {
-          addParameter(receiver.name, receiver.type.kotlinAbi)
+          val encoder = encoderFactory.get(receiver.type)
+          addParameter(receiver.name, encoder.coreType.kotlinCoreType)
         }
         for (parameter in value.parameters) {
-          addParameter(parameter.kotlinName, parameter.type.kotlinAbi)
+          val encoder = encoderFactory.get(parameter.type)
+          addParameter(parameter.kotlinName, encoder.coreType.kotlinCoreType)
+        }
+        val returnType = value.returnType
+        if (returnType != null) {
+          val encoder = encoderFactory.get(returnType)
+          returns(encoder.coreType.kotlinCoreType)
         }
       }
-      .returns(value.returnType?.kotlinAbi ?: UNIT)
       .build()
   }
 
@@ -103,42 +108,50 @@ internal class GuestBridgeBuilder(
           .build(),
       )
       .addModifiers(KModifier.PRIVATE)
-      .returns(value.returnType?.kotlinAbi ?: UNIT)
       .apply {
-        if (receiver is Receiver.Id) {
-          addParameter(receiver.name, receiver.type.kotlinAbi)
-        }
-
         val returnType = value.returnType
         if (returnType != null) {
+          val encoder = encoderFactory.get(returnType)
           addCode("val %N = ", "result")
+          returns(encoder.coreType.kotlinCoreType)
         }
 
-        addCode("%L", receiver.codeBlock)
-
         val guestBridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
+
+        when (receiver) {
+          is Receiver.Id -> {
+            val encoder = encoderFactory.get(receiver.type)
+            addParameter(receiver.name, encoder.coreType.kotlinCoreType)
+            addCode(encoder.coreTypeToValue(guestBridge, CodeBlock.of("%N", receiver.name)))
+          }
+
+          is Receiver.Global -> {
+            addCode(receiver.codeBlock)
+          }
+        }
+
         addCode(".%N(⇥\n", value.kotlinName)
         for (parameter in value.parameters) {
-          addParameter(parameter.kotlinName, parameter.type.kotlinAbi)
+          val encoder = encoderFactory.get(typeName = parameter.type)
+          addParameter(parameter.kotlinName, encoder.coreType.kotlinCoreType)
           addCode(
             "%N = %L,\n",
             parameter.kotlinName,
-            guestAbiToApi(
+            encoder.coreTypeToValue(
               bridge = guestBridge,
-              type = parameter.type,
-              abiValue = CodeBlock.of("%N", parameter.kotlinName),
+              coreType = CodeBlock.of("%N", parameter.kotlinName),
             ),
           )
         }
         addCode("⇤)\n")
 
         if (returnType != null) {
+          val encoder = encoderFactory.get(typeName = returnType)
           addCode(
             "return %L\n",
-            guestApiToAbi(
+            encoder.valueToCoreType(
               bridge = guestBridge,
-              type = returnType,
-              abiValue = CodeBlock.of("%N", "result"),
+              value = CodeBlock.of("%N", "result"),
             ),
           )
         }
@@ -146,58 +159,9 @@ internal class GuestBridgeBuilder(
       .build()
   }
 
-  /** Lift an ABI value like a memory address to an API value like a resource instance. */
-  fun guestAbiToApi(
-    bridge: CodeBlock,
-    type: TypeName,
-    abiValue: CodeBlock,
-  ): CodeBlock {
-    return when (type) {
-      is TypeName.Declared -> {
-        when (index[type]) {
-          is IrResource -> CodeBlock.of(
-            "%L.fromId(%L, ::%T)",
-            bridge,
-            abiValue,
-            type.handleName,
-          )
-
-          else -> CodeBlock.of(
-            "%L as %T",
-            abiValue,
-            type.kotlinApi,
-          )
-        }
-      }
-
-      else -> CodeBlock.of(
-        "%L as %T",
-        abiValue,
-        type.kotlinApi,
-      )
-    }
-  }
-
-  /** Lower an API value like a resource instance to an ABI value like a memory address. */
-  fun guestApiToAbi(
-    bridge: CodeBlock,
-    type: TypeName,
-    abiValue: CodeBlock,
-  ): CodeBlock {
-    return when (type) {
-      else -> CodeBlock.of(
-        "%L as %T",
-        abiValue,
-        type.kotlinAbi,
-      )
-    }
-  }
-
   internal sealed interface Receiver {
-    val codeBlock: CodeBlock
-
     data class Global(
-      override val codeBlock: CodeBlock,
+      val codeBlock: CodeBlock,
     ) : Receiver
 
     data class Id(
@@ -205,15 +169,6 @@ internal class GuestBridgeBuilder(
     ) : Receiver {
       val name: String
         get() = "self"
-
-      override val codeBlock: CodeBlock
-        get() = CodeBlock.of(
-          "%T.fromId<%T>(%N, ::%T)",
-          Symbols.Brevity.GuestBridge,
-          type.kotlinApi,
-          "self",
-          type.kotlinApi,
-        )
     }
   }
 }

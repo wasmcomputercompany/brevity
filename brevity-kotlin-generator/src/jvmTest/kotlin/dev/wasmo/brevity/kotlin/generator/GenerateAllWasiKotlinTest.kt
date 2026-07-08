@@ -4,6 +4,7 @@ import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.ir.IrMapper
+import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import java.io.File
 import kotlin.test.Test
 import okio.FileSystem
@@ -37,14 +38,17 @@ class GenerateAllWasiKotlinTest {
 
     val declarationIndex = DeclarationIndex(irPackages)
     val roleTracker = RoleTracker(declarationIndex, irPackages)
+    val encoderFactory = EncoderFactory(declarationIndex)
+    val guestGenerator = GuestGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
+    val hostGenerator = HostGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
 
     for (fileSpec in ApiGenerator(irPackages).generate()) {
       fileSpec.writeTo(directory)
     }
-    for (fileSpec in GuestGenerator(declarationIndex, roleTracker, irPackages).generate()) {
+    for (fileSpec in guestGenerator.generate()) {
       fileSpec.writeTo(directory)
     }
-    for (fileSpec in HostGenerator(declarationIndex, roleTracker, irPackages).generate()) {
+    for (fileSpec in hostGenerator.generate()) {
       fileSpec.writeTo(directory)
     }
   }
