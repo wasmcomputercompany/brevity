@@ -7,6 +7,7 @@ import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.TypeName
 
 data class IrWitPackage(
   val packageDocumentation: Documentation? = null,
@@ -27,7 +28,7 @@ sealed interface IrDeclaration {
 }
 
 sealed interface IrTypeDeclaration : IrDeclaration, IrInterface.Item, IrWorld.Item {
-  val type: IrTypeName.Declared
+  val type: TypeName.Declared
   val name: Identifier
     get() = type.name
 }
@@ -38,7 +39,7 @@ data class IrInterface(
   override val offset: Offset,
   override val serviceName: ServiceName,
   val items: List<Item>,
-) : IrDeclaration, IrWitPackage.Service {
+) : IrWitPackage.Service {
   override val types: List<IrTypeDeclaration>
     get() = items.filterIsInstance<IrTypeDeclaration>()
 
@@ -59,7 +60,7 @@ data class IrWorld(
   override val types: List<IrTypeDeclaration>,
   val imports: List<Api>,
   val exports: List<Api>,
-) : IrDeclaration, IrWitPackage.Service {
+) : IrWitPackage.Service {
   sealed interface Api : IrDeclaration
   sealed interface Item : IrDeclaration
 
@@ -71,7 +72,7 @@ data class IrResource(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val type: IrTypeName.Declared,
+  override val type: TypeName.Declared,
   val functions: List<IrFunction>,
 ) : IrTypeDeclaration
 
@@ -79,7 +80,7 @@ data class IrRecord(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val type: IrTypeName.Declared,
+  override val type: TypeName.Declared,
   val fields: List<IrField>,
 ) : IrTypeDeclaration
 
@@ -88,7 +89,7 @@ data class IrField(
   override val gate: Gate? = null,
   override val offset: Offset,
   val name: Identifier,
-  val type: IrTypeName,
+  val type: TypeName,
 ) : IrDeclaration
 
 data class IrFunction(
@@ -97,15 +98,15 @@ data class IrFunction(
   override val offset: Offset,
   val async: Boolean = false,
   val parameters: List<IrParameter>,
-  val returnType: IrTypeName? = null,
+  val returnType: TypeName? = null,
   val functionName: FunctionName,
-) : IrDeclaration, IrWorld.Api, IrInterface.Item
+) : IrWorld.Api, IrInterface.Item
 
 data class IrVariant(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val type: IrTypeName.Declared,
+  override val type: TypeName.Declared,
   val cases: List<IrCase>,
 ) : IrTypeDeclaration
 
@@ -113,7 +114,7 @@ data class IrEnum(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val type: IrTypeName.Declared,
+  override val type: TypeName.Declared,
   val cases: List<IrCase>,
 ) : IrTypeDeclaration
 
@@ -122,21 +123,21 @@ data class IrCase(
   override val gate: Gate? = null,
   override val offset: Offset,
   val name: Identifier,
-  val type: IrTypeName? = null,
+  val type: TypeName? = null,
 ) : IrDeclaration
 
 data class IrParameter(
   val documentation: Documentation? = null,
   val offset: Offset,
   val name: Identifier,
-  val type: IrTypeName,
+  val type: TypeName,
 )
 
 data class IrFlags(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val type: IrTypeName.Declared,
+  override val type: TypeName.Declared,
   val flags: List<IrFlag>,
 ) : IrTypeDeclaration
 
@@ -151,9 +152,9 @@ data class IrTypeAlias(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  override val type: IrTypeName.Declared,
-  val target: IrTypeName,
-) : IrTypeDeclaration, IrInterface.Item
+  override val type: TypeName.Declared,
+  val target: TypeName,
+) : IrTypeDeclaration
 
 data class IrExternalApi(
   override val documentation: Documentation? = null,
@@ -161,4 +162,4 @@ data class IrExternalApi(
   override val offset: Offset,
   val plainName: Identifier? = null,
   val serviceName: ServiceName,
-) : IrDeclaration, IrWorld.Api
+) : IrWorld.Api

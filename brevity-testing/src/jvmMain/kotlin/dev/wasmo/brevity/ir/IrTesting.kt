@@ -7,6 +7,7 @@ import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.toServiceName
 
 fun IrCase(
@@ -14,7 +15,7 @@ fun IrCase(
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
   name: String,
-  type: IrTypeName? = null,
+  type: TypeName? = null,
 ) = IrCase(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
@@ -23,10 +24,10 @@ fun IrCase(
   type = type,
 )
 
-fun IrTypeNameDeclared(
+fun TypeNameDeclared(
   serviceName: String,
   typeName: String,
-) = IrTypeName.Declared(
+) = TypeName.Declared(
   serviceName = serviceName.toServiceName(),
   name = Identifier(typeName),
 )
@@ -42,7 +43,7 @@ fun IrEnum(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name),
+  type = TypeNameDeclared(serviceName, name),
   cases = cases,
 )
 
@@ -72,7 +73,7 @@ fun IrFlags(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name),
+  type = TypeNameDeclared(serviceName, name),
   flags = flags,
 )
 
@@ -81,7 +82,7 @@ fun IrField(
   gate: Gate? = null,
   offset: Offset = Offset(1, 1),
   name: String,
-  type: IrTypeName,
+  type: TypeName,
 ) = IrField(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
@@ -109,7 +110,7 @@ fun IrFunction(
   async: Boolean = false,
   name: String,
   parameters: List<IrParameter> = listOf(),
-  returnType: IrTypeName? = null,
+  returnType: TypeName? = null,
   serviceName: String,
   resourceName: String? = null,
   annotation: Annotation? = resourceName?.let { Annotation.Method },
@@ -146,7 +147,7 @@ fun IrParameter(
   documentation: String? = null,
   offset: Offset = Offset(1, 1),
   name: String,
-  type: IrTypeName,
+  type: TypeName,
 ) = IrParameter(
   documentation = documentation?.let { Documentation(it) },
   offset = offset,
@@ -165,7 +166,7 @@ fun IrRecord(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name),
+  type = TypeNameDeclared(serviceName, name),
   fields = fields,
 )
 
@@ -180,7 +181,7 @@ fun IrResource(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name),
+  type = TypeNameDeclared(serviceName, name),
   functions = functions,
 )
 
@@ -190,12 +191,12 @@ fun IrTypeAlias(
   offset: Offset = Offset(1, 1),
   serviceName: String,
   name: String,
-  target: IrTypeName,
+  target: TypeName,
 ) = IrTypeAlias(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(
+  type = TypeNameDeclared(
     serviceName = serviceName,
     typeName = name,
   ),
@@ -213,7 +214,7 @@ fun IrVariant(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   offset = offset,
-  type = IrTypeNameDeclared(serviceName, name),
+  type = TypeNameDeclared(serviceName, name),
   cases = cases,
 )
 

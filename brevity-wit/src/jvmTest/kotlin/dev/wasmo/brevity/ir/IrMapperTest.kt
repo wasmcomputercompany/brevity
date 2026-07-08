@@ -9,6 +9,7 @@ import dev.wasmo.brevity.Annotation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoTypeName
 import dev.wasmo.brevity.io.toServiceName
@@ -46,7 +47,7 @@ class IrMapperTest {
         typeName = IoTypeName.Declared("datetime"),
       ),
     ).isEqualTo(
-      IrTypeNameDeclared(
+      TypeNameDeclared(
         serviceName = "wasi:clocks/wall-clock",
         typeName = "datetime",
       ),
@@ -100,7 +101,7 @@ class IrMapperTest {
         typeName = IoTypeName.Declared("input-stream"),
       ),
     ).isEqualTo(
-      IrTypeNameDeclared(
+      TypeNameDeclared(
         serviceName = "wasi:io/streams@0.2.12",
         typeName = "input-stream",
       ),
@@ -137,7 +138,7 @@ class IrMapperTest {
         typeName = IoTypeName.Declared("input-stream"),
       ),
     ).isEqualTo(
-      IrTypeNameDeclared(
+      TypeNameDeclared(
         serviceName = "wasi:cli/streams",
         typeName = "input-stream",
       ),
@@ -235,7 +236,7 @@ class IrMapperTest {
               IrFunction(
                 offset = Offset(4, 3),
                 name = "now",
-                returnType = IrTypeName.S64,
+                returnType = TypeName.S64,
                 serviceName = "wasi:clocks/monotonic-clock@0.3.0",
               ),
             ),
@@ -333,7 +334,7 @@ class IrMapperTest {
         typeName = IoTypeName.Declared("datetime"),
       ),
     ).isEqualTo(
-      IrTypeNameDeclared(
+      TypeNameDeclared(
         serviceName = "wasi:clocks/wall-clock@0.2.12",
         typeName = "datetime",
       ),
@@ -503,14 +504,14 @@ class IrMapperTest {
                 serviceName = serviceName,
                 name = "my-alias",
                 offset = Offset(4, 5),
-                target = IrTypeName.Tuple(
+                target = TypeName.Tuple(
                   types = listOf(
-                    IrTypeNameDeclared(
+                    TypeNameDeclared(
                       serviceName = serviceName,
                       typeName = "my-resource",
                     ),
-                    IrTypeName.List(
-                      IrTypeNameDeclared(
+                    TypeName.List(
+                      TypeNameDeclared(
                         serviceName = serviceName,
                         typeName = "my-enum",
                       ),
@@ -526,7 +527,7 @@ class IrMapperTest {
                   IrField(
                     offset = Offset(6, 9),
                     name = "field",
-                    type = IrTypeName.U64,
+                    type = TypeName.U64,
                   ),
                 ),
               ),
@@ -572,7 +573,7 @@ class IrMapperTest {
                       IrParameter(
                         offset = Offset(17, 21),
                         name = "bytes",
-                        type = IrTypeName.List(IrTypeName.U8),
+                        type = TypeName.List(TypeName.U8),
                       ),
                     ),
                     serviceName = "test:types/all-types",
@@ -593,8 +594,8 @@ class IrMapperTest {
                   IrCase(
                     offset = Offset(21, 9),
                     name = "some",
-                    type = IrTypeName.List(
-                      IrTypeNameDeclared(
+                    type = TypeName.List(
+                      TypeNameDeclared(
                         serviceName = "test:types/all-types",
                         typeName = "my-record",
                       ),
@@ -612,7 +613,7 @@ class IrMapperTest {
   private fun IrMapper.getType(
     serviceName: String,
     typeName: IoTypeName,
-  ): IrTypeName {
+  ): TypeName {
     context(IrMapper.Context(serviceName.toServiceName())) {
       return typeName.typeNameToIr()
     }

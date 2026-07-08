@@ -13,11 +13,11 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.RoleTracker
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
-import dev.wasmo.brevity.ir.IrTypeName
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 
@@ -303,7 +303,7 @@ class HostGenerator(
   }
 
   private fun FunSpec.Builder.initImports(
-    typeName: IrTypeName.Declared,
+    typeName: TypeName.Declared,
     bridge: CodeBlock,
     store: CodeBlock,
     value: RoleTracker.Entry,

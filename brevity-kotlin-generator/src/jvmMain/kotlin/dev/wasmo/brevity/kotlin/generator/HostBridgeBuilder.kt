@@ -6,9 +6,9 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrResource
-import dev.wasmo.brevity.ir.IrTypeName
 import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
 
 internal class HostBridgeBuilder(
@@ -159,7 +159,7 @@ internal class HostBridgeBuilder(
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
   fun hostAbiToApi(
     bridge: CodeBlock,
-    type: IrTypeName,
+    type: TypeName,
     abiValue: CodeBlock,
   ): CodeBlock {
     return when (type) {
@@ -174,11 +174,11 @@ internal class HostBridgeBuilder(
   /** Lower an API value like a resource instance to an ABI value like a memory address. */
   fun hostApiToAbi(
     bridge: CodeBlock,
-    type: IrTypeName,
+    type: TypeName,
     apiValue: CodeBlock,
   ): CodeBlock {
     return when (type) {
-      is IrTypeName.Declared -> {
+      is TypeName.Declared -> {
         when (index[type]) {
           is IrResource -> CodeBlock.of(
             "%L.toId(%L)",
@@ -202,6 +202,6 @@ internal class HostBridgeBuilder(
     }
   }
 
-  private fun IrTypeName.toValType() =
+  private fun TypeName.toValType() =
     CodeBlock.of("%T.I32", Symbols.ChicoryRuntime.ValType)
 }

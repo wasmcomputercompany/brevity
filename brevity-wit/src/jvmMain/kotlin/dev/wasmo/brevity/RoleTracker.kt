@@ -9,7 +9,6 @@ import dev.wasmo.brevity.ir.IrRecord
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrTypeDeclaration
-import dev.wasmo.brevity.ir.IrTypeName
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
@@ -26,10 +25,10 @@ import dev.wasmo.brevity.ir.IrWorld
  *    produces the behavior we want. We need something more sophisticated here!
  */
 class RoleTracker(
-  val types: Map<IrTypeName.Declared, Entry>,
+  val types: Map<TypeName.Declared, Entry>,
   val interfaces: Map<ServiceName, Entry>,
 ) {
-  operator fun get(typeName: IrTypeName.Declared): Entry? = types[typeName]
+  operator fun get(typeName: TypeName.Declared): Entry? = types[typeName]
 
   operator fun get(typeName: ServiceName): Entry? = interfaces[typeName]
 
@@ -87,13 +86,13 @@ internal class TypeTraverser(
   private val index: DeclarationIndex,
 ) {
   /** Types produced by the guest. These must be encoded on the guest and decoded on the host. */
-  val guestTypes = mutableSetOf<IrTypeName.Declared>()
+  val guestTypes = mutableSetOf<TypeName.Declared>()
 
   /** Types produced by the host. These must be encoded on the host and decoded on the guest. */
-  val hostTypes = mutableSetOf<IrTypeName.Declared>()
+  val hostTypes = mutableSetOf<TypeName.Declared>()
 
   /** This is the union of [guestTypes] and [hostTypes]. */
-  val allTypes = mutableSetOf<IrTypeName.Declared>()
+  val allTypes = mutableSetOf<TypeName.Declared>()
 
   /** Interfaces exported by the guest. */
   val guestInterfaces = mutableSetOf<ServiceName>()
@@ -148,11 +147,11 @@ internal class TypeTraverser(
 
   inner class Collector(
     private val valueQueue: ArrayDeque<IrTypeDeclaration>,
-    private val valueTypes: MutableSet<IrTypeName.Declared>,
+    private val valueTypes: MutableSet<TypeName.Declared>,
     private val peerValueQueue: ArrayDeque<IrTypeDeclaration>,
-    private val peerValueTypes: MutableSet<IrTypeName.Declared>,
+    private val peerValueTypes: MutableSet<TypeName.Declared>,
     private val resourcesQueue: ArrayDeque<IrTypeDeclaration>,
-    private val resourcesTypes: MutableSet<IrTypeName.Declared>,
+    private val resourcesTypes: MutableSet<TypeName.Declared>,
     private val services: MutableSet<ServiceName>,
   ) {
     /**
@@ -234,52 +233,52 @@ internal class TypeTraverser(
       }
     }
 
-    private fun collectTypeName(value: IrTypeName?) {
+    private fun collectTypeName(value: TypeName?) {
       when (value) {
-        is IrTypeName.Borrow -> collectTypeName(value.type)
-        is IrTypeName.Declared -> this += value
-        is IrTypeName.Future -> collectTypeName(value.type)
+        is TypeName.Borrow -> collectTypeName(value.type)
+        is TypeName.Declared -> this += value
+        is TypeName.Future -> collectTypeName(value.type)
 
-        is IrTypeName.List -> collectTypeName(value.type)
-        is IrTypeName.Map -> {
+        is TypeName.List -> collectTypeName(value.type)
+        is TypeName.Map -> {
           collectTypeName(value.key)
           collectTypeName(value.value)
         }
 
-        is IrTypeName.Option -> collectTypeName(value.type)
+        is TypeName.Option -> collectTypeName(value.type)
 
-        is IrTypeName.Result -> {
+        is TypeName.Result -> {
           collectTypeName(value.ok)
           collectTypeName(value.err)
         }
 
-        is IrTypeName.Stream -> collectTypeName(value.type)
+        is TypeName.Stream -> collectTypeName(value.type)
 
-        is IrTypeName.Tuple -> {
+        is TypeName.Tuple -> {
           for (name in value.types) {
             collectTypeName(name)
           }
         }
 
         // No declarations.
-        IrTypeName.Bool -> {}
-        IrTypeName.S8 -> {}
-        IrTypeName.S16 -> {}
-        IrTypeName.S32 -> {}
-        IrTypeName.S64 -> {}
-        IrTypeName.U8 -> {}
-        IrTypeName.U16 -> {}
-        IrTypeName.U32 -> {}
-        IrTypeName.U64 -> {}
-        IrTypeName.F32 -> {}
-        IrTypeName.F64 -> {}
-        IrTypeName.Char -> {}
-        IrTypeName.String -> {}
+        TypeName.Bool -> {}
+        TypeName.S8 -> {}
+        TypeName.S16 -> {}
+        TypeName.S32 -> {}
+        TypeName.S64 -> {}
+        TypeName.U8 -> {}
+        TypeName.U16 -> {}
+        TypeName.U32 -> {}
+        TypeName.U64 -> {}
+        TypeName.F32 -> {}
+        TypeName.F64 -> {}
+        TypeName.Char -> {}
+        TypeName.String -> {}
         null -> {}
       }
     }
 
-    operator fun plusAssign(type: IrTypeName.Declared) {
+    operator fun plusAssign(type: TypeName.Declared) {
       val declaration = index[type]
 
       val (types, queue) = when (declaration) {

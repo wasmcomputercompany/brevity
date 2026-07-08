@@ -4,6 +4,7 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.IoExternalApi
 import dev.wasmo.brevity.io.IoFunction
 import dev.wasmo.brevity.io.IoInclude
@@ -164,13 +165,13 @@ class WorldFlattenerTest {
                 offset = Offset(4, 5),
                 serviceName = "test:subject/subject-world",
                 name = "source-alias",
-                target = IrTypeName.Tuple(
+                target = TypeName.Tuple(
                   listOf(
-                    IrTypeNameDeclared(
+                    TypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-record",
                     ),
-                    IrTypeNameDeclared(
+                    TypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-enum",
                     ),
@@ -185,7 +186,7 @@ class WorldFlattenerTest {
                   IrField(
                     offset = Offset(6, 9),
                     name = "field",
-                    type = IrTypeNameDeclared(
+                    type = TypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-flags",
                     ),
@@ -236,13 +237,13 @@ class WorldFlattenerTest {
                       IrParameter(
                         offset = Offset(17, 21),
                         name = "variants",
-                        type = IrTypeNameDeclared(
+                        type = TypeNameDeclared(
                           serviceName = "test:subject/subject-world",
                           typeName = "my-variant",
                         ),
                       ),
                     ),
-                    returnType = IrTypeNameDeclared(
+                    returnType = TypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-flags",
                     ),
@@ -261,7 +262,7 @@ class WorldFlattenerTest {
                   IrCase(
                     offset = Offset(21, 9),
                     name = "some",
-                    type = IrTypeNameDeclared(
+                    type = TypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-resource",
                     ),

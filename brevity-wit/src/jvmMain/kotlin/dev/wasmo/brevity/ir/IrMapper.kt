@@ -6,6 +6,7 @@ import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.IoCase
 import dev.wasmo.brevity.io.IoEnum
 import dev.wasmo.brevity.io.IoExternalApi
@@ -189,7 +190,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name),
+    type = TypeName.Declared(context.serviceName, name),
     cases = cases.map { it.caseToIr() },
   )
 
@@ -198,7 +199,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name),
+    type = TypeName.Declared(context.serviceName, name),
     flags = flags.map { it.flagToIr() },
   )
 
@@ -207,7 +208,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name),
+    type = TypeName.Declared(context.serviceName, name),
     fields = fields.map { it.fieldToIr() },
   )
 
@@ -216,7 +217,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name),
+    type = TypeName.Declared(context.serviceName, name),
     functions = functions.map {
       it.functionToIr(resourceName = name)
     },
@@ -227,8 +228,8 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name),
-    target = target.typeNameToIr()
+    type = TypeName.Declared(context.serviceName, name),
+    target = target.typeNameToIr(),
   )
 
   context(context: Context)
@@ -236,7 +237,7 @@ class IrMapper(
     documentation = documentation,
     gate = gate,
     offset = offset,
-    type = IrTypeName.Declared(context.serviceName, name),
+    type = TypeName.Declared(context.serviceName, name),
     cases = cases.map { it.caseToIr() },
   )
 
@@ -259,35 +260,35 @@ class IrMapper(
   )
 
   context(context: Context)
-  internal fun IoTypeName.typeNameToIr(): IrTypeName {
+  internal fun IoTypeName.typeNameToIr(): TypeName {
     return when (this) {
-      IoTypeName.Bool -> IrTypeName.Bool
-      IoTypeName.S8 -> IrTypeName.S8
-      IoTypeName.S16 -> IrTypeName.S16
-      IoTypeName.S32 -> IrTypeName.S32
-      IoTypeName.S64 -> IrTypeName.S64
-      IoTypeName.U8 -> IrTypeName.U8
-      IoTypeName.U16 -> IrTypeName.U16
-      IoTypeName.U32 -> IrTypeName.U32
-      IoTypeName.U64 -> IrTypeName.U64
-      IoTypeName.F32 -> IrTypeName.F32
-      IoTypeName.F64 -> IrTypeName.F64
-      IoTypeName.Char -> IrTypeName.Char
-      IoTypeName.String -> IrTypeName.String
-      is IoTypeName.Borrow -> IrTypeName.Borrow(type.typeNameToIr())
+      IoTypeName.Bool -> TypeName.Bool
+      IoTypeName.S8 -> TypeName.S8
+      IoTypeName.S16 -> TypeName.S16
+      IoTypeName.S32 -> TypeName.S32
+      IoTypeName.S64 -> TypeName.S64
+      IoTypeName.U8 -> TypeName.U8
+      IoTypeName.U16 -> TypeName.U16
+      IoTypeName.U32 -> TypeName.U32
+      IoTypeName.U64 -> TypeName.U64
+      IoTypeName.F32 -> TypeName.F32
+      IoTypeName.F64 -> TypeName.F64
+      IoTypeName.Char -> TypeName.Char
+      IoTypeName.String -> TypeName.String
+      is IoTypeName.Borrow -> TypeName.Borrow(type.typeNameToIr())
       is IoTypeName.Declared -> declaredTypeToIr()
-      is IoTypeName.Future -> IrTypeName.Future(type?.typeNameToIr())
-      is IoTypeName.List -> IrTypeName.List(type.typeNameToIr(), size)
-      is IoTypeName.Map -> IrTypeName.Map(key.typeNameToIr(), value.typeNameToIr())
-      is IoTypeName.Option -> IrTypeName.Option(type.typeNameToIr())
-      is IoTypeName.Result -> IrTypeName.Result(ok?.typeNameToIr(), err?.typeNameToIr())
-      is IoTypeName.Stream -> IrTypeName.Stream(type?.typeNameToIr())
-      is IoTypeName.Tuple -> IrTypeName.Tuple(types.map { it.typeNameToIr() })
+      is IoTypeName.Future -> TypeName.Future(type?.typeNameToIr())
+      is IoTypeName.List -> TypeName.List(type.typeNameToIr(), size)
+      is IoTypeName.Map -> TypeName.Map(key.typeNameToIr(), value.typeNameToIr())
+      is IoTypeName.Option -> TypeName.Option(type.typeNameToIr())
+      is IoTypeName.Result -> TypeName.Result(ok?.typeNameToIr(), err?.typeNameToIr())
+      is IoTypeName.Stream -> TypeName.Stream(type?.typeNameToIr())
+      is IoTypeName.Tuple -> TypeName.Tuple(types.map { it.typeNameToIr() })
     }
   }
 
   context(context: Context)
-  private fun IoTypeName.Declared.declaredTypeToIr(): IrTypeName.Declared {
+  private fun IoTypeName.Declared.declaredTypeToIr(): TypeName.Declared {
     return declaredTypeToIrOrNull()
       ?: throw IllegalArgumentException(
         "unable to find $this in ${context.serviceName}",
@@ -295,7 +296,7 @@ class IrMapper(
   }
 
   context(context: Context)
-  internal fun IoTypeName.Declared.declaredTypeToIrOrNull(): IrTypeName.Declared? {
+  internal fun IoTypeName.Declared.declaredTypeToIrOrNull(): TypeName.Declared? {
     val witPackage = packageNameToPackage[context.serviceName.packageName] ?: return null
     val declarations = sequence {
       for (file in witPackage.files.values) {
@@ -314,7 +315,7 @@ class IrMapper(
         is IoTypeDeclaration -> {
           // Direct match.
           if (declaration.name == name) {
-            return IrTypeName.Declared(
+            return TypeName.Declared(
               serviceName = ServiceName(witPackage.packageName, context.serviceName.name),
               name = declaration.name,
             )

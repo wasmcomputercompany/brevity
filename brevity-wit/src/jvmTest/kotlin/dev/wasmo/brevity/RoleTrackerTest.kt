@@ -3,7 +3,7 @@ package dev.wasmo.brevity
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.io.toServiceName
-import dev.wasmo.brevity.ir.IrTypeNameDeclared
+import dev.wasmo.brevity.ir.TypeNameDeclared
 import kotlin.test.Test
 import okio.Path.Companion.toPath
 
@@ -53,7 +53,7 @@ class RoleTrackerTest {
         ),
       )
 
-    assertThat(tester.roleTracker[IrTypeNameDeclared("namespace:package-name/test", "person")])
+    assertThat(tester.roleTracker[TypeNameDeclared("namespace:package-name/test", "person")])
       .isEqualTo(
         RoleTracker.Entry(
           host = true,
@@ -61,7 +61,7 @@ class RoleTrackerTest {
         ),
       )
 
-    assertThat(tester.roleTracker[IrTypeNameDeclared("namespace:package-name/test", "track")])
+    assertThat(tester.roleTracker[TypeNameDeclared("namespace:package-name/test", "track")])
       .isEqualTo(
         RoleTracker.Entry(
           host = true,
@@ -69,7 +69,7 @@ class RoleTrackerTest {
         ),
       )
 
-    assertThat(tester.roleTracker[IrTypeNameDeclared("namespace:package-name/test", "album")])
+    assertThat(tester.roleTracker[TypeNameDeclared("namespace:package-name/test", "album")])
       .isEqualTo(
         RoleTracker.Entry(
           host = true,
@@ -77,7 +77,7 @@ class RoleTrackerTest {
         ),
       )
 
-    assertThat(tester.roleTracker[IrTypeNameDeclared("namespace:package-name/test", "measurement")])
+    assertThat(tester.roleTracker[TypeNameDeclared("namespace:package-name/test", "measurement")])
       .isEqualTo(
         RoleTracker.Entry(
           host = false,

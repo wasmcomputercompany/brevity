@@ -6,9 +6,9 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrResource
-import dev.wasmo.brevity.ir.IrTypeName
 
 internal class GuestBridgeBuilder(
   private val index: DeclarationIndex,
@@ -149,11 +149,11 @@ internal class GuestBridgeBuilder(
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
   fun guestAbiToApi(
     bridge: CodeBlock,
-    type: IrTypeName,
+    type: TypeName,
     abiValue: CodeBlock,
   ): CodeBlock {
     return when (type) {
-      is IrTypeName.Declared -> {
+      is TypeName.Declared -> {
         when (index[type]) {
           is IrResource -> CodeBlock.of(
             "%L.fromId(%L, ::%T)",
@@ -181,7 +181,7 @@ internal class GuestBridgeBuilder(
   /** Lower an API value like a resource instance to an ABI value like a memory address. */
   fun guestApiToAbi(
     bridge: CodeBlock,
-    type: IrTypeName,
+    type: TypeName,
     abiValue: CodeBlock,
   ): CodeBlock {
     return when (type) {
@@ -201,7 +201,7 @@ internal class GuestBridgeBuilder(
     ) : Receiver
 
     data class Id(
-      val type: IrTypeName,
+      val type: TypeName,
     ) : Receiver {
       val name: String
         get() = "self"

@@ -6,17 +6,17 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.STRING
 import com.squareup.kotlinpoet.U_INT
-import dev.wasmo.brevity.ir.IrTypeName
-import dev.wasmo.brevity.ir.IrTypeNameDeclared
+import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.ir.TypeNameDeclared
 import kotlin.test.Test
 
 class TypeMappingTest {
   @Test
   fun `map declared types`() {
-    assertThat(IrTypeNameDeclared("wasi:clocks/wall-clock", "datetime").kotlinApi)
+    assertThat(TypeNameDeclared("wasi:clocks/wall-clock", "datetime").kotlinApi)
       .isEqualTo(ClassName("wit.wasi.clocks", "WallClock", "Datetime"))
 
-    assertThat(IrTypeName.List(IrTypeNameDeclared("wasi:clocks/wall-clock", "datetime")).kotlinApi)
+    assertThat(TypeName.List(TypeNameDeclared("wasi:clocks/wall-clock", "datetime")).kotlinApi)
       .isEqualTo(
         Symbols.KotlinCollections.List.parameterizedBy(
           ClassName("wit.wasi.clocks", "WallClock", "Datetime"),
@@ -26,11 +26,11 @@ class TypeMappingTest {
 
   @Test
   fun `map built in types`() {
-    assertThat(IrTypeName.U32.kotlinApi)
+    assertThat(TypeName.U32.kotlinApi)
       .isEqualTo(U_INT)
-    assertThat(IrTypeName.List(IrTypeName.U32).kotlinApi)
+    assertThat(TypeName.List(TypeName.U32).kotlinApi)
       .isEqualTo(ClassName("kotlin", "UIntArray"))
-    assertThat(IrTypeName.List(IrTypeName.String).kotlinApi)
+    assertThat(TypeName.List(TypeName.String).kotlinApi)
       .isEqualTo(Symbols.KotlinCollections.List.parameterizedBy(STRING))
   }
 }
