@@ -1,4 +1,4 @@
-package dev.wasmo.brevity.kotlin.generator
+package dev.wasmo.brevity.kotlin.encoders
 
 sealed class CoreType {
   object I32 : CoreType()

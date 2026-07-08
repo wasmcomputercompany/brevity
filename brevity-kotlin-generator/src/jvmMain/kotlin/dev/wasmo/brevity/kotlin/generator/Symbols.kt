@@ -8,6 +8,7 @@ object Symbols {
     val Boolean = ClassName("kotlin", "Boolean")
     val Byte = ClassName("kotlin", "Byte")
     val Double = ClassName("kotlin", "Double")
+    val EncodeToByteArray = MemberName("kotlin.text", "encodeToByteArray")
     val ExperimentalUnsignedTypes = ClassName("kotlin", "ExperimentalUnsignedTypes")
     val Float = ClassName("kotlin", "Float")
     val Int = ClassName("kotlin", "Int")
@@ -33,8 +34,12 @@ object Symbols {
   }
 
   object KotlinWasm {
+    val ExperimentalWasmInterop = ClassName("kotlin.wasm", "ExperimentalWasmInterop")
+    val Pointer = ClassName("kotlin.wasm.unsafe", "Pointer")
+    val UnsafeWasmMemoryApi = ClassName("kotlin.wasm.unsafe", "UnsafeWasmMemoryApi")
     val WasmExport = ClassName("kotlin.wasm", "WasmExport")
     val WasmImport = ClassName("kotlin.wasm", "WasmImport")
+    val WithScopedMemoryAllocator = MemberName("kotlin.wasm.unsafe", "withScopedMemoryAllocator")
   }
 
   object ChicoryRuntime {
@@ -52,8 +57,11 @@ object Symbols {
     val GuestBridge = ClassName("dev.wasmo.brevity", "GuestBridge")
     val HostBridge = ClassName("dev.wasmo.brevity", "HostBridge")
     val HostBridgeGet = MemberName("dev.wasmo.brevity", "get")
+    val LoadPointer = MemberName("dev.wasmo.brevity", "loadPointer")
+    val LoadString = MemberName("dev.wasmo.brevity", "loadString")
     val Quad = ClassName("dev.wasmo.brevity", "Quad")
     val Resource = ClassName("dev.wasmo.brevity", "Resource")
+    val StoreByteArray = MemberName("dev.wasmo.brevity", "storeByteArray")
     val Stream = ClassName("dev.wasmo.brevity", "Stream")
     val World = ClassName("dev.wasmo.brevity", "World")
   }

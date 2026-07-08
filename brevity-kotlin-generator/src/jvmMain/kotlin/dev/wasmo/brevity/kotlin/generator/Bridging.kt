@@ -16,6 +16,7 @@ import dev.wasmo.brevity.ir.IrField
 import dev.wasmo.brevity.ir.IrFlag
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrParameter
+import dev.wasmo.brevity.kotlin.encoders.CoreType
 
 const val kotlinPackagePrefix: String = "wit"
 
