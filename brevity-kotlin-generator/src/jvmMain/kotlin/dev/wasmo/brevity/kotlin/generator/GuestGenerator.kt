@@ -17,14 +17,16 @@ import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
+import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.GuestBridgeBuilder.Receiver
 
 class GuestGenerator(
+  encoderFactory: EncoderFactory,
   private val declarationIndex: DeclarationIndex,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
 ) {
-  private val bridgeBuilder = GuestBridgeBuilder(declarationIndex)
+  private val bridgeBuilder = GuestBridgeBuilder(encoderFactory)
 
   fun generate(): List<FileSpec> {
     val bridges = roleTracker.types.entries

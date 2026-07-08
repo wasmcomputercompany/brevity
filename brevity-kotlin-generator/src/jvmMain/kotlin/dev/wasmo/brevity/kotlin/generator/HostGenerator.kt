@@ -20,13 +20,15 @@ import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
+import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 
 class HostGenerator(
+  encoderFactory: EncoderFactory,
   private val declarationIndex: DeclarationIndex,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
 ) {
-  private val bridgeBuilder = HostBridgeBuilder(declarationIndex)
+  private val bridgeBuilder = HostBridgeBuilder(encoderFactory, declarationIndex)
 
   fun generate(): List<FileSpec> {
     return packages.mapNotNull { witPackage ->
