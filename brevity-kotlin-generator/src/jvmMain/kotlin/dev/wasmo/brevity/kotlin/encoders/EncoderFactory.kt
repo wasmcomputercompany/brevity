@@ -1,6 +1,5 @@
 package dev.wasmo.brevity.kotlin.encoders
 
-import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrEnum
@@ -9,7 +8,6 @@ import dev.wasmo.brevity.ir.IrRecord
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrVariant
-import dev.wasmo.brevity.kotlin.generator.CoreType
 
 val MAX_FLAT_PARAMS = 16
 val MAX_FLAT_RESULTS = 1
@@ -24,11 +22,16 @@ class EncoderFactory(
       TypeName.S16 -> FallbackEncoder(typeName, CoreType.I32)
       TypeName.S32 -> FallbackEncoder(typeName, CoreType.I32)
       TypeName.S64 -> object : Encoder() {
-        override val coreType: CoreType
-          get() = CoreType.I64
+        override val coreTypes: List<CoreType>
+          get() = listOf(CoreType.I64)
 
-        override fun coreTypeToValue(bridge: CodeBlock, coreType: CodeBlock) = coreType
-        override fun valueToCoreType(bridge: CodeBlock, value: CodeBlock) = value
+        override fun EncodeBuilder.coreTypeToValue() {
+          put(take())
+        }
+
+        override fun EncodeBuilder.valueToCoreType() {
+          put(take())
+        }
       }
 
       TypeName.U8 -> FallbackEncoder(typeName, CoreType.I32)
@@ -38,7 +41,7 @@ class EncoderFactory(
       TypeName.F32 -> FallbackEncoder(typeName, CoreType.F32)
       TypeName.F64 -> FallbackEncoder(typeName, CoreType.F64)
       TypeName.Char -> FallbackEncoder(typeName, CoreType.I32)
-      TypeName.String -> StringEncoder1
+      TypeName.String -> StringEncoder
 
       is TypeName.Stream -> FallbackEncoder(typeName, CoreType.I32)
       is TypeName.Tuple -> FallbackEncoder(typeName, CoreType.I32) // TODO: Record.

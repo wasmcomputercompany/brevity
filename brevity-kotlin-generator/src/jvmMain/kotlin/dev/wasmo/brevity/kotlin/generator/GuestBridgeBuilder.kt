@@ -8,6 +8,7 @@ import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.kotlin.encoders.GuestEncodeBuilder
 
 internal class GuestBridgeBuilder(
   private val encoderFactory: EncoderFactory,
@@ -17,44 +18,51 @@ internal class GuestBridgeBuilder(
     receiver: Receiver.Id,
     value: IrFunction,
   ): FunSpec {
+    val returnType = value.returnType
+    val encodeBuilder = GuestEncodeBuilder(
+      bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
+    )
+
+    val parameterCodeBlocks = mutableListOf<CodeBlock>()
+    parameterCodeBlocks += CodeBlock.of("this.%L", "id")
+
+    for (parameter in value.parameters) {
+      parameterCodeBlocks += encodeBuilder.lower(
+        value = CodeBlock.of("%N", parameter.kotlinName),
+        encoder = encoderFactory.get(typeName = parameter.type),
+      ) {
+        encodeBuilder.valueToCoreType()
+      }
+    }
+
+    if (returnType != null) {
+      encodeBuilder.code.add("val %N = ", "result")
+    }
+    encodeBuilder.code.add("%N(⇥\n", value.functionName.importFunctionName)
+    for (output in parameterCodeBlocks) {
+      encodeBuilder.code.add("%L,\n", output)
+    }
+    encodeBuilder.code.add("⇤)\n")
+
+    if (returnType != null) {
+      val returnValueCodeBlock = encodeBuilder.lift(
+        values = listOf(CodeBlock.of("%N", "result")),
+        encoder = encoderFactory.get(typeName = returnType),
+      ) {
+        encodeBuilder.coreTypeToValue()
+      }
+      encodeBuilder.code.add("return %L", returnValueCodeBlock)
+    }
+
     return FunSpec.builder(value.kotlinName)
       .addModifiers(KModifier.OVERRIDE)
-      .returns(value.returnType?.kotlinApi ?: UNIT)
       .apply {
-        val returnType = value.returnType
-        if (returnType != null) {
-          addCode("val %N = ", "result")
-        }
-
-        addCode("%N(⇥\n", value.functionName.importFunctionName)
-        addCode("%N = %N,\n", receiver.name, "id")
-
         for (parameter in value.parameters) {
-          val encoder = encoderFactory.get(typeName = parameter.type)
           addParameter(parameter.kotlinName, parameter.type.kotlinApi)
-          addCode(
-            "%N = %L,\n",
-            parameter.kotlinName,
-            encoder.valueToCoreType(
-              bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-              value = CodeBlock.of("%N", parameter.kotlinName),
-            ),
-          )
-        }
-
-        addCode("⇤)\n")
-
-        if (returnType != null) {
-          val encoder = encoderFactory.get(typeName = returnType)
-          addCode(
-            "return %L",
-            encoder.coreTypeToValue(
-              bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-              coreType = CodeBlock.of("%N", "result"),
-            ),
-          )
         }
       }
+      .returns(value.returnType?.kotlinApi ?: UNIT)
+      .addCode(encodeBuilder.build())
       .build()
   }
 
@@ -81,16 +89,22 @@ internal class GuestBridgeBuilder(
       .apply {
         if (receiver is Receiver.Id) {
           val encoder = encoderFactory.get(receiver.type)
-          addParameter(receiver.name, encoder.coreType.kotlinCoreType)
+          for (coreType in encoder.coreTypes) {
+            addParameter(receiver.name, coreType.kotlinCoreType)
+          }
         }
         for (parameter in value.parameters) {
           val encoder = encoderFactory.get(parameter.type)
-          addParameter(parameter.kotlinName, encoder.coreType.kotlinCoreType)
+          for (coreType in encoder.coreTypes) {
+            addParameter(parameter.kotlinName, coreType.kotlinCoreType)
+          }
         }
+
+        // TODO: flatten strings instead of calling single().
         val returnType = value.returnType
         if (returnType != null) {
           val encoder = encoderFactory.get(returnType)
-          returns(encoder.coreType.kotlinCoreType)
+          returns(encoder.coreTypes.single().kotlinCoreType)
         }
       }
       .build()
@@ -109,52 +123,65 @@ internal class GuestBridgeBuilder(
       )
       .addModifiers(KModifier.PRIVATE)
       .apply {
-        val returnType = value.returnType
-        if (returnType != null) {
-          val encoder = encoderFactory.get(returnType)
-          addCode("val %N = ", "result")
-          returns(encoder.coreType.kotlinCoreType)
-        }
+        val encodeBuilder = GuestEncodeBuilder(
+          bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
+        )
 
-        val guestBridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
-
-        when (receiver) {
+        val receiverCodeBlock = when (receiver) {
           is Receiver.Id -> {
             val encoder = encoderFactory.get(receiver.type)
-            addParameter(receiver.name, encoder.coreType.kotlinCoreType)
-            addCode(encoder.coreTypeToValue(guestBridge, CodeBlock.of("%N", receiver.name)))
+            for (coreType in encoder.coreTypes) {
+              addParameter(receiver.name, coreType.kotlinCoreType)
+            }
+            encodeBuilder.lift(
+              values = listOf(CodeBlock.of("%N", receiver.name)),
+              encoder = encoder,
+            ) {
+              encodeBuilder.coreTypeToValue()
+            }
           }
 
-          is Receiver.Global -> {
-            addCode(receiver.codeBlock)
-          }
+          is Receiver.Global -> receiver.codeBlock
         }
 
-        addCode(".%N(⇥\n", value.kotlinName)
+        val parameterValues = mutableListOf<CodeBlock>()
         for (parameter in value.parameters) {
           val encoder = encoderFactory.get(typeName = parameter.type)
-          addParameter(parameter.kotlinName, encoder.coreType.kotlinCoreType)
-          addCode(
-            "%N = %L,\n",
-            parameter.kotlinName,
-            encoder.coreTypeToValue(
-              bridge = guestBridge,
-              coreType = CodeBlock.of("%N", parameter.kotlinName),
-            ),
-          )
+          for (coreType in encoder.coreTypes) {
+            addParameter(parameter.kotlinName, coreType.kotlinCoreType)
+          }
+          parameterValues += encodeBuilder.lift(
+            values = encoder.coreTypes.map { CodeBlock.of("%N", parameter.kotlinName) },
+            encoder = encoder,
+          ) {
+            encodeBuilder.coreTypeToValue()
+          }
         }
-        addCode("⇤)\n")
+
+        val returnType = value.returnType
+        if (returnType != null) {
+          encodeBuilder.code.add("val %N = ", "result")
+        }
+        encodeBuilder.code.add("%L.%N(⇥\n", receiverCodeBlock, value.kotlinName)
+        for ((index, parameter) in value.parameters.withIndex()) {
+          encodeBuilder.code.add("%N = %L,\n", parameter.kotlinName, parameterValues[index])
+        }
+        encodeBuilder.code.add("⇤)\n")
 
         if (returnType != null) {
           val encoder = encoderFactory.get(typeName = returnType)
-          addCode(
-            "return %L\n",
-            encoder.valueToCoreType(
-              bridge = guestBridge,
-              value = CodeBlock.of("%N", "result"),
-            ),
-          )
+          val returnValue = encodeBuilder.lower(
+            value = CodeBlock.of("%N", "result"),
+            encoder = encoder,
+          ) {
+            encodeBuilder.valueToCoreType()
+          }
+          // TODO: flatten strings instead of calling single().
+          returns(encoder.coreTypes.single().kotlinCoreType)
+          encodeBuilder.code.add("return %L\n", returnValue.single())
         }
+
+        addCode(encodeBuilder.build())
       }
       .build()
   }
