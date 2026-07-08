@@ -291,7 +291,6 @@ class IrMapperTest {
   }
 
   @Test
-  @Ignore("Should pull inline packages into IR, but does not")
   fun `imports across inline packages`() {
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -356,21 +355,21 @@ class IrMapperTest {
         packageName = "wasi:clocks@0.3.0".toPackageName(),
         services = listOf(
           IrWorld(
-            offset = Offset(3, 1),
+            offset = Offset(8, 3),
             serviceName = "wasi:clocks/imports@0.3.0",
             imports = listOf(
               IrExternalApi(
-                offset = Offset(4, 3),
+                offset = Offset(9, 5),
                 serviceName = "wasi:clocks/monotonic-clock@0.3.0".toServiceName(),
               ),
             ),
           ),
           IrInterface(
-            offset = Offset(3, 1),
+            offset = Offset(11, 3),
             serviceName = "wasi:clocks/monotonic-clock@0.3.0",
             items = listOf(
               IrFunction(
-                offset = Offset(4, 3),
+                offset = Offset(12, 5),
                 name = "now",
                 returnType = TypeName.S64,
                 serviceName = "wasi:clocks/monotonic-clock@0.3.0",

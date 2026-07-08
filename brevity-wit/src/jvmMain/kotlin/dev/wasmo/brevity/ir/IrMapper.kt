@@ -64,18 +64,16 @@ class IrMapper(
     }
   }
 
-  private fun addPackage(ioPackage: IoToplevelWitPackage) {
+  private fun addPackage(ioPackage: IoWitPackage) {
     val builder = irPackages.getOrPut(ioPackage.packageName) { PackageBuilder() }
 
     context(builder) {
-      for ((_, ioFile) in ioPackage.files) {
-        for (item in ioFile.items) {
-          when (item) {
-            is IoInterface -> item.interfaceToIr(ioPackage.packageName)
-            is IoWorld -> item.worldToIr(ioPackage.packageName)
-            is IoTopLevelUse -> {}
-            is IoInlinePackage -> {}
-          }
+      for (item in ioPackage.items()) {
+        when (item) {
+          is IoInterface -> item.interfaceToIr(ioPackage.packageName)
+          is IoWorld -> item.worldToIr(ioPackage.packageName)
+          is IoTopLevelUse -> {}
+          is IoInlinePackage -> addPackage(item)
         }
       }
     }
