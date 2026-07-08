@@ -57,6 +57,7 @@ class WorldFlattenerTest {
       packageName = "wasi:cli@0.3.0".toPackageName(),
       files = mapOf(
         "command.wit".toPath() to IoWitFile(
+          packageName = "wasi:cli@0.3.0".toPackageName(),
           items = listOf(command),
         ),
         "exit.wit".toPath() to IoWitFile(
