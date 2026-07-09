@@ -7,3 +7,9 @@ sealed class CoreType {
   object F64 : CoreType()
   object Pointer : CoreType()
 }
+
+val CoreType.byteCount: Int
+  get() = when (this) {
+    CoreType.I64, CoreType.F64 -> 8
+    else -> 4
+  }

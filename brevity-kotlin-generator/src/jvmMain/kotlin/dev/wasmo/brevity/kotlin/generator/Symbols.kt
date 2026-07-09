@@ -34,7 +34,12 @@ object Symbols {
   }
 
   object KotlinWasm {
+    val ComponentModelInternalApi = ClassName("kotlin.wasm.unsafe", "ComponentModelInternalApi")
     val ExperimentalWasmInterop = ClassName("kotlin.wasm", "ExperimentalWasmInterop")
+    val FreeAllComponentModelReallocAllocatedMemory = MemberName(
+      "kotlin.wasm.unsafe",
+      "freeAllComponentModelReallocAllocatedMemory"
+    )
     val Pointer = ClassName("kotlin.wasm.unsafe", "Pointer")
     val UnsafeWasmMemoryApi = ClassName("kotlin.wasm.unsafe", "UnsafeWasmMemoryApi")
     val WasmExport = ClassName("kotlin.wasm", "WasmExport")
