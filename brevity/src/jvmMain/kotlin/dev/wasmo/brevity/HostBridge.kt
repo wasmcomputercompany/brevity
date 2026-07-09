@@ -5,8 +5,8 @@ import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
 
 class HostBridge {
-  private val idToResource = mutableMapOf<Long, Resource>()
-  private var nextId = 6_060_000L
+  private val idToResource = mutableMapOf<Int, Resource>()
+  private var nextId = 6_060_000
   private lateinit var _memory: Memory
   private lateinit var cabiRealloc: ExportFunction
 
@@ -18,27 +18,27 @@ class HostBridge {
     this.cabiRealloc = instance.export("cabi_realloc")
   }
 
-  fun <T : Resource> toId(resource: T): Long {
+  fun <T : Resource> toId(resource: T): Int {
     val id = nextId++
     idToResource[id] = resource
     return id
   }
 
-  fun <T : Resource> fromId(id: Long, constructor: (Int) -> T): T {
-    return constructor(id.toInt())
+  fun <T : Resource> fromId(id: Int, constructor: (Int) -> T): T {
+    return constructor(id)
   }
 
   @PublishedApi
-  internal fun getInternal(id: Long): Resource? {
+  internal fun getInternal(id: Int): Resource? {
     return idToResource[id]
   }
 
-  /** Invoke `cabi_realloc(originalAddress, originalSize, newSize)`. */
+  /** Invoke `cabi_realloc(originalAddress, originalSize, align, newSize)`. */
   fun allocate(byteCount: Int): Int {
-    return cabiRealloc.apply(0L, 0L, byteCount.toLong())[0].toInt()
+    return cabiRealloc.apply(0L, 0L, 0L, byteCount.toLong())[0].toInt()
   }
 }
 
-inline operator fun <reified T : Resource> HostBridge.get(id: Long): T {
+inline operator fun <reified T : Resource> HostBridge.get(id: Int): T {
   return getInternal(id) as T
 }

@@ -9,6 +9,8 @@ import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.encoders.HostPlatform
+import dev.wasmo.brevity.kotlin.encoders.coreTypeToLong
+import dev.wasmo.brevity.kotlin.encoders.longToCoreType
 import dev.wasmo.brevity.kotlin.encoders.valType
 import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
@@ -49,23 +51,27 @@ internal class HostFunctionFactory(
     return FunSpec.builder(value.kotlinName)
       .addModifiers(KModifier.OVERRIDE)
       .apply {
-        val loweredParameters = mutableListOf<CodeBlock>()
-        for ((index, parameter) in value.parameters.withIndex()) {
+        val longParameters = mutableListOf<CodeBlock>()
+        for ((p, parameter) in value.parameters.withIndex()) {
+          val coreParameter = coreParameters[p]
           addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
-          loweredParameters += encodeBuilder.lower(
+          val loweredParameters = encodeBuilder.lower(
             value = CodeBlock.of("%N", nameAllocator[parameter.name]),
-            encoder = coreParameters[index].encoder,
+            encoder = coreParameter.encoder,
           )
+          for ((c, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
+            longParameters += coreTypeToLong(loweredParameters[c], coreType)
+          }
         }
 
-        val result = nameAllocator.newName("result")
+        val resultLongArray = nameAllocator.newName("result")
         val returnType = value.returnType
         if (returnType != null) {
-          code.add("val %N = ", result)
+          code.add("val %N = ", resultLongArray)
         }
         code.add("%N.apply(⇥\n", value.kotlinName)
-        for (loweredParameter in loweredParameters) {
-          code.add("%L,\n", loweredParameter)
+        for (longParameter in longParameters) {
+          code.add("%L,\n", longParameter)
         }
         code.add("⇤)\n")
 
@@ -73,8 +79,15 @@ internal class HostFunctionFactory(
           returns(returnType.kotlinApi)
           val encoder = encoderFactory.get(typeName = returnType)
           val coreReturnValues = when (encoder.coreTypes.size) {
-            1 -> listOf(CodeBlock.of("%N[%L]", result, 0))
-            else -> encodeBuilder.unflattenResult(CodeBlock.of("%N[%L]", result, 0), encoder)
+            1 -> {
+              val result = longToCoreType(resultLongArray, 0, encoder.coreTypes.single())
+              listOf(result)
+            }
+
+            else -> {
+              val result = longToCoreType(resultLongArray, 0, CoreType.Pointer)
+              encodeBuilder.unflattenResult(result, encoder)
+            }
           }
           val liftedReturnValue = encodeBuilder.lift(
             values = coreReturnValues,
@@ -108,15 +121,14 @@ internal class HostFunctionFactory(
     var argIndex = 0
     val liftedParameterValues = mutableListOf<CodeBlock>()
     val receiverValue = when (receiver) {
-      is Receiver.Id -> receiver.codeBlock(CodeBlock.of("%N[%L]", "args", argIndex++))
+      is Receiver.Id -> receiver.codeBlock(longToCoreType("args", argIndex++, CoreType.I32))
       is Receiver.Instance -> receiver.codeBlock
     }
     for (coreParameter in coreParameters) {
-      val args = coreParameter.encoder.coreTypes.map {
-        CodeBlock.of("%N[%L]", "args", argIndex++)
-      }
       liftedParameterValues += encodeBuilder.lift(
-        values = args,
+        values = coreParameter.encoder.coreTypes.map { coreType ->
+          longToCoreType("args", argIndex++, coreType)
+        },
         encoder = coreParameter.encoder,
       )
     }
@@ -155,7 +167,7 @@ internal class HostFunctionFactory(
       code.add(
         "return@%T longArrayOf(%L)",
         Symbols.ChicoryRuntime.WasmFunctionHandle,
-        flattenedReturnValue,
+        coreTypeToLong(flattenedReturnValue, returnValType),
       )
     } else {
       returnValType = null

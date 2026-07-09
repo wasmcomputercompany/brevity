@@ -10,8 +10,6 @@ import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.encoders.GuestPlatform
-import dev.wasmo.brevity.kotlin.encoders.wasmExportAnnotation
-import dev.wasmo.brevity.kotlin.encoders.wasmImportAnnotation
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -95,6 +93,10 @@ internal class GuestFunctionFactory(
             encoder = encoder,
           )
           code.add("return %L", liftedReturnValue)
+          code.add(
+            "\n⇥.also{ %M() }⇤",
+            Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory
+          )
         }
       }
       .addCode(buildCodeBlock())

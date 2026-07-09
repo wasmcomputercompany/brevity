@@ -8,7 +8,6 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.ir.IrDeclaration
 import dev.wasmo.brevity.ir.IrEnum
 import dev.wasmo.brevity.ir.IrExternalApi
@@ -78,7 +77,7 @@ class ApiGenerator(
     .apply {
       for (function in value.functions) {
         if (!function.isSupported) continue
-        addFunction(functionToApi(function))
+        addFunction(ApiFunctionFactory(function).api())
       }
     }
     .build()
@@ -178,17 +177,6 @@ class ApiGenerator(
     }
     .build()
 
-  private fun functionToApi(value: IrFunction) = FunSpec.builder(value.kotlinName)
-    .addModifiers(KModifier.ABSTRACT)
-    .setDeclaration(value)
-    .apply {
-      for (parameter in value.parameters) {
-        addParameter(parameter.kotlinName, parameter.type.kotlinApi)
-      }
-      returns(value.returnType?.kotlinApi ?: UNIT)
-    }
-    .build()
-
   private fun serviceToApi(value: IrWitPackage.Service): TypeSpec? {
     if (!value.hasInstanceMembers && value.types.isEmpty()) return null
 
@@ -219,7 +207,7 @@ class ApiGenerator(
     when (value) {
       is IrInterface -> {
         for (function in value.functions) {
-          builder.addFunction(functionToApi(function))
+          builder.addFunction(ApiFunctionFactory(function).api())
         }
       }
 
@@ -244,7 +232,7 @@ class ApiGenerator(
         for (item in value.items) {
           when (item) {
             is IrExternalApi -> addProperty(item.instanceName, item.serviceName.kotlinApi)
-            is IrFunction -> addFunction(functionToApi(item))
+            is IrFunction -> addFunction(ApiFunctionFactory(item).api())
           }
         }
       }

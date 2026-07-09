@@ -26,11 +26,11 @@ class FallbackEncoder(
   override val coreTypes = listOf(coreType)
 
   override fun EncodeBuilder.coreTypeToValue() {
-    put("%L as %T", take(), type.kotlinApi)
+    put("(%L as %T)", take(), type.kotlinApi)
   }
 
   override fun EncodeBuilder.valueToCoreType() {
-    put("%L as %T", take(), coreType.kotlinCoreType)
+    put("(%L as %T)", take(), coreType.kotlinCoreType)
   }
 }
 
@@ -54,11 +54,11 @@ class ListEncoder(
   override val coreTypes = listOf(CoreType.Pointer)
 
   override fun EncodeBuilder.coreTypeToValue() {
-    put("%L as %T", take(), type.kotlinApi)
+    put("(%L as %T)", take(), type.kotlinApi)
   }
 
   override fun EncodeBuilder.valueToCoreType() {
-    put("%L as %T", take(), CoreType.Pointer.kotlinCoreType)
+    put("(%L as %T)", take(), CoreType.Pointer.kotlinCoreType)
   }
 }
 

@@ -4,11 +4,11 @@ import app.cash.burst.Burst
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNullOrEmpty
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 import okio.Path
 import okio.Path.Companion.toPath
+import wit.wasmo.testing.Types
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.World
 
@@ -18,7 +18,7 @@ class RunKotlinWasmTest {
   fun `call function declared on world`() = runTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
-      .moduleWasm()
+      .wasmPath(WasmSource.Kotlin.path)
       .addWorld(world)
       .build()
     val result = world.guest.sum(5L, 10L)
@@ -26,13 +26,10 @@ class RunKotlinWasmTest {
   }
 
   @Test
-  @Ignore("not all imports declared yet")
-  fun `call function declared on interface`(
-    wasmSource: WasmSource,
-  ) = runTest {
+  fun `call function declared on interface`() = runTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
-      .wasmPath(wasmSource.path)
+      .wasmPath(WasmSource.Kotlin.path)
       .addWorld(world)
       .build()
     val result = world.guest.calculator.multiply(5L, 10L)
@@ -40,20 +37,32 @@ class RunKotlinWasmTest {
   }
 
   @Test
-  fun `call concatenate`() = runTest {
+  fun `call kotlin concatenate`() = runTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
+      .wasmPath(WasmSource.Kotlin.path)
       .addWorld(world)
-      .moduleWasm()
       .build()
 
-    val bId = tester.bridge.put("World!")
-    val aId = tester.bridge.put("Hello, ")
+    val a = object : Types.StringArgument {
+      override fun get(): String {
+        return "Hello, "
+      }
+    }
+    val b = object : Types.StringArgument {
+      override fun get(): String {
+        return "World!"
+      }
+    }
+    var result: String? = null
+    val callback = object : Types.StringResult {
+      override fun put(value_: String) {
+        result = value_
+      }
+    }
 
-    val concatenate = tester.instance.export("concatenate")
-    val result = concatenate.apply(aId.toLong(), bId.toLong())
-
-    assertThat(tester.bridge.get(result[0].toInt())).isEqualTo("Hello, World!")
+    world.guest.concat(a, b, callback)
+    assertThat(result).isEqualTo("Hello, World!")
   }
 
   @Test
@@ -61,7 +70,7 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
       .addWorld(world)
-      .moduleWasm()
+      .wasmPath(WasmSource.Kotlin.path)
       .build()
 
     val nameId = tester.bridge.put("Jesse")
@@ -78,7 +87,7 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
       .addWorld(world)
-      .moduleWasm()
+      .wasmPath(WasmSource.Kotlin.path)
       .build()
     val nameId = tester.bridge.put("Jesse")
 
@@ -87,10 +96,6 @@ class RunKotlinWasmTest {
     assertThat(result).isNullOrEmpty()
 
     assertThat(tester.wasi.stderr.readUtf8()).isEqualTo("Exception: boom, Jesse!\n\n")
-  }
-
-  private fun WasmTester.Builder.moduleWasm() = apply {
-    wasmPath("build/compileSync/wasmWasi/main/developmentExecutable/kotlin/brevity-root-brevity-integration-tests.wasm".toPath())
   }
 
   enum class WasmSource(

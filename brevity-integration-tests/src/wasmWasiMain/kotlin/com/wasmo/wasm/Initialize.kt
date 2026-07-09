@@ -29,8 +29,4 @@ val actuallyInitialize = run {
       return a + b
     }
   }
-
-  concatenator = object : Concatenator {
-    override fun concatenate(a: String, b: String) = a + b
-  }
 }
