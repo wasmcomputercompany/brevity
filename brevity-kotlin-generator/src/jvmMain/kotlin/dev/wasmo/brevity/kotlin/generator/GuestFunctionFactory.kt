@@ -8,10 +8,7 @@ import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.encoders.CoreType
-import dev.wasmo.brevity.kotlin.encoders.EncodeBuilder
-import dev.wasmo.brevity.kotlin.encoders.Encoder
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
-import dev.wasmo.brevity.kotlin.encoders.byteCount
 import dev.wasmo.brevity.kotlin.encoders.wasmExportAnnotation
 import dev.wasmo.brevity.kotlin.encoders.wasmImportAnnotation
 import java.util.concurrent.atomic.AtomicBoolean
@@ -49,7 +46,7 @@ internal class GuestFunctionFactory(
 
   private val code = CodeBlock.Builder()
 
-  private val encodeBuilder = EncodeBuilder(
+  private val encodeBuilder = RealEncodeBuilder(
     bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
     nameAllocator = nameAllocator,
     code = code,
@@ -89,7 +86,7 @@ internal class GuestFunctionFactory(
           val encoder = encoderFactory.get(typeName = returnType)
           val coreReturnValues = when (encoder.coreTypes.size) {
             1 -> listOf(CodeBlock.of("%N", result))
-            else -> unflattenResult(CodeBlock.of("%N", result), encoder)
+            else -> encodeBuilder.unflattenResult(CodeBlock.of("%N", result), encoder)
           }
           val liftedReturnValue = encodeBuilder.lift(
             values = coreReturnValues,
@@ -183,7 +180,7 @@ internal class GuestFunctionFactory(
 
             else -> {
               returns(CoreType.Pointer.kotlinCoreType)
-              flattenResult(loweredReturnValues, encoder)
+              encodeBuilder.flattenResult(loweredReturnValues, encoder)
             }
           }
           code.add("return %L\n", flattenedReturnValue)
@@ -191,59 +188,6 @@ internal class GuestFunctionFactory(
       }
       .addCode(buildCodeBlock())
       .build()
-  }
-
-  /** When there's multiple core values to return, write them to memory and return a pointer. */
-  private fun flattenResult(returnValues: List<CodeBlock>, encoder: Encoder): CodeBlock {
-    val coreTypes = encoder.coreTypes
-
-    val byteCount = coreTypes.sumOf { coreType ->
-      coreType.byteCount
-    }
-
-    val pointer = nameAllocator.newName("resultPointer")
-    var offset = 0
-    code.addStatement("val %N = %L", pointer, encodeBuilder.allocate("%L", byteCount))
-    for ((index, value) in returnValues.withIndex()) {
-      val coreType = coreTypes[index]
-      val offsetPointer = when {
-        offset == 0 -> CodeBlock.of("%N", pointer)
-        else -> CodeBlock.of("(%N + %L)", pointer, offset)
-      }
-      when (coreType) {
-        CoreType.I64, CoreType.F64 -> code.addStatement("%L.storeLong(%L)", offsetPointer, value)
-        else -> code.addStatement("%L.storeInt(%L)", offsetPointer, value)
-      }
-      offset += coreType.byteCount
-    }
-
-    return CodeBlock.of("%N.address.toInt()", pointer)
-  }
-
-  /** When a pointer is returned, unpack the core values from memory. */
-  private fun unflattenResult(returnValue: CodeBlock, encoder: Encoder): List<CodeBlock> {
-    val coreTypes = encoder.coreTypes
-    val nameHints = encoder.nameHints
-
-    val pointer = nameAllocator.newName("resultPointer")
-    code.addStatement("val %N = %T(%L.toUInt())", pointer, Symbols.KotlinWasm.Pointer, returnValue)
-
-    var offset = 0
-    val result = mutableListOf<CodeBlock>()
-
-    for ((index, coreType) in coreTypes.withIndex()) {
-      val nameHint = nameHints?.getOrNull(index)
-      val nameSuggestion = when {
-        nameHint != null -> Identifier("result-${nameHint}").toCamelCase(upperCamel = false)
-        else -> "result"
-      }
-      val name = nameAllocator.newName(nameSuggestion)
-      result += CodeBlock.of("%N", name)
-      code.addStatement("val %N = (%N + %L).loadInt()", name, pointer, offset)
-      offset += coreType.byteCount
-    }
-
-    return result
   }
 
   private fun buildCodeBlock(): CodeBlock {

@@ -5,13 +5,10 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.joinToCode
-import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.encoders.CoreType
-import dev.wasmo.brevity.kotlin.encoders.EncodeBuilder
-import dev.wasmo.brevity.kotlin.encoders.Encoder
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
-import dev.wasmo.brevity.kotlin.encoders.byteCount
+import dev.wasmo.brevity.kotlin.encoders.valType
 import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -30,7 +27,7 @@ internal class HostFunctionFactory(
     }
   }
 
-  private val encodeBuilder = EncodeBuilder(
+  private val encodeBuilder = RealEncodeBuilder(
     bridge = bridge,
     nameAllocator = nameAllocator,
     code = code,
@@ -71,7 +68,7 @@ internal class HostFunctionFactory(
           val encoder = encoderFactory.get(typeName = returnType)
           val coreReturnValues = when (encoder.coreTypes.size) {
             1 -> listOf(CodeBlock.of("%N[%L]", result, 0))
-            else -> unflattenResult(CodeBlock.of("%N[%L]", result, 0), encoder)
+            else -> encodeBuilder.unflattenResult(CodeBlock.of("%N[%L]", result, 0), encoder)
           }
           val liftedReturnValue = encodeBuilder.lift(
             values = coreReturnValues,
@@ -146,7 +143,7 @@ internal class HostFunctionFactory(
 
         else -> {
           returnValType = CoreType.Pointer
-          flattenResult(loweredReturnValues, encoder)
+          encodeBuilder.flattenResult(loweredReturnValues, encoder)
         }
       }
       code.add(
@@ -187,66 +184,4 @@ internal class HostFunctionFactory(
       code.build(),
     )
   }
-
-  /** When there's multiple core values to return, write them to memory and return a pointer. */
-  private fun flattenResult(returnValues: List<CodeBlock>, encoder: Encoder): CodeBlock {
-    val coreTypes = encoder.coreTypes
-
-    val byteCount = coreTypes.sumOf { coreType ->
-      coreType.byteCount
-    }
-
-    val pointer = nameAllocator.newName("resultPointer")
-    var offset = 0
-    code.addStatement("val %N = %L", pointer, encodeBuilder.allocate("%L", byteCount))
-    for ((index, value) in returnValues.withIndex()) {
-      val coreType = coreTypes[index]
-      val offsetPointer = when {
-        offset == 0 -> CodeBlock.of("%N", pointer)
-        else -> CodeBlock.of("(%N + %L)", pointer, offset)
-      }
-      when (coreType) {
-        CoreType.I64, CoreType.F64 -> code.addStatement("%L.storeLong(%L)", offsetPointer, value)
-        else -> code.addStatement("%L.storeInt(%L)", offsetPointer, value)
-      }
-      offset += coreType.byteCount
-    }
-
-    return CodeBlock.of("%N.address.toInt()", pointer)
-  }
-
-  /** When a pointer is returned, unpack the core values from memory. */
-  private fun unflattenResult(returnValue: CodeBlock, encoder: Encoder): List<CodeBlock> {
-    val coreTypes = encoder.coreTypes
-    val nameHints = encoder.nameHints
-
-    val pointer = nameAllocator.newName("resultPointer")
-    code.addStatement("val %N = %T(%L.toUInt())", pointer, Symbols.KotlinWasm.Pointer, returnValue)
-
-    var offset = 0
-    val result = mutableListOf<CodeBlock>()
-
-    for ((index, coreType) in coreTypes.withIndex()) {
-      val nameHint = nameHints?.getOrNull(index)
-      val nameSuggestion = when {
-        nameHint != null -> Identifier("result-${nameHint}").toCamelCase(upperCamel = false)
-        else -> "result"
-      }
-      val name = nameAllocator.newName(nameSuggestion)
-      result += CodeBlock.of("%N", name)
-      code.addStatement("val %N = (%N + %L).loadInt()", name, pointer, offset)
-      offset += coreType.byteCount
-    }
-
-    return result
-  }
-
-  private val CoreType.valType: CodeBlock
-    get() = when (this) {
-      CoreType.F32 -> CodeBlock.of("%T.F32", Symbols.ChicoryRuntime.ValType)
-      CoreType.F64 -> CodeBlock.of("%T.F64", Symbols.ChicoryRuntime.ValType)
-      CoreType.I32 -> CodeBlock.of("%T.I32", Symbols.ChicoryRuntime.ValType)
-      CoreType.I64 -> CodeBlock.of("%T.I64", Symbols.ChicoryRuntime.ValType)
-      CoreType.Pointer -> CodeBlock.of("%T.I32", Symbols.ChicoryRuntime.ValType)
-    }
 }
