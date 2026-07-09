@@ -4,7 +4,6 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.NameAllocator
-import com.squareup.kotlinpoet.ParameterSpec
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
@@ -26,7 +25,6 @@ internal class GuestFunctionFactory(
   private val value: IrFunction,
 ) {
   private val used = AtomicBoolean()
-  private val encodeBuilder = GuestEncodeBuilder()
 
   private val nameAllocator = NameAllocator().apply {
     // Pre-allocate the names we'll need.
@@ -38,14 +36,24 @@ internal class GuestFunctionFactory(
     }
   }
 
-  private val code = CodeBlock.Builder()
-  private var memoryAllocator: String? = null
+  private val coreParameterFactory = CoreParameter.Factory(
+    encoderFactory = encoderFactory,
+    nameAllocator = nameAllocator,
+  )
 
   private val coreReceiver: CoreParameter? = when {
-    receiver is Receiver.Id -> coreParameter(receiver.name, receiver.type)
+    receiver is Receiver.Id -> coreParameterFactory(receiver.name, receiver.type)
     else -> null
   }
-  private val coreParameters = value.parameters.map { coreParameter(it.name, it.type) }
+  private val coreParameters = value.parameters.map { coreParameterFactory(it.name, it.type) }
+
+  private val code = CodeBlock.Builder()
+
+  private val encodeBuilder = EncodeBuilder(
+    bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
+    nameAllocator = nameAllocator,
+    code = code,
+  )
 
   /** Bridge an API function into a call to [wasmImport]. */
   fun callHost(): FunSpec {
@@ -132,7 +140,10 @@ internal class GuestFunctionFactory(
         val liftedReceiver = when (receiver) {
           is Receiver.Id -> {
             addParameters(coreReceiver!!.specs)
-            encodeBuilder.lift(coreReceiver.values, coreReceiver.encoder)
+            encodeBuilder.lift(
+              values = coreReceiver.names.map { CodeBlock.of("%N", it) },
+              encoder = coreReceiver.encoder
+            )
           }
 
           is Receiver.Global -> receiver.codeBlock
@@ -142,7 +153,7 @@ internal class GuestFunctionFactory(
         for (coreParameter in coreParameters) {
           addParameters(coreParameter.specs)
           liftedParameterValues += encodeBuilder.lift(
-            values = coreParameter.values,
+            values = coreParameter.names.map { CodeBlock.of("%N", it) },
             encoder = coreParameter.encoder,
           )
         }
@@ -164,17 +175,18 @@ internal class GuestFunctionFactory(
             value = CodeBlock.of("%N", result),
             encoder = encoder,
           )
-          when (encoder.coreTypes.size) {
+          val flattenedReturnValue = when (encoder.coreTypes.size) {
             1 -> {
               returns(encoder.coreTypes.single().kotlinCoreType)
-              code.add("return %L\n", loweredReturnValues.single())
+              loweredReturnValues.single()
             }
 
             else -> {
               returns(CoreType.Pointer.kotlinCoreType)
-              code.add("return %L\n", flattenResult(loweredReturnValues, encoder))
+              flattenResult(loweredReturnValues, encoder)
             }
           }
+          code.add("return %L\n", flattenedReturnValue)
         }
       }
       .addCode(buildCodeBlock())
@@ -235,6 +247,7 @@ internal class GuestFunctionFactory(
   }
 
   private fun buildCodeBlock(): CodeBlock {
+    val memoryAllocator = encodeBuilder.memoryAllocator
     return when {
       memoryAllocator != null -> com.squareup.kotlinpoet.buildCodeBlock {
         beginControlFlow(
@@ -247,107 +260,6 @@ internal class GuestFunctionFactory(
       }
 
       else -> code.build()
-    }
-  }
-
-  private fun coreParameter(name: Identifier, typeName: TypeName): CoreParameter {
-    val encoder = encoderFactory.get(typeName)
-    val nameHints = encoder.nameHints
-
-    val specs = mutableListOf<ParameterSpec>()
-    val values = mutableListOf<CodeBlock>()
-    for ((index, coreType) in encoder.coreTypes.withIndex()) {
-      val nameHint = nameHints?.getOrNull(index)
-      val coreName = when {
-        nameHint != null -> nameAllocator.newName(
-          Identifier("${name}-${nameHint.name}").toCamelCase(upperCamel = false),
-        )
-
-        else -> nameAllocator[name]
-      }
-      specs += ParameterSpec(coreName, coreType.kotlinCoreType)
-      values += CodeBlock.of("%N", coreName)
-    }
-
-    return CoreParameter(
-      encoder = encoder,
-      specs = specs,
-      values = values,
-    )
-  }
-
-  /**
-   * A set of parameters that use core types only, to be lifted on inbound calls and lowered on
-   * outbound calls.
-   */
-  private class CoreParameter(
-    val encoder: Encoder,
-    val specs: List<ParameterSpec>,
-    val values: List<CodeBlock>,
-  )
-
-  private inner class GuestEncodeBuilder : EncodeBuilder {
-    override val bridge: CodeBlock
-      get() = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
-    override val nameAllocator: NameAllocator
-      get() = this@GuestFunctionFactory.nameAllocator
-    override val code: CodeBlock.Builder
-      get() = this@GuestFunctionFactory.code
-
-    private val inputs = mutableListOf<CodeBlock>()
-    private val outputs = mutableListOf<CodeBlock>()
-
-    override fun allocate(byteCount: CodeBlock): CodeBlock {
-      if (memoryAllocator == null) {
-        memoryAllocator = nameAllocator.newName("memoryAllocator")
-      }
-      return CodeBlock.of("%N.allocate(%L)", memoryAllocator, byteCount)
-    }
-
-    override fun take(): CodeBlock {
-      return inputs.removeFirstOrNull()
-        ?: error("unexpected call to take(), input count mismatch?")
-    }
-
-    override fun put(value: CodeBlock) {
-      outputs += value
-    }
-
-    fun lower(value: CodeBlock, encoder: Encoder): List<CodeBlock> {
-      inputs += value
-
-      with(encoder) {
-        valueToCoreType()
-      }
-
-      check(inputs.isEmpty()) {
-        "expected 1 call to take(), but was 0"
-      }
-
-      check(outputs.size == encoder.coreTypes.size) {
-        "expected ${encoder.coreTypes.size} calls to put(), but was ${outputs.size}"
-      }
-
-      return outputs.toList()
-        .also { outputs.clear() }
-    }
-
-    fun lift(values: List<CodeBlock>, encoder: Encoder): CodeBlock {
-      inputs += values
-
-      with(encoder) {
-        coreTypeToValue()
-      }
-
-      check(inputs.isEmpty()) {
-        "expected ${values.size} calls to take(), but was ${values.size - inputs.size}"
-      }
-
-      check(outputs.size == 1) {
-        "expected 1 call to put(), but was ${outputs.size}"
-      }
-
-      return outputs.removeFirst()
     }
   }
 
@@ -364,3 +276,4 @@ internal class GuestFunctionFactory(
     }
   }
 }
+
