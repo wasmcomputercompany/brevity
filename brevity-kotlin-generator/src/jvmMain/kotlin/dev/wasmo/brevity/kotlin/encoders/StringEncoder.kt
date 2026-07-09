@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.kotlin.encoders
 
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.kotlin.generator.Symbols
 
 /**
@@ -7,17 +8,19 @@ import dev.wasmo.brevity.kotlin.generator.Symbols
  */
 object StringEncoder : Encoder() {
   override val coreTypes: List<CoreType>
-    get() = listOf(CoreType.Pointer)
+    get() = listOf(CoreType.Pointer, CoreType.Pointer)
+
+  override val nameHints: List<Identifier>
+    get() = listOf(Identifier("pointer"), Identifier("byte-count"))
 
   override fun EncodeBuilder.coreTypeToValue() {
-    val pointer = nameAllocator.newName("pointer")
-    val stringAddress = nameAllocator.newName("stringAddress")
-    val stringByteCount = nameAllocator.newName("stringByteCount")
-
-    code.addStatement("val %N = %T(%L.toUInt())", pointer, Symbols.KotlinWasm.Pointer, take())
-    code.addStatement("val %N = %N.%M()", stringAddress, pointer, Symbols.Brevity.LoadPointer)
-    code.addStatement("val %N = (%N + 4).loadInt()", stringByteCount, pointer)
-    put("%N.%M(%N)", stringAddress, Symbols.Brevity.LoadString, stringByteCount)
+    put(
+      "%T(%L.toUInt()).%M(%L)",
+      Symbols.KotlinWasm.Pointer,
+      take(),
+      Symbols.Brevity.LoadString,
+      take(),
+    )
   }
 
   override fun EncodeBuilder.valueToCoreType() {
@@ -28,6 +31,6 @@ object StringEncoder : Encoder() {
     code.addStatement("val %N = %L", pointer, allocate("%N.size", byteArray))
     code.addStatement("%N.%M(%N)", pointer, Symbols.Brevity.StoreByteArray, byteArray)
     put("%N.address.toInt()", pointer)
-//    put("%N.size", byteArray) // TODO: support 2x put on strings
+    put("%N.size", byteArray)
   }
 }

@@ -4,11 +4,15 @@ import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.UNIT
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
+import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.encoders.GuestEncodeBuilder
+import dev.wasmo.brevity.kotlin.encoders.coreParameters
 
 internal class GuestBridgeBuilder(
   private val encoderFactory: EncoderFactory,
@@ -30,9 +34,7 @@ internal class GuestBridgeBuilder(
       parameterCodeBlocks += encodeBuilder.lower(
         value = CodeBlock.of("%N", parameter.kotlinName),
         encoder = encoderFactory.get(typeName = parameter.type),
-      ) {
-        encodeBuilder.valueToCoreType()
-      }
+      )
     }
 
     if (returnType != null) {
@@ -45,12 +47,15 @@ internal class GuestBridgeBuilder(
     encodeBuilder.code.add("⇤)\n")
 
     if (returnType != null) {
-      val returnValueCodeBlock = encodeBuilder.lift(
-        values = listOf(CodeBlock.of("%N", "result")),
-        encoder = encoderFactory.get(typeName = returnType),
-      ) {
-        encodeBuilder.coreTypeToValue()
+      val encoder = encoderFactory.get(typeName = returnType)
+      val values = when (encoder.coreTypes.size) {
+        1 -> listOf(CodeBlock.of("%N", "result"))
+        else -> encodeBuilder.unflattenResult(CodeBlock.of("%N", "result"), encoder)
       }
+      val returnValueCodeBlock = encodeBuilder.lift(
+        values = values,
+        encoder = encoder,
+      )
       encodeBuilder.code.add("return %L", returnValueCodeBlock)
     }
 
@@ -87,24 +92,22 @@ internal class GuestBridgeBuilder(
       )
       .addModifiers(KModifier.PRIVATE, KModifier.EXTERNAL)
       .apply {
+        val nameAllocator = NameAllocator()
         if (receiver is Receiver.Id) {
-          val encoder = encoderFactory.get(receiver.type)
-          for (coreType in encoder.coreTypes) {
-            addParameter(receiver.name, coreType.kotlinCoreType)
-          }
+          addParameters(encoderFactory.coreParameters(nameAllocator, receiver).specs)
         }
         for (parameter in value.parameters) {
-          val encoder = encoderFactory.get(parameter.type)
-          for (coreType in encoder.coreTypes) {
-            addParameter(parameter.kotlinName, coreType.kotlinCoreType)
-          }
+          addParameters(encoderFactory.coreParameters(nameAllocator, parameter).specs)
         }
 
         // TODO: flatten strings instead of calling single().
         val returnType = value.returnType
         if (returnType != null) {
           val encoder = encoderFactory.get(returnType)
-          returns(encoder.coreTypes.single().kotlinCoreType)
+          when (encoder.coreTypes.size) {
+            1 -> returns(encoder.coreTypes.single().kotlinCoreType)
+            else -> returns(CoreType.Pointer.kotlinCoreType)
+          }
         }
       }
       .build()
@@ -129,16 +132,12 @@ internal class GuestBridgeBuilder(
 
         val receiverCodeBlock = when (receiver) {
           is Receiver.Id -> {
-            val encoder = encoderFactory.get(receiver.type)
-            for (coreType in encoder.coreTypes) {
-              addParameter(receiver.name, coreType.kotlinCoreType)
-            }
-            encodeBuilder.lift(
-              values = listOf(CodeBlock.of("%N", receiver.name)),
-              encoder = encoder,
-            ) {
-              encodeBuilder.coreTypeToValue()
-            }
+            val coreParameters = encoderFactory.coreParameters(
+              encodeBuilder.nameAllocator,
+              receiver,
+            )
+            addParameters(coreParameters.specs)
+            encodeBuilder.lift(coreParameters.values, coreParameters.encoder)
           }
 
           is Receiver.Global -> receiver.codeBlock
@@ -146,16 +145,15 @@ internal class GuestBridgeBuilder(
 
         val parameterValues = mutableListOf<CodeBlock>()
         for (parameter in value.parameters) {
-          val encoder = encoderFactory.get(typeName = parameter.type)
-          for (coreType in encoder.coreTypes) {
-            addParameter(parameter.kotlinName, coreType.kotlinCoreType)
-          }
+          val coreParameters = encoderFactory.coreParameters(
+            encodeBuilder.nameAllocator,
+            parameter,
+          )
+          addParameters(coreParameters.specs)
           parameterValues += encodeBuilder.lift(
-            values = encoder.coreTypes.map { CodeBlock.of("%N", parameter.kotlinName) },
-            encoder = encoder,
-          ) {
-            encodeBuilder.coreTypeToValue()
-          }
+            values = coreParameters.values,
+            encoder = coreParameters.encoder,
+          )
         }
 
         val returnType = value.returnType
@@ -170,15 +168,21 @@ internal class GuestBridgeBuilder(
 
         if (returnType != null) {
           val encoder = encoderFactory.get(typeName = returnType)
-          val returnValue = encodeBuilder.lower(
+          val returnValues = encodeBuilder.lower(
             value = CodeBlock.of("%N", "result"),
             encoder = encoder,
-          ) {
-            encodeBuilder.valueToCoreType()
+          )
+          when (encoder.coreTypes.size) {
+            1 -> {
+              returns(encoder.coreTypes.single().kotlinCoreType)
+              encodeBuilder.code.add("return %L\n", returnValues.single())
+            }
+
+            else -> {
+              returns(CoreType.Pointer.kotlinCoreType)
+              encodeBuilder.code.add("return %L\n", encodeBuilder.flattenResult(returnValues, encoder))
+            }
           }
-          // TODO: flatten strings instead of calling single().
-          returns(encoder.coreTypes.single().kotlinCoreType)
-          encodeBuilder.code.add("return %L\n", returnValue.single())
         }
 
         addCode(encodeBuilder.build())
@@ -194,8 +198,8 @@ internal class GuestBridgeBuilder(
     data class Id(
       val type: TypeName,
     ) : Receiver {
-      val name: String
-        get() = "self"
+      val name: Identifier
+        get() = Identifier("self")
     }
   }
 }

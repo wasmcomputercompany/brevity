@@ -8,6 +8,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Annotation
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
@@ -25,6 +26,13 @@ val IrCase.kotlinName: String
 
 val IrParameter.kotlinName: String
   get() = name.toCamelCase(upperCamel = false)
+
+fun Identifier.kotlinName(nameHint: Identifier?): String {
+  return when {
+    nameHint != null -> Identifier("${name}-${nameHint.name}").toCamelCase(upperCamel = false)
+    else -> toCamelCase(upperCamel = false)
+  }
+}
 
 val IrField.kotlinName: String
   get() = name.toCamelCase(upperCamel = false)

@@ -3,7 +3,9 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.buildCodeBlock
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.kotlin.generator.Symbols
+import dev.wasmo.brevity.kotlin.generator.toCamelCase
 
 internal class GuestEncodeBuilder(
   override val bridge: CodeBlock,
@@ -32,13 +34,12 @@ internal class GuestEncodeBuilder(
     outputs += value
   }
 
-  fun lower(
-    value: CodeBlock,
-    encoder: Encoder,
-    block: Encoder.() -> Unit,
-  ): List<CodeBlock> {
+  fun lower(value: CodeBlock, encoder: Encoder): List<CodeBlock> {
     inputs += value
-    encoder.block()
+
+    with(encoder) {
+      valueToCoreType()
+    }
 
     check(inputs.isEmpty()) {
       "expected 1 call to take(), but was 0"
@@ -52,13 +53,12 @@ internal class GuestEncodeBuilder(
       .also { outputs.clear() }
   }
 
-  fun lift(
-    values: List<CodeBlock>,
-    encoder: Encoder,
-    block: Encoder.() -> Unit,
-  ): CodeBlock {
+  fun lift(values: List<CodeBlock>, encoder: Encoder): CodeBlock {
     inputs += values
-    encoder.block()
+
+    with(encoder) {
+      coreTypeToValue()
+    }
 
     check(inputs.isEmpty()) {
       "expected ${values.size} calls to take(), but was ${values.size - inputs.size}"
@@ -69,6 +69,59 @@ internal class GuestEncodeBuilder(
     }
 
     return outputs.removeFirst()
+  }
+
+  /** When there's multiple core values to return, write them to memory and return a pointer. */
+  fun flattenResult(returnValues: List<CodeBlock>, encoder: Encoder): CodeBlock {
+    val coreTypes = encoder.coreTypes
+
+    val byteCount = coreTypes.sumOf { coreType ->
+      coreType.byteCount
+    }
+
+    val pointer = nameAllocator.newName("resultPointer")
+    var offset = 0
+    code.addStatement("val %N = %L", pointer, allocate("%L", byteCount))
+    for ((index, value) in returnValues.withIndex()) {
+      val coreType = coreTypes[index]
+      val offsetPointer = when {
+        offset == 0 -> CodeBlock.of("%N", pointer)
+        else -> CodeBlock.of("(%N + %L)", pointer, offset)
+      }
+      when (coreType) {
+        CoreType.I64, CoreType.F64 -> code.addStatement("%L.storeLong(%L)", offsetPointer, value)
+        else -> code.addStatement("%L.storeInt(%L)", offsetPointer, value)
+      }
+      offset += coreType.byteCount
+    }
+
+    return CodeBlock.of("%N.address.toInt()", pointer)
+  }
+
+  /** When a pointer is returned, unpack the core values from memory. */
+  fun unflattenResult(returnValue: CodeBlock, encoder: Encoder): List<CodeBlock> {
+    val coreTypes = encoder.coreTypes
+    val nameHints = encoder.nameHints
+
+    val pointer = nameAllocator.newName("resultPointer")
+    code.addStatement("val %N = %T(%L.toUInt())", pointer, Symbols.KotlinWasm.Pointer, returnValue)
+
+    var offset = 0
+    val result = mutableListOf<CodeBlock>()
+
+    for ((index, coreType) in coreTypes.withIndex()) {
+      val nameHint = nameHints?.getOrNull(index)
+      val nameSuggestion = when {
+        nameHint != null -> Identifier("result-${nameHint}").toCamelCase(upperCamel = false)
+        else -> "result"
+      }
+      val name = nameAllocator.newName(nameSuggestion)
+      result += CodeBlock.of("%N", name)
+      code.addStatement("val %N = (%N + %L).loadInt()", name, pointer, offset)
+      offset += coreType.byteCount
+    }
+
+    return result
   }
 
   fun build(): CodeBlock {

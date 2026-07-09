@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.kotlin.encoders
 
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.generator.handleName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
@@ -7,6 +8,9 @@ import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 
 abstract class Encoder {
   abstract val coreTypes: List<CoreType>
+
+  open val nameHints: List<Identifier>?
+    get() = null
 
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
   abstract fun EncodeBuilder.coreTypeToValue()

@@ -878,7 +878,10 @@ class KotlinGeneratorTest {
       |    val byteArray = result.encodeToByteArray()
       |    val pointer = memoryAllocator.allocate(byteArray.size)
       |    pointer.storeByteArray(byteArray)
-      |    return pointer.address.toInt()
+      |    val resultPointer = memoryAllocator.allocate(8)
+      |    resultPointer.storeInt(pointer.address.toInt())
+      |    (resultPointer + 4).storeInt(byteArray.size)
+      |    return resultPointer.address.toInt()
       |  }
       |}
       |
@@ -892,7 +895,6 @@ class KotlinGeneratorTest {
       |
       |package wit.namespace.package_name
       |
-      |import dev.wasmo.brevity.loadPointer
       |import dev.wasmo.brevity.loadString
       |import dev.wasmo.brevity.storeByteArray
       |import kotlin.Int
@@ -915,7 +917,11 @@ class KotlinGeneratorTest {
       |  module = "namespace:package-name/test",
       |  name = "[method]person.replace-name",
       |)
-      |private external fun test_person_replaceName_import(self: Int, name: Int): Int
+      |private external fun test_person_replaceName_import(
+      |  self: Int,
+      |  namePointer: Int,
+      |  nameByteCount: Int,
+      |): Int
       |
       |internal class PersonHandle(
       |  private val id: Int,
@@ -924,10 +930,10 @@ class KotlinGeneratorTest {
       |    val result = test_person_getName_import(
       |      this.id,
       |    )
-      |    val pointer = Pointer(result.toUInt())
-      |    val stringAddress = pointer.loadPointer()
-      |    val stringByteCount = (pointer + 4).loadInt()
-      |    return stringAddress.loadString(stringByteCount)
+      |    val resultPointer = Pointer(result.toUInt())
+      |    val resultPointer_ = (resultPointer + 0).loadInt()
+      |    val resultByteCount = (resultPointer + 4).loadInt()
+      |    return Pointer(resultPointer_.toUInt()).loadString(resultByteCount)
       |  }
       |
       |  override fun replaceName(name: String): String {
@@ -938,11 +944,12 @@ class KotlinGeneratorTest {
       |      val result = test_person_replaceName_import(
       |        this.id,
       |        pointer.address.toInt(),
+      |        byteArray.size,
       |      )
-      |      val pointer_ = Pointer(result.toUInt())
-      |      val stringAddress = pointer_.loadPointer()
-      |      val stringByteCount = (pointer_ + 4).loadInt()
-      |      return stringAddress.loadString(stringByteCount)}
+      |      val resultPointer = Pointer(result.toUInt())
+      |      val resultPointer_ = (resultPointer + 0).loadInt()
+      |      val resultByteCount = (resultPointer + 4).loadInt()
+      |      return Pointer(resultPointer_.toUInt()).loadString(resultByteCount)}
       |  }
       |}
       |
