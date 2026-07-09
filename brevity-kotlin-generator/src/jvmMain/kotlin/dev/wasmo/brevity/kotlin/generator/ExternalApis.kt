@@ -1,7 +1,11 @@
 package dev.wasmo.brevity.kotlin.generator
+
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.ir.IrWorld
 
+/**
+ * Collects the exports or imports from an [IrWorld], and gives them an enclosing type name.
+ */
 data class ExternalApis(
   val instanceName: String,
   val type: ClassName,

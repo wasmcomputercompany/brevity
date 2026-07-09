@@ -27,13 +27,6 @@ val IrCase.kotlinName: String
 val IrParameter.kotlinName: String
   get() = name.toCamelCase(upperCamel = false)
 
-fun Identifier.kotlinName(nameHint: Identifier?): String {
-  return when {
-    nameHint != null -> Identifier("${name}-${nameHint.name}").toCamelCase(upperCamel = false)
-    else -> toCamelCase(upperCamel = false)
-  }
-}
-
 val IrField.kotlinName: String
   get() = name.toCamelCase(upperCamel = false)
 
