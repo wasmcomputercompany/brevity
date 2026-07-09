@@ -24,10 +24,6 @@ class HostBridge {
     return id
   }
 
-  fun <T : Resource> fromId(id: Int, constructor: (Int) -> T): T {
-    return constructor(id)
-  }
-
   @PublishedApi
   internal fun getInternal(id: Int): Resource? {
     return idToResource[id]

@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
+import dev.wasmo.brevity.TypeName
 
 /**
  * Abstracts over the differences in Wasm APIs like Kotlin/Wasm and Chicory.
@@ -17,6 +18,14 @@ interface Platform {
   /** Convert a pointer to an I32. */
   context(builder: EncodeBuilder)
   fun lowerAddress(address: CodeBlock): CodeBlock
+
+  /** Convert an ID to a Resource instance. */
+  context(builder: EncodeBuilder)
+  fun liftResource(id: CodeBlock, handleType: TypeName.Declared): CodeBlock
+
+  /** Convert a Resource instance to an ID. */
+  context(builder: EncodeBuilder)
+  fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared): CodeBlock
 
   /** Loads a string from linear memory. */
   context(builder: EncodeBuilder)

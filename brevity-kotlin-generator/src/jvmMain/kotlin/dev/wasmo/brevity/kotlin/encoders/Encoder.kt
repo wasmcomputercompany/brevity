@@ -2,7 +2,6 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
-import dev.wasmo.brevity.kotlin.generator.handleName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 
@@ -19,6 +18,7 @@ abstract class Encoder {
   abstract fun EncodeBuilder.valueToCoreType()
 }
 
+/** Fake encoder for all the types we don't actually implement yet. */
 class FallbackEncoder(
   private val type: TypeName,
   val coreType: CoreType,
@@ -31,20 +31,6 @@ class FallbackEncoder(
 
   override fun EncodeBuilder.valueToCoreType() {
     put("(%L as %T)", take(), coreType.kotlinCoreType)
-  }
-}
-
-class ResourceEncoder(
-  private val type: TypeName.Declared,
-) : Encoder() {
-  override val coreTypes = listOf(CoreType.I32)
-
-  override fun EncodeBuilder.coreTypeToValue() {
-    put("%L.fromId(%L, ::%T)", bridge, take(), type.handleName)
-  }
-
-  override fun EncodeBuilder.valueToCoreType() {
-    put("%L.toId<%T>(%L)", bridge, type.kotlinApi, take())
   }
 }
 
@@ -62,3 +48,35 @@ class ListEncoder(
   }
 }
 
+class ResourceEncoder(
+  private val type: TypeName.Declared,
+) : Encoder() {
+  override val coreTypes = listOf(CoreType.I32)
+
+  override fun EncodeBuilder.coreTypeToValue() {
+    put(platform.liftResource(take(), type))
+  }
+
+  override fun EncodeBuilder.valueToCoreType() {
+    put(platform.lowerResource(take(), type))
+  }
+}
+
+/** Stores a string as two pointers: an address and a byte count. */
+object StringEncoder : Encoder() {
+  override val coreTypes: List<CoreType>
+    get() = listOf(CoreType.Pointer, CoreType.Pointer)
+
+  override val nameHints: List<Identifier>
+    get() = listOf(Identifier("pointer"), Identifier("byte-count"))
+
+  override fun EncodeBuilder.coreTypeToValue() {
+    put(platform.loadString(take(), take()))
+  }
+
+  override fun EncodeBuilder.valueToCoreType() {
+    val (address, size) = platform.storeString(take())
+    put(address)
+    put(size)
+  }
+}

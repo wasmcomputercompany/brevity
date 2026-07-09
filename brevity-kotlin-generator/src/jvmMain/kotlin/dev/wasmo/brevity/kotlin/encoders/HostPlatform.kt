@@ -1,7 +1,9 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.generator.Symbols
+import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
 internal object HostPlatform : Platform {
   context(builder: EncodeBuilder)
@@ -17,14 +19,16 @@ internal object HostPlatform : Platform {
   override fun liftAddress(address: CodeBlock) = address
 
   context(builder: EncodeBuilder)
-  override fun loadString(address: CodeBlock, byteCount: CodeBlock): CodeBlock {
-    return CodeBlock.of(
-      "%L.memory.readString(%L, %L)",
-      builder.bridge,
-      address,
-      byteCount,
-    )
-  }
+  override fun liftResource(id: CodeBlock, handleType: TypeName.Declared) =
+    CodeBlock.of("%L.get<%T>(%L)", builder.bridge, handleType.kotlinApi, id)
+
+  context(builder: EncodeBuilder)
+  override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =
+    CodeBlock.of("%L.toId<%T>(%L)", builder.bridge, handleType.kotlinApi, resource)
+
+  context(builder: EncodeBuilder)
+  override fun loadString(address: CodeBlock, byteCount: CodeBlock) =
+    CodeBlock.of("%L.memory.readString(%L, %L)", builder.bridge, address, byteCount)
 
   context(builder: EncodeBuilder)
   override fun storeString(string: CodeBlock): Pair<CodeBlock, CodeBlock> {
