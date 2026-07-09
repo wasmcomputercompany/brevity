@@ -151,6 +151,7 @@ class HostGenerator(
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("instance", Symbols.ChicoryRuntime.Instance)
             .apply {
+              addStatement("this.%N.init(%N)", "bridge", "instance")
               if (guestApis != null) {
                 initExports(
                   guest = CodeBlock.of("%N", "guest"),

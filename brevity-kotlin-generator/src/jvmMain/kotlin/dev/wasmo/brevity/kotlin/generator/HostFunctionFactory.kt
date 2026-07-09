@@ -8,6 +8,7 @@ import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.kotlin.encoders.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.valType
 import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
@@ -18,7 +19,6 @@ internal class HostFunctionFactory(
   private val bridge: CodeBlock,
 ) {
   private val used = AtomicBoolean()
-  private val code = CodeBlock.Builder()
 
   private val nameAllocator = NameAllocator().apply {
     // Pre-allocate the names we'll need.
@@ -27,14 +27,20 @@ internal class HostFunctionFactory(
     }
   }
 
+  private val coreParameterFactory = CoreParameter.Factory(
+    encoderFactory = encoderFactory,
+    nameAllocator = nameAllocator,
+  )
+  private val coreParameters = value.parameters.map { coreParameterFactory(it.name, it.type) }
+
+  private val code = CodeBlock.Builder()
+
   private val encodeBuilder = RealEncodeBuilder(
     bridge = bridge,
     nameAllocator = nameAllocator,
     code = code,
+    platform = HostPlatform,
   )
-
-  private val coreParameterFactory = CoreParameter.Factory(encoderFactory, nameAllocator)
-  private val coreParameters = value.parameters.map { coreParameterFactory(it.name, it.type) }
 
   /** Returns a function that calls the guest. It implements the friendly API. */
   fun callGuest(): FunSpec {

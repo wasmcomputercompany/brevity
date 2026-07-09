@@ -6,6 +6,7 @@ import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.EncodeBuilder
 import dev.wasmo.brevity.kotlin.encoders.Encoder
+import dev.wasmo.brevity.kotlin.encoders.Platform
 import dev.wasmo.brevity.kotlin.encoders.byteCount
 
 /**
@@ -27,16 +28,17 @@ class RealEncodeBuilder(
   override val bridge: CodeBlock,
   override val nameAllocator: NameAllocator,
   override val code: CodeBlock.Builder,
+  override val platform: Platform,
 ) : EncodeBuilder {
   private val inputs = mutableListOf<CodeBlock>()
   private val outputs = mutableListOf<CodeBlock>()
   internal var memoryAllocator: String? = null
 
   override fun allocate(byteCount: CodeBlock): CodeBlock {
-    if (memoryAllocator == null) {
-      memoryAllocator = nameAllocator.newName("memoryAllocator")
-    }
-    return CodeBlock.of("%N.allocate(%L)", memoryAllocator, byteCount)
+    val memoryAllocator = this.memoryAllocator
+      ?: nameAllocator.newName("memoryAllocator")
+        .also { memoryAllocator = it }
+    return platform.allocate(memoryAllocator, byteCount)
   }
 
   override fun take(): CodeBlock {
@@ -93,32 +95,30 @@ class RealEncodeBuilder(
       coreType.byteCount
     }
 
-    val pointer = nameAllocator.newName("resultPointer")
+    val address = nameAllocator.newName("resultAddress")
     var offset = 0
-    code.addStatement("val %N = %L", pointer, allocate("%L", byteCount))
+    code.addStatement("val %N = %L", address, allocate("%L", byteCount))
     for ((index, value) in returnValues.withIndex()) {
       val coreType = coreTypes[index]
-      val offsetPointer = when {
-        offset == 0 -> CodeBlock.of("%N", pointer)
-        else -> CodeBlock.of("(%N + %L)", pointer, offset)
-      }
-      when (coreType) {
-        CoreType.I64, CoreType.F64 -> code.addStatement("%L.storeLong(%L)", offsetPointer, value)
-        else -> code.addStatement("%L.storeInt(%L)", offsetPointer, value)
-      }
+      platform.store(
+        baseAddress = CodeBlock.of("%N", address),
+        offset = offset,
+        type = coreType,
+        value = value,
+      )
       offset += coreType.byteCount
     }
 
-    return CodeBlock.of("%N.address.toInt()", pointer)
+    return platform.lowerAddress(CodeBlock.of("%N", address))
   }
 
-  /** When a pointer is returned, unpack the core values from memory. */
+  /** When an address is returned, unpack the core values from memory. */
   fun unflattenResult(returnValue: CodeBlock, encoder: Encoder): List<CodeBlock> {
     val coreTypes = encoder.coreTypes
     val nameHints = encoder.nameHints
 
-    val pointer = nameAllocator.newName("resultPointer")
-    code.addStatement("val %N = %T(%L.toUInt())", pointer, Symbols.KotlinWasm.Pointer, returnValue)
+    val address = nameAllocator.newName("resultAddress")
+    code.addStatement("val %N = %L", address, platform.liftAddress(returnValue))
 
     var offset = 0
     val result = mutableListOf<CodeBlock>()
@@ -131,7 +131,16 @@ class RealEncodeBuilder(
       }
       val name = nameAllocator.newName(nameSuggestion)
       result += CodeBlock.of("%N", name)
-      code.addStatement("val %N = (%N + %L).loadInt()", name, pointer, offset)
+
+      code.addStatement(
+        "val %N = %L",
+        name,
+        platform.load(
+          baseAddress = CodeBlock.of("%N", address),
+          offset = offset,
+          type = CoreType.I32
+        ),
+      )
       offset += coreType.byteCount
     }
 

@@ -7,6 +7,7 @@ interface EncodeBuilder {
   val bridge: CodeBlock
   val nameAllocator: NameAllocator
   val code: CodeBlock.Builder
+  val platform: Platform
 
   fun allocate(byteCount: CodeBlock): CodeBlock
 
