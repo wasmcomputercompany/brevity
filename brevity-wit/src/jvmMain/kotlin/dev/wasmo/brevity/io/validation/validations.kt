@@ -15,7 +15,7 @@ import okio.Path.Companion.toPath
 fun validateUniquePackageNames(toplevelPackages: List<IoToplevelWitPackage>): Map<PackageName, IoWitPackage> {
   val packageRefs = mutableMapOf<PackageName, MutableList<PackageRef>>()
 
-  val addPackage: (PackageName, PackageRef)->Unit = { pkgName, pkg ->
+  fun addPackage(pkgName: PackageName, pkg: PackageRef) {
     packageRefs.getOrPut(pkgName) { mutableListOf() }.add(pkg)
   }
   for (pkg in toplevelPackages) {
