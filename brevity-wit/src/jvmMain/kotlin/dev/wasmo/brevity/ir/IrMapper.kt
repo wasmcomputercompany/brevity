@@ -27,14 +27,17 @@ import dev.wasmo.brevity.io.IoTypeDeclaration
 import dev.wasmo.brevity.io.IoTypeName
 import dev.wasmo.brevity.io.IoUse
 import dev.wasmo.brevity.io.IoVariant
+import dev.wasmo.brevity.io.IoWitFile
+import dev.wasmo.brevity.io.IoWitPackage
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.Keywords
 import dev.wasmo.brevity.io.UsePath
+import dev.wasmo.brevity.io.validation.validateUniquePackageNames
 
 class IrMapper(
   private val packages: List<IoToplevelWitPackage>,
 ) {
-  private val packageNameToPackage = packages.associateBy { it.packageName }
+  private val packageNameToPackage = validateUniquePackageNames(packages)
   private val irPackages = mutableMapOf<PackageName, PackageBuilder>()
 
   internal class PackageBuilder {
@@ -299,13 +302,12 @@ class IrMapper(
   internal fun IoTypeName.Declared.declaredTypeToIrOrNull(): TypeName.Declared? {
     val witPackage = packageNameToPackage[context.serviceName.packageName] ?: return null
     val declarations = sequence {
-      for (file in witPackage.files.values) {
-        for (service in file.items) {
-          when (service) {
-            is IoInterface if service.name == context.serviceName.name -> yieldAll(service.items)
-            is IoWorld if service.name == context.serviceName.name -> yieldAll(service.items)
-            else -> {}
-          }
+      val items = witPackage.items()
+      for (service in items) {
+        when (service) {
+          is IoInterface if service.name == context.serviceName.name -> yieldAll(service.items)
+          is IoWorld if service.name == context.serviceName.name -> yieldAll(service.items)
+          else -> {}
         }
       }
     }
@@ -441,16 +443,14 @@ class IrMapper(
 
   internal fun getWorldOrNull(path: UsePath): IoWorld? {
     val witPackage = packageNameToPackage[path.packageName] ?: return null
-    return witPackage.files.values
-      .flatMap { it.items }
+    return witPackage.items()
       .filterIsInstance<IoWorld>()
       .singleOrNull { it.name == path.name }
   }
 
   internal fun getInterfaceOrNull(path: UsePath): IoInterface? {
     val witPackage = packageNameToPackage[path.packageName] ?: return null
-    return witPackage.files.values
-      .flatMap { it.items }
+    return witPackage.items()
       .filterIsInstance<IoInterface>()
       .singleOrNull { it.name == path.name }
   }
@@ -477,6 +477,11 @@ private fun IoUse.Item.matches(typeName: IoTypeName.Declared): Boolean {
     alias != null -> alias == typeName.name
     else -> type == typeName
   }
+}
+
+private fun IoWitPackage.items(): List<IoWitFile.Item> = when (this) {
+  is IoToplevelWitPackage -> this.files.values.flatMap { it.items }
+  is IoInlinePackage -> this.declarations
 }
 
 /**
