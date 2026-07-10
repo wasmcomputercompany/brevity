@@ -70,6 +70,7 @@ class IrMapperTest {
         packageName = "wasi:cli".toPackageName(),
         files = mapOf(
           "stdio.wit".toPath() to """
+            |package wasi:cli;
             |interface stdin {
             |  use wasi:io/streams@0.2.12.{input-stream};
             |
@@ -115,6 +116,8 @@ class IrMapperTest {
         packageName = "wasi:cli".toPackageName(),
         files = mapOf(
           "stdio.wit".toPath() to """
+            |package wasi:cli;
+            |
             |world stdin {
             |  use streams.{input-stream};
             |
@@ -384,6 +387,8 @@ class IrMapperTest {
         packageName = "wasi:clocks@0.3.0".toPackageName(),
         files = mapOf(
           "system-clock.wit".toPath() to """
+            |package wasi:clocks@0.3.0;
+            |
             |interface system-clock {
             |  now: func() -> u64;
             |}
@@ -411,6 +416,8 @@ class IrMapperTest {
         packageName = "wasi:http@0.3.0".toPackageName(),
         files = mapOf(
           "types.wit".toPath() to """
+            |package wasi:http@0.3.0;
+            |
             |interface types {
             |  resource fields {
             |    constructor();
