@@ -26,6 +26,11 @@ data class Location(
   }
 }
 
-fun Path.location() = Location(
+fun Path.location(
+  line: Int? = null,
+  column: Int? = null,
+) = Location(
   path = this,
+  line = line,
+  column = column,
 )
