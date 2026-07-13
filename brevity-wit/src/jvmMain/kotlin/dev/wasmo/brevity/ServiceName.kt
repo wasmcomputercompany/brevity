@@ -1,5 +1,6 @@
 package dev.wasmo.brevity
 
+import dev.wasmo.brevity.io.IoDeclaration
 import dev.wasmo.brevity.io.UsePath
 
 /**

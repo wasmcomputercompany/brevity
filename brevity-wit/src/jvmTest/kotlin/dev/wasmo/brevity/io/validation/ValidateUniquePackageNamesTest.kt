@@ -4,7 +4,6 @@ import assertk.assertThat
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.containsOnly
 import assertk.assertions.isEqualTo
-import assertk.assertions.isInstanceOf
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.WitCompoundException
 import dev.wasmo.brevity.WitMultiplySitedException
@@ -17,7 +16,7 @@ import kotlin.test.assertFailsWith
 import okio.Path.Companion.toPath
 import org.junit.Test
 
-class ValidationTest {
+class ValidateUniquePackageNamesTest {
   @Test
   fun producesPackageNameMapWhenSuccessful() {
     val cliPackage = IoToplevelWitPackage(
