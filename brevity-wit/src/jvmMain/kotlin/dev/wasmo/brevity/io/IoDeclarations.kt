@@ -30,6 +30,10 @@ sealed interface IoDeclaration {
   val offset: Offset
 }
 
+sealed interface IoService: IoDeclaration {
+  val name: Identifier
+}
+
 sealed interface IoWitPackage {
   val documentation: Documentation?
   val packageName: PackageName
@@ -73,9 +77,9 @@ data class IoInterface(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  val name: Identifier,
+  override val name: Identifier,
   val items: List<Item>,
-) : IoDeclaration, IoWorld.Api, IoWitFile.Item {
+) : IoDeclaration, IoService, IoWorld.Api, IoWitFile.Item {
   sealed interface Item : IoDeclaration
 }
 
@@ -83,11 +87,11 @@ data class IoWorld(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val offset: Offset,
-  val name: Identifier,
+  override val name: Identifier,
   val items: List<Item>,
   val imports: List<Api>,
   val exports: List<Api>,
-) : IoDeclaration, IoWitFile.Item {
+) : IoDeclaration, IoService, IoWitFile.Item {
   sealed interface Api : IoDeclaration
   sealed interface Item : IoDeclaration
 }
