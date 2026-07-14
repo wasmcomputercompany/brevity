@@ -1,23 +1,30 @@
 package dev.wasmo.brevity
 
+/**
+ * A high level issue with a wit file.
+ */
 class WitException(
-  val issue: String,
-  val path: String? = null,
-  val offset: Offset? = null,
+  val issue: Issue,
 ) : IllegalStateException(
   buildString {
-    append(issue)
-    if (offset != null || path != null) {
-      append(" at ")
-    }
-    if (path != null) {
-      append(path)
-    }
-    if (offset != null && path != null) {
-      append(":")
-    }
+    append(issue.description)
+    val (path, offset) = issue.location
+    append(" at $path")
     if (offset != null) {
-      append(offset)
+      append(":$offset")
     }
   },
-)
+) {
+  constructor(
+    description: String,
+    path: String,
+    offset: Offset? = null,
+  ) : this(
+    Issue(
+      description = description,
+      location = Location(path, offset)
+    )
+  )
+
+  val offset: Offset? = issue.location.offset
+}

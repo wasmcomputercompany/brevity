@@ -1,7 +1,10 @@
 package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Documentation
+import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.WitException
+import dev.wasmo.brevity.WitSyntaxException
+import dev.wasmo.brevity.location
 import okio.FileSystem
 import okio.Path
 
@@ -25,24 +28,25 @@ class IoWitPackageReader(
         files[relativePath] = fileSystem.read(path) {
           readUtf8().toWitFile()
         }
-      } catch (e: WitException) {
+      } catch (e: WitSyntaxException) {
         throw WitException(
-          issue = e.issue,
-          path = path.toString(),
-          offset = e.offset,
-        )
+            Issue(
+              description = e.description,
+              location = path.location(e.offset),
+            )
+          )
       }
     }
 
     val packageNames = files.values.mapNotNull { it.packageName }.toSet()
-    checkWit(packageNames.size == 1) {
+    checkWit(packageNames.size == 1, path = "$directory") {
       when {
-        packageNames.isEmpty() -> "no package declaration in $directory/*.wit"
+        packageNames.isEmpty() -> "no package declaration in directory"
         else -> {
           """
-          |multiple different package names in $directory/*.wit:
+          |multiple different package names in directory:
           |  ${packageNames.sorted().joinToString(separator = "\n  ")}
-          """.trimMargin()
+          | """.trimMargin()
         }
       }
     }

@@ -7,7 +7,7 @@ import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
-import dev.wasmo.brevity.WitException
+import dev.wasmo.brevity.WitSyntaxException
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
@@ -27,24 +27,24 @@ class WitFileReaderTest {
 
   @Test
   fun `multiple packages`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       """
       |package wasi:clocks@0.2.9;
       |package wasi:clocks;
       """.trimMargin().toWitFile()
     }
-    assertThat(e.issue).isEqualTo("unexpected package identifier")
+    assertThat(e.description).isEqualTo("unexpected package identifier")
   }
 
   @Test
   fun `package after another declaration`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       """
       |interface foo {}
       |package wasi:clocks;
       """.trimMargin().toWitFile()
     }
-    assertThat(e.issue).isEqualTo("unexpected package identifier")
+    assertThat(e.description).isEqualTo("unexpected package identifier")
   }
 
   @Test
@@ -97,35 +97,35 @@ class WitFileReaderTest {
 
   @Test
   fun `readGate unexpected field`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       WitFileReader("@unstable(version = 0.2.2)").readGateOrNull()
     }
-    assertThat(e.issue).isEqualTo("unexpected field: unstable.version")
+    assertThat(e.description).isEqualTo("unexpected field: unstable.version")
   }
 
   @Test
   fun `readGate repeated unstable`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       WitFileReader("@unstable(feature = fancier-foo) @unstable(feature = faster-foo)")
         .readGateOrNull()
     }
-    assertThat(e.issue).isEqualTo("unexpected field: unstable.feature")
+    assertThat(e.description).isEqualTo("unexpected field: unstable.feature")
   }
 
   @Test
   fun `readGate repeated since`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       WitFileReader("@since(version = 0.2.0) @since(version = 0.3.0)").readGateOrNull()
     }
-    assertThat(e.issue).isEqualTo("unexpected field: since.version")
+    assertThat(e.description).isEqualTo("unexpected field: since.version")
   }
 
   @Test
   fun `readGate repeated deprecated`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       WitFileReader("@deprecated(version = 0.2.0) @deprecated(version = 0.3.0)").readGateOrNull()
     }
-    assertThat(e.issue).isEqualTo("unexpected field: deprecated.version")
+    assertThat(e.description).isEqualTo("unexpected field: deprecated.version")
   }
 
   @Test

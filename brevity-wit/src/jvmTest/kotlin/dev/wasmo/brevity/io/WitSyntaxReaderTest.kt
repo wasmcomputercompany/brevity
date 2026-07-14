@@ -13,7 +13,7 @@ import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
-import dev.wasmo.brevity.WitException
+import dev.wasmo.brevity.WitSyntaxException
 import dev.wasmo.brevity.toIdentifier
 import dev.wasmo.brevity.toPackageName
 import dev.wasmo.brevity.toSemVer
@@ -248,11 +248,11 @@ class WitSyntaxReaderTest {
       |/*abc
       """.trimMargin(),
     )
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       reader.skipWhitespace()
     }
     assertThat(e.offset).isEqualTo(Offset(2, 1))
-    assertThat(e.issue).isEqualTo("unterminated comment")
+    assertThat(e.description).isEqualTo("unterminated comment")
   }
 
   @Test
@@ -324,25 +324,25 @@ class WitSyntaxReaderTest {
 
   @Test
   fun `readIdentifier crash`() {
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       " ".toIdentifier()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "_".toIdentifier()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "()".toIdentifier()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "".toIdentifier()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "%%".toIdentifier()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "%".toIdentifier()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "% ".toIdentifier()
     }
   }
@@ -365,10 +365,10 @@ class WitSyntaxReaderTest {
 
   @Test
   fun `readSemver only dots`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       "..".toSemVer()
     }
-    assertThat(e.issue).isEqualTo("expected a semver character")
+    assertThat(e.description).isEqualTo("expected a semver character")
   }
 
   @Test
@@ -400,34 +400,34 @@ class WitSyntaxReaderTest {
 
   @Test
   fun `readPackageName missing namespace`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       "local".toPackageName()
     }
-    assertThat(e.issue).isEqualTo("expected package name to contain a ':'")
+    assertThat(e.description).isEqualTo("expected package name to contain a ':'")
   }
 
   @Test
   fun `readPackageName empty namespace`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       "a:".toPackageName()
     }
-    assertThat(e.issue).isEqualTo("expected an identifier")
+    assertThat(e.description).isEqualTo("expected an identifier")
   }
 
   @Test
   fun `readPackageName empty name`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       ":".toPackageName()
     }
-    assertThat(e.issue).isEqualTo("expected an identifier")
+    assertThat(e.description).isEqualTo("expected an identifier")
   }
 
   @Test
   fun `readPackageName empty version`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       "a:b@ ".toPackageName()
     }
-    assertThat(e.issue).isEqualTo("expected a semver character")
+    assertThat(e.description).isEqualTo("expected a semver character")
   }
 
   @Test
@@ -478,18 +478,18 @@ class WitSyntaxReaderTest {
 
   @Test
   fun `readUsePath namespace without package name`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       "namespace:interface-name".toUsePath()
     }
-    assertThat(e.issue).isEqualTo("must have a namespace and a package name, or neither")
+    assertThat(e.description).isEqualTo("must have a namespace and a package name, or neither")
   }
 
   @Test
   fun `readUsePath package name without namespace`() {
-    val e = assertFailsWith<WitException> {
+    val e = assertFailsWith<WitSyntaxException> {
       "package-name/interface-name".toUsePath()
     }
-    assertThat(e.issue).isEqualTo("must have a namespace and a package name, or neither")
+    assertThat(e.description).isEqualTo("must have a namespace and a package name, or neither")
   }
 
   @Test
@@ -538,71 +538,71 @@ class WitSyntaxReaderTest {
 
   @Test
   fun `readTypeName dangling type parameters`() {
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "tuple<".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "tuple<string".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "tuple<string,".toIoTypeName()
     }
   }
 
   @Test
   fun `readTypeName invalid type parameters`() {
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "tuple".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "tuple<>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "list".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "list<>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "list<string, string, string>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "option".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "option<>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "option<string, string>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "result<_, _>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "map<string>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "map<string, string, string>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "future<>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "future<string, string>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "stream<>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "stream<string, string>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "borrow".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "borrow<>".toIoTypeName()
     }
-    assertFailsWith<WitException> {
+    assertFailsWith<WitSyntaxException> {
       "borrow<string, string>".toIoTypeName()
     }
   }
