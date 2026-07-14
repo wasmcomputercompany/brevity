@@ -19,6 +19,7 @@ import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 import okio.Path.Companion.toPath
+import org.junit.Ignore
 
 class IrMapperTest {
   @Test
@@ -108,6 +109,48 @@ class IrMapperTest {
       ),
     )
   }
+
+  @Test
+  fun `find symbols across inline packages with use`() {
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "wasi:cli".toPackageName(),
+        files = mapOf(
+          "stdio.wit".toPath() to """
+            |package wasi:cli;
+            |
+            |interface stdin {
+            |  use wasi:io/streams@0.2.12.{input-stream};
+            |
+            |  get-stdin: func() -> input-stream;
+            |}
+            |
+            |package wasi:io@0.2.12 {
+            |  interface streams {
+            |    resource input-stream {
+            |        read: func(len: u64) -> result;
+            |    }
+            |  }
+            |}
+            """.trimMargin().toWitFile(),
+        ),
+      ),
+    )
+    val irMapper = IrMapper(ioPackages)
+
+    assertThat(
+      irMapper.getType(
+        serviceName = "wasi:cli/stdin",
+        typeName = IoTypeName.Declared("input-stream"),
+      ),
+    ).isEqualTo(
+      TypeNameDeclared(
+        serviceName = "wasi:io/streams@0.2.12",
+        typeName = "input-stream",
+      ),
+    )
+  }
+
 
   @Test
   fun `find symbols across services with use`() {
@@ -238,6 +281,97 @@ class IrMapperTest {
             items = listOf(
               IrFunction(
                 offset = Offset(4, 3),
+                name = "now",
+                returnType = TypeName.S64,
+                serviceName = "wasi:clocks/monotonic-clock@0.3.0",
+              ),
+            ),
+          ),
+        ),
+      ),
+    )
+  }
+
+  @Test
+  fun `imports across inline packages`() {
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "wasi:cli@0.3.0".toPackageName(),
+        files = mapOf(
+          "command.wit".toPath() to """
+            |package wasi:cli@0.3.0;
+            |
+            |world command {
+            |  include imports;
+            |}
+            """.trimMargin().toWitFile(),
+          "imports.wit".toPath() to """
+            |package wasi:cli@0.3.0;
+            |
+            |world imports {
+            |  include wasi:clocks/imports@0.3.0;
+            |}
+            |
+            |package wasi:clocks@0.3.0 {
+            |  world imports {
+            |    import monotonic-clock;
+            |  }
+            |  interface monotonic-clock {
+            |    now: func() -> s64;
+            |  }
+            |}
+            """.trimMargin().toWitFile(),
+        ),
+      ),
+    )
+    val irMapper = IrMapper(ioPackages)
+    val irPackages = irMapper.map()
+
+    assertThat(irPackages).containsExactly(
+      IrWitPackage(
+        packageName = "wasi:cli@0.3.0".toPackageName(),
+        services = listOf(
+          IrWorld(
+            offset = Offset(3, 1),
+            serviceName = "wasi:cli/command@0.3.0",
+            imports = listOf(
+              IrExternalApi(
+                offset = Offset(9, 5),
+                serviceName = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
+              ),
+            ),
+          ),
+          IrWorld(
+            offset = Offset(3, 1),
+            serviceName = "wasi:cli/imports@0.3.0",
+            imports = listOf(
+              IrExternalApi(
+                offset = Offset(9, 5),
+                serviceName = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
+              ),
+            ),
+          ),
+        ),
+      ),
+      IrWitPackage(
+        packageName = "wasi:clocks@0.3.0".toPackageName(),
+        services = listOf(
+          IrWorld(
+            offset = Offset(8, 3),
+            serviceName = "wasi:clocks/imports@0.3.0",
+            imports = listOf(
+              IrExternalApi(
+                offset = Offset(9, 5),
+                serviceName = "wasi:clocks/monotonic-clock@0.3.0".toServiceName(),
+              ),
+            ),
+          ),
+          IrInterface(
+            offset = Offset(11, 3),
+            serviceName = "wasi:clocks/monotonic-clock@0.3.0",
+            items = listOf(
+              IrFunction(
+                offset = Offset(12, 5),
                 name = "now",
                 returnType = TypeName.S64,
                 serviceName = "wasi:clocks/monotonic-clock@0.3.0",
