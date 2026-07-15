@@ -4,10 +4,10 @@ import assertk.assertThat
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.containsOnly
 import assertk.assertions.isEqualTo
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.WitCompoundException
-import dev.wasmo.brevity.WitMultiplySitedException
-import dev.wasmo.brevity.WitMultiplySitedException.Location
+import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoInterface
 import dev.wasmo.brevity.io.IoToplevelWitPackage
@@ -121,7 +121,7 @@ class ValidateUniqueServiceNamesTest {
     )
     val packages = listOf(cliPackage, otherPackage)
 
-    val exception = assertFailsWith<WitMultiplySitedException> {
+    val exception = assertFailsWith<WitException> {
       validateUniqueServiceNames(packages)
     }
 
@@ -190,13 +190,13 @@ class ValidateUniqueServiceNamesTest {
       validateUniqueServiceNames(packages)
     }
 
-    val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitMultiplySitedException>()
+    val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitException>()
 
-    assertThat(firstException.locations).containsExactlyInAnyOrder(
+    assertThat(firstException.issue.locations).containsExactlyInAnyOrder(
       Location("first.wit", Offset(1, 2)),
       Location("second.wit", Offset(1, 3))
     )
-    assertThat(secondException.locations).containsExactlyInAnyOrder(
+    assertThat(secondException.issue.locations).containsExactlyInAnyOrder(
       Location("other/other.wit", Offset(5, 6)),
       Location("other/other.wit", Offset(7, 8))
     )
