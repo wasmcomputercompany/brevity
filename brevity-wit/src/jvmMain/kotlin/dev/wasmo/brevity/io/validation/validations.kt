@@ -1,10 +1,11 @@
 package dev.wasmo.brevity.io.validation
 
+import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.WitCompoundException
-import dev.wasmo.brevity.WitMultiplySitedException
+import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoInterface
 import dev.wasmo.brevity.io.IoService
@@ -50,13 +51,11 @@ fun validateUniquePackageNames(
   }
 
   val collisionExceptions = collisions.map { (packageName, packageRefs) ->
-    WitMultiplySitedException(
+    Issue(
       "Duplicate definitions of $packageName",
-      packageRefs.map { packageRef ->
-        packageRef.location
-      }.toList(),
+      packageRefs.map { packageRef -> packageRef.location }.toList(),
     )
-  }
+  }.map(::WitException)
 
   when (collisionExceptions.size) {
     0 -> {}
@@ -94,6 +93,7 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>): Ma
   fun addService(serviceName: ServiceName, service: IoService) {
     services.getOrPut(serviceName) { mutableListOf() }.add(service)
   }
+
   for (pkg in toplevelPackages) {
     for (file in pkg.files) {
       for (item in file.items) {
@@ -122,11 +122,9 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>): Ma
     }
   }
 
-  val collisionExceptions = collisions.map { (serviceName, services) ->
-    WitMultiplySitedException(
-      "Duplicate definitions of $serviceName",
-      services.map { it.location }.toList(),
-    )
+  val collisionExceptions = collisions.map { (serviceName, serviceRefs) ->
+    val locations = serviceRefs.map { serviceRef -> serviceRef.location }
+    WitException(Issue("Duplicate definitions of $serviceName", locations))
   }
 
   when (collisionExceptions.size) {

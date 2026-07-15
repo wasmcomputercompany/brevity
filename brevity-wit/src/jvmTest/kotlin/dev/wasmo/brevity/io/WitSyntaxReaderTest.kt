@@ -262,7 +262,7 @@ class WitSyntaxReaderTest {
     val e = assertFailsWith<WitException> {
       reader.skipWhitespace()
     }
-    assertThat(e.issue.location).isEqualTo(location.at(2, 1))
+    assertThat(e.issue.locations.single()).isEqualTo(location.at(2, 1))
     assertThat(e.issue.description).isEqualTo("unterminated comment")
   }
 

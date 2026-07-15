@@ -6,7 +6,7 @@ import assertk.assertions.containsOnly
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.WitCompoundException
-import dev.wasmo.brevity.WitMultiplySitedException
+import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWitFile
@@ -86,7 +86,7 @@ location = otherLocation,
         )
       )
     )
-    val exception = assertFailsWith<WitMultiplySitedException> {
+    val exception = assertFailsWith<WitException> {
       validateUniquePackageNames(listOf(cliPackage, otherPackage))
     }
 
@@ -95,7 +95,7 @@ location = otherLocation,
       |${"\t"}at cli.wit
       |${"\t"}at other/other.wit:1:2""".trimMargin())
 
-    assertThat(exception.locations).containsExactlyInAnyOrder(
+    assertThat(exception.issue.locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
       cliLocation,
     )
@@ -151,13 +151,13 @@ location = otherLocation,
       |${"\t"}at other/other.wit:1:2
       |""".trimMargin())
 
-    val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitMultiplySitedException>()
+    val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitException>()
 
-    assertThat(firstException.locations).containsExactlyInAnyOrder(
+    assertThat(firstException.issue.locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
       cliLocation,
     )
-    assertThat(secondException.locations).containsExactlyInAnyOrder(
+    assertThat(secondException.issue.locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
       otherLocation,
     )

@@ -27,7 +27,7 @@ class ReadWasiMainTest {
       try {
         witContent.toWitFile(Location(path))
       } catch (e: WitException) {
-        fail("decoding $path failed at ${e.location}: ${e.issue.description}")
+        fail("decoding $path failed at ${e.issue.locations.first()}: ${e.issue.description}")
       }
 
       witFileCount++

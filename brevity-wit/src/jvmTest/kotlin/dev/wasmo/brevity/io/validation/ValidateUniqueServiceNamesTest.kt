@@ -6,17 +6,15 @@ import assertk.assertions.containsOnly
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.WitCompoundException
-import dev.wasmo.brevity.WitMultiplySitedException
+import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoInterface
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.toServiceName
-import dev.wasmo.brevity.location
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.assertFailsWith
-import okio.Path.Companion.toPath
 import org.junit.Test
 
 class ValidateUniqueServiceNamesTest {
@@ -131,7 +129,7 @@ class ValidateUniqueServiceNamesTest {
     )
     val packages = listOf(cliPackage, otherPackage)
 
-    val exception = assertFailsWith<WitMultiplySitedException> {
+    val exception = assertFailsWith<WitException> {
       validateUniqueServiceNames(packages)
     }
 
@@ -207,13 +205,13 @@ class ValidateUniqueServiceNamesTest {
       validateUniqueServiceNames(packages)
     }
 
-    val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitMultiplySitedException>()
+    val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitException>()
 
-    assertThat(firstException.locations).containsExactlyInAnyOrder(
+    assertThat(firstException.issue.locations).containsExactlyInAnyOrder(
       Location("first.wit", 1, 2),
       Location("second.wit", 1, 3)
     )
-    assertThat(secondException.locations).containsExactlyInAnyOrder(
+    assertThat(secondException.issue.locations).containsExactlyInAnyOrder(
       Location("other/other.wit", 5, 6),
       Location("other/other.wit", 7, 8)
     )
