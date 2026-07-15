@@ -9,6 +9,7 @@ import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
 import dev.wasmo.brevity.WitException
+import dev.wasmo.brevity.WitSyntaxException
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
@@ -47,7 +48,7 @@ class WitSyntaxReader(
     val oldLine = line
     val oldLineStart = lineStart
 
-    var failure: WitException? = null
+    var failure: WitSyntaxException? = null
 
     for (option in options) {
       documentation = oldDocumentation?.let { StringBuilder(it) }
@@ -57,7 +58,7 @@ class WitSyntaxReader(
 
       try {
         return option()
-      } catch (e: WitException) {
+      } catch (e: WitSyntaxException) {
         if (failure == null) failure = e
         else failure.addSuppressed(e)
       }
@@ -519,15 +520,34 @@ internal inline fun checkWit(
     returns() implies value
   }
   if (!value) {
-    throw WitException(
-      issue = message(),
+    throw WitSyntaxException(
+      description = message(),
       offset = offset,
     )
   }
 }
 
+internal inline fun checkWit(
+  value: Boolean,
+  path: String,
+  offset: Offset? = null,
+  message: () -> String,
+) {
+  contract {
+    returns() implies value
+  }
+  if (!value) {
+    throw WitException(
+      description = message(),
+      path = path,
+      offset = offset,
+    )
+  }
+}
+
+
 internal fun errorWit(offset: Offset, message: String): Nothing {
-  throw WitException(issue = message, offset = offset)
+  throw WitSyntaxException(description = message, offset = offset)
 }
 
 internal fun CharArray.indexOf(substring: String, fromIndex: Int): Int {

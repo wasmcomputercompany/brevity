@@ -146,10 +146,10 @@ class IoToplevelWitPackageReaderTest {
     }
     assertThat(e).hasMessage(
       """
-      |multiple different package names in /my-package/*.wit:
+      |multiple different package names in directory:
       |  wasi:cli@1.0
       |  wasi:cli@2.0
-      """.trimMargin(),
+      |  at /my-package""".trimMargin(),
     )
   }
 
@@ -179,6 +179,6 @@ class IoToplevelWitPackageReaderTest {
     val e = assertFailsWith<WitException> {
       packageReader.read(directory)
     }
-    assertThat(e).hasMessage("no package declaration in /my-package/*.wit")
+    assertThat(e).hasMessage("no package declaration in directory at /my-package")
   }
 }
