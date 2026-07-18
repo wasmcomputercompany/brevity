@@ -4,11 +4,10 @@ import assertk.assertThat
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.containsOnly
 import assertk.assertions.isEqualTo
-import assertk.assertions.isInstanceOf
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.WitCompoundException
-import dev.wasmo.brevity.WitMultiplySitedException
-import dev.wasmo.brevity.WitMultiplySitedException.Location
+import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWitFile
@@ -17,7 +16,7 @@ import kotlin.test.assertFailsWith
 import okio.Path.Companion.toPath
 import org.junit.Test
 
-class ValidationTest {
+class ValidateUniquePackageNamesTest {
   @Test
   fun producesPackageNameMapWhenSuccessful() {
     val cliPackage = IoToplevelWitPackage(
@@ -81,7 +80,7 @@ class ValidationTest {
         )
       )
     )
-    val exception = assertFailsWith<WitMultiplySitedException> {
+    val exception = assertFailsWith<WitException> {
       validateUniquePackageNames(listOf(cliPackage, otherPackage))
     }
 
@@ -90,7 +89,7 @@ class ValidationTest {
       |${"\t"}at cli.wit:0:0
       |${"\t"}at other/other.wit:1:2""".trimMargin())
 
-    assertThat(exception.locations).containsExactlyInAnyOrder(
+    assertThat(exception.issue.locations).containsExactlyInAnyOrder(
       Location("other/other.wit", Offset(1, 2)),
       Location("cli.wit", Offset(0, 0))
     )
@@ -142,13 +141,13 @@ class ValidationTest {
       |${"\t"}at other/other.wit:1:2
       |""".trimMargin())
 
-    val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitMultiplySitedException>()
+    val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitException>()
 
-    assertThat(firstException.locations).containsExactlyInAnyOrder(
+    assertThat(firstException.issue.locations).containsExactlyInAnyOrder(
       Location("other/other.wit", Offset(1, 2)),
       Location("cli.wit", Offset(0, 0))
     )
-    assertThat(secondException.locations).containsExactlyInAnyOrder(
+    assertThat(secondException.issue.locations).containsExactlyInAnyOrder(
       Location("other/other.wit", Offset(1, 2)),
       Location("other/other.wit", Offset(0, 0))
     )

@@ -8,10 +8,14 @@ class WitException(
 ) : IllegalStateException(
   buildString {
     append(issue.description)
-    val (path, offset) = issue.location
-    append(" at $path")
-    if (offset != null) {
-      append(":$offset")
+
+    when (issue.locations.size) {
+      0 -> {}
+      1 -> appendLocation(" ", issue.locations.first())
+      else -> for (location in issue.locations) {
+        appendLine()
+        appendLocation("\t", location)
+      }
     }
   },
 ) {
@@ -25,6 +29,12 @@ class WitException(
       location = Location(path, offset)
     )
   )
+}
 
-  val offset: Offset? = issue.location.offset
+private fun StringBuilder.appendLocation(spacing: String, location: Location) {
+  val (path, offset) = location
+  append("${spacing}at $path")
+  if (offset != null) {
+    append(":$offset")
+  }
 }

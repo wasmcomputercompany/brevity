@@ -1,14 +1,20 @@
 package dev.wasmo.brevity.io.validation
 
+import dev.wasmo.brevity.Issue
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.WitCompoundException
-import dev.wasmo.brevity.WitMultiplySitedException
-import dev.wasmo.brevity.WitMultiplySitedException.Location
+import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.io.IoInlinePackage
+import dev.wasmo.brevity.io.IoInterface
+import dev.wasmo.brevity.io.IoService
+import dev.wasmo.brevity.io.IoTopLevelUse
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.io.IoWitPackage
+import dev.wasmo.brevity.io.IoWorld
 import okio.Path
 import okio.Path.Companion.toPath
 
@@ -44,10 +50,13 @@ fun validateUniquePackageNames(toplevelPackages: List<IoToplevelWitPackage>): Ma
   }
 
   val collisionExceptions = collisions.map { (packageName, packageRefs) ->
-    WitMultiplySitedException("Duplicate definitions of $packageName", packageRefs.map { packageRef ->
-      Location(packageRef.path.toString(), packageRef.offset)
-    }.toList())
-  }
+    Issue(
+      "Duplicate definitions of $packageName",
+      packageRefs.map { packageRef ->
+        Location(packageRef.path.toString(), packageRef.offset)
+      }.toList()
+    )
+  }.map(::WitException)
 
   when (collisionExceptions.size) {
     0 -> {}
@@ -79,6 +88,75 @@ sealed interface PackageRef {
     override val offset = pkg.offset
   }
 }
+
+fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>): Map<ServiceName, IoService> {
+  val serviceRefs = mutableMapOf<ServiceName, MutableList<ServiceRef>>()
+
+  fun addService(serviceName: ServiceName, service: ServiceRef) {
+    serviceRefs.getOrPut(serviceName) { mutableListOf() }.add(service)
+  }
+
+  for (pkg in toplevelPackages) {
+    for ((path, file) in pkg.files) {
+      for (item in file.items) {
+        when (item) {
+          is IoInlinePackage -> processInlinePackage(path, item, ::addService)
+          is IoInterface, is IoWorld -> addService(
+            ServiceName(pkg.packageName, item.name),
+            ServiceRef(path, item),
+          )
+          is IoTopLevelUse -> {}
+        }
+      }
+    }
+  }
+  val collisions = mutableMapOf<ServiceName, List<ServiceRef>>()
+  val output = mutableMapOf<ServiceName, IoService>()
+
+  for ((serviceName, serviceRefs) in serviceRefs) {
+    when (serviceRefs.size) {
+      0 -> error("Invariant violated: service name exists without reference")
+      1 -> output[serviceName] = serviceRefs.single().service
+      else -> {
+        output[serviceName] = serviceRefs.first().service
+        collisions[serviceName] = serviceRefs
+      }
+    }
+  }
+
+  val collisionExceptions = collisions.map { (serviceName, serviceRefs) ->
+    val locations = serviceRefs.map { serviceRef ->
+      Location(serviceRef.path.toString(), serviceRef.service.offset)
+    }
+    WitException(Issue("Duplicate definitions of $serviceName", locations))
+  }
+
+  when (collisionExceptions.size) {
+    0 -> {}
+    1 -> throw collisionExceptions.single()
+    else -> throw WitCompoundException(collisionExceptions)
+  }
+
+  return output
+}
+
+private fun processInlinePackage(path: Path, pkg: IoInlinePackage, addService: (ServiceName, ServiceRef)->Unit) {
+  for (decl in pkg.declarations) {
+    when (decl) {
+      is IoInlinePackage -> processInlinePackage(path, decl, addService)
+      is IoInterface, is IoWorld -> addService(
+        ServiceName(pkg.packageName, decl.name),
+        ServiceRef(path, decl),
+      )
+      is IoTopLevelUse -> {}
+    }
+  }
+}
+
+data class ServiceRef(
+  val path: Path,
+  val service: IoService,
+)
 
 private val IoToplevelWitPackage.directory: Path
   get() = files.keys.first().parent ?: "".toPath()
