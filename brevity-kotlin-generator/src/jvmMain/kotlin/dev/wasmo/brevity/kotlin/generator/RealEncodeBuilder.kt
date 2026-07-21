@@ -88,16 +88,31 @@ class RealEncodeBuilder(
   }
 
   /** When there's multiple core values to return, write them to memory and return a pointer. */
-  fun flattenResult(returnValues: List<CodeBlock>, encoder: Encoder): CodeBlock {
-    val coreTypes = encoder.coreTypes
+  fun flattenResult(returnValues: List<CodeBlock>, coreResult: CoreResult): CodeBlock {
+    val address = nameAllocator.newName("resultAddress")
+    allocate(coreResult, address)
+    storeResultInMemory(returnValues, coreResult, address)
+    return platform.lowerAddress(CodeBlock.of("%N", address))
+  }
 
-    val byteCount = coreTypes.sumOf { coreType ->
+  /** Allocate space for the encoded value at [address]. */
+  fun allocate(coreResult: CoreResult, address: String) {
+    val byteCount = coreResult.encoder.coreTypes.sumOf { coreType ->
       coreType.byteCount
     }
 
-    val address = nameAllocator.newName("resultAddress")
-    var offset = 0
     code.addStatement("val %N = %L", address, allocate("%L", byteCount))
+  }
+
+  /** Write all of [returnValues] to [address]. */
+  fun storeResultInMemory(
+    returnValues: List<CodeBlock>,
+    coreResult: CoreResult,
+    address: String,
+  ) {
+    val coreTypes = coreResult.encoder.coreTypes
+
+    var offset = 0
     for ((index, value) in returnValues.withIndex()) {
       val coreType = coreTypes[index]
       platform.store(
@@ -108,17 +123,20 @@ class RealEncodeBuilder(
       )
       offset += coreType.byteCount
     }
-
-    return platform.lowerAddress(CodeBlock.of("%N", address))
   }
 
   /** When an address is returned, unpack the core values from memory. */
-  fun unflattenResult(returnValue: CodeBlock, encoder: Encoder): List<CodeBlock> {
-    val coreTypes = encoder.coreTypes
-    val nameHints = encoder.nameHints
-
+  fun unflattenResult(returnValue: CodeBlock, coreResult: CoreResult): List<CodeBlock> {
     val address = nameAllocator.newName("resultAddress")
     code.addStatement("val %N = %L", address, platform.liftAddress(returnValue))
+
+    return loadResultFromMemory(address, coreResult)
+  }
+
+  /** Unpack core values from memory. */
+  fun loadResultFromMemory(address: String, coreResult: CoreResult): List<CodeBlock> {
+    val coreTypes = coreResult.encoder.coreTypes
+    val nameHints = coreResult.encoder.nameHints
 
     var offset = 0
     val result = mutableListOf<CodeBlock>()
@@ -138,7 +156,7 @@ class RealEncodeBuilder(
         platform.load(
           baseAddress = CodeBlock.of("%N", address),
           offset = offset,
-          type = CoreType.I32
+          type = CoreType.I32,
         ),
       )
       offset += coreType.byteCount

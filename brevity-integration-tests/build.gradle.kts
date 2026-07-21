@@ -47,7 +47,7 @@ val rustCargoBuild = tasks.register("rustCargoBuild", Exec::class.java) {
   description = "Generate .wasm components from Rust sources"
   workingDir = File(projectDir, "rust")
   commandLine(
-    "cargo", "build",
+    "${environment["HOME"]}/.cargo/bin/cargo", "build",
     "--target=wasm32-wasip2",
     "--release",
   )
@@ -59,7 +59,7 @@ val rustComponentUnbundle = tasks.register("rustComponentUnbundle", Exec::class.
   description = "Unbundle the .wasm component into a .wasm core module"
   workingDir = File(projectDir, "rust")
   commandLine(
-    "wasm-tools", "component", "unbundle",
+    "${environment["HOME"]}/.cargo/bin/wasm-tools", "component", "unbundle",
     "--module-dir", "target/unbundled/",
     "--output", "target/unbundled/component.wasm",
     "./target/wasm32-wasip2/release/wasmo_testing.wasm",

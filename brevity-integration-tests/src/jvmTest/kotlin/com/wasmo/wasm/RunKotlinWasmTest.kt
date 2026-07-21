@@ -37,7 +37,7 @@ class RunKotlinWasmTest {
   }
 
   @Test
-  fun `call kotlin concatenate`() = runTest {
+  fun `call concatenate`() = runTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
       .wasmPath(WasmSource.Kotlin.path)

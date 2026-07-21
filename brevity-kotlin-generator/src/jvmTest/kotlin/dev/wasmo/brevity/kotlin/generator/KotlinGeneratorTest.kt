@@ -368,8 +368,7 @@ class KotlinGeneratorTest {
       |        ),
       |        WasmFunctionHandle { instance, args ->
       |          val self = host
-      |          val result = self.args(
-      |          )
+      |          val result = self.args()
       |          return@WasmFunctionHandle longArrayOf((result as Int).toLong())
       |        },
       |      )
@@ -717,8 +716,7 @@ class KotlinGeneratorTest {
       |        ),
       |        WasmFunctionHandle { instance, args ->
       |          val self = host.monotonicClock
-      |          val result = self.now(
-      |          )
+      |          val result = self.now()
       |          return@WasmFunctionHandle longArrayOf(result)
       |        },
       |      )
@@ -938,7 +936,7 @@ class KotlinGeneratorTest {
       |  module = "namespace:package-name/test",
       |  name = "[method]person.get-name",
       |)
-      |private external fun test_person_getName_import(self: Int): Int
+      |private external fun test_person_getName_import(self: Int, resultParameter: Int)
       |
       |@WasmImport(
       |  module = "namespace:package-name/test",
@@ -948,20 +946,24 @@ class KotlinGeneratorTest {
       |  self: Int,
       |  namePointer: Int,
       |  nameByteCount: Int,
-      |): Int
+      |  resultParameter: Int,
+      |)
       |
       |internal class PersonHandle(
       |  private val id: Int,
       |) : Test.Person {
       |  override fun getName(): String {
-      |    val result = test_person_getName_import(
-      |      this.id,
-      |    )
-      |    val resultAddress = Pointer(result.toUInt())
-      |    val resultPointer = resultAddress.loadInt()
-      |    val resultByteCount = (resultAddress + 4).loadInt()
-      |    return Pointer(resultPointer.toUInt()).loadString(resultByteCount)
-      |      .also{ freeAllComponentModelReallocAllocatedMemory() }
+      |    withScopedMemoryAllocator { memoryAllocator ->
+      |      val resultParameter = memoryAllocator.allocate(8)
+      |      test_person_getName_import(
+      |        this.id,
+      |        resultParameter.address.toInt(),
+      |      )
+      |      val resultPointer = resultParameter.loadInt()
+      |      val resultByteCount = (resultParameter + 4).loadInt()
+      |      return Pointer(resultPointer.toUInt()).loadString(resultByteCount)
+      |        .also { freeAllComponentModelReallocAllocatedMemory() }
+      |    }
       |  }
       |
       |  override fun replaceName(name: String): String {
@@ -969,16 +971,18 @@ class KotlinGeneratorTest {
       |      val byteArray = name.encodeToByteArray()
       |      val address = memoryAllocator.allocate(byteArray.size)
       |      address.storeByteArray(byteArray)
-      |      val result = test_person_replaceName_import(
+      |      val resultParameter = memoryAllocator.allocate(8)
+      |      test_person_replaceName_import(
       |        this.id,
       |        address.address.toInt(),
       |        byteArray.size,
+      |        resultParameter.address.toInt(),
       |      )
-      |      val resultAddress = Pointer(result.toUInt())
-      |      val resultPointer = resultAddress.loadInt()
-      |      val resultByteCount = (resultAddress + 4).loadInt()
+      |      val resultPointer = resultParameter.loadInt()
+      |      val resultByteCount = (resultParameter + 4).loadInt()
       |      return Pointer(resultPointer.toUInt()).loadString(resultByteCount)
-      |        .also{ freeAllComponentModelReallocAllocatedMemory() }}
+      |        .also { freeAllComponentModelReallocAllocatedMemory() }
+      |    }
       |  }
       |}
       |
@@ -1027,20 +1031,19 @@ class KotlinGeneratorTest {
       |        "namespace:package-name/test",
       |        "[method]person.get-name",
       |        FunctionType.of(
-      |          listOf(ValType.I32),
-      |          listOf(ValType.I32),
+      |          listOf(ValType.I32, ValType.I32),
+      |          listOf(),
       |        ),
       |        WasmFunctionHandle { instance, args ->
       |          val self = bridge.`get`<Test.Person>(args[0].toInt())
-      |          val result = self.getName(
-      |          )
+      |          val result = self.getName()
       |          val byteArray = result.encodeToByteArray()
       |          val pointer = bridge.allocate(byteArray.size)
       |          bridge.memory.write(pointer, byteArray)
-      |          val resultAddress = bridge.allocate(8)
-      |          bridge.memory.writeI32(resultAddress, pointer)
-      |          bridge.memory.writeI32(resultAddress + 4, byteArray.size)
-      |          return@WasmFunctionHandle longArrayOf(resultAddress.toLong())
+      |          val resultParameter = args[1].toInt()
+      |          bridge.memory.writeI32(resultParameter, pointer)
+      |          bridge.memory.writeI32(resultParameter + 4, byteArray.size)
+      |          return@WasmFunctionHandle longArrayOf()
       |        },
       |      )
       |    )
@@ -1049,8 +1052,8 @@ class KotlinGeneratorTest {
       |        "namespace:package-name/test",
       |        "[method]person.replace-name",
       |        FunctionType.of(
-      |          listOf(ValType.I32, ValType.I32, ValType.I32),
-      |          listOf(ValType.I32),
+      |          listOf(ValType.I32, ValType.I32, ValType.I32, ValType.I32),
+      |          listOf(),
       |        ),
       |        WasmFunctionHandle { instance, args ->
       |          val self = bridge.`get`<Test.Person>(args[0].toInt())
@@ -1060,10 +1063,10 @@ class KotlinGeneratorTest {
       |          val byteArray = result.encodeToByteArray()
       |          val pointer = bridge.allocate(byteArray.size)
       |          bridge.memory.write(pointer, byteArray)
-      |          val resultAddress = bridge.allocate(8)
-      |          bridge.memory.writeI32(resultAddress, pointer)
-      |          bridge.memory.writeI32(resultAddress + 4, byteArray.size)
-      |          return@WasmFunctionHandle longArrayOf(resultAddress.toLong())
+      |          val resultParameter = args[3].toInt()
+      |          bridge.memory.writeI32(resultParameter, pointer)
+      |          bridge.memory.writeI32(resultParameter + 4, byteArray.size)
+      |          return@WasmFunctionHandle longArrayOf()
       |        },
       |      )
       |    )
