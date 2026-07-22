@@ -32,16 +32,17 @@ internal class GuestFunctionFactory(
     }
   }
 
-  private val coreParameterFactory = CoreParameter.Factory(
+  private val coreValueFactory = CoreValueFactory(
     encoderFactory = encoderFactory,
     nameAllocator = nameAllocator,
   )
 
   private val coreReceiver: CoreParameter? = when {
-    receiver is Receiver.Id -> coreParameterFactory(receiver.name, receiver.type)
+    receiver is Receiver.Id -> coreValueFactory.parameter(receiver.name, receiver.type)
     else -> null
   }
-  private val coreParameters = value.parameters.map { coreParameterFactory(it.name, it.type) }
+  private val coreParameters = value.parameters.map { coreValueFactory.parameter(it.name, it.type) }
+  private val coreResult = value.returnType?.let { coreValueFactory.result(it) }
 
   private val code = CodeBlock.Builder()
 
@@ -70,32 +71,48 @@ internal class GuestFunctionFactory(
           )
         }
 
-        val result = nameAllocator.newName("result")
-        val returnType = value.returnType
-        if (returnType != null) {
-          code.add("val %N = ", result)
+        if (coreResult != null) {
+          when {
+            coreResult.parameter != null -> {
+              encodeBuilder.allocate(coreResult, coreResult.parameter.name)
+              loweredParameters += with(encodeBuilder) {
+                platform.lowerAddress(CodeBlock.of("%N", coreResult.parameter.name))
+              }
+            }
+
+            else -> {
+              code.add("val %N = ", coreResult.name)
+            }
+          }
         }
-        code.add("%N(⇥\n", value.functionName.importFunctionName)
+        code.add("%N(⇥", value.functionName.importFunctionName)
+        if (loweredParameters.isNotEmpty()) {
+          code.add("\n")
+        }
         for (output in loweredParameters) {
           code.add("%L,\n", output)
         }
         code.add("⇤)\n")
 
-        if (returnType != null) {
-          returns(returnType.kotlinApi)
-          val encoder = encoderFactory.get(typeName = returnType)
-          val coreReturnValues = when (encoder.coreTypes.size) {
-            1 -> listOf(CodeBlock.of("%N", result))
-            else -> encodeBuilder.unflattenResult(CodeBlock.of("%N", result), encoder)
+        if (coreResult != null) {
+          returns(coreResult.type.kotlinApi)
+          val coreReturnValues = when {
+            coreResult.parameter != null -> {
+              encodeBuilder.loadResultFromMemory(coreResult.parameter.name, coreResult)
+            }
+
+            else -> {
+              listOf(CodeBlock.of("%N", coreResult.name))
+            }
           }
           val liftedReturnValue = encodeBuilder.lift(
             values = coreReturnValues,
-            encoder = encoder,
+            encoder = coreResult.encoder,
           )
           code.add("return %L", liftedReturnValue)
           code.add(
-            "\n⇥.also{ %M() }⇤",
-            Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory
+            "\n⇥.also { %M() }⇤\n",
+            Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
           )
         }
       }
@@ -117,14 +134,12 @@ internal class GuestFunctionFactory(
         for (coreParameter in coreParameters) {
           addParameters(coreParameter.specs)
         }
+        if (coreResult?.parameter != null) {
+          addParameter(coreResult.parameter)
+        }
 
-        val returnType = value.returnType
-        if (returnType != null) {
-          val encoder = encoderFactory.get(returnType)
-          when (encoder.coreTypes.size) {
-            1 -> returns(encoder.coreTypes.single().kotlinCoreType)
-            else -> returns(CoreType.Pointer.kotlinCoreType)
-          }
+        if (coreResult != null && coreResult.parameter == null) {
+          returns(coreResult.encoder.coreTypes.single().kotlinCoreType)
         }
       }
       .build()
@@ -143,7 +158,7 @@ internal class GuestFunctionFactory(
             addParameters(coreReceiver!!.specs)
             encodeBuilder.lift(
               values = coreReceiver.names.map { CodeBlock.of("%N", it) },
-              encoder = coreReceiver.encoder
+              encoder = coreReceiver.encoder,
             )
           }
 
@@ -159,10 +174,8 @@ internal class GuestFunctionFactory(
           )
         }
 
-        val result = nameAllocator.newName("result")
-        val returnType = value.returnType
-        if (returnType != null) {
-          code.add("val %N = ", result)
+        if (coreResult != null) {
+          code.add("val %N = ", coreResult.name)
         }
         code.add("%L.%N(⇥\n", liftedReceiver, value.kotlinName)
         for ((index, parameter) in value.parameters.withIndex()) {
@@ -170,21 +183,20 @@ internal class GuestFunctionFactory(
         }
         code.add("⇤)\n")
 
-        if (returnType != null) {
-          val encoder = encoderFactory.get(typeName = returnType)
+        if (coreResult != null) {
           val loweredReturnValues = encodeBuilder.lower(
-            value = CodeBlock.of("%N", result),
-            encoder = encoder,
+            value = CodeBlock.of("%N", coreResult.name),
+            encoder = coreResult.encoder,
           )
-          val flattenedReturnValue = when (encoder.coreTypes.size) {
+          val flattenedReturnValue = when (coreResult.encoder.coreTypes.size) {
             1 -> {
-              returns(encoder.coreTypes.single().kotlinCoreType)
+              returns(coreResult.encoder.coreTypes.single().kotlinCoreType)
               loweredReturnValues.single()
             }
 
             else -> {
               returns(CoreType.Pointer.kotlinCoreType)
-              encodeBuilder.flattenResult(loweredReturnValues, encoder)
+              encodeBuilder.flattenResult(loweredReturnValues, coreResult)
             }
           }
           code.add("return %L\n", flattenedReturnValue)
