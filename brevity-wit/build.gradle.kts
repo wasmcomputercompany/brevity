@@ -4,7 +4,7 @@ plugins {
 }
 
 brevityBuild {
-  library(jvm = true, wasm = true)
+  library(jvm = true)
   publish()
 }
 
