@@ -38,6 +38,18 @@ internal class RealBrevityBuildExtension(
   private val project: Project,
   private val libs: LibrariesForLibs,
 ) : BrevityBuildExtension {
+  override fun wasmExecutable() {
+    library(wasm = true)
+    project.plugins.withType<KotlinMultiplatformPluginWrapper> {
+      val kotlin = project.extensions.getByName("kotlin") as KotlinMultiplatformExtension
+      kotlin.apply {
+        wasmWasi {
+          binaries.executable()
+        }
+      }
+    }
+  }
+
   override fun library(
     jvm: Boolean,
     js: Boolean,
@@ -77,7 +89,6 @@ internal class RealBrevityBuildExtension(
         if (wasm) {
           wasmWasi {
             nodejs()
-            binaries.executable()
           }
         }
       }

@@ -33,6 +33,58 @@ class HostBridge(
     store.addFunction(
       HostFunction(
         "wasi_snapshot_preview1",
+        "poll_oneoff",
+        FunctionType.of(
+          listOf(ValType.I32, ValType.I32, ValType.I32, ValType.I32),
+          listOf(ValType.I32),
+        ),
+        WasmFunctionHandle { instance, args ->
+          error("unexpected call")
+        },
+      ),
+    )
+    store.addFunction(
+      HostFunction(
+        "wasi_snapshot_preview1",
+        "clock_time_get",
+        FunctionType.of(
+          listOf(ValType.I32, ValType.I64, ValType.I32),
+          listOf(ValType.I32),
+        ),
+        WasmFunctionHandle { instance, args ->
+          error("unexpected call")
+        },
+      ),
+    )
+    store.addFunction(
+      HostFunction(
+        "wasi_snapshot_preview1",
+        "proc_exit",
+        FunctionType.of(
+          listOf(ValType.I32),
+          listOf(),
+        ),
+        WasmFunctionHandle { instance, args ->
+          error("unexpected call")
+        },
+      ),
+    )
+    store.addFunction(
+      HostFunction(
+        "wasi_snapshot_preview1",
+        "fd_write",
+        FunctionType.of(
+          listOf(ValType.I32, ValType.I32),
+          listOf(ValType.I32),
+        ),
+        WasmFunctionHandle { instance, args ->
+          error("unexpected call")
+        },
+      ),
+    )
+    store.addFunction(
+      HostFunction(
+        "wasi_snapshot_preview1",
         "fd_write",
         FunctionType.of(
           listOf(ValType.I32, ValType.I32, ValType.I32, ValType.I32),

@@ -4,10 +4,13 @@ import app.cash.burst.Burst
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNullOrEmpty
+import brevity.wasi.p2.RealCommandHost
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 import okio.Path
 import okio.Path.Companion.toPath
+import wit.wasi.cli.v0_2_0.Command
+import wit.wasi.cli.v0_2_0.World
 import wit.wasmo.testing.Types
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.World
@@ -19,6 +22,7 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
       .wasmPath(WasmSource.Kotlin.path)
+      .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)
       .build()
     val result = world.guest.sum(5L, 10L)
@@ -30,6 +34,7 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
       .wasmPath(WasmSource.Kotlin.path)
+      .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)
       .build()
     val result = world.guest.calculator.multiply(5L, 10L)
@@ -41,6 +46,7 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
       .wasmPath(WasmSource.Kotlin.path)
+      .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)
       .build()
 
@@ -69,6 +75,7 @@ class RunKotlinWasmTest {
   fun `call printGreeting`() = runTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
+      .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)
       .wasmPath(WasmSource.Kotlin.path)
       .build()
@@ -86,6 +93,7 @@ class RunKotlinWasmTest {
   fun `call printError`() = runTest {
     val world = WasmoTesting.World { Unit }
     val tester = WasmTester.Builder()
+      .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)
       .wasmPath(WasmSource.Kotlin.path)
       .build()

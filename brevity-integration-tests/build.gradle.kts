@@ -6,6 +6,7 @@ plugins {
 }
 
 brevityBuild {
+  wasmExecutable()
   library(jvm = true, wasm = true)
 }
 
@@ -14,6 +15,7 @@ kotlin {
     commonMain {
       dependencies {
         implementation(projects.brevity)
+        implementation(projects.brevityWasiP2)
       }
     }
     jvmMain {
@@ -36,6 +38,7 @@ kotlin {
 
 brevity {
   generateKotlin {
+    worlds.add("wasmo:testing/wasmo-testing")
     inputWitPackageDirectories.from(
       File(projectDir, "src/commonMain/wit"),
     )

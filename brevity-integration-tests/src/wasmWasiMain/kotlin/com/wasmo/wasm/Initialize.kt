@@ -1,5 +1,8 @@
 package com.wasmo.wasm
 
+import wit.wasi.cli.v0_2_0.Command
+import wit.wasi.cli.v0_2_0.Run
+import wit.wasi.cli.v0_2_0.guest
 import wit.wasmo.testing.Calculator
 import wit.wasmo.testing.Types
 import wit.wasmo.testing.WasmoTesting
@@ -28,5 +31,10 @@ val actuallyInitialize = run {
     override fun sum(a: Long, b: Long): Long {
       return a + b
     }
+  }
+
+  Command.guest = object : Command.Guest {
+    override val run: Run
+      get() = TODO("Not yet implemented")
   }
 }
