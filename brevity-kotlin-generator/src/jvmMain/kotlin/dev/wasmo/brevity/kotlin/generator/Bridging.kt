@@ -33,13 +33,16 @@ val IrFlag.kotlinName: String
   get() = name.toCamelCase(upperCamel = false)
 
 val IrFunction.kotlinName: String
-  get() = when (val functionName = functionName) {
-    is FunctionName.ResourceDrop -> dropFunctionName.toCamelCase(upperCamel = false)
-    is FunctionName.Constructor -> functionName.name.toCamelCase(upperCamel = false)
-    is FunctionName.Interface -> functionName.name.toCamelCase(upperCamel = false)
-    is FunctionName.Method -> functionName.name.toCamelCase(upperCamel = false)
-    is FunctionName.Static -> functionName.name.toCamelCase(upperCamel = false)
-    is FunctionName.World -> functionName.name.toCamelCase(upperCamel = false)
+  get() {
+    val identifier = when (val functionName = functionName) {
+      is FunctionName.ResourceDrop -> dropFunctionName
+      is FunctionName.Constructor -> functionName.name
+      is FunctionName.Interface -> functionName.name
+      is FunctionName.Method -> functionName.name
+      is FunctionName.Static -> functionName.name
+      is FunctionName.World -> functionName.name
+    }
+    return identifier.toCamelCase(upperCamel = false)
   }
 
 val IrExternalApi.instanceName: String
