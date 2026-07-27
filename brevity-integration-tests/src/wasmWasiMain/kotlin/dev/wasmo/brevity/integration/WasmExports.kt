@@ -1,4 +1,4 @@
-package com.wasmo.wasm
+package dev.wasmo.brevity.integration
 
 import wit.wasi.cli.v0_2_0.Command
 import wit.wasi.cli.v0_2_0.guest

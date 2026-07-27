@@ -1,9 +1,10 @@
-package com.wasmo.wasm
+package dev.wasmo.brevity.integration
 
 import wit.wasi.cli.v0_2_0.Command
 import wit.wasi.cli.v0_2_0.Run
 import wit.wasi.cli.v0_2_0.guest
 import wit.wasmo.testing.Calculator
+import wit.wasmo.testing.Streams
 import wit.wasmo.testing.Types
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.guest
@@ -26,6 +27,17 @@ val actuallyInitialize = run {
 
     override val calculator = object : Calculator {
       override fun multiply(a: Long, b: Long) = a * b
+    }
+
+    override val streams = object : Streams {
+      override fun printGreeting(name: Types.StringArgument) {
+        println("Hello, ${name.get()}")
+      }
+
+      override fun printError(name: Types.StringArgument) {
+        val exception = Exception("boom, ${name.get()}!")
+        exception.printStackTrace()
+      }
     }
 
     override fun sum(a: Long, b: Long): Long {

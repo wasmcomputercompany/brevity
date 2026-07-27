@@ -32,7 +32,7 @@ class WitSyntaxReader(
 
   /**
    * Attempt each element of [options] until one returns normally. If an options throws a
-   * [com.wasmo.support.wit.WitException], it is skipped. If no options return a value, the first option's exception is
+   * [WitException], it is skipped. If no options return a value, the first option's exception is
    * rethrown.
    *
    * This function is weird because it does speculative execution of parsing. It's likely to lead

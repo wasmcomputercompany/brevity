@@ -1,9 +1,8 @@
-package com.wasmo.wasm
+package dev.wasmo.brevity.integration
 
 import app.cash.burst.Burst
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isNullOrEmpty
 import brevity.wasi.p2.RealCommandHost
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
@@ -50,16 +49,9 @@ class RunKotlinWasmTest {
       .addWorld(world)
       .build()
 
-    val a = object : Types.StringArgument {
-      override fun get(): String {
-        return "Hello, "
-      }
-    }
-    val b = object : Types.StringArgument {
-      override fun get(): String {
-        return "World!"
-      }
-    }
+    val a = "Hello, ".asStringArgument()
+    val b = "World!".asStringArgument()
+
     var result: String? = null
     val callback = object : Types.StringResult {
       override fun put(value_: String) {
@@ -71,6 +63,10 @@ class RunKotlinWasmTest {
     assertThat(result).isEqualTo("Hello, World!")
   }
 
+  private fun String.asStringArgument() = object : Types.StringArgument {
+    override fun get() = this@asStringArgument
+  }
+
   @Test
   fun `call printGreeting`() = runTest {
     val world = WasmoTesting.World { Unit }
@@ -80,11 +76,8 @@ class RunKotlinWasmTest {
       .wasmPath(WasmSource.Kotlin.path)
       .build()
 
-    val nameId = tester.bridge.put("Jesse")
-
-    val concatenate = tester.instance.export("printGreeting")
-    val result = concatenate.apply(nameId.toLong())
-    assertThat(result).isNullOrEmpty()
+    val name = "Jesse".asStringArgument()
+    world.guest.streams.printGreeting(name)
 
     assertThat(tester.wasi.stdout.readUtf8()).isEqualTo("Hello, Jesse\n")
   }
@@ -97,11 +90,9 @@ class RunKotlinWasmTest {
       .addWorld(world)
       .wasmPath(WasmSource.Kotlin.path)
       .build()
-    val nameId = tester.bridge.put("Jesse")
 
-    val concatenate = tester.instance.export("printError")
-    val result = concatenate.apply(nameId.toLong())
-    assertThat(result).isNullOrEmpty()
+    val name = "Jesse".asStringArgument()
+    world.guest.streams.printError(name)
 
     assertThat(tester.wasi.stderr.readUtf8()).isEqualTo("Exception: boom, Jesse!\n\n")
   }

@@ -1,7 +1,7 @@
 // Copyright 2019-2023 the Contributors to the WASI Specification
 // This file is adapted from the WASI preview1 spec here:
 // https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/docs.md
-package com.wasmo.wasm
+package dev.wasmo.brevity.integration
 
 @Suppress("ktlint:enum-entry-name-case")
 enum class Errno {

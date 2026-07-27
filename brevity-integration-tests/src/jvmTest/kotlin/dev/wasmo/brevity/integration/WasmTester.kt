@@ -1,4 +1,4 @@
-package com.wasmo.wasm
+package dev.wasmo.brevity.integration
 
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Store
@@ -11,14 +11,14 @@ import okio.Path
 
 class WasmTester(
   val store: Store,
-  val bridge: HostBridge,
   val wasmModule: WasmModule,
   val instance: Instance,
-  val wasi: FakeWasi,
+  val wasi: FakeWasiP1,
 ) {
   class Builder {
+    private val wasi = FakeWasiP1()
+    private val worlds = mutableListOf<World<*, *>>(WasiP1World(wasi))
     private var wasmBytes: ByteArray? = null
-    private val worlds = mutableListOf<World<*, *>>()
 
     fun wasmPath(path: Path) = apply {
       wasmBytes = FileSystem.SYSTEM.read(path) {
@@ -38,11 +38,6 @@ class WasmTester(
       check(wasmBytes != null) { "call wasmPath() or wat() first" }
       val wasmModule = Parser.parse(wasmBytes)
       val store = Store()
-      val wasi = FakeWasi()
-      val bridge = HostBridge(
-        wasi = wasi,
-      )
-      satisfyImports(bridge, store)
       for (world in worlds) {
         world.initImports(store)
       }
@@ -54,17 +49,10 @@ class WasmTester(
 
       return WasmTester(
         store = store,
-        bridge = bridge,
         wasmModule = wasmModule,
         instance = instance,
         wasi = wasi,
       )
-    }
-
-    /** Provide the imports required to run our Kotlin/Wasm program. */
-    private fun satisfyImports(bridge: HostBridge, store: Store) {
-      bridge.addDataTransferFunctions(store)
-      bridge.addWasiSnapshotPreview1Functions(store)
     }
   }
 }
