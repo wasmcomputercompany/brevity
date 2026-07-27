@@ -2,7 +2,6 @@ package dev.wasmo.brevity.io
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.WitSyntaxException
 import dev.wasmo.brevity.ir.IrMapper
 import kotlin.test.Test
@@ -10,14 +9,14 @@ import kotlin.test.fail
 import okio.FileSystem
 import okio.Path.Companion.toPath
 
-class ReadAllWasiFilesTest {
+class ReadWasiMainTest {
   private val fileSystem = FileSystem.SYSTEM
-  private val wasiProposals = "../submodules/WASI/proposals".toPath()
+  private val wasiMainProposals = "../submodules/wasi-main/proposals".toPath()
 
   @Test
   fun `parse all files`() {
     var witFileCount = 0
-    for (path in fileSystem.listRecursively(wasiProposals)) {
+    for (path in fileSystem.listRecursively(wasiMainProposals)) {
       if (!path.name.endsWith(".wit")) continue
 
       val witContent = fileSystem.read(path) {
@@ -43,12 +42,12 @@ class ReadAllWasiFilesTest {
   @Test
   fun `map all files`() {
     val directories = mutableListOf(
-      wasiProposals / "cli/wit",
-      wasiProposals / "clocks/wit",
-      wasiProposals / "filesystem/wit",
-      wasiProposals / "http/wit",
-      wasiProposals / "random/wit",
-      wasiProposals / "sockets/wit",
+      wasiMainProposals / "cli/wit",
+      wasiMainProposals / "clocks/wit",
+      wasiMainProposals / "filesystem/wit",
+      wasiMainProposals / "http/wit",
+      wasiMainProposals / "random/wit",
+      wasiMainProposals / "sockets/wit",
     )
 
     val ioWitPackages = directories.map {

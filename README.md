@@ -18,7 +18,8 @@ This project contains documentation and specifications copyrighted by the
 * **brevity-gradle-plugin**: integrates Brevity with Gradle.
 * **brevity-integration-tests**: executes generated API stubs on the [Chicory] runtime.
 * **brevity-testing**: test facets for our own internal testing.
-* **brevity-wasi**: Compiles [WASI] to Kotlin.
+* **brevity-wasi-main**: Compiles the [WASI main branch] (Preview 3) to Kotlin.
+* **brevity-wasi-p2**: Compiles the [WASI 0.2.0 tag] (Preview 2) to Kotlin.
 * **brevity-wit**: Parses and models `.wit` files.
 
 Models
@@ -40,4 +41,5 @@ We have several different representations of the `.wit` code, that fit together 
 [Overview]: https://component-model.bytecodealliance.org/design/wit.html
 [Spec]: https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md
 [W3C WebAssembly Community Group]: https://www.w3.org/community/webassembly/
-[WASI]: https://github.com/WebAssembly/WASI/
+[WASI main branch]: https://github.com/WebAssembly/WASI/
+[WASI 0.2.0 tag]: https://github.com/WebAssembly/WASI/tree/v0.2.0

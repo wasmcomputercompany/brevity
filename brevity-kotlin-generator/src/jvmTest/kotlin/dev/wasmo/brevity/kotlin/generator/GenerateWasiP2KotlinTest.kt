@@ -1,0 +1,65 @@
+package dev.wasmo.brevity.kotlin.generator
+
+import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.RoleTracker
+import dev.wasmo.brevity.filterNamedWorlds
+import dev.wasmo.brevity.io.IoWitPackageReader
+import dev.wasmo.brevity.ir.IrMapper
+import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import java.io.File
+import kotlin.test.Test
+import okio.FileSystem
+import okio.Path.Companion.toPath
+
+/** This dumps a `.kt` file for WASI 0.2.0, for manual inspection. */
+class GenerateWasiP2KotlinTest {
+  private val fileSystem = FileSystem.SYSTEM
+  private val wasiPreview2 = "../submodules/wasi-p2/preview2".toPath()
+
+  @Test
+  fun generate() {
+    val directories = mutableListOf(
+      wasiPreview2 / "cli",
+      wasiPreview2 / "clocks",
+      wasiPreview2 / "filesystem",
+      wasiPreview2 / "http",
+      wasiPreview2 / "io",
+      wasiPreview2 / "random",
+      wasiPreview2 / "sockets",
+
+    )
+
+    val packageReader = IoWitPackageReader(fileSystem)
+    val ioWitPackages = directories.map {
+      packageReader.read(it)
+    }
+
+    val allIrPackages = IrMapper(ioWitPackages).map()
+
+    val irPackages = allIrPackages.filterNamedWorlds(
+      listOf(
+        "wasi:cli/command",
+        "wasi:http/proxy",
+      )
+    )
+
+    val directory = File("build/GenerateWasiP2KotlinTest")
+    directory.mkdirs()
+
+    val declarationIndex = DeclarationIndex(irPackages)
+    val roleTracker = RoleTracker(declarationIndex, irPackages)
+    val encoderFactory = EncoderFactory(declarationIndex)
+    val guestGenerator = GuestGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
+    val hostGenerator = HostGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
+
+    for (fileSpec in ApiGenerator(irPackages).generate()) {
+      fileSpec.writeTo(directory)
+    }
+    for (fileSpec in guestGenerator.generate()) {
+      fileSpec.writeTo(directory)
+    }
+    for (fileSpec in hostGenerator.generate()) {
+      fileSpec.writeTo(directory)
+    }
+  }
+}
