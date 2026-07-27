@@ -20,7 +20,13 @@ internal object HostPlatform : Platform {
 
   context(builder: EncodeBuilder)
   override fun liftResource(id: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of("%L.get<%T>(%L)", builder.bridge, handleType.kotlinApi, id)
+    CodeBlock.of(
+      "%L.%M<%T>(%L)",
+      builder.bridge,
+      Symbols.Brevity.HostBridgeGet,
+      handleType.kotlinApi,
+      id,
+    )
 
   context(builder: EncodeBuilder)
   override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =

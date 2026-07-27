@@ -11,19 +11,19 @@ import okio.FileSystem
 import okio.Path.Companion.toPath
 
 /** This dumps a `.kt` file for all the WASI proposals, for manual inspection. */
-class GenerateAllWasiKotlinTest {
+class GenerateWasiMainKotlinTest {
   private val fileSystem = FileSystem.SYSTEM
-  private val wasiProposals = "../submodules/WASI/proposals".toPath()
+  private val wasiMainProposals = "../submodules/wasi-main/proposals".toPath()
 
   @Test
   fun generate() {
     val directories = mutableListOf(
-      wasiProposals / "cli/wit",
-      wasiProposals / "clocks/wit",
-      wasiProposals / "filesystem/wit",
-      wasiProposals / "http/wit",
-      wasiProposals / "random/wit",
-      wasiProposals / "sockets/wit",
+      wasiMainProposals / "cli/wit",
+      wasiMainProposals / "clocks/wit",
+      wasiMainProposals / "filesystem/wit",
+      wasiMainProposals / "http/wit",
+      wasiMainProposals / "random/wit",
+      wasiMainProposals / "sockets/wit",
     )
 
     val packageReader = IoWitPackageReader(fileSystem)
@@ -33,7 +33,7 @@ class GenerateAllWasiKotlinTest {
 
     val irPackages = IrMapper(ioWitPackages).map()
 
-    val directory = File("build/GenerateAllWasiKotlinTest")
+    val directory = File("build/GenerateWasiMainKotlinTest")
     directory.mkdirs()
 
     val declarationIndex = DeclarationIndex(irPackages)
