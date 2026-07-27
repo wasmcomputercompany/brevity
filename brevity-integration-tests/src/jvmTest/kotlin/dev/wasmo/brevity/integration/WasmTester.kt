@@ -13,11 +13,9 @@ class WasmTester(
   val store: Store,
   val wasmModule: WasmModule,
   val instance: Instance,
-  val wasi: FakeWasiP1,
 ) {
   class Builder {
-    private val wasi = FakeWasiP1()
-    private val worlds = mutableListOf<World<*, *>>(WasiP1World(wasi))
+    private val worlds = mutableListOf<World<*, *>>()
     private var wasmBytes: ByteArray? = null
 
     fun wasmPath(path: Path) = apply {
@@ -51,7 +49,6 @@ class WasmTester(
         store = store,
         wasmModule = wasmModule,
         instance = instance,
-        wasi = wasi,
       )
     }
   }

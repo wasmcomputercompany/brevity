@@ -1,8 +1,12 @@
 package dev.wasmo.brevity.integration
 
 import okio.Buffer
+import wit.wasi.v0_1.Errno
+import wit.wasi.v0_1.STDERR
+import wit.wasi.v0_1.STDOUT
+import wit.wasi.v0_1.Wasi
 
-class FakeWasiP1 : WasiP1 {
+class FakeWasi : Wasi.Host {
   val stderr = Buffer()
   val stdout = Buffer()
 

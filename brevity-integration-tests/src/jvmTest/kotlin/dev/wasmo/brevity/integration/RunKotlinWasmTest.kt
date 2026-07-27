@@ -10,6 +10,8 @@ import okio.Path
 import okio.Path.Companion.toPath
 import wit.wasi.cli.v0_2_0.Command
 import wit.wasi.cli.v0_2_0.World
+import wit.wasi.v0_1.Wasi
+import wit.wasi.v0_1.World
 import wit.wasmo.testing.Types
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.World
@@ -19,8 +21,10 @@ class RunKotlinWasmTest {
   @Test
   fun `call function declared on world`() = runTest {
     val world = WasmoTesting.World { Unit }
+    val wasiP1 = FakeWasi()
     val tester = WasmTester.Builder()
       .wasmPath(WasmSource.Kotlin.path)
+      .addWorld(Wasi.World({ wasiP1 }))
       .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)
       .build()
@@ -31,8 +35,10 @@ class RunKotlinWasmTest {
   @Test
   fun `call function declared on interface`() = runTest {
     val world = WasmoTesting.World { Unit }
+    val wasiP1 = FakeWasi()
     val tester = WasmTester.Builder()
       .wasmPath(WasmSource.Kotlin.path)
+      .addWorld(Wasi.World({ wasiP1 }))
       .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)
       .build()
@@ -43,8 +49,10 @@ class RunKotlinWasmTest {
   @Test
   fun `call concatenate`() = runTest {
     val world = WasmoTesting.World { Unit }
+    val wasiP1 = FakeWasi()
     val tester = WasmTester.Builder()
       .wasmPath(WasmSource.Kotlin.path)
+      .addWorld(Wasi.World({ wasiP1 }))
       .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)
       .build()
@@ -70,7 +78,9 @@ class RunKotlinWasmTest {
   @Test
   fun `call printGreeting`() = runTest {
     val world = WasmoTesting.World { Unit }
+    val wasiP1 = FakeWasi()
     val tester = WasmTester.Builder()
+      .addWorld(Wasi.World({ wasiP1 }))
       .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)
       .wasmPath(WasmSource.Kotlin.path)
@@ -79,13 +89,15 @@ class RunKotlinWasmTest {
     val name = "Jesse".asStringArgument()
     world.guest.streams.printGreeting(name)
 
-    assertThat(tester.wasi.stdout.readUtf8()).isEqualTo("Hello, Jesse\n")
+    assertThat(wasiP1.stdout.readUtf8()).isEqualTo("Hello, Jesse\n")
   }
 
   @Test
   fun `call printError`() = runTest {
     val world = WasmoTesting.World { Unit }
+    val wasiP1 = FakeWasi()
     val tester = WasmTester.Builder()
+      .addWorld(Wasi.World({ wasiP1 }))
       .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)
       .wasmPath(WasmSource.Kotlin.path)
@@ -94,7 +106,7 @@ class RunKotlinWasmTest {
     val name = "Jesse".asStringArgument()
     world.guest.streams.printError(name)
 
-    assertThat(tester.wasi.stderr.readUtf8()).isEqualTo("Exception: boom, Jesse!\n\n")
+    assertThat(wasiP1.stderr.readUtf8()).isEqualTo("Exception: boom, Jesse!\n\n")
   }
 
   enum class WasmSource(

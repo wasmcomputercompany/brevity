@@ -15,6 +15,7 @@ kotlin {
     commonMain {
       dependencies {
         implementation(projects.brevity)
+        implementation(projects.brevityWasiP1)
         implementation(projects.brevityWasiP2)
       }
     }
