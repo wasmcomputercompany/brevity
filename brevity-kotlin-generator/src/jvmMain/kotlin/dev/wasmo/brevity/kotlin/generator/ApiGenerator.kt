@@ -8,6 +8,7 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
+import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.ir.IrDeclaration
 import dev.wasmo.brevity.ir.IrEnum
 import dev.wasmo.brevity.ir.IrExternalApi
@@ -77,6 +78,8 @@ class ApiGenerator(
     .apply {
       for (function in value.functions) {
         if (!function.isSupported) continue
+        // Don't override close(), it's inherited from the 'Resource' supertype.
+        if (function.functionName is FunctionName.ResourceDrop) continue
         addFunction(ApiFunctionFactory(function).api())
       }
     }

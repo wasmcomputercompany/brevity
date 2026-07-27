@@ -97,7 +97,7 @@ data class IrFunction(
   override val gate: Gate? = null,
   override val offset: Offset,
   val async: Boolean = false,
-  val parameters: List<IrParameter>,
+  val parameters: List<IrParameter> = listOf(),
   val returnType: TypeName? = null,
   val functionName: FunctionName,
 ) : IrWorld.Api, IrInterface.Item

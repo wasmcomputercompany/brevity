@@ -2,6 +2,8 @@ package dev.wasmo.brevity.ir
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import dev.wasmo.brevity.FunctionNameMethod
+import dev.wasmo.brevity.FunctionNameResourceDrop
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.TypeName
@@ -232,8 +234,11 @@ class WorldFlattenerTest {
                   IrFunction(
                     offset = Offset(17, 9),
                     name = "write",
-                    serviceName = "test:subject/subject-world",
-                    resourceName = "my-resource",
+                    functionName = FunctionNameMethod(
+                      serviceName = "test:subject/subject-world",
+                      resourceName = "my-resource",
+                      name = "write",
+                    ),
                     parameters = listOf(
                       IrParameter(
                         offset = Offset(17, 21),
@@ -248,6 +253,14 @@ class WorldFlattenerTest {
                       serviceName = "test:subject/subject-world",
                       typeName = "my-flags",
                     ),
+                  ),
+                  IrFunction(
+                    offset = Offset(16, 5),
+                    name = "close",
+                    functionName = FunctionNameResourceDrop(
+                      serviceName = "test:subject/subject-world",
+                      resourceName = "my-resource",
+                    )
                   ),
                 ),
               ),

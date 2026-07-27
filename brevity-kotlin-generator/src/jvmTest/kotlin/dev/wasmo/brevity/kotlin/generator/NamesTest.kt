@@ -2,14 +2,17 @@ package dev.wasmo.brevity.kotlin.generator
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import dev.wasmo.brevity.Annotation
-import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.FunctionNameConstructor
+import dev.wasmo.brevity.FunctionNameInterface
+import dev.wasmo.brevity.FunctionNameMethod
+import dev.wasmo.brevity.FunctionNameStatic
+import dev.wasmo.brevity.FunctionNameWorld
 import kotlin.test.Test
 
 class NamesTest {
   @Test
   fun `function on world`() {
-    val function = FunctionName(
+    val function = FunctionNameWorld(
       name = "sum",
     )
     assertThat(function.importFunctionName).isEqualTo("sum_import")
@@ -18,7 +21,7 @@ class NamesTest {
 
   @Test
   fun `function on interface`() {
-    val function = FunctionName(
+    val function = FunctionNameInterface(
       serviceName = "wasi:http/types@0.3.0",
       name = "has",
     )
@@ -28,10 +31,9 @@ class NamesTest {
 
   @Test
   fun `package name with sem ver`() {
-    val function = FunctionName(
+    val function = FunctionNameConstructor(
       serviceName = "wasi:http/types@0.3.0",
       name = "fields",
-      annotation = Annotation.Constructor,
     )
     assertThat(function.importFunctionName).isEqualTo("types_fields_import")
     assertThat(function.exportFunctionName).isEqualTo("types_fields_export")
@@ -39,11 +41,10 @@ class NamesTest {
 
   @Test
   fun `function on resource`() {
-    val function = FunctionName(
+    val function = FunctionNameMethod(
       serviceName = "wasi:http/types@0.3.0",
       name = "from-list",
       resourceName = "fields",
-      annotation = Annotation.Static,
     )
     assertThat(function.importFunctionName).isEqualTo("types_fields_fromList_import")
     assertThat(function.exportFunctionName).isEqualTo("types_fields_fromList_export")
@@ -51,11 +52,10 @@ class NamesTest {
 
   @Test
   fun `static function`() {
-    val function = FunctionName(
+    val function = FunctionNameStatic(
       serviceName = "wasi:http/types@0.3.0",
       name = "has",
       resourceName = "fields",
-      annotation = Annotation.Method,
     )
     assertThat(function.importFunctionName).isEqualTo("types_fields_has_import")
     assertThat(function.exportFunctionName).isEqualTo("types_fields_has_export")

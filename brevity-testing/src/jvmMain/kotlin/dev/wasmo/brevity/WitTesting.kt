@@ -26,16 +26,54 @@ fun String.toSemVer(): SemVer {
   return result
 }
 
-fun FunctionName(
-  serviceName: String? = null,
+fun FunctionNameConstructor(
+  serviceName: String,
   name: String,
-  resourceName: String? = null,
-  annotation: Annotation? = resourceName?.let { Annotation.Method },
-) = FunctionName(
-  serviceName = serviceName?.toServiceName(),
+) = FunctionName.Constructor(
+  serviceName = serviceName.toServiceName(),
   name = Identifier(name),
-  resourceName = resourceName?.let { Identifier(it) },
-  annotation = annotation,
+)
+
+fun FunctionNameResourceDrop(
+  serviceName: String,
+  resourceName: String,
+) = FunctionName.ResourceDrop(
+  serviceName = serviceName.toServiceName(),
+  resourceName = Identifier(resourceName),
+)
+
+fun FunctionNameInterface(
+  serviceName: String,
+  name: String,
+) = FunctionName.Interface(
+  serviceName = serviceName.toServiceName(),
+  name = Identifier(name),
+)
+
+fun FunctionNameMethod(
+  serviceName: String,
+  name: String,
+  resourceName: String,
+) = FunctionName.Method(
+  serviceName = serviceName.toServiceName(),
+  name = Identifier(name),
+  resourceName = Identifier(resourceName),
+)
+
+fun FunctionNameStatic(
+  serviceName: String,
+  name: String,
+  resourceName: String,
+) = FunctionName.Static(
+  serviceName = serviceName.toServiceName(),
+  name = Identifier(name),
+  resourceName = Identifier(resourceName),
+)
+
+fun FunctionNameWorld(
+  name: String,
+) = FunctionName.World(
+  name = Identifier(name),
 )
 
 fun Gate(

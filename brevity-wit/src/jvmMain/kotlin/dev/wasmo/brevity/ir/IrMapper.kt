@@ -1,6 +1,5 @@
 package dev.wasmo.brevity.ir
 
-import dev.wasmo.brevity.Annotation
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
@@ -30,7 +29,6 @@ import dev.wasmo.brevity.io.IoVariant
 import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.io.IoWitPackage
 import dev.wasmo.brevity.io.IoWorld
-import dev.wasmo.brevity.io.Keywords
 import dev.wasmo.brevity.io.UsePath
 import dev.wasmo.brevity.io.validation.validateUniquePackageNames
 
@@ -147,36 +145,44 @@ class IrMapper(
     parameters = parameters.map { it.parameterToIr() },
     returnType = returnType?.typeNameToIr(),
     functionName = when {
-      worldFunction -> FunctionName(
+      worldFunction -> FunctionName.World(
         name = name,
       )
 
-      constructor && resourceName != null && name == Keywords.constructor -> FunctionName(
+      constructor && resourceName != null -> FunctionName.Constructor(
         serviceName = context.serviceName,
         name = resourceName,
-        annotation = Annotation.Constructor,
       )
 
-      static && resourceName != null -> FunctionName(
+      static && resourceName != null -> FunctionName.Static(
         serviceName = context.serviceName,
         resourceName = resourceName,
         name = name,
-        annotation = Annotation.Static,
       )
 
-      resourceName != null -> FunctionName(
+      resourceName != null -> FunctionName.Method(
         serviceName = context.serviceName,
         resourceName = resourceName,
         name = name,
-        annotation = Annotation.Method,
       )
 
-      else -> FunctionName(
+      else -> FunctionName.Interface(
         serviceName = context.serviceName,
         name = name,
       )
     },
   )
+
+  context(context: Context)
+  private fun IoResource.dropFunction(): IrFunction {
+    return IrFunction(
+      offset = offset,
+      functionName = FunctionName.ResourceDrop(
+        serviceName = context.serviceName,
+        resourceName = name,
+      ),
+    )
+  }
 
   context(context: Context)
   private fun IoParameter.parameterToIr() = IrParameter(
@@ -219,8 +225,13 @@ class IrMapper(
     gate = gate,
     offset = offset,
     type = TypeName.Declared(context.serviceName, name),
-    functions = functions.map {
-      it.functionToIr(resourceName = name)
+    functions = buildList {
+      addAll(
+        functions.map {
+          it.functionToIr(resourceName = name)
+        },
+      )
+      add(dropFunction())
     },
   )
 
@@ -479,9 +490,9 @@ private fun IoUse.Item.matches(typeName: IoTypeName.Declared): Boolean {
 
 private val IoWitPackage.items: List<IoWitFile.Item>
   get() = when (this) {
-  is IoToplevelWitPackage -> this.files.values.flatMap { it.items }
-  is IoInlinePackage -> this.declarations
-}
+    is IoToplevelWitPackage -> files.values.flatMap { it.items }
+    is IoInlinePackage -> declarations
+  }
 
 /**
  * Returns true if this interface declares functions to be imported or exported.
