@@ -22,6 +22,7 @@ include(":brevity-integration-tests")
 include(":brevity-kotlin-generator")
 include(":brevity-testing")
 include(":brevity-wasi-main")
+include(":brevity-wasi-p1")
 include(":brevity-wasi-p2")
 include(":brevity-wit")
 

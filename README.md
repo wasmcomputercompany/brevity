@@ -14,11 +14,13 @@ This project contains documentation and specifications copyrighted by the
 * **brevity**: A runtime library for running components in Kotlin. It declares built-in types for
   `Tuple` and `Result` types.
 * **brevity-build**: Gradle project so we can run Brevity’s Gradle plugin in Brevity’s own build.
-* **brevity-kotlin-generator**: uses parsed `.wit` files to generate `.kt` files.
 * **brevity-gradle-plugin**: integrates Brevity with Gradle.
 * **brevity-integration-tests**: executes generated API stubs on the [Chicory] runtime.
+* **brevity-kotlin-generator**: uses parsed `.wit` files to generate `.kt` files.
 * **brevity-testing**: test facets for our own internal testing.
 * **brevity-wasi-main**: Compiles the [WASI main branch] (Preview 3) to Kotlin.
+* **brevity-wasi-p1**: A hand-authored host binding for [WASI Preview 1]. We can't use Brevity to
+  generate this, because WASI Preview 1 cannot be expressed with `.wit`.
 * **brevity-wasi-p2**: Compiles the [WASI 0.2.0 tag] (Preview 2) to Kotlin.
 * **brevity-wit**: Parses and models `.wit` files.
 
@@ -43,3 +45,4 @@ We have several different representations of the `.wit` code, that fit together 
 [W3C WebAssembly Community Group]: https://www.w3.org/community/webassembly/
 [WASI main branch]: https://github.com/WebAssembly/WASI/
 [WASI 0.2.0 tag]: https://github.com/WebAssembly/WASI/tree/v0.2.0
+[WASI Preview 1]: https://github.com/WebAssembly/WASI/tree/wasi-0.1

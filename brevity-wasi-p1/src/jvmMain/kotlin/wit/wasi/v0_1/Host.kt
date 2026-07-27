@@ -1,4 +1,4 @@
-package dev.wasmo.brevity.integration
+package wit.wasi.v0_1
 
 import com.dylibso.chicory.runtime.HostFunction
 import com.dylibso.chicory.runtime.Instance
@@ -9,19 +9,18 @@ import com.dylibso.chicory.wasm.types.ValType
 import dev.wasmo.brevity.World
 import okio.Buffer
 
-/**
- * This is manually-bridged subset of WASIp1 used by Kotlin.
- *
- * TODO: replace with a Brevity-generated bridge.
- *
- * https://github.com/WebAssembly/WASI/blob/wasi-0.1/preview1/docs.md
- */
-class WasiP1World(
-  override val host: WasiP1,
-) : World<WasiP1, Unit> {
-  override val guest: Unit
-    get() = Unit
+fun Wasi.World(
+  hostFactory: (guest: Wasi.Guest) -> Wasi.Host,
+): World<Wasi.Host, Wasi.Guest> {
+  val guest = BridgeWasi.BridgeGuest()
+  val host = hostFactory(guest)
+  return BridgeWasi(guest, host)
+}
 
+internal class BridgeWasi(
+  override val guest: Wasi.Guest,
+  override val host: Wasi.Host,
+) : World<Wasi.Host, Wasi.Guest> {
   override fun initExports(instance: Instance) {
   }
 
@@ -137,5 +136,8 @@ class WasiP1World(
     val errno = host.write(fd, buffer)
     memory.writeI32(returnPointer, size)
     return errno.ordinal
+  }
+
+  internal class BridgeGuest() : Wasi.Guest {
   }
 }
