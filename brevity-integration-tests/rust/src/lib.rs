@@ -22,6 +22,16 @@ impl bindings::exports::wasmo::testing::calculator::Guest for WasmoTesting {
     }
 }
 
+
+impl bindings::exports::wasmo::testing::streams::Guest for WasmoTesting {
+    fn print_greeting(name: bindings::wasmo::testing::types::StringArgument) {
+        let n = name.get();
+    }
+    fn print_error(name: bindings::wasmo::testing::types::StringArgument) {
+        let n = name.get();
+    }
+}
+
 impl bindings::Guest for WasmoTesting {
     fn sum(a: i64, b: i64) -> i64 {
         a + b

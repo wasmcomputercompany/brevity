@@ -1,8 +1,8 @@
-package com.wasmo.wasm
+package dev.wasmo.brevity.integration
 
 import okio.Buffer
 
-class FakeWasi : Wasi {
+class FakeWasiP1 : WasiP1 {
   val stderr = Buffer()
   val stdout = Buffer()
 

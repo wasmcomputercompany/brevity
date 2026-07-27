@@ -1,4 +1,4 @@
-package com.wasmo.wasm
+package dev.wasmo.brevity.integration
 
 import assertk.assertThat
 import assertk.assertions.containsExactly

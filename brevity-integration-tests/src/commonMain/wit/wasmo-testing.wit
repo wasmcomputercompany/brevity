@@ -13,9 +13,16 @@ interface calculator {
   multiply: func(a: s64, b: s64) -> s64;
 }
 
+interface streams {
+  use types.{string-argument};
+  print-greeting: func(name: string-argument);
+  print-error: func(name: string-argument);
+}
+
 world wasmo-testing {
   use types.{string-argument, string-result};
   export calculator;
+  export streams;
   export sum: func(a: s64, b: s64) -> s64;
   export concat: func(a: string-argument, b: string-argument, callback: string-result);
 }
