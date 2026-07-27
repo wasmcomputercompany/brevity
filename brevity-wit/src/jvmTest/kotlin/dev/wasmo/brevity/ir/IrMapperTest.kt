@@ -5,8 +5,11 @@ import assertk.assertions.containsExactly
 import assertk.assertions.hasMessage
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
-import dev.wasmo.brevity.Annotation
-import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.FunctionNameConstructor
+import dev.wasmo.brevity.FunctionNameInterface
+import dev.wasmo.brevity.FunctionNameMethod
+import dev.wasmo.brevity.FunctionNameResourceDrop
+import dev.wasmo.brevity.FunctionNameStatic
 import dev.wasmo.brevity.Offset
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
@@ -19,7 +22,6 @@ import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 import okio.Path.Companion.toPath
-import org.junit.Ignore
 
 class IrMapperTest {
   @Test
@@ -283,7 +285,10 @@ class IrMapperTest {
                 offset = Offset(4, 3),
                 name = "now",
                 returnType = TypeName.S64,
-                serviceName = "wasi:clocks/monotonic-clock@0.3.0",
+                functionName = FunctionNameInterface(
+                  serviceName = "wasi:clocks/monotonic-clock@0.3.0",
+                  name = "now",
+                ),
               ),
             ),
           ),
@@ -374,7 +379,10 @@ class IrMapperTest {
                 offset = Offset(12, 5),
                 name = "now",
                 returnType = TypeName.S64,
-                serviceName = "wasi:clocks/monotonic-clock@0.3.0",
+                functionName = FunctionNameInterface(
+                  serviceName = "wasi:clocks/monotonic-clock@0.3.0",
+                  name = "now",
+                ),
               ),
             ),
           ),
@@ -415,7 +423,10 @@ class IrMapperTest {
               IrFunction(
                 offset = Offset(5, 9),
                 name = "the-function",
-                serviceName = "local:demo/out-of-line",
+                functionName = FunctionNameInterface(
+                  serviceName = "local:demo/out-of-line",
+                  name = "the-function",
+                ),
               ),
             ),
           ),
@@ -535,7 +546,7 @@ class IrMapperTest {
     val irInterface = irPackage.services.single() as IrInterface
     val irFunction = irInterface.items.single() as IrFunction
     assertThat(irFunction.functionName).isEqualTo(
-      FunctionName(
+      FunctionNameInterface(
         serviceName = "wasi:clocks/system-clock@0.3.0",
         name = "now",
       ),
@@ -569,28 +580,28 @@ class IrMapperTest {
     val irInterface = irPackage.services.single() as IrInterface
     val irResource = irInterface.items.single() as IrResource
     assertThat(irResource.functions.map { it.functionName }).containsExactly(
-      FunctionName(
+      FunctionNameConstructor(
         serviceName = "wasi:http/types@0.3.0",
         name = "fields",
-        annotation = Annotation.Constructor,
       ),
-      FunctionName(
+      FunctionNameStatic(
         serviceName = "wasi:http/types@0.3.0",
         name = "from-list",
         resourceName = "fields",
-        annotation = Annotation.Static,
       ),
-      FunctionName(
+      FunctionNameMethod(
         serviceName = "wasi:http/types@0.3.0",
         name = "has",
         resourceName = "fields",
-        annotation = Annotation.Method,
       ),
-      FunctionName(
+      FunctionNameMethod(
         serviceName = "wasi:http/types@0.3.0",
         name = "clone",
         resourceName = "fields",
-        annotation = Annotation.Method,
+      ),
+      FunctionNameResourceDrop(
+        serviceName = "wasi:http/types@0.3.0",
+        resourceName = "fields",
       ),
     )
   }
@@ -717,12 +728,22 @@ class IrMapperTest {
                         type = TypeName.List(TypeName.U8),
                       ),
                     ),
-                    serviceName = "test:types/all-types",
-                    resourceName = "my-resource",
+                    functionName = FunctionNameMethod(
+                      serviceName = "test:types/all-types",
+                      name = "write",
+                      resourceName = "my-resource",
+                    ),
+                  ),
+                  IrFunction(
+                    offset = Offset(16, 5),
+                    name = "close",
+                    functionName = FunctionNameResourceDrop(
+                      serviceName = "test:types/all-types",
+                      resourceName = "my-resource",
+                    ),
                   ),
                 ),
-
-                ),
+              ),
               IrVariant(
                 serviceName = serviceName,
                 name = "my-variant",

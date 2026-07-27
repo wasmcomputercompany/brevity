@@ -949,6 +949,12 @@ class KotlinGeneratorTest {
       |  resultParameter: Int,
       |)
       |
+      |@WasmImport(
+      |  module = "namespace:package-name/test",
+      |  name = "[resource-drop]person",
+      |)
+      |private external fun test_person_close_import(self: Int)
+      |
       |internal class PersonHandle(
       |  private val id: Int,
       |) : Test.Person {
@@ -983,6 +989,12 @@ class KotlinGeneratorTest {
       |      return Pointer(resultPointer.toUInt()).loadString(resultByteCount)
       |        .also { freeAllComponentModelReallocAllocatedMemory() }
       |    }
+      |  }
+      |
+      |  override fun close() {
+      |    test_person_close_import(
+      |      this.id,
+      |    )
       |  }
       |}
       |
@@ -1066,6 +1078,21 @@ class KotlinGeneratorTest {
       |          val resultParameter = args[3].toInt()
       |          bridge.memory.writeI32(resultParameter, pointer)
       |          bridge.memory.writeI32(resultParameter + 4, byteArray.size)
+      |          return@WasmFunctionHandle longArrayOf()
+      |        },
+      |      )
+      |    )
+      |    store.addFunction(
+      |      HostFunction(
+      |        "namespace:package-name/test",
+      |        "[resource-drop]person",
+      |        FunctionType.of(
+      |          listOf(ValType.I32),
+      |          listOf(),
+      |        ),
+      |        WasmFunctionHandle { instance, args ->
+      |          val self = bridge.`get`<Test.Person>(args[0].toInt())
+      |          self.close()
       |          return@WasmFunctionHandle longArrayOf()
       |        },
       |      )
