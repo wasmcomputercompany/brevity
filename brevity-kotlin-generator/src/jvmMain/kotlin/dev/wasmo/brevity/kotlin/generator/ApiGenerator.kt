@@ -77,6 +77,7 @@ class ApiGenerator(
     .addSuperinterface(Symbols.Brevity.Resource)
     .apply {
       for (function in value.functions) {
+        if (!function.isSupported) continue
         // Don't override close(), it's inherited from the 'Resource' supertype.
         if (function.functionName is FunctionName.ResourceDrop) continue
         addFunction(ApiFunctionFactory(function).api())
