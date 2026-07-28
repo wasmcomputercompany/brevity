@@ -9,11 +9,11 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
-import dev.wasmo.brevity.WitSyntaxException
+import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.toIdentifier
 import dev.wasmo.brevity.toPackageName
 import dev.wasmo.brevity.toSemVer
@@ -21,61 +21,62 @@ import kotlin.test.Test
 import kotlin.test.assertFailsWith
 
 class WitSyntaxReaderTest {
+  private val location = Location("file.wit")
 
   @Test
   fun `tryReadLiteral char success`() {
-    val reader = WitSyntaxReader("a")
+    val reader = WitSyntaxReader(location, "a")
     assertThat(reader.tryReadLiteral('a')).isTrue()
-    assertThat(reader.offset).isEqualTo(Offset(1, 2))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 2))
   }
 
   @Test
   fun `tryReadLiteral char wrong value`() {
-    val reader = WitSyntaxReader("a")
+    val reader = WitSyntaxReader(location, "a")
     assertThat(reader.tryReadLiteral('b')).isFalse()
-    assertThat(reader.offset).isEqualTo(Offset(1, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 1))
   }
 
   @Test
   fun `tryReadLiteral char eof`() {
-    val reader = WitSyntaxReader("")
+    val reader = WitSyntaxReader(location, "")
     assertThat(reader.tryReadLiteral('a')).isFalse()
-    assertThat(reader.offset).isEqualTo(Offset(1, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 1))
   }
 
   @Test
   fun `tryReadLiteral string success`() {
-    val reader = WitSyntaxReader("a")
+    val reader = WitSyntaxReader(location, "a")
     assertThat(reader.tryReadLiteral("a")).isTrue()
-    assertThat(reader.offset).isEqualTo(Offset(1, 2))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 2))
   }
 
   @Test
   fun `tryReadLiteral string multiple characters success`() {
-    val reader = WitSyntaxReader("abcd")
+    val reader = WitSyntaxReader(location, "abcd")
     assertThat(reader.tryReadLiteral("abc")).isTrue()
-    assertThat(reader.offset).isEqualTo(Offset(1, 4))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 4))
   }
 
   @Test
   fun `tryReadLiteral string multiple characters wrong value`() {
-    val reader = WitSyntaxReader("abcd")
+    val reader = WitSyntaxReader(location, "abcd")
     assertThat(reader.tryReadLiteral("abd")).isFalse()
-    assertThat(reader.offset).isEqualTo(Offset(1, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 1))
   }
 
   @Test
   fun `tryReadLiteral string wrong value`() {
-    val reader = WitSyntaxReader("a")
+    val reader = WitSyntaxReader(location, "a")
     assertThat(reader.tryReadLiteral("b")).isFalse()
-    assertThat(reader.offset).isEqualTo(Offset(1, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 1))
   }
 
   @Test
   fun `tryReadLiteral string eof`() {
-    val reader = WitSyntaxReader("")
+    val reader = WitSyntaxReader(location, "")
     assertThat(reader.tryReadLiteral("a")).isFalse()
-    assertThat(reader.offset).isEqualTo(Offset(1, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 1))
   }
 
   @Test
@@ -113,6 +114,7 @@ class WitSyntaxReaderTest {
   @Test
   fun `skip whitespace and end of line comment`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |//abc
@@ -122,12 +124,13 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.offset).isEqualTo(Offset(4, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
   }
 
   @Test
   fun `skip whitespace and end of line documentation`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |///abc
@@ -137,12 +140,13 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc"))
-    assertThat(reader.offset).isEqualTo(Offset(4, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
   }
 
   @Test
   fun `dangling end of line comment`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |//abc
@@ -150,12 +154,13 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.offset).isEqualTo(Offset(2, 6))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 2, 6))
   }
 
   @Test
   fun `dangling end of line documentation comment`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |///abc
@@ -163,24 +168,26 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.offset).isEqualTo(Offset(2, 7))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 2, 7))
   }
 
   @Test
   fun `document ends with end of line comment`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |//
       """.trimMargin(),
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.offset).isEqualTo(Offset(1, 3))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 3))
   }
 
   @Test
   fun `end of line documentation`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |///abc
@@ -190,12 +197,13 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc"))
-    assertThat(reader.offset).isEqualTo(Offset(4, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
   }
 
   @Test
   fun `multiple lines of end of line documentation`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |///abc
@@ -207,12 +215,13 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc\ndef"))
-    assertThat(reader.offset).isEqualTo(Offset(6, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 6, 1))
   }
 
   @Test
   fun `skip whitespace and asterisk comment`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |/*abc*/
@@ -222,12 +231,13 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.offset).isEqualTo(Offset(4, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
   }
 
   @Test
   fun `skip whitespace and asterisk documentation`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |/**abc*/
@@ -237,39 +247,42 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc"))
-    assertThat(reader.offset).isEqualTo(Offset(4, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
   }
 
   @Test
   fun `dangling asterisk comment`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |/*abc
       """.trimMargin(),
     )
-    val e = assertFailsWith<WitSyntaxException> {
+    val e = assertFailsWith<WitException> {
       reader.skipWhitespace()
     }
-    assertThat(e.offset).isEqualTo(Offset(2, 1))
-    assertThat(e.description).isEqualTo("unterminated comment")
+    assertThat(e.issue.location).isEqualTo(Location("file.wit", 2, 1))
+    assertThat(e.issue.description).isEqualTo("unterminated comment")
   }
 
   @Test
   fun `document ends with asterisk comment`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |/* */
       """.trimMargin(),
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.offset).isEqualTo(Offset(1, 6))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 6))
   }
 
   @Test
   fun `asterisk documentation`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |/**abc*/
@@ -279,12 +292,13 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc"))
-    assertThat(reader.offset).isEqualTo(Offset(4, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
   }
 
   @Test
   fun `multiple lines of asterisk documentation`() {
     val reader = WitSyntaxReader(
+      location,
       """
       |
       |/**abc
@@ -299,12 +313,12 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc\n\ndef\nghi"))
-    assertThat(reader.offset).isEqualTo(Offset(9, 1))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 9, 1))
   }
 
   @Test
   fun `readIdentifier success`() {
-    fun String.parseIdentifier() = WitSyntaxReader(this).readIdentifier()
+    fun String.parseIdentifier() = WitSyntaxReader(location, this).readIdentifier()
 
     assertThat("a".parseIdentifier()).isEqualTo(Identifier("a"))
     assertThat("a ".parseIdentifier()).isEqualTo(Identifier("a"))
@@ -324,25 +338,25 @@ class WitSyntaxReaderTest {
 
   @Test
   fun `readIdentifier crash`() {
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       " ".toIdentifier()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "_".toIdentifier()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "()".toIdentifier()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "".toIdentifier()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "%%".toIdentifier()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "%".toIdentifier()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "% ".toIdentifier()
     }
   }
@@ -358,17 +372,17 @@ class WitSyntaxReaderTest {
 
   @Test
   fun `readSemver omits trailing dots`() {
-    val reader = WitSyntaxReader("1.2.")
+    val reader = WitSyntaxReader(location, "1.2.")
     assertThat(reader.readSemVer()).isEqualTo(SemVer("1.2"))
-    assertThat(reader.offset).isEqualTo(Offset(1, 4))
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 4))
   }
 
   @Test
   fun `readSemver only dots`() {
-    val e = assertFailsWith<WitSyntaxException> {
+    val e = assertFailsWith<WitException> {
       "..".toSemVer()
     }
-    assertThat(e.description).isEqualTo("expected a semver character")
+    assertThat(e.issue.description).isEqualTo("expected a semver character")
   }
 
   @Test
@@ -400,34 +414,34 @@ class WitSyntaxReaderTest {
 
   @Test
   fun `readPackageName missing namespace`() {
-    val e = assertFailsWith<WitSyntaxException> {
+    val e = assertFailsWith<WitException> {
       "local".toPackageName()
     }
-    assertThat(e.description).isEqualTo("expected package name to contain a ':'")
+    assertThat(e.issue.description).isEqualTo("expected package name to contain a ':'")
   }
 
   @Test
   fun `readPackageName empty namespace`() {
-    val e = assertFailsWith<WitSyntaxException> {
+    val e = assertFailsWith<WitException> {
       "a:".toPackageName()
     }
-    assertThat(e.description).isEqualTo("expected an identifier")
+    assertThat(e.issue.description).isEqualTo("expected an identifier")
   }
 
   @Test
   fun `readPackageName empty name`() {
-    val e = assertFailsWith<WitSyntaxException> {
+    val e = assertFailsWith<WitException> {
       ":".toPackageName()
     }
-    assertThat(e.description).isEqualTo("expected an identifier")
+    assertThat(e.issue.description).isEqualTo("expected an identifier")
   }
 
   @Test
   fun `readPackageName empty version`() {
-    val e = assertFailsWith<WitSyntaxException> {
+    val e = assertFailsWith<WitException> {
       "a:b@ ".toPackageName()
     }
-    assertThat(e.description).isEqualTo("expected a semver character")
+    assertThat(e.issue.description).isEqualTo("expected a semver character")
   }
 
   @Test
@@ -469,27 +483,27 @@ class WitSyntaxReaderTest {
 
   @Test
   fun `readUsePath semver`() {
-    val reader = WitSyntaxReader("my-interface@1.2.3")
+    val reader = WitSyntaxReader(location, "my-interface@1.2.3")
     assertThat(reader.readUsePath()).isEqualTo(
       UsePath(name = Identifier("my-interface")),
     )
-    assertThat(reader.offset).isEqualTo(Offset(1, 13)) // At the '@' symbol.
+    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 13)) // At the '@' symbol.
   }
 
   @Test
   fun `readUsePath namespace without package name`() {
-    val e = assertFailsWith<WitSyntaxException> {
+    val e = assertFailsWith<WitException> {
       "namespace:interface-name".toUsePath()
     }
-    assertThat(e.description).isEqualTo("must have a namespace and a package name, or neither")
+    assertThat(e.issue.description).isEqualTo("must have a namespace and a package name, or neither")
   }
 
   @Test
   fun `readUsePath package name without namespace`() {
-    val e = assertFailsWith<WitSyntaxException> {
+    val e = assertFailsWith<WitException> {
       "package-name/interface-name".toUsePath()
     }
-    assertThat(e.description).isEqualTo("must have a namespace and a package name, or neither")
+    assertThat(e.issue.description).isEqualTo("must have a namespace and a package name, or neither")
   }
 
   @Test
@@ -538,71 +552,71 @@ class WitSyntaxReaderTest {
 
   @Test
   fun `readTypeName dangling type parameters`() {
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "tuple<".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "tuple<string".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "tuple<string,".toIoTypeName()
     }
   }
 
   @Test
   fun `readTypeName invalid type parameters`() {
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "tuple".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "tuple<>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "list".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "list<>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "list<string, string, string>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "option".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "option<>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "option<string, string>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "result<_, _>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "map<string>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "map<string, string, string>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "future<>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "future<string, string>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "stream<>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "stream<string, string>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "borrow".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "borrow<>".toIoTypeName()
     }
-    assertFailsWith<WitSyntaxException> {
+    assertFailsWith<WitException> {
       "borrow<string, string>".toIoTypeName()
     }
   }

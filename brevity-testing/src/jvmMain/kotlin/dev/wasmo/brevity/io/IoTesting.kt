@@ -3,18 +3,18 @@ package dev.wasmo.brevity.io
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.Location
 
 fun IoCase(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   type: IoTypeName? = null,
 ) = IoCase(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   type = type,
 )
@@ -22,13 +22,13 @@ fun IoCase(
 fun IoEnum(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   cases: List<IoCase>,
 ) = IoEnum(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   cases = cases,
 )
@@ -36,13 +36,13 @@ fun IoEnum(
 fun IoExternalApi(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   plainName: String? = null,
   path: String,
 ) = IoExternalApi(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   plainName = plainName?.let { Identifier(it) },
   path = path.toUsePath(),
 )
@@ -50,13 +50,13 @@ fun IoExternalApi(
 fun IoFlags(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   flags: List<IoFlag>,
 ) = IoFlags(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   flags = flags,
 )
@@ -64,13 +64,13 @@ fun IoFlags(
 fun IoField(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   type: IoTypeName,
 ) = IoField(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   type = type,
 )
@@ -78,19 +78,19 @@ fun IoField(
 fun IoFlag(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
 ) = IoFlag(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
 )
 
 fun IoFunction(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   async: Boolean = false,
   static: Boolean = false,
   constructor: Boolean = false,
@@ -100,7 +100,7 @@ fun IoFunction(
 ) = IoFunction(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   async = async,
   static = static,
   constructor = constructor,
@@ -112,13 +112,13 @@ fun IoFunction(
 fun IoInclude(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   path: String,
   items: List<IoInclude.Item> = listOf(),
 ) = IoInclude(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   path = path.toUsePath(),
   items = items,
 )
@@ -126,13 +126,13 @@ fun IoInclude(
 fun IoIncludeItem(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   type: String,
   alias: String,
 ) = IoInclude.Item(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   type = IoTypeName.Declared(type),
   alias = Identifier(alias),
 )
@@ -140,25 +140,25 @@ fun IoIncludeItem(
 fun IoInterface(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   items: List<IoInterface.Item> = listOf(),
 ) = IoInterface(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   items = items,
 )
 
 fun IoParameter(
   documentation: String? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   type: IoTypeName,
 ) = IoParameter(
   documentation = documentation?.let { Documentation(it) },
-  offset = offset,
+  location = location,
   name = Identifier(name),
   type = type,
 )
@@ -166,13 +166,13 @@ fun IoParameter(
 fun IoRecord(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   fields: List<IoField>,
 ) = IoRecord(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   fields = fields,
 )
@@ -180,13 +180,13 @@ fun IoRecord(
 fun IoResource(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   functions: List<IoFunction> = listOf(),
 ) = IoResource(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   functions = functions,
 )
@@ -194,13 +194,13 @@ fun IoResource(
 fun IoTypeAlias(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   target: IoTypeName,
 ) = IoTypeAlias(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   target = target,
 )
@@ -208,13 +208,13 @@ fun IoTypeAlias(
 fun IoUse(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   path: String,
   items: List<IoUse.Item>,
 ) = IoUse(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   path = path.toUsePath(),
   items = items,
 )
@@ -222,13 +222,13 @@ fun IoUse(
 fun IoUseItem(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   type: String,
   alias: String? = null,
 ) = IoUse.Item(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   type = IoTypeName.Declared(type),
   alias = alias?.let { Identifier(it) },
 )
@@ -236,13 +236,13 @@ fun IoUseItem(
 fun IoVariant(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   cases: List<IoCase>,
 ) = IoVariant(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   cases = cases,
 )
@@ -250,7 +250,7 @@ fun IoVariant(
 fun IoWorld(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   items: List<IoWorld.Item> = listOf(),
   imports: List<IoWorld.Api> = listOf(),
@@ -258,7 +258,7 @@ fun IoWorld(
 ) = IoWorld(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   items = items,
   imports = imports,

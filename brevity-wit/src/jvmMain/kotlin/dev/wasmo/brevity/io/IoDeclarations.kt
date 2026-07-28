@@ -3,9 +3,8 @@ package dev.wasmo.brevity.io
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
-import okio.Path
 
 /**
  * A collection of `.wit` files from a single file system directory.
@@ -13,13 +12,14 @@ import okio.Path
 data class IoToplevelWitPackage(
   override val documentation: Documentation? = null,
   override val packageName: PackageName,
-  val files: Map<Path, IoWitFile>,
-): IoWitPackage
+  val files: List<IoWitFile>,
+) : IoWitPackage
 
 data class IoWitFile(
   val packageDocumentation: Documentation? = null,
   val packageName: PackageName? = null,
   val items: List<Item> = listOf(),
+  val location: Location,
 ) {
   sealed interface Item : IoDeclaration
 }
@@ -27,7 +27,7 @@ data class IoWitFile(
 sealed interface IoDeclaration {
   val documentation: Documentation?
   val gate: Gate?
-  val offset: Offset
+  val location: Location
 }
 
 sealed interface IoWitPackage {
@@ -51,7 +51,7 @@ sealed interface IoTypeDeclaration : IoDeclaration, IoInterface.Item, IoWorld.It
 data class IoInlinePackage(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   override val packageName: PackageName,
   val declarations: List<IoWitFile.Item>,
 ) : IoDeclaration, IoWitFile.Item, IoWitPackage
@@ -72,7 +72,7 @@ data class IoInlinePackage(
 data class IoInterface(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   val name: Identifier,
   val items: List<Item>,
 ) : IoDeclaration, IoWorld.Api, IoWitFile.Item {
@@ -82,7 +82,7 @@ data class IoInterface(
 data class IoWorld(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   val name: Identifier,
   val items: List<Item>,
   val imports: List<Api>,
@@ -95,7 +95,7 @@ data class IoWorld(
 data class IoResource(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   override val name: Identifier,
   val functions: List<IoFunction>,
 ) : IoTypeDeclaration
@@ -103,7 +103,7 @@ data class IoResource(
 data class IoRecord(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   override val name: Identifier,
   val fields: List<IoField>,
 ) : IoTypeDeclaration
@@ -111,7 +111,7 @@ data class IoRecord(
 data class IoField(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   val name: Identifier,
   val type: IoTypeName,
 ) : IoDeclaration
@@ -119,7 +119,7 @@ data class IoField(
 data class IoFunction(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   val async: Boolean = false,
   val static: Boolean = false,
   val constructor: Boolean = false,
@@ -131,7 +131,7 @@ data class IoFunction(
 data class IoVariant(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   override val name: Identifier,
   val cases: List<IoCase>,
 ) : IoTypeDeclaration
@@ -139,7 +139,7 @@ data class IoVariant(
 data class IoEnum(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   override val name: Identifier,
   val cases: List<IoCase>,
 ) : IoTypeDeclaration
@@ -147,14 +147,14 @@ data class IoEnum(
 data class IoCase(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   val name: Identifier,
   val type: IoTypeName? = null,
 ) : IoDeclaration
 
 data class IoParameter(
   val documentation: Documentation? = null,
-  val offset: Offset,
+  val location: Location,
   val name: Identifier,
   val type: IoTypeName,
 )
@@ -162,7 +162,7 @@ data class IoParameter(
 data class IoFlags(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   override val name: Identifier,
   val flags: List<IoFlag>,
 ) : IoTypeDeclaration
@@ -170,14 +170,14 @@ data class IoFlags(
 data class IoFlag(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   val name: Identifier,
 ) : IoDeclaration
 
 data class IoTypeAlias(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   override val name: Identifier,
   val target: IoTypeName,
 ) : IoTypeDeclaration
@@ -185,7 +185,7 @@ data class IoTypeAlias(
 data class IoTopLevelUse(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   val path: UsePath,
   val alias: Identifier? = null,
 ) : IoDeclaration, IoWitFile.Item
@@ -203,14 +203,14 @@ data class IoTopLevelUse(
 data class IoUse(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   val path: UsePath,
   val items: List<Item>,
 ) : IoDeclaration, IoInterface.Item, IoWorld.Item {
   data class Item(
     override val documentation: Documentation? = null,
     override val gate: Gate? = null,
-    override val offset: Offset,
+    override val location: Location,
     val type: IoTypeName.Declared,
     val alias: Identifier? = null,
   ) : IoDeclaration
@@ -219,7 +219,7 @@ data class IoUse(
 data class IoExternalApi(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   val plainName: Identifier? = null,
   val path: UsePath,
 ) : IoDeclaration, IoWorld.Api
@@ -235,14 +235,14 @@ data class IoExternalApi(
 data class IoInclude(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
-  override val offset: Offset,
+  override val location: Location,
   val path: UsePath,
   val items: List<Item>,
 ) : IoDeclaration, IoWorld.Item {
   data class Item(
     override val documentation: Documentation? = null,
     override val gate: Gate? = null,
-    override val offset: Offset,
+    override val location: Location,
     val type: IoTypeName.Declared,
     val alias: Identifier,
   ) : IoDeclaration

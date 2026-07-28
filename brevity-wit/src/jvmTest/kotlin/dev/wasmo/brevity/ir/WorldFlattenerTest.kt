@@ -5,7 +5,7 @@ import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.FunctionNameMethod
 import dev.wasmo.brevity.FunctionNameResourceDrop
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.IoExternalApi
 import dev.wasmo.brevity.io.IoFunction
@@ -17,7 +17,6 @@ import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
-import okio.Path.Companion.toPath
 
 class WorldFlattenerTest {
   /**
@@ -55,21 +54,30 @@ class WorldFlattenerTest {
       ),
     )
 
+    val commandLocation = Location("command.wit")
+    val exitLocation = Location("exit.wit")
+    val importsLocation = Location("imports.wit")
+    val runLocation = Location("run.wit")
+
     val wasiCommand = IoToplevelWitPackage(
       packageName = "wasi:cli@0.3.0".toPackageName(),
-      files = mapOf(
-        "command.wit".toPath() to IoWitFile(
+      files = listOf(
+        IoWitFile(
           packageName = "wasi:cli@0.3.0".toPackageName(),
           items = listOf(command),
+          location = commandLocation,
         ),
-        "exit.wit".toPath() to IoWitFile(
+        IoWitFile(
           items = listOf(exit),
+          location = exitLocation,
         ),
-        "imports.wit".toPath() to IoWitFile(
+        IoWitFile(
           items = listOf(imports),
+          location = importsLocation,
         ),
-        "run.wit".toPath() to IoWitFile(
+        IoWitFile(
           items = listOf(run),
+          location = runLocation,
         ),
       ),
     )
@@ -108,47 +116,49 @@ class WorldFlattenerTest {
    */
   @Test
   fun `included types are not mapped`() {
+    val subjectLocation = Location("subject/world.wit")
+    val exportedLocation = Location("exported/world.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "test:subject".toPackageName(),
-        files = mapOf(
-          "subject/world.wit".toPath() to """
-            |package test:subject;
-            |
-            |world subject-world {
-            |    type source-alias = tuple<my-record, my-enum>;
-            |    record my-record {
-            |        field: my-flags,
-            |    }
-            |    enum my-enum {
-            |        red,
-            |        blue,
-            |    }
-            |    flags my-flags {
-            |        loaded,
-            |        enabled,
-            |    }
-            |    resource my-resource {
-            |        write: func(variants: my-variant) -> my-flags;
-            |    }
-            |    variant my-variant {
-            |        none,
-            |        some(my-resource),
-            |    }
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package test:subject;
+          |
+          |world subject-world {
+          |    type source-alias = tuple<my-record, my-enum>;
+          |    record my-record {
+          |        field: my-flags,
+          |    }
+          |    enum my-enum {
+          |        red,
+          |        blue,
+          |    }
+          |    flags my-flags {
+          |        loaded,
+          |        enabled,
+          |    }
+          |    resource my-resource {
+          |        write: func(variants: my-variant) -> my-flags;
+          |    }
+          |    variant my-variant {
+          |        none,
+          |        some(my-resource),
+          |    }
+          |}
+          """.trimMargin().toWitFile(subjectLocation),
         ),
       ),
       IoToplevelWitPackage(
         packageName = "test:exported".toPackageName(),
-        files = mapOf(
-          "exported/world.wit".toPath() to """
-            |package test:exported;
-            |
-            |world exported-world {
-            |    include test:subject/subject-world;
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package test:exported;
+          |
+          |world exported-world {
+          |    include test:subject/subject-world;
+          |}
+          """.trimMargin().toWitFile(exportedLocation),
         ),
       ),
     )
@@ -161,11 +171,11 @@ class WorldFlattenerTest {
         packageName = "test:exported".toPackageName(),
         services = listOf(
           IrWorld(
-            offset = Offset(3, 1),
+            location = exportedLocation.at(3, 1),
             serviceName = "test:exported/exported-world",
             types = listOf(
               IrTypeAlias(
-                offset = Offset(4, 5),
+                location = subjectLocation.at(4, 5),
                 serviceName = "test:subject/subject-world",
                 name = "source-alias",
                 target = TypeName.Tuple(
@@ -182,12 +192,12 @@ class WorldFlattenerTest {
                 ),
               ),
               IrRecord(
-                offset = Offset(5, 5),
+                location = subjectLocation.at(5, 5),
                 serviceName = "test:subject/subject-world",
                 name = "my-record",
                 fields = listOf(
                   IrField(
-                    offset = Offset(6, 9),
+                    location = subjectLocation.at(6, 9),
                     name = "field",
                     type = TypeNameDeclared(
                       serviceName = "test:subject/subject-world",
@@ -197,42 +207,42 @@ class WorldFlattenerTest {
                 ),
               ),
               IrEnum(
-                offset = Offset(8, 5),
+                location = subjectLocation.at(8, 5),
                 serviceName = "test:subject/subject-world",
                 name = "my-enum",
                 cases = listOf(
                   IrCase(
-                    offset = Offset(9, 9),
+                    location = subjectLocation.at(9, 9),
                     name = "red",
                   ),
                   IrCase(
-                    offset = Offset(10, 9),
+                    location = subjectLocation.at(10, 9),
                     name = "blue",
                   ),
                 ),
               ),
               IrFlags(
-                offset = Offset(12, 5),
+                location = subjectLocation.at(12, 5),
                 serviceName = "test:subject/subject-world",
                 name = "my-flags",
                 flags = listOf(
                   IrFlag(
-                    offset = Offset(13, 9),
+                    location = subjectLocation.at(13, 9),
                     name = "loaded",
                   ),
                   IrFlag(
-                    offset = Offset(14, 9),
+                    location = subjectLocation.at(14, 9),
                     name = "enabled",
                   ),
                 ),
               ),
               IrResource(
-                offset = Offset(16, 5),
+                location = subjectLocation.at(16, 5),
                 serviceName = "test:subject/subject-world",
                 name = "my-resource",
                 functions = listOf(
                   IrFunction(
-                    offset = Offset(17, 9),
+                    location = subjectLocation.at(17, 9),
                     name = "write",
                     functionName = FunctionNameMethod(
                       serviceName = "test:subject/subject-world",
@@ -241,7 +251,7 @@ class WorldFlattenerTest {
                     ),
                     parameters = listOf(
                       IrParameter(
-                        offset = Offset(17, 21),
+                        location = subjectLocation.at(17, 21),
                         name = "variants",
                         type = TypeNameDeclared(
                           serviceName = "test:subject/subject-world",
@@ -255,26 +265,26 @@ class WorldFlattenerTest {
                     ),
                   ),
                   IrFunction(
-                    offset = Offset(16, 5),
+                    location = subjectLocation.at(16, 5),
                     name = "close",
                     functionName = FunctionNameResourceDrop(
                       serviceName = "test:subject/subject-world",
                       resourceName = "my-resource",
-                    )
+                    ),
                   ),
                 ),
               ),
               IrVariant(
-                offset = Offset(19, 5),
+                location = subjectLocation.at(19, 5),
                 serviceName = "test:subject/subject-world",
                 name = "my-variant",
                 cases = listOf(
                   IrCase(
-                    offset = Offset(20, 9),
+                    location = subjectLocation.at(20, 9),
                     name = "none",
                   ),
                   IrCase(
-                    offset = Offset(21, 9),
+                    location = subjectLocation.at(21, 9),
                     name = "some",
                     type = TypeNameDeclared(
                       serviceName = "test:subject/subject-world",

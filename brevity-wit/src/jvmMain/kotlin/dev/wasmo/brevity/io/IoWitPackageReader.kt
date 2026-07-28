@@ -1,9 +1,6 @@
 package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Documentation
-import dev.wasmo.brevity.Issue
-import dev.wasmo.brevity.WitException
-import dev.wasmo.brevity.WitSyntaxException
 import dev.wasmo.brevity.location
 import okio.FileSystem
 import okio.Path
@@ -19,27 +16,17 @@ class IoWitPackageReader(
   private val fileSystem: FileSystem,
 ) {
   fun read(directory: Path): IoToplevelWitPackage {
-    val files = mutableMapOf<Path, IoWitFile>()
-    for (path in fileSystem.list(directory)) {
-      if (!path.name.endsWith(".wit", ignoreCase = true)) continue
-
-      val relativePath = path.relativeTo(directory)
-      try {
-        files[relativePath] = fileSystem.read(path) {
-          readUtf8().toWitFile()
+    val files = fileSystem.list(directory)
+      .filter { it.name.endsWith(".wit", ignoreCase = true) }
+      .map { path ->
+        fileSystem.read(path) {
+          val location = path.relativeTo(directory).location()
+          readUtf8().toWitFile(location)
         }
-      } catch (e: WitSyntaxException) {
-        throw WitException(
-            Issue(
-              description = e.description,
-              location = path.location(e.offset),
-            )
-          )
       }
-    }
 
-    val packageNames = files.values.mapNotNull { it.packageName }.toSet()
-    checkWit(packageNames.size == 1, path = "$directory") {
+    val packageNames = files.mapNotNull { it.packageName }.toSet()
+    checkWit(packageNames.size == 1, location = directory.location()) {
       when {
         packageNames.isEmpty() -> "no package declaration in directory"
         else -> {
@@ -52,7 +39,7 @@ class IoWitPackageReader(
     }
 
     return IoToplevelWitPackage(
-      documentation = files.values.mapNotNull { it.packageDocumentation }.concatenate(),
+      documentation = files.mapNotNull { it.packageDocumentation }.concatenate(),
       packageName = packageNames.single(),
       files = files,
     )

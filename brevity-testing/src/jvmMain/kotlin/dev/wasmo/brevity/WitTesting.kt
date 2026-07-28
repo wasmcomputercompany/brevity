@@ -6,21 +6,21 @@ import dev.wasmo.brevity.io.WitSyntaxReader
 import dev.wasmo.brevity.io.toServiceName
 
 fun String.toIdentifier(): Identifier {
-  val reader = WitSyntaxReader(this)
+  val reader = WitSyntaxReader(Location("file.wit"), this)
   val result = reader.readIdentifier()
   check(reader.exhausted)
   return result
 }
 
 fun String.toPackageName(): PackageName {
-  val reader = WitSyntaxReader(this)
+  val reader = WitSyntaxReader(Location("file.wit"), this)
   val result = reader.readPackageName()
   check(reader.exhausted)
   return result
 }
 
 fun String.toSemVer(): SemVer {
-  val reader = WitSyntaxReader(this)
+  val reader = WitSyntaxReader(Location("file.wit"), this)
   val result = reader.readSemVer()
   check(reader.exhausted)
   return result

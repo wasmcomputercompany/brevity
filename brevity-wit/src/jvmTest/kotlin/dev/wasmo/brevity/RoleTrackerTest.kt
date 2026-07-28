@@ -5,14 +5,14 @@ import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.io.toServiceName
 import dev.wasmo.brevity.ir.TypeNameDeclared
 import kotlin.test.Test
-import okio.Path.Companion.toPath
 
 class RoleTrackerTest {
 
   @Test
   fun happyPath() {
+    val location = Location("testing.wit")
     val tester = BrevityTester(
-      "testing.wit".toPath() to """
+      location.path to """
         |package namespace:package-name;
         |
         |interface monotonic-clock {
