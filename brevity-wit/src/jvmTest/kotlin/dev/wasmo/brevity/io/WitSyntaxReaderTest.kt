@@ -27,56 +27,56 @@ class WitSyntaxReaderTest {
   fun `tryReadLiteral char success`() {
     val reader = WitSyntaxReader(location, "a")
     assertThat(reader.tryReadLiteral('a')).isTrue()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 2))
+    assertThat(reader.location).isEqualTo(location.at(1, 2))
   }
 
   @Test
   fun `tryReadLiteral char wrong value`() {
     val reader = WitSyntaxReader(location, "a")
     assertThat(reader.tryReadLiteral('b')).isFalse()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 1))
+    assertThat(reader.location).isEqualTo(location.at(1, 1))
   }
 
   @Test
   fun `tryReadLiteral char eof`() {
     val reader = WitSyntaxReader(location, "")
     assertThat(reader.tryReadLiteral('a')).isFalse()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 1))
+    assertThat(reader.location).isEqualTo(location.at(1, 1))
   }
 
   @Test
   fun `tryReadLiteral string success`() {
     val reader = WitSyntaxReader(location, "a")
     assertThat(reader.tryReadLiteral("a")).isTrue()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 2))
+    assertThat(reader.location).isEqualTo(location.at(1, 2))
   }
 
   @Test
   fun `tryReadLiteral string multiple characters success`() {
     val reader = WitSyntaxReader(location, "abcd")
     assertThat(reader.tryReadLiteral("abc")).isTrue()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 4))
+    assertThat(reader.location).isEqualTo(location.at(1, 4))
   }
 
   @Test
   fun `tryReadLiteral string multiple characters wrong value`() {
     val reader = WitSyntaxReader(location, "abcd")
     assertThat(reader.tryReadLiteral("abd")).isFalse()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 1))
+    assertThat(reader.location).isEqualTo(location.at(1, 1))
   }
 
   @Test
   fun `tryReadLiteral string wrong value`() {
     val reader = WitSyntaxReader(location, "a")
     assertThat(reader.tryReadLiteral("b")).isFalse()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 1))
+    assertThat(reader.location).isEqualTo(location.at(1, 1))
   }
 
   @Test
   fun `tryReadLiteral string eof`() {
     val reader = WitSyntaxReader(location, "")
     assertThat(reader.tryReadLiteral("a")).isFalse()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 1))
+    assertThat(reader.location).isEqualTo(location.at(1, 1))
   }
 
   @Test
@@ -124,7 +124,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
+    assertThat(reader.location).isEqualTo(location.at(4, 1))
   }
 
   @Test
@@ -140,7 +140,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc"))
-    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
+    assertThat(reader.location).isEqualTo(location.at(4, 1))
   }
 
   @Test
@@ -154,7 +154,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 2, 6))
+    assertThat(reader.location).isEqualTo(location.at(2, 6))
   }
 
   @Test
@@ -168,7 +168,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 2, 7))
+    assertThat(reader.location).isEqualTo(location.at(2, 7))
   }
 
   @Test
@@ -181,7 +181,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 3))
+    assertThat(reader.location).isEqualTo(location.at(1, 3))
   }
 
   @Test
@@ -197,7 +197,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc"))
-    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
+    assertThat(reader.location).isEqualTo(location.at(4, 1))
   }
 
   @Test
@@ -215,7 +215,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc\ndef"))
-    assertThat(reader.location).isEqualTo(Location("file.wit", 6, 1))
+    assertThat(reader.location).isEqualTo(location.at(6, 1))
   }
 
   @Test
@@ -231,7 +231,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
+    assertThat(reader.location).isEqualTo(location.at(4, 1))
   }
 
   @Test
@@ -247,7 +247,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc"))
-    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
+    assertThat(reader.location).isEqualTo(location.at(4, 1))
   }
 
   @Test
@@ -262,7 +262,7 @@ class WitSyntaxReaderTest {
     val e = assertFailsWith<WitException> {
       reader.skipWhitespace()
     }
-    assertThat(e.issue.location).isEqualTo(Location("file.wit", 2, 1))
+    assertThat(e.issue.location).isEqualTo(location.at(2, 1))
     assertThat(e.issue.description).isEqualTo("unterminated comment")
   }
 
@@ -276,7 +276,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isNull()
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 6))
+    assertThat(reader.location).isEqualTo(location.at(1, 6))
   }
 
   @Test
@@ -292,7 +292,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc"))
-    assertThat(reader.location).isEqualTo(Location("file.wit", 4, 1))
+    assertThat(reader.location).isEqualTo(location.at(4, 1))
   }
 
   @Test
@@ -313,7 +313,7 @@ class WitSyntaxReaderTest {
     )
     reader.skipWhitespace()
     assertThat(reader.takeDocumentation()).isEqualTo(Documentation("abc\n\ndef\nghi"))
-    assertThat(reader.location).isEqualTo(Location("file.wit", 9, 1))
+    assertThat(reader.location).isEqualTo(location.at(9, 1))
   }
 
   @Test
@@ -374,7 +374,7 @@ class WitSyntaxReaderTest {
   fun `readSemver omits trailing dots`() {
     val reader = WitSyntaxReader(location, "1.2.")
     assertThat(reader.readSemVer()).isEqualTo(SemVer("1.2"))
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 4))
+    assertThat(reader.location).isEqualTo(location.at(1, 4))
   }
 
   @Test
@@ -487,7 +487,7 @@ class WitSyntaxReaderTest {
     assertThat(reader.readUsePath()).isEqualTo(
       UsePath(name = Identifier("my-interface")),
     )
-    assertThat(reader.location).isEqualTo(Location("file.wit", 1, 13)) // At the '@' symbol.
+    assertThat(reader.location).isEqualTo(location.at(1, 13)) // At the '@' symbol.
   }
 
   @Test

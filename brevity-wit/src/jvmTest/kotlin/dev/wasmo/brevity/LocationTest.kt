@@ -7,9 +7,10 @@ import kotlin.test.Test
 class LocationTest {
   @Test
   fun `Location toString`() {
-    assertThat(Location("file.wit", 13, 12).toString())
-      .isEqualTo("file.wit:13:12")
-    assertThat(Location("file.wit").toString())
+    val location = Location("file.wit")
+    assertThat(location.toString())
       .isEqualTo("file.wit")
+    assertThat(location.at(13, 12).toString())
+      .isEqualTo("file.wit:13:12")
   }
 }

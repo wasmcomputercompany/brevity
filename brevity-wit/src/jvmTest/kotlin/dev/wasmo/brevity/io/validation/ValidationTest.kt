@@ -28,9 +28,10 @@ class ValidationTest {
     )
     val inlinePackage = IoInlinePackage(
       packageName = "wasi:inline".toPackageName(),
-      location = Location("file.wit", 1, 2),
+      location = Location("file.wit").at(1, 2),
       declarations = emptyList(),
     )
+    val otherLocation = Location("other/other.wit")
     val otherPackage = IoToplevelWitPackage(
       packageName = "wasi:other".toPackageName(),
       files = listOf(
@@ -39,7 +40,7 @@ class ValidationTest {
           items = listOf(
             inlinePackage,
           ),
-          location = Location("other/other.wit"),
+          location = otherLocation,
         ),
       ),
     )
@@ -56,12 +57,13 @@ class ValidationTest {
 
   @Test
   fun throwsOnCollision() {
+    val cliLocation = Location("cli.wit")
     val cliPackage = IoToplevelWitPackage(
       packageName = "wasi:cli".toPackageName(),
       files = listOf(
         IoWitFile(
           packageName = "wasi:cli".toPackageName(),
-          location = Location("cli.wit"),
+          location = cliLocation,
         ),
       ),
     )
@@ -95,23 +97,24 @@ class ValidationTest {
     )
 
     assertThat(exception.locations).containsExactlyInAnyOrder(
-      Location("other/other.wit", 1, 2),
-      Location("cli.wit"),
+      otherLocation.at(1, 2),
+      cliLocation,
     )
   }
 
   @Test
   fun throwsMultipleCollisions() {
-    val otherLocation = Location("other/other.wit")
+    val cliLocation = Location("cli.wit")
     val cliPackage = IoToplevelWitPackage(
       packageName = "wasi:cli".toPackageName(),
       files = listOf(
         IoWitFile(
           packageName = "wasi:cli".toPackageName(),
-          location = Location("cli.wit"),
+          location = cliLocation,
         ),
       ),
     )
+    val otherLocation = Location("other/other.wit")
     val otherPackage = IoToplevelWitPackage(
       packageName = "wasi:other".toPackageName(),
       files = listOf(
@@ -152,12 +155,12 @@ class ValidationTest {
     val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitMultiplySitedException>()
 
     assertThat(firstException.locations).containsExactlyInAnyOrder(
-      Location("cli.wit"),
-      Location("other/other.wit", 1, 2),
+      cliLocation,
+      otherLocation.at(1, 2),
     )
     assertThat(secondException.locations).containsExactlyInAnyOrder(
-      Location("other/other.wit"),
-      Location("other/other.wit", 1, 2),
+      otherLocation,
+      otherLocation.at(1, 2),
     )
   }
 }
