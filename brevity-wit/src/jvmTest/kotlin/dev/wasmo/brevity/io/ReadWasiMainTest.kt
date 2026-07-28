@@ -2,9 +2,9 @@ package dev.wasmo.brevity.io
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.ir.IrMapper
-import dev.wasmo.brevity.location
 import kotlin.test.Test
 import kotlin.test.fail
 import okio.FileSystem
@@ -25,7 +25,7 @@ class ReadWasiMainTest {
       }
 
       try {
-        witContent.toWitFile(path.location())
+        witContent.toWitFile(Location(path))
       } catch (e: WitException) {
         fail("decoding $path failed at ${e.location}: ${e.issue.description}")
       }
