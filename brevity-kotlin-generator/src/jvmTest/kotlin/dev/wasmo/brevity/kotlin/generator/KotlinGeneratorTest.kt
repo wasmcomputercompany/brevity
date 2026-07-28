@@ -307,10 +307,8 @@ class KotlinGeneratorTest {
       |  withScopedMemoryAllocator { memoryAllocator ->
       |    val result = guest_.run.run(
       |    )
-      |    val tuple = result
       |    val resultAddress = memoryAllocator.allocate(8)
-      |    resultAddress.storeInt((tuple.first as Int))
-      |    (resultAddress + 4).storeInt((tuple.second as Int))
+      |    // TODO: TupleEncoder
       |    return resultAddress.address.toInt()
       |  }
       |}
@@ -352,10 +350,10 @@ class KotlinGeneratorTest {
       |
       |  override fun log(message: String) {
       |    val byteArray = message.encodeToByteArray()
-      |    val pointer = bridge.allocate(byteArray.size)
-      |    bridge.memory.write(pointer, byteArray)
+      |    val stringAddress = bridge.allocate(byteArray.size)
+      |    bridge.memory.write(stringAddress, byteArray)
       |    log.apply(
-      |      pointer.toLong(),
+      |      stringAddress.toLong(),
       |      byteArray.size.toLong(),
       |    )
       |  }
@@ -518,10 +516,7 @@ class KotlinGeneratorTest {
       |  override fun run(): Pair<*, *> {
       |    val result = run.apply(
       |    )
-      |    val resultAddress = result[0].toInt()
-      |    val result_ = bridge.memory.readInt(resultAddress)
-      |    val result__ = bridge.memory.readInt(resultAddress + 4)
-      |    return ((result_ as Int) to (result__ as Int))
+      |    return TODO("TupleEncoder")
       |  }
       |}
       |
@@ -589,7 +584,7 @@ class KotlinGeneratorTest {
       |  val result = guest_.run(
       |    args = (args as List<String>),
       |  )
-      |  return (result as Int)
+      |  return result
       |}
       |
       """.trimMargin(),
@@ -642,7 +637,7 @@ class KotlinGeneratorTest {
       |      val result = run.apply(
       |        (args as Int).toLong(),
       |      )
-      |      return (result[0].toInt() as Int)
+      |      return result[0].toInt()
       |    }
       |  }
       |}
@@ -935,12 +930,14 @@ class KotlinGeneratorTest {
       |    val result = guest_.greet(
       |      recipient = GuestBridge.fromId(recipient, ::PersonHandle),
       |    )
-      |    val byteArray = result.encodeToByteArray()
-      |    val address = memoryAllocator.allocate(byteArray.size)
-      |    address.storeByteArray(byteArray)
       |    val resultAddress = memoryAllocator.allocate(8)
-      |    resultAddress.storeInt(address.address.toInt())
-      |    (resultAddress + 4).storeInt(byteArray.size)
+      |    val byteArray = result.encodeToByteArray()
+      |    val stringAddress = memoryAllocator.allocate(byteArray.size)
+      |    stringAddress.storeByteArray(byteArray)
+      |    val stringAddress_ = stringAddress.address.toInt()
+      |    val stringByteCount = byteArray.size
+      |    resultAddress.storeInt(stringAddress_)
+      |    (resultAddress + 4).storeInt(stringByteCount)
       |    return resultAddress.address.toInt()
       |  }
       |}
@@ -1003,9 +1000,9 @@ class KotlinGeneratorTest {
       |        this.id,
       |        resultParameter.address.toInt(),
       |      )
-      |      val resultPointer = resultParameter.loadInt()
-      |      val resultByteCount = (resultParameter + 4).loadInt()
-      |      return Pointer(resultPointer.toUInt()).loadString(resultByteCount)
+      |      val stringAddress = resultParameter.loadInt()
+      |      val stringByteCount = (resultParameter + 4).loadInt()
+      |      return Pointer(stringAddress.toUInt()).loadString(stringByteCount)
       |        .also { freeAllComponentModelReallocAllocatedMemory() }
       |    }
       |  }
@@ -1013,18 +1010,18 @@ class KotlinGeneratorTest {
       |  override fun replaceName(name: String): String {
       |    withScopedMemoryAllocator { memoryAllocator ->
       |      val byteArray = name.encodeToByteArray()
-      |      val address = memoryAllocator.allocate(byteArray.size)
-      |      address.storeByteArray(byteArray)
+      |      val stringAddress = memoryAllocator.allocate(byteArray.size)
+      |      stringAddress.storeByteArray(byteArray)
       |      val resultParameter = memoryAllocator.allocate(8)
       |      test_person_replaceName_import(
       |        this.id,
-      |        address.address.toInt(),
+      |        stringAddress.address.toInt(),
       |        byteArray.size,
       |        resultParameter.address.toInt(),
       |      )
-      |      val resultPointer = resultParameter.loadInt()
-      |      val resultByteCount = (resultParameter + 4).loadInt()
-      |      return Pointer(resultPointer.toUInt()).loadString(resultByteCount)
+      |      val stringAddress_ = resultParameter.loadInt()
+      |      val stringByteCount = (resultParameter + 4).loadInt()
+      |      return Pointer(stringAddress_.toUInt()).loadString(stringByteCount)
       |        .also { freeAllComponentModelReallocAllocatedMemory() }
       |    }
       |  }
@@ -1088,12 +1085,14 @@ class KotlinGeneratorTest {
       |        WasmFunctionHandle { instance, args ->
       |          val self = bridge.`get`<Test.Person>(args[0].toInt())
       |          val result = self.getName()
-      |          val byteArray = result.encodeToByteArray()
-      |          val pointer = bridge.allocate(byteArray.size)
-      |          bridge.memory.write(pointer, byteArray)
       |          val resultParameter = args[1].toInt()
-      |          bridge.memory.writeI32(resultParameter, pointer)
-      |          bridge.memory.writeI32(resultParameter + 4, byteArray.size)
+      |          val byteArray = result.encodeToByteArray()
+      |          val stringAddress = bridge.allocate(byteArray.size)
+      |          bridge.memory.write(stringAddress, byteArray)
+      |          val stringAddress_ = stringAddress
+      |          val stringByteCount = byteArray.size
+      |          bridge.memory.writeI32(resultParameter, stringAddress_)
+      |          bridge.memory.writeI32(resultParameter + 4, stringByteCount)
       |          return@WasmFunctionHandle longArrayOf()
       |        },
       |      )
@@ -1111,12 +1110,14 @@ class KotlinGeneratorTest {
       |          val result = self.replaceName(
       |            name = bridge.memory.readString(args[1].toInt(), args[2].toInt()),
       |          )
-      |          val byteArray = result.encodeToByteArray()
-      |          val pointer = bridge.allocate(byteArray.size)
-      |          bridge.memory.write(pointer, byteArray)
       |          val resultParameter = args[3].toInt()
-      |          bridge.memory.writeI32(resultParameter, pointer)
-      |          bridge.memory.writeI32(resultParameter + 4, byteArray.size)
+      |          val byteArray = result.encodeToByteArray()
+      |          val stringAddress = bridge.allocate(byteArray.size)
+      |          bridge.memory.write(stringAddress, byteArray)
+      |          val stringAddress_ = stringAddress
+      |          val stringByteCount = byteArray.size
+      |          bridge.memory.writeI32(resultParameter, stringAddress_)
+      |          bridge.memory.writeI32(resultParameter + 4, stringByteCount)
       |          return@WasmFunctionHandle longArrayOf()
       |        },
       |      )
@@ -1147,10 +1148,9 @@ class KotlinGeneratorTest {
       |      val result = greet.apply(
       |        bridge.toId<Test.Person>(recipient).toLong(),
       |      )
-      |      val resultAddress = result[0].toInt()
-      |      val resultPointer = bridge.memory.readInt(resultAddress)
-      |      val resultByteCount = bridge.memory.readInt(resultAddress + 4)
-      |      return bridge.memory.readString(resultPointer, resultByteCount)
+      |      val stringAddress = bridge.memory.readInt(result[0].toInt())
+      |      val stringByteCount = bridge.memory.readInt(result[0].toInt() + 4)
+      |      return bridge.memory.readString(stringAddress, stringByteCount)
       |    }
       |  }
       |}

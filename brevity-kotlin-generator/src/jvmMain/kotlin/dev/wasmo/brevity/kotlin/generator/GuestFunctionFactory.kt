@@ -74,7 +74,10 @@ internal class GuestFunctionFactory(
         if (coreResult != null) {
           when {
             coreResult.parameter != null -> {
-              bridgeBuilder.allocate(coreResult, coreResult.parameter.name)
+              code.addStatement("val %N = %L",
+                coreResult.parameter.name,
+                bridgeBuilder.allocate("%L", CodeBlock.of("%L", coreResult.encoder.byteCount)),
+              )
               loweredParameters += with(bridgeBuilder) {
                 platform.lowerAddress(CodeBlock.of("%N", coreResult.parameter.name))
               }
@@ -96,20 +99,18 @@ internal class GuestFunctionFactory(
 
         if (coreResult != null) {
           returns(coreResult.type.kotlinApi)
-          val coreReturnValues = when {
-            coreResult.parameter != null -> {
-              bridgeBuilder.loadResultFromMemory(coreResult.parameter.name, coreResult)
-            }
+          val returnValue = when {
+            coreResult.parameter != null -> bridgeBuilder.loadValue(
+              CodeBlock.of("%N", coreResult.parameter.name),
+              coreResult,
+            )
 
-            else -> {
-              listOf(CodeBlock.of("%N", coreResult.name))
-            }
+            else -> bridgeBuilder.liftFlat(
+              values = listOf(CodeBlock.of("%N", coreResult.name)),
+              encoder = coreResult.encoder,
+            )
           }
-          val liftedReturnValue = bridgeBuilder.liftFlat(
-            values = coreReturnValues,
-            encoder = coreResult.encoder,
-          )
-          code.add("return %L", liftedReturnValue)
+          code.add("return %L", returnValue)
           code.add(
             "\n⇥.also { %M() }⇤\n",
             Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
@@ -184,22 +185,35 @@ internal class GuestFunctionFactory(
         code.add("⇤)\n")
 
         if (coreResult != null) {
-          val loweredReturnValues = bridgeBuilder.lowerFlat(
-            value = CodeBlock.of("%N", coreResult.name),
-            encoder = coreResult.encoder,
-          )
-          val flattenedReturnValue = when (coreResult.encoder.coreTypes.size) {
+          when (coreResult.encoder.coreTypes.size) {
             1 -> {
+              val loweredReturnValues = bridgeBuilder.lowerFlat(
+                value = CodeBlock.of("%N", coreResult.name),
+                encoder = coreResult.encoder,
+              )
               returns(coreResult.encoder.coreTypes.single().kotlinCoreType)
-              loweredReturnValues.single()
+              code.add("return %L\n", loweredReturnValues.single())
             }
 
             else -> {
               returns(CoreType.Pointer.kotlinCoreType)
-              bridgeBuilder.flattenResult(loweredReturnValues, coreResult)
+              val address = nameAllocator.newName("resultAddress")
+              code.addStatement(
+                "val %N = %L",
+                address,
+                bridgeBuilder.allocate("%L", coreResult.encoder.byteCount),
+              )
+              bridgeBuilder.storeValue(
+                address = CodeBlock.of("%N", address),
+                value = CodeBlock.of("%N", coreResult.name),
+                coreResult = coreResult,
+              )
+              code.add(
+                "return %L\n",
+                bridgeBuilder.platform.lowerAddress(CodeBlock.of("%N", address)),
+              )
             }
           }
-          code.add("return %L\n", flattenedReturnValue)
         }
       }
       .addCode(buildCodeBlock())

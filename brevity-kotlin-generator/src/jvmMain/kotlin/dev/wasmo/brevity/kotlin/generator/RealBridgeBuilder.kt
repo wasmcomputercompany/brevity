@@ -2,13 +2,10 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.NameAllocator
-import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.kotlin.encoders.BridgeBuilder
-import dev.wasmo.brevity.kotlin.encoders.CoreType
-import dev.wasmo.brevity.kotlin.encoders.FlatEncoder
 import dev.wasmo.brevity.kotlin.encoders.Encoder
+import dev.wasmo.brevity.kotlin.encoders.FlatEncoder
 import dev.wasmo.brevity.kotlin.encoders.Platform
-import dev.wasmo.brevity.kotlin.encoders.byteCount
 
 class RealBridgeBuilder(
   override val bridge: CodeBlock,
@@ -59,82 +56,18 @@ class RealBridgeBuilder(
     return encodeBuilder.outputs.single()
   }
 
-  /** When there's multiple core values to return, write them to memory and return a pointer. */
-  fun flattenResult(returnValues: List<CodeBlock>, coreResult: CoreResult): CodeBlock {
-    val address = nameAllocator.newName("resultAddress")
-    allocate(coreResult, address)
-    storeResultInMemory(returnValues, coreResult, address)
-    return platform.lowerAddress(CodeBlock.of("%N", address))
-  }
-
-  /** Allocate space for the encoded value at [address]. */
-  fun allocate(coreResult: CoreResult, address: String) {
-    val byteCount = coreResult.encoder.coreTypes.sumOf { coreType ->
-      coreType.byteCount
-    }
-
-    code.addStatement("val %N = %L", address, allocate("%L", byteCount))
-  }
-
-  /** Write all of [returnValues] to [address]. */
-  fun storeResultInMemory(
-    returnValues: List<CodeBlock>,
-    coreResult: CoreResult,
-    address: String,
-  ) {
-    val coreTypes = coreResult.encoder.coreTypes
-
-    var offset = 0
-    for ((index, value) in returnValues.withIndex()) {
-      val coreType = coreTypes[index]
-      platform.store(
-        baseAddress = CodeBlock.of("%N", address),
-        offset = offset,
-        type = coreType,
-        value = value,
-      )
-      offset += coreType.byteCount
+  /** Stores [value] at [address]. */
+  fun storeValue(address: CodeBlock, value: CodeBlock, coreResult: CoreResult) {
+    with (coreResult.encoder) {
+      store(address, 0, value)
     }
   }
 
-  /** When an address is returned, unpack the core values from memory. */
-  fun unflattenResult(returnValue: CodeBlock, coreResult: CoreResult): List<CodeBlock> {
-    val address = nameAllocator.newName("resultAddress")
-    code.addStatement("val %N = %L", address, platform.liftAddress(returnValue))
-
-    return loadResultFromMemory(address, coreResult)
-  }
-
-  /** Unpack core values from memory. */
-  fun loadResultFromMemory(address: String, coreResult: CoreResult): List<CodeBlock> {
-    val coreTypes = coreResult.encoder.coreTypes
-    val nameHints = coreResult.encoder.nameHints
-
-    var offset = 0
-    val result = mutableListOf<CodeBlock>()
-
-    for ((index, coreType) in coreTypes.withIndex()) {
-      val nameHint = nameHints?.getOrNull(index)
-      val nameSuggestion = when {
-        nameHint != null -> Identifier("result-${nameHint}").toCamelCase(upperCamel = false)
-        else -> "result"
-      }
-      val name = nameAllocator.newName(nameSuggestion)
-      result += CodeBlock.of("%N", name)
-
-      code.addStatement(
-        "val %N = %L",
-        name,
-        platform.load(
-          baseAddress = CodeBlock.of("%N", address),
-          offset = offset,
-          type = CoreType.I32,
-        ),
-      )
-      offset += coreType.byteCount
+  /** Loads a value from [address]. */
+  fun loadValue(address: CodeBlock, coreResult: CoreResult): CodeBlock {
+    return with(coreResult.encoder) {
+      load(address, 0)
     }
-
-    return result
   }
 
   private inner class RealFlatEncoder(

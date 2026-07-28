@@ -10,9 +10,16 @@ import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 
 abstract class Encoder {
   abstract val coreTypes: List<CoreType>
+  abstract val byteCount: Int
 
   open val nameHints: List<Identifier>?
     get() = null
+
+  /** Loads a value from memory at [baseAddress] + [offset]. */
+  abstract fun BridgeBuilder.load(baseAddress: CodeBlock, offset: Int): CodeBlock
+
+  /** Stores [value] in memory at [baseAddress] + [offset]. */
+  abstract fun BridgeBuilder.store(baseAddress: CodeBlock, offset: Int, value: CodeBlock)
 
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
   abstract fun FlatEncoder.liftFlat()
@@ -28,6 +35,31 @@ class FallbackEncoder(
 ) : Encoder() {
   override val coreTypes = listOf(coreType)
 
+  override val byteCount: Int
+    get() = coreType.byteCount
+
+  override fun BridgeBuilder.load(
+    baseAddress: CodeBlock,
+    offset: Int,
+  ) = CodeBlock.of(
+    "(%L as %T)",
+    platform.load(baseAddress, offset, coreType),
+    type.kotlinApi,
+  )
+
+  override fun BridgeBuilder.store(
+    baseAddress: CodeBlock,
+    offset: Int,
+    value: CodeBlock,
+  ) {
+    platform.store(
+      baseAddress,
+      offset,
+      coreType,
+      CodeBlock.of("(%L as %T)", value, coreType.kotlinCoreType),
+    )
+  }
+
   override fun FlatEncoder.liftFlat() {
     put("(%L as %T)", take(), type.kotlinApi)
   }
@@ -37,10 +69,114 @@ class FallbackEncoder(
   }
 }
 
+open class DirectEncoder(
+  val coreType: CoreType,
+) : Encoder() {
+  override val coreTypes: List<CoreType>
+    get() = listOf(coreType)
+
+  override val byteCount: Int
+    get() = coreType.byteCount
+
+  override fun BridgeBuilder.load(
+    baseAddress: CodeBlock,
+    offset: Int,
+  ): CodeBlock {
+    return platform.load(baseAddress, offset, coreType)
+  }
+
+  override fun BridgeBuilder.store(
+    baseAddress: CodeBlock,
+    offset: Int,
+    value: CodeBlock,
+  ) {
+    platform.store(baseAddress, offset, coreType, value)
+  }
+
+  override fun FlatEncoder.liftFlat() {
+    put(coreTypeToValue(take()))
+  }
+
+  override fun FlatEncoder.lowerFlat() {
+    put(valueToCoreType(take()))
+  }
+
+  open fun coreTypeToValue(coreType: CodeBlock): CodeBlock = coreType
+
+  open fun valueToCoreType(value: CodeBlock): CodeBlock = value
+}
+
+object BooleanEncoder : DirectEncoder(CoreType.I32) {
+  override fun coreTypeToValue(coreType: CodeBlock) =
+    CodeBlock.of("%L != 0", coreType)
+
+  override fun valueToCoreType(value: CodeBlock) =
+    CodeBlock.of("if (%L) 1 else 0", value)
+}
+
+object ByteEncoder : DirectEncoder(CoreType.I32)
+object ShortEncoder : DirectEncoder(CoreType.I32)
+object IntEncoder : DirectEncoder(CoreType.I32)
+object LongEncoder : DirectEncoder(CoreType.I64)
+
+object UByteEncoder : DirectEncoder(CoreType.I32) {
+  override fun coreTypeToValue(coreType: CodeBlock) =
+    CodeBlock.of("%L.toUByte()", coreType)
+
+  override fun valueToCoreType(value: CodeBlock) =
+    CodeBlock.of("%L.toInt()", value)
+}
+
+object UShortEncoder : DirectEncoder(CoreType.I32) {
+  override fun coreTypeToValue(coreType: CodeBlock) =
+    CodeBlock.of("%L.toUShort()", coreType)
+
+  override fun valueToCoreType(value: CodeBlock) =
+    CodeBlock.of("%L.toInt()", value)
+}
+
+object UIntEncoder : DirectEncoder(CoreType.I32) {
+  override fun coreTypeToValue(coreType: CodeBlock) =
+    CodeBlock.of("%L.toUInt()", coreType)
+
+  override fun valueToCoreType(value: CodeBlock) =
+    CodeBlock.of("%L.toInt()", value)
+}
+
+object ULongEncoder : DirectEncoder(CoreType.I64) {
+  override fun coreTypeToValue(coreType: CodeBlock) =
+    CodeBlock.of("%L.toULong()", coreType)
+
+  override fun valueToCoreType(value: CodeBlock) =
+    CodeBlock.of("%L.toLong()", value)
+}
+
+object FloatEncoder : DirectEncoder(CoreType.F32)
+
+object DoubleEncoder : DirectEncoder(CoreType.F64)
+
+object CharEncoder : DirectEncoder(CoreType.I32)
+
 class TupleEncoder(
   private val encoders: List<Encoder>,
 ) : Encoder() {
   override val coreTypes = encoders.flatMap { it.coreTypes }
+
+  override val byteCount: Int
+    get() = encoders.sumOf { it.byteCount }
+
+  override fun BridgeBuilder.load(
+    baseAddress: CodeBlock,
+    offset: Int,
+  ) = CodeBlock.of("TODO(%S)", "TupleEncoder")
+
+  override fun BridgeBuilder.store(
+    baseAddress: CodeBlock,
+    offset: Int,
+    value: CodeBlock,
+  ) {
+    code.addStatement("// TODO: TupleEncoder")
+  }
 
   override fun FlatEncoder.liftFlat() {
     val elements = encoders.map { encoder ->
@@ -127,6 +263,22 @@ class ListEncoder(
 ) : Encoder() {
   override val coreTypes = listOf(CoreType.Pointer)
 
+  override val byteCount: Int
+    get() = CoreType.Pointer.byteCount
+
+  override fun BridgeBuilder.load(
+    baseAddress: CodeBlock,
+    offset: Int,
+  ) = CodeBlock.of("TODO(%S)", "ListEncoder")
+
+  override fun BridgeBuilder.store(
+    baseAddress: CodeBlock,
+    offset: Int,
+    value: CodeBlock,
+  ) {
+    code.addStatement("// TODO: ListEncoder")
+  }
+
   override fun FlatEncoder.liftFlat() {
     put("(%L as %T)", take(), type.kotlinApi)
   }
@@ -140,6 +292,22 @@ class ResourceEncoder(
   private val type: TypeName.Declared,
 ) : Encoder() {
   override val coreTypes = listOf(CoreType.I32)
+
+  override val byteCount: Int
+    get() = CoreType.I32.byteCount
+
+  override fun BridgeBuilder.load(
+    baseAddress: CodeBlock,
+    offset: Int,
+  ) = CodeBlock.of("TODO(%S)", "ResourceEncoder")
+
+  override fun BridgeBuilder.store(
+    baseAddress: CodeBlock,
+    offset: Int,
+    value: CodeBlock,
+  ) {
+    code.addStatement("// TODO: ResourceEncoder")
+  }
 
   override fun FlatEncoder.liftFlat() {
     put(platform.liftResource(take(), type))
@@ -157,6 +325,53 @@ object StringEncoder : Encoder() {
 
   override val nameHints: List<Identifier>
     get() = listOf(Identifier("pointer"), Identifier("byte-count"))
+
+  override val byteCount: Int
+    get() = 8
+
+  override fun BridgeBuilder.load(
+    baseAddress: CodeBlock,
+    offset: Int,
+  ): CodeBlock {
+    val address = nameAllocator.newName("stringAddress")
+    val byteCount = nameAllocator.newName("stringByteCount")
+    code.addStatement(
+      "val %N = %L",
+      address,
+      platform.load(baseAddress, offset, CoreType.Pointer),
+    )
+    code.addStatement(
+      "val %N = %L",
+      byteCount,
+      platform.load(baseAddress, offset + 4, CoreType.I32),
+    )
+    return platform.loadString(
+      CodeBlock.of("%N", address),
+      CodeBlock.of("%N", byteCount),
+    )
+  }
+
+  override fun BridgeBuilder.store(
+    baseAddress: CodeBlock,
+    offset: Int,
+    value: CodeBlock,
+  ) {
+    val (addressCodeBlock, byteCountCodeBlock) = platform.storeString(value)
+    val address = nameAllocator.newName("stringAddress")
+    val byteCount = nameAllocator.newName("stringByteCount")
+    code.addStatement(
+      "val %N = %L",
+      address,
+      addressCodeBlock,
+    )
+    code.addStatement(
+      "val %N = %L",
+      byteCount,
+      byteCountCodeBlock,
+    )
+    platform.store(baseAddress, offset, CoreType.Pointer, CodeBlock.of("%N", address))
+    platform.store(baseAddress, offset + 4, CoreType.I32, CodeBlock.of("%N", byteCount))
+  }
 
   override fun FlatEncoder.liftFlat() {
     put(platform.loadString(take(), take()))
