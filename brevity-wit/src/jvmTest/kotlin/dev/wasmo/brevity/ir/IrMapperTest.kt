@@ -10,7 +10,7 @@ import dev.wasmo.brevity.FunctionNameInterface
 import dev.wasmo.brevity.FunctionNameMethod
 import dev.wasmo.brevity.FunctionNameResourceDrop
 import dev.wasmo.brevity.FunctionNameStatic
-import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.IoToplevelWitPackage
@@ -21,24 +21,24 @@ import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
-import okio.Path.Companion.toPath
 
 class IrMapperTest {
   @Test
   fun `find local symbols`() {
+    val clockLocation = Location("clock.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "wasi:clocks".toPackageName(),
-        files = mapOf(
-          "clock.wit".toPath() to """
-            |package wasi:clocks;
-            |
-            |interface wall-clock {
-            |    record datetime {
-            |        seconds: u64,
-            |    }
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package wasi:clocks;
+          |
+          |interface wall-clock {
+          |    record datetime {
+          |        seconds: u64,
+          |    }
+          |}
+          """.trimMargin().toWitFile(clockLocation),
         ),
       ),
     )
@@ -68,32 +68,34 @@ class IrMapperTest {
 
   @Test
   fun `find symbols across packages with use`() {
+    val stdioLocation = Location("stdio.wit")
+    val streamsLocation = Location("streams.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "wasi:cli".toPackageName(),
-        files = mapOf(
-          "stdio.wit".toPath() to """
-            |package wasi:cli;
-            |interface stdin {
-            |  use wasi:io/streams@0.2.12.{input-stream};
-            |
-            |  get-stdin: func() -> input-stream;
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package wasi:cli;
+          |interface stdin {
+          |  use wasi:io/streams@0.2.12.{input-stream};
+          |
+          |  get-stdin: func() -> input-stream;
+          |}
+          """.trimMargin().toWitFile(stdioLocation),
         ),
       ),
       IoToplevelWitPackage(
         packageName = "wasi:io@0.2.12".toPackageName(),
-        files = mapOf(
-          "streams.wit".toPath() to """
-            |package wasi:io@0.2.12;
-            |
-            |interface streams {
-            |    resource input-stream {
-            |        read: func(len: u64) -> result;
-            |    }
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package wasi:io@0.2.12;
+          |
+          |interface streams {
+          |    resource input-stream {
+          |        read: func(len: u64) -> result;
+          |    }
+          |}
+          """.trimMargin().toWitFile(streamsLocation),
         ),
       ),
     )
@@ -114,27 +116,28 @@ class IrMapperTest {
 
   @Test
   fun `find symbols across inline packages with use`() {
+    val stdioLocation = Location("stdio.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "wasi:cli".toPackageName(),
-        files = mapOf(
-          "stdio.wit".toPath() to """
-            |package wasi:cli;
-            |
-            |interface stdin {
-            |  use wasi:io/streams@0.2.12.{input-stream};
-            |
-            |  get-stdin: func() -> input-stream;
-            |}
-            |
-            |package wasi:io@0.2.12 {
-            |  interface streams {
-            |    resource input-stream {
-            |        read: func(len: u64) -> result;
-            |    }
-            |  }
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package wasi:cli;
+          |
+          |interface stdin {
+          |  use wasi:io/streams@0.2.12.{input-stream};
+          |
+          |  get-stdin: func() -> input-stream;
+          |}
+          |
+          |package wasi:io@0.2.12 {
+          |  interface streams {
+          |    resource input-stream {
+          |        read: func(len: u64) -> result;
+          |    }
+          |  }
+          |}
+          """.trimMargin().toWitFile(stdioLocation),
         ),
       ),
     )
@@ -156,25 +159,26 @@ class IrMapperTest {
 
   @Test
   fun `find symbols across services with use`() {
+    val stdioLocation = Location("stdio.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "wasi:cli".toPackageName(),
-        files = mapOf(
-          "stdio.wit".toPath() to """
-            |package wasi:cli;
-            |
-            |world stdin {
-            |  use streams.{input-stream};
-            |
-            |  export get-stdin: func() -> input-stream;
-            |}
-            |
-            |interface streams {
-            |    resource input-stream {
-            |        read: func(len: u64) -> result;
-            |    }
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package wasi:cli;
+          |
+          |world stdin {
+          |  use streams.{input-stream};
+          |
+          |  export get-stdin: func() -> input-stream;
+          |}
+          |
+          |interface streams {
+          |    resource input-stream {
+          |        read: func(len: u64) -> result;
+          |    }
+          |}
+          """.trimMargin().toWitFile(stdioLocation),
         ),
       ),
     )
@@ -195,43 +199,47 @@ class IrMapperTest {
 
   @Test
   fun `imports across packages`() {
+    val commandLocation = Location("command.wit")
+    val importsLocation = Location("imports.wit")
+    val worldLocation = Location("world.wit")
+    val monotonicClockLocation = Location("monotonic-clock.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "wasi:cli@0.3.0".toPackageName(),
-        files = mapOf(
-          "command.wit".toPath() to """
-            |package wasi:cli@0.3.0;
-            |
-            |world command {
-            |  include imports;
-            |}
-            """.trimMargin().toWitFile(),
-          "imports.wit".toPath() to """
-            |package wasi:cli@0.3.0;
-            |
-            |world imports {
-            |  include wasi:clocks/imports@0.3.0;
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package wasi:cli@0.3.0;
+          |
+          |world command {
+          |  include imports;
+          |}
+          """.trimMargin().toWitFile(commandLocation),
+          """
+          |package wasi:cli@0.3.0;
+          |
+          |world imports {
+          |  include wasi:clocks/imports@0.3.0;
+          |}
+          """.trimMargin().toWitFile(importsLocation),
         ),
       ),
       IoToplevelWitPackage(
         packageName = "wasi:clocks@0.3.0".toPackageName(),
-        files = mapOf(
-          "world.wit".toPath() to """
-            |package wasi:clocks@0.3.0;
-            |
-            |world imports {
-            |  import monotonic-clock;
-            |}
-            """.trimMargin().toWitFile(),
-          "monotonic-clock.wit".toPath() to """
-            |package wasi:clocks@0.3.0;
-            |
-            |interface monotonic-clock {
-            |  now: func() -> s64;
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package wasi:clocks@0.3.0;
+          |
+          |world imports {
+          |  import monotonic-clock;
+          |}
+          """.trimMargin().toWitFile(worldLocation),
+          """
+          |package wasi:clocks@0.3.0;
+          |
+          |interface monotonic-clock {
+          |  now: func() -> s64;
+          |}
+          """.trimMargin().toWitFile(monotonicClockLocation),
         ),
       ),
     )
@@ -243,21 +251,21 @@ class IrMapperTest {
         packageName = "wasi:cli@0.3.0".toPackageName(),
         services = listOf(
           IrWorld(
-            offset = Offset(3, 1),
+            location = commandLocation.at(3, 1),
             serviceName = "wasi:cli/command@0.3.0",
             imports = listOf(
               IrExternalApi(
-                offset = Offset(4, 3),
+                location = worldLocation.at(4, 3),
                 serviceName = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
               ),
             ),
           ),
           IrWorld(
-            offset = Offset(3, 1),
+            location = importsLocation.at(3, 1),
             serviceName = "wasi:cli/imports@0.3.0",
             imports = listOf(
               IrExternalApi(
-                offset = Offset(4, 3),
+                location = worldLocation.at(4, 3),
                 serviceName = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
               ),
             ),
@@ -268,21 +276,21 @@ class IrMapperTest {
         packageName = "wasi:clocks@0.3.0".toPackageName(),
         services = listOf(
           IrWorld(
-            offset = Offset(3, 1),
+            location = worldLocation.at(3, 1),
             serviceName = "wasi:clocks/imports@0.3.0",
             imports = listOf(
               IrExternalApi(
-                offset = Offset(4, 3),
+                location = worldLocation.at(4, 3),
                 serviceName = "wasi:clocks/monotonic-clock@0.3.0".toServiceName(),
               ),
             ),
           ),
           IrInterface(
-            offset = Offset(3, 1),
+            location = monotonicClockLocation.at(3, 1),
             serviceName = "wasi:clocks/monotonic-clock@0.3.0",
             items = listOf(
               IrFunction(
-                offset = Offset(4, 3),
+                location = monotonicClockLocation.at(4, 3),
                 name = "now",
                 returnType = TypeName.S64,
                 functionName = FunctionNameInterface(
@@ -299,33 +307,35 @@ class IrMapperTest {
 
   @Test
   fun `imports across inline packages`() {
+    val commandLocation = Location("command.wit")
+    val importsLocation = Location("imports.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "wasi:cli@0.3.0".toPackageName(),
-        files = mapOf(
-          "command.wit".toPath() to """
-            |package wasi:cli@0.3.0;
-            |
-            |world command {
-            |  include imports;
-            |}
-            """.trimMargin().toWitFile(),
-          "imports.wit".toPath() to """
-            |package wasi:cli@0.3.0;
-            |
-            |world imports {
-            |  include wasi:clocks/imports@0.3.0;
-            |}
-            |
-            |package wasi:clocks@0.3.0 {
-            |  world imports {
-            |    import monotonic-clock;
-            |  }
-            |  interface monotonic-clock {
-            |    now: func() -> s64;
-            |  }
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package wasi:cli@0.3.0;
+          |
+          |world command {
+          |  include imports;
+          |}
+          """.trimMargin().toWitFile(commandLocation),
+          """
+          |package wasi:cli@0.3.0;
+          |
+          |world imports {
+          |  include wasi:clocks/imports@0.3.0;
+          |}
+          |
+          |package wasi:clocks@0.3.0 {
+          |  world imports {
+          |    import monotonic-clock;
+          |  }
+          |  interface monotonic-clock {
+          |    now: func() -> s64;
+          |  }
+          |}
+          """.trimMargin().toWitFile(importsLocation),
         ),
       ),
     )
@@ -337,21 +347,21 @@ class IrMapperTest {
         packageName = "wasi:cli@0.3.0".toPackageName(),
         services = listOf(
           IrWorld(
-            offset = Offset(3, 1),
+            location = commandLocation.at(3, 1),
             serviceName = "wasi:cli/command@0.3.0",
             imports = listOf(
               IrExternalApi(
-                offset = Offset(9, 5),
+                location = importsLocation.at(9, 5),
                 serviceName = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
               ),
             ),
           ),
           IrWorld(
-            offset = Offset(3, 1),
+            location = importsLocation.at(3, 1),
             serviceName = "wasi:cli/imports@0.3.0",
             imports = listOf(
               IrExternalApi(
-                offset = Offset(9, 5),
+                location = importsLocation.at(9, 5),
                 serviceName = ServiceName("wasi:clocks@0.3.0", "monotonic-clock"),
               ),
             ),
@@ -362,21 +372,21 @@ class IrMapperTest {
         packageName = "wasi:clocks@0.3.0".toPackageName(),
         services = listOf(
           IrWorld(
-            offset = Offset(8, 3),
+            location = importsLocation.at(8, 3),
             serviceName = "wasi:clocks/imports@0.3.0",
             imports = listOf(
               IrExternalApi(
-                offset = Offset(9, 5),
+                location = importsLocation.at(9, 5),
                 serviceName = "wasi:clocks/monotonic-clock@0.3.0".toServiceName(),
               ),
             ),
           ),
           IrInterface(
-            offset = Offset(11, 3),
+            location = importsLocation.at(11, 3),
             serviceName = "wasi:clocks/monotonic-clock@0.3.0",
             items = listOf(
               IrFunction(
-                offset = Offset(12, 5),
+                location = importsLocation.at(12, 5),
                 name = "now",
                 returnType = TypeName.S64,
                 functionName = FunctionNameInterface(
@@ -393,19 +403,20 @@ class IrMapperTest {
 
   @Test
   fun `inline interface is flattened`() {
+    val location = Location("world.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "local:demo".toPackageName(),
-        files = mapOf(
-          "world.wit".toPath() to """
-            |package local:demo;
-            |
-            |world your-world {
-            |    import out-of-line: interface {
-            |        the-function: func();
-            |    }
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package local:demo;
+          |
+          |world your-world {
+          |    import out-of-line: interface {
+          |        the-function: func();
+          |    }
+          |}
+          """.trimMargin().toWitFile(location),
         ),
       ),
     )
@@ -417,11 +428,11 @@ class IrMapperTest {
         packageName = "local:demo".toPackageName(),
         services = listOf(
           IrInterface(
-            offset = Offset(4, 5),
+            location = location.at(4, 5),
             serviceName = "local:demo/out-of-line",
             items = listOf(
               IrFunction(
-                offset = Offset(5, 9),
+                location = location.at(5, 9),
                 name = "the-function",
                 functionName = FunctionNameInterface(
                   serviceName = "local:demo/out-of-line",
@@ -431,11 +442,11 @@ class IrMapperTest {
             ),
           ),
           IrWorld(
-            offset = Offset(3, 1),
+            location = location.at(3, 1),
             serviceName = "local:demo/your-world",
             imports = listOf(
               IrExternalApi(
-                offset = Offset(4, 5),
+                location = location.at(4, 5),
                 packageName = "local:demo",
                 serviceName = "out-of-line",
                 plainName = "out-of-line",
@@ -449,27 +460,29 @@ class IrMapperTest {
 
   @Test
   fun `find symbols in same package with use`() {
+    val timezoneLocation = Location("timezone.wit")
+    val wallClockLocation = Location("wall-clock.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "wasi:clocks@0.2.12".toPackageName(),
-        files = mapOf(
-          "timezone.wit".toPath() to """
-            |interface timezone {
-            |    use wall-clock.{datetime};
-            |
-            |    display: func(when: datetime);
-            |}
-            """.trimMargin().toWitFile(),
-          "wall-clock.wit".toPath() to """
-            |package wasi:io@0.2.12;
-            |
-            |interface wall-clock {
-            |    record datetime {
-            |        seconds: u64,
-            |        nanoseconds: u32,
-            |    }
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |interface timezone {
+          |    use wall-clock.{datetime};
+          |
+          |    display: func(when: datetime);
+          |}
+          """.trimMargin().toWitFile(timezoneLocation),
+          """
+          |package wasi:io@0.2.12;
+          |
+          |interface wall-clock {
+          |    record datetime {
+          |        seconds: u64,
+          |        nanoseconds: u32,
+          |    }
+          |}
+          """.trimMargin().toWitFile(wallClockLocation),
         ),
       ),
     )
@@ -491,53 +504,56 @@ class IrMapperTest {
 
   @Test
   fun `get world`() {
+    val worldLocation = Location("world.wit")
+    val commandLocation = Location("command.wit")
     val wasiCli = IoToplevelWitPackage(
       packageName = "wasi:cli@0.2.12".toPackageName(),
-      files = mapOf(
-        "command.wit".toPath() to """
-          |package wasi:cli@0.2.12;
-          |
-          |world command {
-          |}
-          """.trimMargin().toWitFile(),
+      files = listOf(
+        """
+        |package wasi:cli@0.2.12;
+        |
+        |world command {
+        |}
+        """.trimMargin().toWitFile(commandLocation),
       ),
     )
     val wasiIo = IoToplevelWitPackage(
       packageName = "wasi:io@0.2.12".toPackageName(),
-      files = mapOf(
-        "world.wit".toPath() to """
-          |package wasi:io@0.2.12;
-          |
-          |world imports {
-          |}
-          """.trimMargin().toWitFile(),
+      files = listOf(
+        """
+        |package wasi:io@0.2.12;
+        |
+        |world imports {
+        |}
+        """.trimMargin().toWitFile(worldLocation),
       ),
     )
 
     val irMapper = IrMapper(listOf(wasiCli, wasiIo))
 
     assertThat(irMapper.getWorldOrNull("wasi:io/imports@0.2.12".toUsePath()))
-      .isEqualTo(wasiIo.files.values.single().items.single())
+      .isEqualTo(wasiIo.files.single().items.single())
 
     assertThat(irMapper.getWorldOrNull("wasi:cli/command@0.2.12".toUsePath()))
-      .isEqualTo(wasiCli.files.values.single().items.single())
+      .isEqualTo(wasiCli.files.single().items.single())
 
     assertThat(irMapper.getWorldOrNull("wasi:cli/command".toUsePath())).isNull()
   }
 
   @Test
   fun `interface function abi names`() {
+    val systemClockLocation = Location("system-clock.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "wasi:clocks@0.3.0".toPackageName(),
-        files = mapOf(
-          "system-clock.wit".toPath() to """
-            |package wasi:clocks@0.3.0;
-            |
-            |interface system-clock {
-            |  now: func() -> u64;
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package wasi:clocks@0.3.0;
+          |
+          |interface system-clock {
+          |  now: func() -> u64;
+          |}
+          """.trimMargin().toWitFile(systemClockLocation),
         ),
       ),
     )
@@ -556,22 +572,23 @@ class IrMapperTest {
 
   @Test
   fun `resource function abi names`() {
+    val typesLocation = Location("types.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "wasi:http@0.3.0".toPackageName(),
-        files = mapOf(
-          "types.wit".toPath() to """
-            |package wasi:http@0.3.0;
-            |
-            |interface types {
-            |  resource fields {
-            |    constructor();
-            |    from-list: static func(entries: list<tuple<string,list<u8>>>) -> fields;
-            |    has: func(name: string) -> bool;
-            |    clone: func() -> fields;
-            |  }
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package wasi:http@0.3.0;
+          |
+          |interface types {
+          |  resource fields {
+          |    constructor();
+          |    from-list: static func(entries: list<tuple<string,list<u8>>>) -> fields;
+          |    has: func(name: string) -> bool;
+          |    clone: func() -> fields;
+          |  }
+          |}
+          """.trimMargin().toWitFile(typesLocation),
         ),
       ),
     )
@@ -608,41 +625,44 @@ class IrMapperTest {
 
   @Test
   fun `resolve all type codecs`() {
+    val typesLocation = Location("types.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
         packageName = "test:types".toPackageName(),
-        files = mapOf(
-          "types.wit".toPath() to """
-            |package test:types;
-            |
-            |world all-types {
-            |    type my-alias = tuple<my-resource, list<my-enum>>;
-            |    record my-record {
-            |        field: u64,
-            |    }
-            |    enum my-enum {
-            |        red,
-            |        blue,
-            |    }
-            |    flags my-flags {
-            |        loaded,
-            |        enabled,
-            |    }
-            |    resource my-resource {
-            |        write: func(bytes: list<u8>);
-            |    }
-            |    variant my-variant {
-            |        none,
-            |        some(list<my-record>),
-            |    }
-            |}
-            """.trimMargin().toWitFile(),
+        files = listOf(
+          """
+          |package test:types;
+          |
+          |world all-types {
+          |    type my-alias = tuple<my-resource, list<my-enum>>;
+          |    record my-record {
+          |        field: u64,
+          |    }
+          |    enum my-enum {
+          |        red,
+          |        blue,
+          |    }
+          |    flags my-flags {
+          |        loaded,
+          |        enabled,
+          |    }
+          |    resource my-resource {
+          |        write: func(bytes: list<u8>);
+          |    }
+          |    variant my-variant {
+          |        none,
+          |        some(list<my-record>),
+          |    }
+          |}
+          """.trimMargin().toWitFile(typesLocation),
         ),
       ),
     )
 
     val irMapper = IrMapper(ioPackages)
     val packages = irMapper.map()
+    val location = Location("types.wit")
+
     val serviceName = "test:types/all-types"
     assertThat(packages).containsExactly(
       IrWitPackage(
@@ -650,12 +670,12 @@ class IrMapperTest {
         services = listOf(
           IrWorld(
             serviceName = "test:types/all-types",
-            offset = Offset(3, 1),
+            location = location.at(3, 1),
             types = listOf(
               IrTypeAlias(
                 serviceName = serviceName,
                 name = "my-alias",
-                offset = Offset(4, 5),
+                location = location.at(4, 5),
                 target = TypeName.Tuple(
                   types = listOf(
                     TypeNameDeclared(
@@ -674,10 +694,10 @@ class IrMapperTest {
               IrRecord(
                 serviceName = serviceName,
                 name = "my-record",
-                offset = Offset(5, 5),
+                location = location.at(5, 5),
                 fields = listOf(
                   IrField(
-                    offset = Offset(6, 9),
+                    location = location.at(6, 9),
                     name = "field",
                     type = TypeName.U64,
                   ),
@@ -686,14 +706,14 @@ class IrMapperTest {
               IrEnum(
                 serviceName = serviceName,
                 name = "my-enum",
-                offset = Offset(8, 5),
+                location = location.at(8, 5),
                 cases = listOf(
                   IrCase(
-                    offset = Offset(9, 9),
+                    location = location.at(9, 9),
                     name = "red",
                   ),
                   IrCase(
-                    offset = Offset(10, 9),
+                    location = location.at(10, 9),
                     name = "blue",
                   ),
                 ),
@@ -701,14 +721,14 @@ class IrMapperTest {
               IrFlags(
                 serviceName = serviceName,
                 name = "my-flags",
-                offset = Offset(12, 5),
+                location = location.at(12, 5),
                 flags = listOf(
                   IrFlag(
-                    offset = Offset(13, 9),
+                    location = location.at(13, 9),
                     name = "loaded",
                   ),
                   IrFlag(
-                    offset = Offset(14, 9),
+                    location = location.at(14, 9),
                     name = "enabled",
                   ),
                 ),
@@ -716,14 +736,14 @@ class IrMapperTest {
               IrResource(
                 serviceName = serviceName,
                 name = "my-resource",
-                offset = Offset(16, 5),
+                location = location.at(16, 5),
                 functions = listOf(
                   IrFunction(
-                    offset = Offset(17, 9),
+                    location = location.at(17, 9),
                     name = "write",
                     parameters = listOf(
                       IrParameter(
-                        offset = Offset(17, 21),
+                        location = location.at(17, 21),
                         name = "bytes",
                         type = TypeName.List(TypeName.U8),
                       ),
@@ -735,7 +755,7 @@ class IrMapperTest {
                     ),
                   ),
                   IrFunction(
-                    offset = Offset(16, 5),
+                    location = location.at(16, 5),
                     name = "close",
                     functionName = FunctionNameResourceDrop(
                       serviceName = "test:types/all-types",
@@ -747,14 +767,14 @@ class IrMapperTest {
               IrVariant(
                 serviceName = serviceName,
                 name = "my-variant",
-                offset = Offset(19, 5),
+                location = location.at(19, 5),
                 cases = listOf(
                   IrCase(
-                    offset = Offset(20, 9),
+                    location = location.at(20, 9),
                     name = "none",
                   ),
                   IrCase(
-                    offset = Offset(21, 9),
+                    location = location.at(21, 9),
                     name = "some",
                     type = TypeName.List(
                       TypeNameDeclared(

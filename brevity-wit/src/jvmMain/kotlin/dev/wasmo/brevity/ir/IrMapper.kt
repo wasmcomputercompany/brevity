@@ -84,7 +84,7 @@ class IrMapper(
       builder.services += IrInterface(
         documentation = documentation,
         gate = gate,
-        offset = offset,
+        location = location,
         serviceName = serviceName,
         items = items.mapNotNull { item ->
           item.interfaceItemToIrOrNull()
@@ -111,7 +111,7 @@ class IrMapper(
   private fun IoCase.caseToIr() = IrCase(
     documentation = documentation,
     gate = gate,
-    offset = offset,
+    location = location,
     name = name,
     type = type?.typeNameToIr(),
   )
@@ -120,7 +120,7 @@ class IrMapper(
   private fun IoField.fieldToIr() = IrField(
     documentation = documentation,
     gate = gate,
-    offset = offset,
+    location = location,
     name = name,
     type = type.typeNameToIr(),
   )
@@ -129,7 +129,7 @@ class IrMapper(
   private fun IoFlag.flagToIr() = IrFlag(
     documentation = documentation,
     gate = gate,
-    offset = offset,
+    location = location,
     name = name,
   )
 
@@ -140,7 +140,7 @@ class IrMapper(
   ) = IrFunction(
     documentation = documentation,
     gate = gate,
-    offset = offset,
+    location = location,
     async = async,
     parameters = parameters.map { it.parameterToIr() },
     returnType = returnType?.typeNameToIr(),
@@ -176,7 +176,7 @@ class IrMapper(
   context(context: Context)
   private fun IoResource.dropFunction(): IrFunction {
     return IrFunction(
-      offset = offset,
+      location = location,
       functionName = FunctionName.ResourceDrop(
         serviceName = context.serviceName,
         resourceName = name,
@@ -187,7 +187,7 @@ class IrMapper(
   context(context: Context)
   private fun IoParameter.parameterToIr() = IrParameter(
     documentation = documentation,
-    offset = offset,
+    location = location,
     name = name,
     type = type.typeNameToIr(),
   )
@@ -196,7 +196,7 @@ class IrMapper(
   private fun IoEnum.enumToIr() = IrEnum(
     documentation = documentation,
     gate = gate,
-    offset = offset,
+    location = location,
     type = TypeName.Declared(context.serviceName, name),
     cases = cases.map { it.caseToIr() },
   )
@@ -205,7 +205,7 @@ class IrMapper(
   private fun IoFlags.flagsToIr() = IrFlags(
     documentation = documentation,
     gate = gate,
-    offset = offset,
+    location = location,
     type = TypeName.Declared(context.serviceName, name),
     flags = flags.map { it.flagToIr() },
   )
@@ -214,7 +214,7 @@ class IrMapper(
   private fun IoRecord.recordToIr() = IrRecord(
     documentation = documentation,
     gate = gate,
-    offset = offset,
+    location = location,
     type = TypeName.Declared(context.serviceName, name),
     fields = fields.map { it.fieldToIr() },
   )
@@ -223,7 +223,7 @@ class IrMapper(
   private fun IoResource.resourceToIr() = IrResource(
     documentation = documentation,
     gate = gate,
-    offset = offset,
+    location = location,
     type = TypeName.Declared(context.serviceName, name),
     functions = buildList {
       addAll(
@@ -239,7 +239,7 @@ class IrMapper(
   private fun IoTypeAlias.typeAliasToIr() = IrTypeAlias(
     documentation = documentation,
     gate = gate,
-    offset = offset,
+    location = location,
     type = TypeName.Declared(context.serviceName, name),
     target = target.typeNameToIr(),
   )
@@ -248,7 +248,7 @@ class IrMapper(
   private fun IoVariant.variantToIr() = IrVariant(
     documentation = documentation,
     gate = gate,
-    offset = offset,
+    location = location,
     type = TypeName.Declared(context.serviceName, name),
     cases = cases.map { it.caseToIr() },
   )
@@ -259,7 +259,7 @@ class IrMapper(
     return IrExternalApi(
       documentation = documentation,
       gate = gate,
-      offset = offset,
+      location = location,
       plainName = plainName,
       serviceName = serviceName,
     )
@@ -370,7 +370,7 @@ class IrMapper(
     builder.services += IrWorld(
       documentation = documentation,
       gate = gate,
-      offset = offset,
+      location = location,
       serviceName = ServiceName(packageName, name),
       types = set.flatMap { included ->
         context(included.context) {
@@ -420,7 +420,7 @@ class IrMapper(
         if (!declaresApis()) return null
         interfaceToIr(context.serviceName.packageName)
         IrExternalApi(
-          offset = offset,
+          location = location,
           plainName = name,
           serviceName = ServiceName(context.serviceName.packageName, name),
         )
@@ -490,7 +490,7 @@ private fun IoUse.Item.matches(typeName: IoTypeName.Declared): Boolean {
 
 private val IoWitPackage.items: List<IoWitFile.Item>
   get() = when (this) {
-    is IoToplevelWitPackage -> files.values.flatMap { it.items }
+    is IoToplevelWitPackage -> files.flatMap { it.items }
     is IoInlinePackage -> declarations
   }
 

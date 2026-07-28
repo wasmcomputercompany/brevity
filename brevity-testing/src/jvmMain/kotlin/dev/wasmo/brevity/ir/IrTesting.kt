@@ -5,7 +5,7 @@ import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.FunctionNameWorld
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.toServiceName
@@ -13,13 +13,13 @@ import dev.wasmo.brevity.io.toServiceName
 fun IrCase(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   type: TypeName? = null,
 ) = IrCase(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   type = type,
 )
@@ -35,14 +35,14 @@ fun TypeNameDeclared(
 fun IrEnum(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   serviceName: String,
   name: String,
   cases: List<IrCase>,
 ) = IrEnum(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   type = TypeNameDeclared(serviceName, name),
   cases = cases,
 )
@@ -50,14 +50,14 @@ fun IrEnum(
 fun IrExternalApi(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   plainName: String? = null,
   packageName: String,
   serviceName: String,
 ) = IrExternalApi(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   plainName = plainName?.let { Identifier(it) },
   serviceName = ServiceName(packageName, serviceName),
 )
@@ -65,14 +65,14 @@ fun IrExternalApi(
 fun IrFlags(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   serviceName: String,
   name: String,
   flags: List<IrFlag>,
 ) = IrFlags(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   type = TypeNameDeclared(serviceName, name),
   flags = flags,
 )
@@ -80,13 +80,13 @@ fun IrFlags(
 fun IrField(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   type: TypeName,
 ) = IrField(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
   type = type,
 )
@@ -94,19 +94,19 @@ fun IrField(
 fun IrFlag(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
 ) = IrFlag(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   name = Identifier(name),
 )
 
 fun IrFunction(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   async: Boolean = false,
   name: String,
   parameters: List<IrParameter> = listOf(),
@@ -115,7 +115,7 @@ fun IrFunction(
 ) = IrFunction(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   async = async,
   parameters = parameters,
   returnType = returnType,
@@ -125,25 +125,25 @@ fun IrFunction(
 fun IrInterface(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   serviceName: String,
   items: List<IrInterface.Item> = listOf(),
 ) = IrInterface(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   serviceName = serviceName.toServiceName(),
   items = items,
 )
 
 fun IrParameter(
   documentation: String? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   name: String,
   type: TypeName,
 ) = IrParameter(
   documentation = documentation?.let { Documentation(it) },
-  offset = offset,
+  location = location,
   name = Identifier(name),
   type = type,
 )
@@ -151,14 +151,14 @@ fun IrParameter(
 fun IrRecord(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   serviceName: String,
   name: String,
   fields: List<IrField>,
 ) = IrRecord(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   type = TypeNameDeclared(serviceName, name),
   fields = fields,
 )
@@ -166,14 +166,14 @@ fun IrRecord(
 fun IrResource(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   serviceName: String,
   name: String,
   functions: List<IrFunction> = listOf(),
 ) = IrResource(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   type = TypeNameDeclared(serviceName, name),
   functions = functions,
 )
@@ -181,14 +181,14 @@ fun IrResource(
 fun IrTypeAlias(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   serviceName: String,
   name: String,
   target: TypeName,
 ) = IrTypeAlias(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   type = TypeNameDeclared(
     serviceName = serviceName,
     typeName = name,
@@ -199,14 +199,14 @@ fun IrTypeAlias(
 fun IrVariant(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   serviceName: String,
   name: String,
   cases: List<IrCase>,
 ) = IrVariant(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   type = TypeNameDeclared(serviceName, name),
   cases = cases,
 )
@@ -214,7 +214,7 @@ fun IrVariant(
 fun IrWorld(
   documentation: String? = null,
   gate: Gate? = null,
-  offset: Offset = Offset(1, 1),
+  location: Location = Location("file.wit"),
   serviceName: String,
   types: List<IrTypeDeclaration> = listOf(),
   imports: List<IrWorld.Api> = listOf(),
@@ -222,7 +222,7 @@ fun IrWorld(
 ) = IrWorld(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
-  offset = offset,
+  location = location,
   serviceName = serviceName.toServiceName(),
   types = types,
   imports = imports,

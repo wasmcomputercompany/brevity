@@ -6,7 +6,7 @@ package dev.wasmo.brevity
 class WitMultiplySitedException(
   val issue: String,
   val locations: List<Location>,
-  ) : IllegalStateException(
+) : IllegalStateException(
   buildString {
     append(issue)
     for (location in locations) {
@@ -14,9 +14,4 @@ class WitMultiplySitedException(
       append("\tat $location")
     }
   },
-
-  ) {
-  data class Location(val path: String, val offset: Offset) {
-    override fun toString(): String = "$path:$offset"
-  }
-}
+)

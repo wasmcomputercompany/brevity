@@ -9,25 +9,26 @@ import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.ir.IrWorld
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
-import okio.Path.Companion.toPath
 
 class WorldFilterTest {
+  private val commandLocation = Location("command.wit")
+  private val importsLocation = Location("imports.wit")
   private val ioPackages = listOf(
     IoToplevelWitPackage(
       packageName = "wasi:cli@0.3.0".toPackageName(),
-      files = mapOf(
-        "command.wit".toPath() to """
-          |package wasi:cli@0.3.0;
-          |
-          |world command {
-          |}
-          """.trimMargin().toWitFile(),
-        "imports.wit".toPath() to """
-          |package wasi:cli@0.3.0;
-          |
-          |world imports {
-          |}
-          """.trimMargin().toWitFile(),
+      files = listOf(
+        """
+        |package wasi:cli@0.3.0;
+        |
+        |world command {
+        |}
+        """.trimMargin().toWitFile(commandLocation),
+        """
+        |package wasi:cli@0.3.0;
+        |
+        |world imports {
+        |}
+        """.trimMargin().toWitFile(importsLocation),
       ),
     ),
   )

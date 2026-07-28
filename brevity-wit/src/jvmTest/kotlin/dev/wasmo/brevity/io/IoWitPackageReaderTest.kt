@@ -4,7 +4,7 @@ import assertk.assertThat
 import assertk.assertions.hasMessage
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.Documentation
-import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
@@ -51,46 +51,50 @@ class IoToplevelWitPackageReaderTest {
     }
     val packageReader = IoWitPackageReader(fileSystem)
     val ioWitPackage = packageReader.read(directory)
+    val commandLocation = Location("command.wit")
+    val exitLocation = Location("exit.wit")
+    val runLocation = Location("run.wit")
 
     assertThat(ioWitPackage).isEqualTo(
       IoToplevelWitPackage(
         documentation = Documentation(" command line interfaces!"),
         packageName = "wasi:cli".toPackageName(),
-        files = mapOf(
-          "command.wit".toPath() to IoWitFile(
+        files = listOf(
+          IoWitFile(
             items = listOf(
               IoWorld(
-                offset = Offset(1, 1),
+                location = commandLocation.at(1, 1),
                 name = "command",
                 imports = listOf(
                   IoExternalApi(
-                    offset = Offset(3, 3),
+                    location = commandLocation.at(3, 3),
                     path = "exit",
                   ),
                 ),
                 exports = listOf(
                   IoExternalApi(
-                    offset = Offset(2, 3),
+                    location = commandLocation.at(2, 3),
                     path = "run",
                   ),
                 ),
               ),
             ),
+            location = commandLocation,
           ),
-          "exit.wit".toPath() to IoWitFile(
+          IoWitFile(
             packageDocumentation = Documentation(" command line interfaces!"),
             packageName = "wasi:cli".toPackageName(),
             items = listOf(
               IoInterface(
-                offset = Offset(4, 1),
+                location = exitLocation.at(4, 1),
                 name = "exit",
                 items = listOf(
                   IoFunction(
-                    offset = Offset(5, 3),
+                    location = exitLocation.at(5, 3),
                     name = "exit",
                     parameters = listOf(
                       IoParameter(
-                        offset = Offset(5, 14),
+                        location = exitLocation.at(5, 14),
                         name = "status",
                         type = IoTypeName.Result(),
                       ),
@@ -99,21 +103,23 @@ class IoToplevelWitPackageReaderTest {
                 ),
               ),
             ),
+            location = exitLocation,
           ),
-          "run.wit".toPath() to IoWitFile(
+          IoWitFile(
             items = listOf(
               IoInterface(
-                offset = Offset(1, 1),
+                location = runLocation.at(1, 1),
                 name = "run",
                 items = listOf(
                   IoFunction(
-                    offset = Offset(2, 3),
+                    location = runLocation.at(2, 3),
                     name = "run",
                     returnType = IoTypeName.Result(),
                   ),
                 ),
               ),
             ),
+            location = runLocation,
           ),
         ),
       ),

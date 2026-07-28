@@ -4,28 +4,31 @@ package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Offset
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
 import dev.wasmo.brevity.WitException
-import dev.wasmo.brevity.WitSyntaxException
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
 @WitCoreInternalApi
 class WitSyntaxReader(
+  private val baseLocation: Location,
   private val chars: CharArray,
 ) {
-  constructor(string: String) : this(string.toCharArray())
+  constructor(
+    baseLocation: Location,
+    string: String,
+  ) : this(baseLocation, string.toCharArray())
 
   private var documentation: StringBuilder? = null
   private var pos = 0
   private var line = 0
   private var lineStart = 0
 
-  val offset: Offset
-    get() = Offset(line + 1, pos - lineStart + 1)
+  val location: Location
+    get() = baseLocation.at(line + 1, pos - lineStart + 1)
 
   val exhausted: Boolean
     get() = pos == chars.size
@@ -48,7 +51,7 @@ class WitSyntaxReader(
     val oldLine = line
     val oldLineStart = lineStart
 
-    var failure: WitSyntaxException? = null
+    var failure: WitException? = null
 
     for (option in options) {
       documentation = oldDocumentation?.let { StringBuilder(it) }
@@ -58,7 +61,7 @@ class WitSyntaxReader(
 
       try {
         return option()
-      } catch (e: WitSyntaxException) {
+      } catch (e: WitException) {
         if (failure == null) failure = e
         else failure.addSuppressed(e)
       }
@@ -332,7 +335,6 @@ class WitSyntaxReader(
    * ```
    */
   fun readPackageName(): PackageName {
-    val offset = this@WitSyntaxReader.offset
     val namespaces = mutableListOf<Identifier>()
     val names = mutableListOf<Identifier>()
 
@@ -342,7 +344,7 @@ class WitSyntaxReader(
       namespaces += identifier
       identifier = readIdentifier()
     }
-    checkWit(namespaces.isNotEmpty(), offset) {
+    checkWit(namespaces.isNotEmpty(), location) {
       "expected package name to contain a ':'"
     }
     while (peek() == '/') {
@@ -395,7 +397,7 @@ class WitSyntaxReader(
       return UsePath(name = identifier)
     }
 
-    checkWit(namespaces.isNotEmpty() && packageNames.isNotEmpty(), offset) {
+    checkWit(namespaces.isNotEmpty() && packageNames.isNotEmpty(), location) {
       "must have a namespace and a package name, or neither"
     }
 
@@ -507,30 +509,13 @@ class WitSyntaxReader(
   }
 
   internal inline fun checkWit(value: Boolean, message: () -> String) {
-    checkWit(value, offset, message)
+    checkWit(value, location, message)
   }
 }
 
 internal inline fun checkWit(
   value: Boolean,
-  offset: Offset? = null,
-  message: () -> String,
-) {
-  contract {
-    returns() implies value
-  }
-  if (!value) {
-    throw WitSyntaxException(
-      description = message(),
-      offset = offset,
-    )
-  }
-}
-
-internal inline fun checkWit(
-  value: Boolean,
-  path: String,
-  offset: Offset? = null,
+  location: Location,
   message: () -> String,
 ) {
   contract {
@@ -539,15 +524,17 @@ internal inline fun checkWit(
   if (!value) {
     throw WitException(
       description = message(),
-      path = path,
-      offset = offset,
+      location = location,
     )
   }
 }
 
 
-internal fun errorWit(offset: Offset, message: String): Nothing {
-  throw WitSyntaxException(description = message, offset = offset)
+internal fun errorWit(location: Location, message: String): Nothing {
+  throw WitException(
+    description = message,
+    location = location,
+  )
 }
 
 internal fun CharArray.indexOf(substring: String, fromIndex: Int): Int {
