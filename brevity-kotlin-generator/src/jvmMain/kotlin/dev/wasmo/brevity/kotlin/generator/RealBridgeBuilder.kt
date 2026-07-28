@@ -3,88 +3,60 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.NameAllocator
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.kotlin.encoders.BridgeBuilder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
-import dev.wasmo.brevity.kotlin.encoders.EncodeBuilder
+import dev.wasmo.brevity.kotlin.encoders.FlatEncoder
 import dev.wasmo.brevity.kotlin.encoders.Encoder
 import dev.wasmo.brevity.kotlin.encoders.Platform
 import dev.wasmo.brevity.kotlin.encoders.byteCount
 
-/**
- * Generates encode or decode logic for a single receiver, parameter, or return value.
- *
- * When lowering:
- *
- *  * Call [take] once for each [CoreType] that this value is lowered to.
- *  * Call [put] exactly once.
- *
- * When lifting:
- *
- *  * Call [take] exactly once.
- *  * Call [put] once for each [CoreType] that this value is lifted from.
- *
- * Additional statements may be added to [code].
- */
-class RealEncodeBuilder(
+class RealBridgeBuilder(
   override val bridge: CodeBlock,
   override val nameAllocator: NameAllocator,
   override val code: CodeBlock.Builder,
   override val platform: Platform,
-) : EncodeBuilder {
-  private val inputs = mutableListOf<CodeBlock>()
-  private val outputs = mutableListOf<CodeBlock>()
+) : BridgeBuilder {
   internal var memoryAllocator: String? = null
 
   override fun allocate(byteCount: CodeBlock): CodeBlock {
-    val memoryAllocator = this.memoryAllocator
+    val memoryAllocator = this@RealBridgeBuilder.memoryAllocator
       ?: nameAllocator.newName("memoryAllocator")
         .also { memoryAllocator = it }
     return platform.allocate(memoryAllocator, byteCount)
   }
 
-  override fun take(): CodeBlock {
-    return inputs.removeFirstOrNull()
-      ?: error("unexpected call to take(), input count mismatch?")
-  }
-
-  override fun put(value: CodeBlock) {
-    outputs += value
-  }
-
-  fun lower(value: CodeBlock, encoder: Encoder): List<CodeBlock> {
-    inputs += value
-
+  override fun lowerFlat(value: CodeBlock, encoder: Encoder): List<CodeBlock> {
+    val encodeBuilder = RealFlatEncoder(mutableListOf(value))
     with(encoder) {
-      valueToCoreType()
+      encodeBuilder.lowerFlat()
     }
 
-    check(inputs.isEmpty()) {
+    check(encodeBuilder.inputs.isEmpty()) {
       "expected 1 call to take(), but was 0"
     }
 
-    check(outputs.size == encoder.coreTypes.size) {
-      "expected ${encoder.coreTypes.size} calls to put(), but was ${outputs.size}"
+    check(encodeBuilder.outputs.size == encoder.coreTypes.size) {
+      "expected ${encoder.coreTypes.size} calls to put(), but was ${encodeBuilder.outputs.size}"
     }
 
-    return outputs.toList()
-      .also { outputs.clear() }
+    return encodeBuilder.outputs.toList()
   }
 
-  fun lift(values: List<CodeBlock>, encoder: Encoder): CodeBlock {
-    inputs += values
-
+  override fun liftFlat(values: List<CodeBlock>, encoder: Encoder): CodeBlock {
+    val encodeBuilder = RealFlatEncoder(values.toMutableList())
     with(encoder) {
-      coreTypeToValue()
+      encodeBuilder.liftFlat()
     }
 
-    check(inputs.isEmpty()) {
-      "expected ${values.size} calls to take(), but was ${values.size - inputs.size}"
+    check(encodeBuilder.inputs.isEmpty()) {
+      "expected ${values.size} calls to take(), but was ${values.size - encodeBuilder.inputs.size}"
     }
 
-    check(outputs.size == 1) {
-      "expected 1 call to put(), but was ${outputs.size}"
+    check(encodeBuilder.outputs.size == 1) {
+      "expected 1 call to put(), but was ${encodeBuilder.outputs.size}"
     }
 
-    return outputs.removeFirst()
+    return encodeBuilder.outputs.single()
   }
 
   /** When there's multiple core values to return, write them to memory and return a pointer. */
@@ -163,5 +135,20 @@ class RealEncodeBuilder(
     }
 
     return result
+  }
+
+  private inner class RealFlatEncoder(
+    val inputs: MutableList<CodeBlock>,
+  ) : FlatEncoder, BridgeBuilder by this@RealBridgeBuilder {
+    val outputs = mutableListOf<CodeBlock>()
+
+    override fun take(): CodeBlock {
+      return inputs.removeFirstOrNull()
+        ?: error("unexpected call to take(), input count mismatch?")
+    }
+
+    override fun put(value: CodeBlock) {
+      outputs += value
+    }
   }
 }

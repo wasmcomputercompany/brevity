@@ -38,7 +38,7 @@ internal class HostFunctionFactory(
 
   private val code = CodeBlock.Builder()
 
-  private val encodeBuilder = RealEncodeBuilder(
+  private val bridgeBuilder = RealBridgeBuilder(
     bridge = bridge,
     nameAllocator = nameAllocator,
     code = code,
@@ -56,7 +56,7 @@ internal class HostFunctionFactory(
         for ((p, parameter) in value.parameters.withIndex()) {
           val coreParameter = coreParameters[p]
           addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
-          val loweredParameters = encodeBuilder.lower(
+          val loweredParameters = bridgeBuilder.lowerFlat(
             value = CodeBlock.of("%N", nameAllocator[parameter.name]),
             encoder = coreParameter.encoder,
           )
@@ -84,10 +84,10 @@ internal class HostFunctionFactory(
 
             else -> {
               val result = longToCoreType(coreResult.name, 0, CoreType.Pointer)
-              encodeBuilder.unflattenResult(result, coreResult)
+              bridgeBuilder.unflattenResult(result, coreResult)
             }
           }
-          val liftedReturnValue = encodeBuilder.lift(
+          val liftedReturnValue = bridgeBuilder.liftFlat(
             values = coreReturnValues,
             encoder = coreResult.encoder,
           )
@@ -126,7 +126,7 @@ internal class HostFunctionFactory(
       is Receiver.Instance -> receiver.codeBlock
     }
     for (coreParameter in coreParameters) {
-      liftedParameterValues += encodeBuilder.lift(
+      liftedParameterValues += bridgeBuilder.liftFlat(
         values = coreParameter.encoder.coreTypes.map { coreType ->
           longToCoreType("args", argIndex++, coreType)
         },
@@ -150,7 +150,7 @@ internal class HostFunctionFactory(
 
     val returnValType: CoreType?
     if (coreResult != null) {
-      val loweredReturnValues = encodeBuilder.lower(
+      val loweredReturnValues = bridgeBuilder.lowerFlat(
         value = CodeBlock.of("%N", coreResult.name),
         encoder = coreResult.encoder,
       )
@@ -161,7 +161,7 @@ internal class HostFunctionFactory(
             coreResult.parameter.name,
             longToCoreType("args", argIndex++, CoreType.Pointer),
           )
-          encodeBuilder.storeResultInMemory(
+          bridgeBuilder.storeResultInMemory(
             returnValues = loweredReturnValues,
             coreResult = coreResult,
             address = coreResult.parameter.name,

@@ -25,11 +25,11 @@ class EncoderFactory(
         override val coreTypes: List<CoreType>
           get() = listOf(CoreType.I64)
 
-        override fun EncodeBuilder.coreTypeToValue() {
+        override fun FlatEncoder.liftFlat() {
           put(take())
         }
 
-        override fun EncodeBuilder.valueToCoreType() {
+        override fun FlatEncoder.lowerFlat() {
           put(take())
         }
       }
@@ -44,7 +44,7 @@ class EncoderFactory(
       TypeName.String -> StringEncoder
 
       is TypeName.Stream -> FallbackEncoder(typeName, CoreType.I32)
-      is TypeName.Tuple -> FallbackEncoder(typeName, CoreType.I32) // TODO: Record.
+      is TypeName.Tuple -> TupleEncoder(typeName.types.map { element -> get(element) })
       is TypeName.Borrow -> FallbackEncoder(typeName, CoreType.I32)
       is TypeName.Declared -> {
         val declaredType = declarationIndex[typeName]
@@ -63,7 +63,12 @@ class EncoderFactory(
       is TypeName.List -> ListEncoder(typeName)
       is TypeName.Map -> FallbackEncoder(typeName, CoreType.I32) // TODO: List<Tuple>.
       is TypeName.Option -> FallbackEncoder(typeName, CoreType.I32) // TODO: Variant.
-      is TypeName.Result -> FallbackEncoder(typeName, CoreType.I32) // TODO: Tuple.
+      is TypeName.Result -> TupleEncoder(
+        listOf(
+          typeName.ok?.let { get(it) } ?: FallbackEncoder(TypeName.S32, CoreType.I32),
+          typeName.err?.let { get(it) } ?: FallbackEncoder(TypeName.S32, CoreType.I32),
+        ),
+      )
     }
   }
 }

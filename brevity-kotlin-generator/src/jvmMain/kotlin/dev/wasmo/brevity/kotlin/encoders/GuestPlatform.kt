@@ -7,29 +7,29 @@ import dev.wasmo.brevity.kotlin.generator.handleName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
 internal object GuestPlatform : Platform {
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun allocate(
     memoryAllocatorName: String,
     byteCount: CodeBlock,
   ) = CodeBlock.of("%N.allocate(%L)", memoryAllocatorName, byteCount)
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun liftAddress(address: CodeBlock) =
     CodeBlock.of("%T(%L.toUInt())", Symbols.KotlinWasm.Pointer, address)
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun lowerAddress(address: CodeBlock) =
     CodeBlock.of("%L.address.toInt()", address)
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun liftResource(id: CodeBlock, handleType: TypeName.Declared) =
     CodeBlock.of("%L.fromId(%L, ::%T)", builder.bridge, id, handleType.handleName)
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =
     CodeBlock.of("%L.toId<%T>(%L)", builder.bridge, handleType.kotlinApi, resource)
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun loadString(address: CodeBlock, byteCount: CodeBlock): CodeBlock {
     return CodeBlock.of(
       "%T(%L.toUInt()).%M(%L)",
@@ -40,7 +40,7 @@ internal object GuestPlatform : Platform {
     )
   }
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun storeString(string: CodeBlock): Pair<CodeBlock, CodeBlock> {
     val byteArray = builder.nameAllocator.newName("byteArray")
     val address = builder.nameAllocator.newName("address")
@@ -66,7 +66,7 @@ internal object GuestPlatform : Platform {
     return CodeBlock.of("%N.address.toInt()", address) to CodeBlock.of("%N.size", byteArray)
   }
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -85,7 +85,7 @@ internal object GuestPlatform : Platform {
     )
   }
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun store(
     baseAddress: CodeBlock,
     offset: Int,

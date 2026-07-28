@@ -6,19 +6,19 @@ import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
 internal object HostPlatform : Platform {
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun allocate(
     memoryAllocatorName: String,
     byteCount: CodeBlock,
   ) = CodeBlock.of("%L.allocate(%L)", builder.bridge, byteCount)
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun lowerAddress(address: CodeBlock) = address
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun liftAddress(address: CodeBlock) = address
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun liftResource(id: CodeBlock, handleType: TypeName.Declared) =
     CodeBlock.of(
       "%L.%M<%T>(%L)",
@@ -28,15 +28,15 @@ internal object HostPlatform : Platform {
       id,
     )
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =
     CodeBlock.of("%L.toId<%T>(%L)", builder.bridge, handleType.kotlinApi, resource)
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun loadString(address: CodeBlock, byteCount: CodeBlock) =
     CodeBlock.of("%L.memory.readString(%L, %L)", builder.bridge, address, byteCount)
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun storeString(string: CodeBlock): Pair<CodeBlock, CodeBlock> {
     val byteArray = builder.nameAllocator.newName("byteArray")
     val pointer = builder.nameAllocator.newName("pointer")
@@ -62,7 +62,7 @@ internal object HostPlatform : Platform {
     return CodeBlock.of("%N", pointer) to CodeBlock.of("%N.size", byteArray)
   }
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -82,7 +82,7 @@ internal object HostPlatform : Platform {
     )
   }
 
-  context(builder: EncodeBuilder)
+  context(builder: BridgeBuilder)
   override fun store(
     baseAddress: CodeBlock,
     offset: Int,
