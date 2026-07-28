@@ -5,7 +5,20 @@ package dev.wasmo.brevity
  */
 class WitException(
   val issue: Issue,
-) : IllegalStateException("${issue.description} at ${issue.location}") {
+) : IllegalStateException(
+  buildString {
+    append(issue.description)
+
+    when (issue.locations.size) {
+      0 -> {}
+      1 -> append(" at ${issue.locations.first()}")
+      else -> for (location in issue.locations) {
+        appendLine()
+        append("\tat $location")
+      }
+    }
+  },
+) {
   constructor(
     description: String,
     location: Location,
@@ -15,7 +28,4 @@ class WitException(
       location = location,
     ),
   )
-
-  val location: Location
-    get() = issue.location
 }

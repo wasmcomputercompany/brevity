@@ -14,35 +14,36 @@ import dev.wasmo.brevity.toPackageName
 import kotlin.test.assertFailsWith
 import org.junit.Test
 
-class ValidationTest {
+class ValidateUniquePackageNamesTest {
   @Test
   fun producesPackageNameMapWhenSuccessful() {
+    val cliLocation = Location("")
     val cliPackage = IoToplevelWitPackage(
       packageName = "wasi:cli".toPackageName(),
       files = listOf(
         IoWitFile(
+location = cliLocation,
           packageName = "wasi:cli".toPackageName(),
-          location = Location("cli.wit"),
-        ),
-      ),
-    )
-    val inlinePackage = IoInlinePackage(
-      packageName = "wasi:inline".toPackageName(),
-      location = Location("file.wit").at(1, 2),
-      declarations = emptyList(),
+        )
+      )
     )
     val otherLocation = Location("other/other.wit")
+    val inlinePackage = IoInlinePackage(
+      packageName = "wasi:inline".toPackageName(),
+      location = otherLocation.at(1, 2),
+      declarations = emptyList(),
+    )
     val otherPackage = IoToplevelWitPackage(
       packageName = "wasi:other".toPackageName(),
       files = listOf(
         IoWitFile(
+location = otherLocation,
           packageName = "wasi:other".toPackageName(),
           items = listOf(
-            inlinePackage,
-          ),
-          location = otherLocation,
-        ),
-      ),
+            inlinePackage
+          )
+        )
+      )
     )
     val packages = listOf(cliPackage, otherPackage)
 
@@ -62,39 +63,37 @@ class ValidationTest {
       packageName = "wasi:cli".toPackageName(),
       files = listOf(
         IoWitFile(
+location = cliLocation,
           packageName = "wasi:cli".toPackageName(),
-          location = cliLocation,
-        ),
-      ),
+        )
+      )
     )
     val otherLocation = Location("other/other.wit")
+    val inlinePackage = IoInlinePackage(
+      packageName = "wasi:cli".toPackageName(),
+      location = otherLocation.at(1, 2),
+      declarations = emptyList(),
+    )
     val otherPackage = IoToplevelWitPackage(
       packageName = "wasi:other".toPackageName(),
       files = listOf(
         IoWitFile(
+location = otherLocation,
           packageName = "wasi:other".toPackageName(),
           items = listOf(
-            IoInlinePackage(
-              packageName = "wasi:cli".toPackageName(),
-              location = otherLocation.at(1, 2),
-              declarations = emptyList(),
-            ),
-          ),
-          location = otherLocation,
-        ),
-      ),
+            inlinePackage
+          )
+        )
+      )
     )
     val exception = assertFailsWith<WitException> {
       validateUniquePackageNames(listOf(cliPackage, otherPackage))
     }
 
-    assertThat(exception.message).isEqualTo(
-      """
+    assertThat(exception.message).isEqualTo("""
       |Duplicate definitions of wasi:cli
       |${"\t"}at cli.wit
-      |${"\t"}at other/other.wit:1:2
-      """.trimMargin(),
-    )
+      |${"\t"}at other/other.wit:1:2""".trimMargin())
 
     assertThat(exception.issue.locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
@@ -109,39 +108,40 @@ class ValidationTest {
       packageName = "wasi:cli".toPackageName(),
       files = listOf(
         IoWitFile(
+location = cliLocation,
           packageName = "wasi:cli".toPackageName(),
-          location = cliLocation,
-        ),
-      ),
+        )
+      )
     )
     val otherLocation = Location("other/other.wit")
+    val inlinePackage = IoInlinePackage(
+      packageName = "wasi:cli".toPackageName(),
+      location = otherLocation.at(1, 2),
+      declarations = emptyList(),
+    )
+    val anotherInlinePackage = IoInlinePackage(
+      packageName = "wasi:other".toPackageName(),
+      location = otherLocation.at(1, 2),
+      declarations = emptyList(),
+    )
     val otherPackage = IoToplevelWitPackage(
       packageName = "wasi:other".toPackageName(),
       files = listOf(
         IoWitFile(
+location = otherLocation,
           packageName = "wasi:other".toPackageName(),
           items = listOf(
-            IoInlinePackage(
-              packageName = "wasi:cli".toPackageName(),
-              location = otherLocation.at(1, 2),
-              declarations = emptyList(),
-            ),
-            IoInlinePackage(
-              packageName = "wasi:other".toPackageName(),
-              location = otherLocation.at(1, 2),
-              declarations = emptyList(),
-            ),
-          ),
-          location = otherLocation,
-        ),
-      ),
+            inlinePackage,
+            anotherInlinePackage,
+          )
+        )
+      )
     )
     val exception = assertFailsWith<WitCompoundException> {
       validateUniquePackageNames(listOf(cliPackage, otherPackage))
     }
 
-    assertThat(exception.message).isEqualTo(
-      """
+    assertThat(exception.message).isEqualTo("""
       |Multiple issues found:
       |Duplicate definitions of wasi:cli
       |${"\t"}at cli.wit
@@ -149,18 +149,17 @@ class ValidationTest {
       |Duplicate definitions of wasi:other
       |${"\t"}at other/other.wit
       |${"\t"}at other/other.wit:1:2
-      |""".trimMargin(),
-    )
+      |""".trimMargin())
 
     val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitException>()
 
     assertThat(firstException.issue.locations).containsExactlyInAnyOrder(
-      cliLocation,
       otherLocation.at(1, 2),
+      cliLocation,
     )
     assertThat(secondException.issue.locations).containsExactlyInAnyOrder(
-      otherLocation,
       otherLocation.at(1, 2),
+      otherLocation,
     )
   }
 }
