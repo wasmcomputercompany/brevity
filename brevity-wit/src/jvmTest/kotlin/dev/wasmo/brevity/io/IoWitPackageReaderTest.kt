@@ -51,9 +51,9 @@ class IoToplevelWitPackageReaderTest {
     }
     val packageReader = IoWitPackageReader(fileSystem)
     val ioWitPackage = packageReader.read(directory)
-    val commandLocation = Location("command.wit")
-    val exitLocation = Location("exit.wit")
-    val runLocation = Location("run.wit")
+    val commandLocation = Location("my-package/command.wit")
+    val exitLocation = Location("my-package/exit.wit")
+    val runLocation = Location("my-package/run.wit")
 
     assertThat(ioWitPackage).isEqualTo(
       IoToplevelWitPackage(
