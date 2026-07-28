@@ -46,7 +46,7 @@ internal class GuestFunctionFactory(
 
   private val code = CodeBlock.Builder()
 
-  private val encodeBuilder = RealEncodeBuilder(
+  private val bridgeBuilder = RealBridgeBuilder(
     bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
     nameAllocator = nameAllocator,
     code = code,
@@ -65,7 +65,7 @@ internal class GuestFunctionFactory(
 
         for ((index, parameter) in value.parameters.withIndex()) {
           addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
-          loweredParameters += encodeBuilder.lower(
+          loweredParameters += bridgeBuilder.lowerFlat(
             value = CodeBlock.of("%N", nameAllocator[parameter.name]),
             encoder = coreParameters[index].encoder,
           )
@@ -74,8 +74,8 @@ internal class GuestFunctionFactory(
         if (coreResult != null) {
           when {
             coreResult.parameter != null -> {
-              encodeBuilder.allocate(coreResult, coreResult.parameter.name)
-              loweredParameters += with(encodeBuilder) {
+              bridgeBuilder.allocate(coreResult, coreResult.parameter.name)
+              loweredParameters += with(bridgeBuilder) {
                 platform.lowerAddress(CodeBlock.of("%N", coreResult.parameter.name))
               }
             }
@@ -98,14 +98,14 @@ internal class GuestFunctionFactory(
           returns(coreResult.type.kotlinApi)
           val coreReturnValues = when {
             coreResult.parameter != null -> {
-              encodeBuilder.loadResultFromMemory(coreResult.parameter.name, coreResult)
+              bridgeBuilder.loadResultFromMemory(coreResult.parameter.name, coreResult)
             }
 
             else -> {
               listOf(CodeBlock.of("%N", coreResult.name))
             }
           }
-          val liftedReturnValue = encodeBuilder.lift(
+          val liftedReturnValue = bridgeBuilder.liftFlat(
             values = coreReturnValues,
             encoder = coreResult.encoder,
           )
@@ -156,7 +156,7 @@ internal class GuestFunctionFactory(
         val liftedReceiver = when (receiver) {
           is Receiver.Id -> {
             addParameters(coreReceiver!!.specs)
-            encodeBuilder.lift(
+            bridgeBuilder.liftFlat(
               values = coreReceiver.names.map { CodeBlock.of("%N", it) },
               encoder = coreReceiver.encoder,
             )
@@ -168,7 +168,7 @@ internal class GuestFunctionFactory(
         val liftedParameterValues = mutableListOf<CodeBlock>()
         for (coreParameter in coreParameters) {
           addParameters(coreParameter.specs)
-          liftedParameterValues += encodeBuilder.lift(
+          liftedParameterValues += bridgeBuilder.liftFlat(
             values = coreParameter.names.map { CodeBlock.of("%N", it) },
             encoder = coreParameter.encoder,
           )
@@ -184,7 +184,7 @@ internal class GuestFunctionFactory(
         code.add("⇤)\n")
 
         if (coreResult != null) {
-          val loweredReturnValues = encodeBuilder.lower(
+          val loweredReturnValues = bridgeBuilder.lowerFlat(
             value = CodeBlock.of("%N", coreResult.name),
             encoder = coreResult.encoder,
           )
@@ -196,7 +196,7 @@ internal class GuestFunctionFactory(
 
             else -> {
               returns(CoreType.Pointer.kotlinCoreType)
-              encodeBuilder.flattenResult(loweredReturnValues, coreResult)
+              bridgeBuilder.flattenResult(loweredReturnValues, coreResult)
             }
           }
           code.add("return %L\n", flattenedReturnValue)
@@ -207,7 +207,7 @@ internal class GuestFunctionFactory(
   }
 
   private fun buildCodeBlock(): CodeBlock {
-    val memoryAllocator = encodeBuilder.memoryAllocator
+    val memoryAllocator = bridgeBuilder.memoryAllocator
     return when {
       memoryAllocator != null -> com.squareup.kotlinpoet.buildCodeBlock {
         beginControlFlow(

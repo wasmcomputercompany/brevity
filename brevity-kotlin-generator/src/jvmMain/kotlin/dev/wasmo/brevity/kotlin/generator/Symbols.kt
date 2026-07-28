@@ -26,6 +26,7 @@ object Symbols {
 
   object KotlinCollections {
     val List = ClassName("kotlin.collections", "List")
+    val ListOf = MemberName("kotlin.collections", "listOf")
     val Map = ClassName("kotlin.collections", "Map")
   }
 

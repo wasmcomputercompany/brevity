@@ -292,6 +292,7 @@ class KotlinGeneratorTest {
       |import kotlin.wasm.WasmExport
       |import kotlin.wasm.unsafe.ComponentModelInternalApi
       |import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
+      |import kotlin.wasm.unsafe.withScopedMemoryAllocator
       |
       |private lateinit var guest_: Command.Guest
       |
@@ -303,9 +304,15 @@ class KotlinGeneratorTest {
       |
       |@WasmExport("wasi:cli/run@0.3.0#run")
       |private fun run_run_export(): Int {
-      |  val result = guest_.run.run(
-      |  )
-      |  return (result as Int)
+      |  withScopedMemoryAllocator { memoryAllocator ->
+      |    val result = guest_.run.run(
+      |    )
+      |    val tuple = result
+      |    val resultAddress = memoryAllocator.allocate(8)
+      |    resultAddress.storeInt((tuple.first as Int))
+      |    (resultAddress + 4).storeInt((tuple.second as Int))
+      |    return resultAddress.address.toInt()
+      |  }
       |}
       |
       """.trimMargin(),
@@ -409,13 +416,13 @@ class KotlinGeneratorTest {
       |        "wasi:cli/exit@0.3.0",
       |        "exit",
       |        FunctionType.of(
-      |          listOf(ValType.I32),
+      |          listOf(ValType.I32, ValType.I32),
       |          listOf(),
       |        ),
       |        WasmFunctionHandle { instance, args ->
       |          val self = host.exit
       |          self.exit(
-      |            status = (args[0].toInt() as Pair<*, *>),
+      |            status = ((args[0].toInt() as Int) to (args[1].toInt() as Int)),
       |          )
       |          return@WasmFunctionHandle longArrayOf()
       |        },
@@ -452,8 +459,10 @@ class KotlinGeneratorTest {
       |  internal lateinit var exit: ExportFunction
       |
       |  override fun exit(status: Pair<*, *>) {
+      |    val tuple = status
       |    exit.apply(
-      |      (status as Int).toLong(),
+      |      (tuple.first as Int).toLong(),
+      |      (tuple.second as Int).toLong(),
       |    )
       |  }
       |}
@@ -480,13 +489,13 @@ class KotlinGeneratorTest {
       |        "wasi:cli/exit@0.3.0",
       |        "exit",
       |        FunctionType.of(
-      |          listOf(ValType.I32),
+      |          listOf(ValType.I32, ValType.I32),
       |          listOf(),
       |        ),
       |        WasmFunctionHandle { instance, args ->
       |          val self = host.exit
       |          self.exit(
-      |            status = (args[0].toInt() as Pair<*, *>),
+      |            status = ((args[0].toInt() as Int) to (args[1].toInt() as Int)),
       |          )
       |          return@WasmFunctionHandle longArrayOf()
       |        },
@@ -509,7 +518,10 @@ class KotlinGeneratorTest {
       |  override fun run(): Pair<*, *> {
       |    val result = run.apply(
       |    )
-      |    return (result[0].toInt() as Pair<*, *>)
+      |    val resultAddress = result[0].toInt()
+      |    val result_ = bridge.memory.readInt(resultAddress)
+      |    val result__ = bridge.memory.readInt(resultAddress + 4)
+      |    return ((result_ as Int) to (result__ as Int))
       |  }
       |}
       |
