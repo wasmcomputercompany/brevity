@@ -20,7 +20,7 @@ class IoWitPackageReader(
       .filter { it.name.endsWith(".wit", ignoreCase = true) }
       .map { path ->
         fileSystem.read(path) {
-          val location = Location(path.relativeTo(directory))
+          val location = Location(path.relativeTo(directory.baseDirectory))
           readUtf8().toWitFile(location)
         }
       }
