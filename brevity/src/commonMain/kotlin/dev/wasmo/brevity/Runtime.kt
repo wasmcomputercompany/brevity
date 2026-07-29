@@ -20,3 +20,13 @@ class Borrow<T : Any>(val value: T) {
 interface Stream<T : Any> {
   fun next(): T
 }
+
+sealed interface Result<out S, out F> {
+  data class Ok<out S, out F>(
+    val value: S,
+  ) : Result<S, F>
+
+  data class Error<out S, out F>(
+    val value: F,
+  ) : Result<S, F>
+}

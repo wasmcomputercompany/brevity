@@ -47,7 +47,7 @@ sealed class IoTypeName {
 
   data class Result(
     val ok: IoTypeName? = null,
-    val err: IoTypeName? = null,
+    val error: IoTypeName? = null,
   ) : IoTypeName()
 
   data class Map(

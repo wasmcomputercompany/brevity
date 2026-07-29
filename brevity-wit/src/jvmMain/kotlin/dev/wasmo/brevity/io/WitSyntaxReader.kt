@@ -266,7 +266,7 @@ class WitSyntaxReader(
             else -> readTypeName()
           }
           skipWhitespace()
-          val err = when {
+          val error = when {
             tryReadLiteral(',') -> {
               skipWhitespace()
               readTypeName()
@@ -276,7 +276,7 @@ class WitSyntaxReader(
           }
           skipWhitespace()
           readLiteral('>')
-          IoTypeName.Result(ok, err)
+          IoTypeName.Result(ok, error)
         } else {
           IoTypeName.Result()
         }

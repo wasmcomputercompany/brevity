@@ -82,11 +82,9 @@ class EncoderFactory(
 
       is TypeName.Map -> FallbackEncoder(typeName, CoreType.I32) // TODO: List<Tuple>.
       is TypeName.Option -> OptionalEncoder(get(typeName.type))
-      is TypeName.Result -> PairEncoder(
-        listOf(
-          typeName.ok?.let { get(it) } ?: FallbackEncoder(TypeName.S32, CoreType.I32),
-          typeName.err?.let { get(it) } ?: FallbackEncoder(TypeName.S32, CoreType.I32),
-        ),
+      is TypeName.Result -> ResultEncoder(
+        ok = typeName.ok?.let { it.kotlinApi to get(it) },
+        error = typeName.error?.let { it.kotlinApi to get(it) },
       )
     }
   }

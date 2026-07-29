@@ -293,7 +293,7 @@ class IrMapper(
       is IoTypeName.List -> TypeName.List(type.typeNameToIr(), size)
       is IoTypeName.Map -> TypeName.Map(key.typeNameToIr(), value.typeNameToIr())
       is IoTypeName.Option -> TypeName.Option(type.typeNameToIr())
-      is IoTypeName.Result -> TypeName.Result(ok?.typeNameToIr(), err?.typeNameToIr())
+      is IoTypeName.Result -> TypeName.Result(ok?.typeNameToIr(), error?.typeNameToIr())
       is IoTypeName.Stream -> TypeName.Stream(type?.typeNameToIr())
       is IoTypeName.Tuple -> TypeName.Tuple(types.map { it.typeNameToIr() })
     }

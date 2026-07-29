@@ -114,9 +114,9 @@ val TypeName.kotlinApi: KtTypeName
       )
 
       is TypeName.Option -> type.kotlinApi.copy(nullable = true)
-      is TypeName.Result -> Symbols.Kotlin.Pair.parameterizedBy(
+      is TypeName.Result -> Symbols.Brevity.Result.parameterizedBy(
         ok?.kotlinApi ?: STAR,
-        err?.kotlinApi ?: STAR,
+        error?.kotlinApi ?: STAR,
       )
 
       is TypeName.Declared -> kotlinApi
