@@ -3,6 +3,7 @@ package dev.wasmo.brevity.ir
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
@@ -35,7 +36,10 @@ import dev.wasmo.brevity.io.validation.validateUniquePackageNames
 class IrMapper(
   private val packages: List<IoToplevelWitPackage>,
 ) {
-  private val packageNameToPackage = validateUniquePackageNames(packages)
+  // TODO: actually use the issue collector
+  private val packageNameToPackage = with(IssueCollector()) {
+    validateUniquePackageNames(packages)!!
+  }
   private val irPackages = mutableMapOf<PackageName, PackageBuilder>()
 
   internal class PackageBuilder {
