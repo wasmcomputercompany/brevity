@@ -8,6 +8,7 @@ import dev.wasmo.brevity.ir.IrRecord
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrVariant
+import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
 val MAX_FLAT_PARAMS = 16
 val MAX_FLAT_RESULTS = 1
@@ -57,7 +58,18 @@ class EncoderFactory(
       }
 
       is TypeName.Future -> FallbackEncoder(typeName, CoreType.I32)
-      is TypeName.List -> FallbackEncoder(typeName, CoreType.I32)
+      is TypeName.List -> {
+        when {
+          // TODO: Statically-sized lists.
+          typeName.size != null -> FallbackEncoder(typeName, CoreType.I32)
+
+          else -> DynamicListEncoder(
+            elementEncoder = get(typeName.type),
+            listType = typeName.kotlinApi,
+          )
+        }
+      }
+
       is TypeName.Map -> FallbackEncoder(typeName, CoreType.I32) // TODO: List<Tuple>.
       is TypeName.Option -> FallbackEncoder(typeName, CoreType.I32) // TODO: Variant.
       is TypeName.Result -> PairEncoder(
