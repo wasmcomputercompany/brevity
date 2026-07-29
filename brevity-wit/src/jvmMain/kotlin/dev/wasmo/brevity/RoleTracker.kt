@@ -249,7 +249,7 @@ internal class TypeTraverser(
 
         is TypeName.Result -> {
           collectTypeName(value.ok)
-          collectTypeName(value.err)
+          collectTypeName(value.error)
         }
 
         is TypeName.Stream -> collectTypeName(value.type)

@@ -39,7 +39,7 @@ object Symbols {
     val ExperimentalWasmInterop = ClassName("kotlin.wasm", "ExperimentalWasmInterop")
     val FreeAllComponentModelReallocAllocatedMemory = MemberName(
       "kotlin.wasm.unsafe",
-      "freeAllComponentModelReallocAllocatedMemory"
+      "freeAllComponentModelReallocAllocatedMemory",
     )
     val Pointer = ClassName("kotlin.wasm.unsafe", "Pointer")
     val UnsafeWasmMemoryApi = ClassName("kotlin.wasm.unsafe", "UnsafeWasmMemoryApi")
@@ -67,6 +67,9 @@ object Symbols {
     val LoadString = MemberName("dev.wasmo.brevity", "loadString")
     val Quad = ClassName("dev.wasmo.brevity", "Quad")
     val Resource = ClassName("dev.wasmo.brevity", "Resource")
+    val Result = ClassName("dev.wasmo.brevity", "Result")
+    val ResultError = Result.nestedClass("Error")
+    val ResultOk = Result.nestedClass("Ok")
     val StoreByteArray = MemberName("dev.wasmo.brevity", "storeByteArray")
     val Stream = ClassName("dev.wasmo.brevity", "Stream")
     val World = ClassName("dev.wasmo.brevity", "World")

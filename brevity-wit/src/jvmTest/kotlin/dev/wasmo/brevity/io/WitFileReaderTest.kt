@@ -227,7 +227,7 @@ class WitFileReaderTest {
                   ),
                 ),
                 returnType = IoTypeName.Result(
-                  err = IoTypeName.Declared("errno"),
+                  error = IoTypeName.Declared("errno"),
                 ),
               ),
               IoFunction(

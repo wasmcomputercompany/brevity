@@ -2,7 +2,10 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.ir.IrCase
+import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinName
 
 /**
@@ -281,6 +284,34 @@ class OptionalEncoder(
     return when (index) {
       0 -> null
       else -> value
+    }
+  }
+}
+
+class ResultEncoder(
+  private val ok: Pair<TypeName, Encoder>?,
+  private val error: Pair<TypeName, Encoder>?,
+) : AbstractVariantEncoder(listOf(ok?.second, error?.second)) {
+  override fun constructInstance(index: Int, value: CodeBlock?) =
+    CodeBlock.of(
+      "%T<%T, %T>(%L)",
+      rawType(index),
+      ok?.first ?: UNIT,
+      error?.first ?: UNIT,
+      value ?: UNIT,
+    )
+
+  override fun matchInstance(index: Int) =
+    CodeBlock.of("is %T", rawType(index))
+
+  override fun instanceValue(index: Int, value: CodeBlock) =
+    CodeBlock.of("%L.value", value)
+
+  private fun rawType(index: Int): TypeName {
+    return when (index) {
+      0 -> Symbols.Brevity.ResultOk
+      1 -> Symbols.Brevity.ResultError
+      else -> error("unexpected discriminator: $index")
     }
   }
 }

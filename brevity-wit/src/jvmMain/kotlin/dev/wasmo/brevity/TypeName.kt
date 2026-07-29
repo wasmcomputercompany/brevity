@@ -45,7 +45,7 @@ sealed class TypeName {
 
   data class Result(
     val ok: TypeName? = null,
-    val err: TypeName? = null,
+    val error: TypeName? = null,
   ) : TypeName()
 
   data class Map(

@@ -236,7 +236,7 @@ class KotlinGeneratorTest {
       |//   run.wit
       |package wit.wasi.cli.v0_3_0
       |
-      |import kotlin.Pair
+      |import dev.wasmo.brevity.Result
       |import kotlin.String
       |import kotlin.collections.List
       |
@@ -259,7 +259,7 @@ class KotlinGeneratorTest {
       |}
       |
       |public interface Exit {
-      |  public fun exit(status: Pair<*, *>)
+      |  public fun exit(status: Result<*, *>)
       |}
       |
       |public object Imports {
@@ -269,7 +269,7 @@ class KotlinGeneratorTest {
       |}
       |
       |public interface Run {
-      |  public fun run(): Pair<*, *>
+      |  public fun run(): Result<*, *>
       |}
       |
       """.trimMargin(),
@@ -286,13 +286,13 @@ class KotlinGeneratorTest {
       |
       |package wit.wasi.cli.v0_3_0
       |
+      |import dev.wasmo.brevity.Result
       |import kotlin.Int
       |import kotlin.OptIn
       |import kotlin.wasm.ExperimentalWasmInterop
       |import kotlin.wasm.WasmExport
       |import kotlin.wasm.unsafe.ComponentModelInternalApi
       |import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
-      |import kotlin.wasm.unsafe.withScopedMemoryAllocator
       |
       |private lateinit var guest_: Command.Guest
       |
@@ -304,14 +304,18 @@ class KotlinGeneratorTest {
       |
       |@WasmExport("wasi:cli/run@0.3.0#run")
       |private fun run_run_export(): Int {
-      |  withScopedMemoryAllocator { memoryAllocator ->
-      |    val result = guest_.run.run(
-      |    )
-      |    val resultAddress = memoryAllocator.allocate(8)
-      |    // TODO: store kotlin.Int
-      |    // TODO: store kotlin.Int
-      |    return resultAddress.address.toInt()
+      |  val result = guest_.run.run(
+      |  )
+      |  val variant = result
+      |  val discriminator = when (variant) {
+      |    is Result.Ok -> {
+      |      0
+      |    }
+      |    is Result.Error -> {
+      |      1
+      |    }
       |  }
+      |  return discriminator
       |}
       |
       """.trimMargin(),
@@ -336,8 +340,8 @@ class KotlinGeneratorTest {
       |import com.dylibso.chicory.wasm.types.FunctionType
       |import com.dylibso.chicory.wasm.types.ValType
       |import dev.wasmo.brevity.HostBridge
+      |import dev.wasmo.brevity.Result
       |import dev.wasmo.brevity.World
-      |import kotlin.Pair
       |import kotlin.String
       |import kotlin.Unit
       |import kotlin.collections.List
@@ -428,13 +432,22 @@ class KotlinGeneratorTest {
       |        "wasi:cli/exit@0.3.0",
       |        "exit",
       |        FunctionType.of(
-      |          listOf(ValType.I32, ValType.I32),
+      |          listOf(ValType.I32),
       |          listOf(),
       |        ),
       |        WasmFunctionHandle { instance, args ->
+      |          val variant = when (args[0].toInt()) {
+      |            0 -> {
+      |              Result.Ok<Unit, Unit>(kotlin.Unit)
+      |            }
+      |            1 -> {
+      |              Result.Error<Unit, Unit>(kotlin.Unit)
+      |            }
+      |            else -> error("unexpected case")
+      |          }
       |          val self = host.exit
       |          self.exit(
-      |            status = (TODO("lift kotlin.Int") to TODO("lift kotlin.Int")),
+      |            status = variant,
       |          )
       |          return@WasmFunctionHandle longArrayOf()
       |        },
@@ -478,11 +491,18 @@ class KotlinGeneratorTest {
       |) : Exit {
       |  internal lateinit var exit: ExportFunction
       |
-      |  override fun exit(status: Pair<*, *>) {
-      |    val tuple = status
+      |  override fun exit(status: Result<*, *>) {
+      |    val variant = status
+      |    val discriminator = when (variant) {
+      |      is Result.Ok -> {
+      |        0
+      |      }
+      |      is Result.Error -> {
+      |        1
+      |      }
+      |    }
       |    exit.apply(
-      |      TODO("lower kotlin.Int").toLong(),
-      |      TODO("lower kotlin.Int").toLong(),
+      |      discriminator.toLong(),
       |    )
       |  }
       |}
@@ -509,13 +529,22 @@ class KotlinGeneratorTest {
       |        "wasi:cli/exit@0.3.0",
       |        "exit",
       |        FunctionType.of(
-      |          listOf(ValType.I32, ValType.I32),
+      |          listOf(ValType.I32),
       |          listOf(),
       |        ),
       |        WasmFunctionHandle { instance, args ->
+      |          val variant = when (args[0].toInt()) {
+      |            0 -> {
+      |              Result.Ok<Unit, Unit>(kotlin.Unit)
+      |            }
+      |            1 -> {
+      |              Result.Error<Unit, Unit>(kotlin.Unit)
+      |            }
+      |            else -> error("unexpected case")
+      |          }
       |          val self = host.exit
       |          self.exit(
-      |            status = (TODO("lift kotlin.Int") to TODO("lift kotlin.Int")),
+      |            status = variant,
       |          )
       |          return@WasmFunctionHandle longArrayOf()
       |        },
@@ -535,10 +564,19 @@ class KotlinGeneratorTest {
       |) : Run {
       |  internal lateinit var run: ExportFunction
       |
-      |  override fun run(): Pair<*, *> {
+      |  override fun run(): Result<*, *> {
       |    val result = run.apply(
       |    )
-      |    return (TODO("load kotlin.Int") to TODO("load kotlin.Int"))
+      |    val variant = when (result[0].toInt()) {
+      |      0 -> {
+      |        Result.Ok<Unit, Unit>(kotlin.Unit)
+      |      }
+      |      1 -> {
+      |        Result.Error<Unit, Unit>(kotlin.Unit)
+      |      }
+      |      else -> error("unexpected case")
+      |    }
+      |    return variant
       |  }
       |}
       |
