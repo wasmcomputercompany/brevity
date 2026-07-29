@@ -14,6 +14,7 @@ import dev.wasmo.brevity.io.IoInterface
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.io.IoWorld
+import dev.wasmo.brevity.io.IrMapper
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test

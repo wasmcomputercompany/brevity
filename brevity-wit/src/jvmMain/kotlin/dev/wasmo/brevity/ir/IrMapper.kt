@@ -31,15 +31,18 @@ import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.io.IoWitPackage
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.UsePath
+import dev.wasmo.brevity.io.validation.ValidatedIoWitPackages
+import dev.wasmo.brevity.io.validation.validate
 import dev.wasmo.brevity.io.validation.validateUniquePackageNames
 
 class IrMapper(
-  private val packages: List<IoToplevelWitPackage>,
+  validatedIoWitPackages: ValidatedIoWitPackages,
 ) {
+  private val packages: List<IoToplevelWitPackage> = validatedIoWitPackages.toplevelPackages
+
   // TODO: actually use the issue collector
-  private val packageNameToPackage = with(IssueCollector()) {
-    validateUniquePackageNames(packages)!!
-  }
+  private val packageNameToPackage = validatedIoWitPackages.packageNameMap
+  private val serviceNameToService = validatedIoWitPackages.serviceNameMap
   private val irPackages = mutableMapOf<PackageName, PackageBuilder>()
 
   internal class PackageBuilder {
@@ -505,3 +508,7 @@ private val IoWitPackage.items: List<IoWitFile.Item>
  */
 private fun IoInterface.declaresApis(): Boolean =
   items.any { it is IoFunction }
+
+context(issueCollector: IssueCollector)
+fun IrMapper(toplevelWitPackages: List<IoToplevelWitPackage>): IrMapper? =
+  toplevelWitPackages.validate()?.let { IrMapper(it) }

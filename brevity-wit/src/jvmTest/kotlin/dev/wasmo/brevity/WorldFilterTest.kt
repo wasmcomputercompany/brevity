@@ -4,6 +4,7 @@ import assertk.assertThat
 import assertk.assertions.containsExactly
 import assertk.assertions.hasMessage
 import dev.wasmo.brevity.io.IoToplevelWitPackage
+import dev.wasmo.brevity.io.IrMapper
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.ir.IrWorld

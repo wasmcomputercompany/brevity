@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.generator
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.io.IoWitPackageReader
+import dev.wasmo.brevity.io.IrMapper
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import java.io.File
