@@ -13,11 +13,9 @@ internal object GuestPlatform : Platform {
     byteCount: CodeBlock,
   ) = CodeBlock.of("%N.allocate(%L)", memoryAllocatorName, byteCount)
 
-  context(builder: BridgeBuilder)
   override fun liftAddress(address: CodeBlock) =
     CodeBlock.of("%T(%L.toUInt())", Symbols.KotlinWasm.Pointer, address)
 
-  context(builder: BridgeBuilder)
   override fun lowerAddress(address: CodeBlock) =
     CodeBlock.of("%L.address.toInt()", address)
 
@@ -43,7 +41,7 @@ internal object GuestPlatform : Platform {
   context(builder: BridgeBuilder)
   override fun storeString(string: CodeBlock): Pair<CodeBlock, CodeBlock> {
     val byteArray = builder.nameAllocator.newName("byteArray")
-    val address = builder.nameAllocator.newName("address")
+    val address = builder.nameAllocator.newName("stringAddress")
 
     builder.code.addStatement(
       "val %N = %L.%M()",
@@ -63,7 +61,7 @@ internal object GuestPlatform : Platform {
       byteArray,
     )
 
-    return CodeBlock.of("%N.address.toInt()", address) to CodeBlock.of("%N.size", byteArray)
+    return lowerAddress(CodeBlock.of("%N", address)) to CodeBlock.of("%N.size", byteArray)
   }
 
   context(builder: BridgeBuilder)

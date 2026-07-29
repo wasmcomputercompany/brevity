@@ -17,30 +17,18 @@ class EncoderFactory(
 ) {
   fun get(typeName: TypeName): Encoder {
     return when (typeName) {
-      TypeName.Bool -> FallbackEncoder(typeName, CoreType.I32)
-      TypeName.S8 -> FallbackEncoder(typeName, CoreType.I32)
-      TypeName.S16 -> FallbackEncoder(typeName, CoreType.I32)
-      TypeName.S32 -> FallbackEncoder(typeName, CoreType.I32)
-      TypeName.S64 -> object : Encoder() {
-        override val coreTypes: List<CoreType>
-          get() = listOf(CoreType.I64)
-
-        override fun FlatEncoder.liftFlat() {
-          put(take())
-        }
-
-        override fun FlatEncoder.lowerFlat() {
-          put(take())
-        }
-      }
-
-      TypeName.U8 -> FallbackEncoder(typeName, CoreType.I32)
-      TypeName.U16 -> FallbackEncoder(typeName, CoreType.I32)
-      TypeName.U32 -> FallbackEncoder(typeName, CoreType.I32)
-      TypeName.U64 -> FallbackEncoder(typeName, CoreType.I64)
-      TypeName.F32 -> FallbackEncoder(typeName, CoreType.F32)
-      TypeName.F64 -> FallbackEncoder(typeName, CoreType.F64)
-      TypeName.Char -> FallbackEncoder(typeName, CoreType.I32)
+      TypeName.Bool -> BooleanEncoder
+      TypeName.S8 -> ByteEncoder
+      TypeName.S16 -> ShortEncoder
+      TypeName.S32 -> IntEncoder
+      TypeName.S64 -> LongEncoder
+      TypeName.U8 -> UByteEncoder
+      TypeName.U16 -> UShortEncoder
+      TypeName.U32 -> UIntEncoder
+      TypeName.U64 -> ULongEncoder
+      TypeName.F32 -> FloatEncoder
+      TypeName.F64 -> DoubleEncoder
+      TypeName.Char -> CharEncoder
       TypeName.String -> StringEncoder
 
       is TypeName.Stream -> FallbackEncoder(typeName, CoreType.I32)

@@ -12,11 +12,9 @@ interface Platform {
   fun allocate(memoryAllocatorName: String, byteCount: CodeBlock): CodeBlock
 
   /** Convert an I32 to a pointer. */
-  context(builder: BridgeBuilder)
   fun liftAddress(address: CodeBlock): CodeBlock
 
   /** Convert a pointer to an I32. */
-  context(builder: BridgeBuilder)
   fun lowerAddress(address: CodeBlock): CodeBlock
 
   /** Convert an ID to a Resource instance. */

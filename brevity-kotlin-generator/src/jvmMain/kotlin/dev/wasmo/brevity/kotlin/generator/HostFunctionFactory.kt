@@ -76,22 +76,20 @@ internal class HostFunctionFactory(
 
         if (coreResult != null) {
           returns(coreResult.type.kotlinApi)
-          val coreReturnValues = when (coreResult.encoder.coreTypes.size) {
-            1 -> {
-              val result = longToCoreType(coreResult.name, 0, coreResult.encoder.coreTypes.single())
-              listOf(result)
-            }
+          val returnValue = when (coreResult.encoder.coreTypes.size) {
+            1 -> bridgeBuilder.liftFlat(
+              values = listOf(
+                longToCoreType(coreResult.name, 0, coreResult.encoder.coreTypes.single()),
+              ),
+              encoder = coreResult.encoder,
+            )
 
-            else -> {
-              val result = longToCoreType(coreResult.name, 0, CoreType.Pointer)
-              bridgeBuilder.unflattenResult(result, coreResult)
-            }
+            else -> bridgeBuilder.loadValue(
+              longToCoreType(coreResult.name, 0, CoreType.Pointer),
+              coreResult,
+            )
           }
-          val liftedReturnValue = bridgeBuilder.liftFlat(
-            values = coreReturnValues,
-            encoder = coreResult.encoder,
-          )
-          code.add("return %L", liftedReturnValue)
+          code.add("return %L", returnValue)
         }
       }
       .addCode(code.build())
@@ -150,10 +148,6 @@ internal class HostFunctionFactory(
 
     val returnValType: CoreType?
     if (coreResult != null) {
-      val loweredReturnValues = bridgeBuilder.lowerFlat(
-        value = CodeBlock.of("%N", coreResult.name),
-        encoder = coreResult.encoder,
-      )
       when {
         coreResult.parameter != null -> {
           code.addStatement(
@@ -161,16 +155,20 @@ internal class HostFunctionFactory(
             coreResult.parameter.name,
             longToCoreType("args", argIndex++, CoreType.Pointer),
           )
-          bridgeBuilder.storeResultInMemory(
-            returnValues = loweredReturnValues,
+          bridgeBuilder.storeValue(
+            value = CodeBlock.of("%N", coreResult.name),
             coreResult = coreResult,
-            address = coreResult.parameter.name,
+            address = CodeBlock.of("%N", coreResult.parameter.name),
           )
           returnValType = null
           code.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
         }
 
         else -> {
+          val loweredReturnValues = bridgeBuilder.lowerFlat(
+            value = CodeBlock.of("%N", coreResult.name),
+            encoder = coreResult.encoder,
+          )
           returnValType = coreResult.encoder.coreTypes.single()
           code.add(
             "return@%T longArrayOf(%L)",
