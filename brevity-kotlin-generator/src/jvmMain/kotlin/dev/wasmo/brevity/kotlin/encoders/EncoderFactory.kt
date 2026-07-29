@@ -53,7 +53,12 @@ class EncoderFactory(
           is IrRecord -> FallbackEncoder(typeName, CoreType.I32) // TODO: RecordEncoder
           is IrResource -> ResourceEncoder(typeName)
           is IrTypeAlias -> FallbackEncoder(typeName, CoreType.I32) // TODO: target.
-          is IrVariant -> FallbackEncoder(typeName, CoreType.I32) // TODO: VariantEncoder
+          is IrVariant -> VariantEncoder(
+            type = declaredType,
+            cases = declaredType.cases.map { case ->
+              case.type?.let { get(it) }
+            },
+          )
         }
       }
 

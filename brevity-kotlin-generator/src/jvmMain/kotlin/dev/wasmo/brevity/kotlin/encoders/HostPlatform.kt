@@ -64,14 +64,16 @@ internal object HostPlatform : Platform {
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
-    type: CoreType,
+    type: IntegerType,
   ): CodeBlock {
     return CodeBlock.of(
       "%L.memory.%N(%L)",
       builder.bridge,
       when (type) {
-        CoreType.I64 -> "readLong"
-        else -> "readInt"
+        IntegerType.S8 -> "read"
+        IntegerType.S16 -> "readShort"
+        IntegerType.S32 -> "readInt"
+        IntegerType.S64 -> "readLong"
       },
       when {
         offset != 0 -> CodeBlock.of("%L + %L", baseAddress, offset)
@@ -84,15 +86,17 @@ internal object HostPlatform : Platform {
   override fun store(
     baseAddress: CodeBlock,
     offset: Int,
-    type: CoreType,
+    type: IntegerType,
     value: CodeBlock,
   ) {
     builder.code.addStatement(
       "%L.memory.%N(%L, %L)",
       builder.bridge,
       when (type) {
-        CoreType.I64 -> "writeLong"
-        else -> "writeI32"
+        IntegerType.S8 -> "writeByte"
+        IntegerType.S16 -> "writeShort"
+        IntegerType.S32 -> "writeI32"
+        IntegerType.S64 -> "writeLong"
       },
       when {
         offset != 0 -> CodeBlock.of("%L + %L", baseAddress, offset)

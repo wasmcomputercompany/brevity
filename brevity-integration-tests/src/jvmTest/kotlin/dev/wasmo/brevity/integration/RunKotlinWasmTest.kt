@@ -47,11 +47,11 @@ class RunKotlinWasmTest {
   }
 
   @Test
-  fun `call concatenate`() = runTest {
+  fun `call concatenate`(wasmSource: WasmSource) = runTest {
     val world = WasmoTesting.World { Unit }
     val wasiP1 = FakeWasi()
     val tester = WasmTester.Builder()
-      .wasmPath(WasmSource.Kotlin.path)
+      .wasmPath(wasmSource.path)
       .addWorld(Wasi.World({ wasiP1 }))
       .addWorld(Command.World { guest -> RealCommandHost(guest) })
       .addWorld(world)

@@ -23,8 +23,11 @@ class CoreValueFactory(
         nameHint != null -> nameAllocator.newName(
           Identifier("${name}-${nameHint.name}").toCamelCase(upperCamel = false),
         )
-
-        else -> nameAllocator[name]
+        index == 0 -> nameAllocator[name]
+        else -> nameAllocator.newName(
+          suggestion = "${name.toCamelCase(upperCamel = false)}${index + 1}",
+          tag = name to index,
+        )
       }
       specs += ParameterSpec(coreName, coreType.kotlinCoreType)
       names += coreName
