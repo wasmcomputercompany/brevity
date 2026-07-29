@@ -318,12 +318,10 @@ class IrMapper(
   internal fun IoTypeName.Declared.declaredTypeToIrOrNull(): TypeName.Declared? {
     val witPackage = packageNameToPackage[context.serviceName.packageName] ?: return null
     val declarations = sequence {
-      val items = witPackage.items
-      for (service in items) {
+      serviceNameToService[context.serviceName]?.let { service ->
         when (service) {
-          is IoInterface if service.name == context.serviceName.name -> yieldAll(service.items)
-          is IoWorld if service.name == context.serviceName.name -> yieldAll(service.items)
-          else -> {}
+          is IoInterface -> yieldAll(service.items)
+          is IoWorld -> yieldAll(service.items)
         }
       }
     }
