@@ -182,7 +182,7 @@ class KotlinGeneratorTest {
       |  override fun now(): WallClock.Datetime {
       |    val result = now.apply(
       |    )
-      |    return (result[0].toInt() as WallClock.Datetime)
+      |    return TODO("lift wit.wasi.clocks.v0_2_12.WallClock.Datetime")
       |  }
       |}
       |
@@ -308,7 +308,8 @@ class KotlinGeneratorTest {
       |    val result = guest_.run.run(
       |    )
       |    val resultAddress = memoryAllocator.allocate(8)
-      |    // TODO: TupleEncoder
+      |    // TODO: store kotlin.Int
+      |    // TODO: store kotlin.Int
       |    return resultAddress.address.toInt()
       |  }
       |}
@@ -336,7 +337,6 @@ class KotlinGeneratorTest {
       |import com.dylibso.chicory.wasm.types.ValType
       |import dev.wasmo.brevity.HostBridge
       |import dev.wasmo.brevity.World
-      |import kotlin.Int
       |import kotlin.Pair
       |import kotlin.String
       |import kotlin.Unit
@@ -388,7 +388,7 @@ class KotlinGeneratorTest {
       |        WasmFunctionHandle { instance, args ->
       |          val self = host
       |          val result = self.args()
-      |          return@WasmFunctionHandle longArrayOf((result as Int).toLong())
+      |          return@WasmFunctionHandle longArrayOf(TODO("lower kotlin.Int").toLong())
       |        },
       |      )
       |    )
@@ -420,7 +420,7 @@ class KotlinGeneratorTest {
       |        WasmFunctionHandle { instance, args ->
       |          val self = host.exit
       |          self.exit(
-      |            status = ((args[0].toInt() as Int) to (args[1].toInt() as Int)),
+      |            status = (TODO("lift kotlin.Int") to TODO("lift kotlin.Int")),
       |          )
       |          return@WasmFunctionHandle longArrayOf()
       |        },
@@ -446,7 +446,7 @@ class KotlinGeneratorTest {
       |    override fun args(): List<String> {
       |      val result = args.apply(
       |      )
-      |      return (result[0].toInt() as List<String>)
+      |      return TODO("lift kotlin.collections.List<kotlin.String>")
       |    }
       |  }
       |}
@@ -459,8 +459,8 @@ class KotlinGeneratorTest {
       |  override fun exit(status: Pair<*, *>) {
       |    val tuple = status
       |    exit.apply(
-      |      (tuple.first as Int).toLong(),
-      |      (tuple.second as Int).toLong(),
+      |      TODO("lower kotlin.Int").toLong(),
+      |      TODO("lower kotlin.Int").toLong(),
       |    )
       |  }
       |}
@@ -493,7 +493,7 @@ class KotlinGeneratorTest {
       |        WasmFunctionHandle { instance, args ->
       |          val self = host.exit
       |          self.exit(
-      |            status = ((args[0].toInt() as Int) to (args[1].toInt() as Int)),
+      |            status = (TODO("lift kotlin.Int") to TODO("lift kotlin.Int")),
       |          )
       |          return@WasmFunctionHandle longArrayOf()
       |        },
@@ -516,7 +516,7 @@ class KotlinGeneratorTest {
       |  override fun run(): Pair<*, *> {
       |    val result = run.apply(
       |    )
-      |    return TODO("TupleEncoder")
+      |    return (TODO("load kotlin.Int") to TODO("load kotlin.Int"))
       |  }
       |}
       |
@@ -564,8 +564,6 @@ class KotlinGeneratorTest {
       |
       |import kotlin.Int
       |import kotlin.OptIn
-      |import kotlin.String
-      |import kotlin.collections.List
       |import kotlin.wasm.ExperimentalWasmInterop
       |import kotlin.wasm.WasmExport
       |import kotlin.wasm.unsafe.ComponentModelInternalApi
@@ -582,7 +580,7 @@ class KotlinGeneratorTest {
       |@WasmExport("run")
       |private fun run_export(args: Int): Int {
       |  val result = guest_.run(
-      |    args = (args as List<String>),
+      |    args = TODO("lift kotlin.collections.List<kotlin.String>"),
       |  )
       |  return result
       |}
@@ -635,7 +633,7 @@ class KotlinGeneratorTest {
       |
       |    override fun run(args: List<String>): Int {
       |      val result = run.apply(
-      |        (args as Int).toLong(),
+      |        TODO("lower kotlin.Int").toLong(),
       |      )
       |      return result[0].toInt()
       |    }

@@ -13,3 +13,9 @@ val CoreType.byteCount: Int
     CoreType.I64, CoreType.F64 -> 8
     else -> 4
   }
+
+val CoreType.alignment: Int
+  get() = when (this) {
+    CoreType.I64, CoreType.F64 -> 8
+    else -> 4
+  }
