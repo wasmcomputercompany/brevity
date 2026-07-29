@@ -32,7 +32,16 @@ class EncoderFactory(
       TypeName.String -> StringEncoder
 
       is TypeName.Stream -> FallbackEncoder(typeName, CoreType.I32)
-      is TypeName.Tuple -> TupleEncoder(typeName.types.map { element -> get(element) })
+      is TypeName.Tuple -> {
+        val fieldEncoders = typeName.types.map { element -> get(element) }
+        when (fieldEncoders.size) {
+          2 -> PairEncoder(fieldEncoders)
+          3 -> TripleEncoder(fieldEncoders)
+          4 -> QuadEncoder(fieldEncoders)
+          else -> LargeTupleEncoder(fieldEncoders)
+        }
+      }
+
       is TypeName.Borrow -> FallbackEncoder(typeName, CoreType.I32)
       is TypeName.Declared -> {
         val declaredType = declarationIndex[typeName]
@@ -48,10 +57,10 @@ class EncoderFactory(
       }
 
       is TypeName.Future -> FallbackEncoder(typeName, CoreType.I32)
-      is TypeName.List -> ListEncoder(typeName)
+      is TypeName.List -> FallbackEncoder(typeName, CoreType.I32)
       is TypeName.Map -> FallbackEncoder(typeName, CoreType.I32) // TODO: List<Tuple>.
       is TypeName.Option -> FallbackEncoder(typeName, CoreType.I32) // TODO: Variant.
-      is TypeName.Result -> TupleEncoder(
+      is TypeName.Result -> PairEncoder(
         listOf(
           typeName.ok?.let { get(it) } ?: FallbackEncoder(TypeName.S32, CoreType.I32),
           typeName.err?.let { get(it) } ?: FallbackEncoder(TypeName.S32, CoreType.I32),
