@@ -39,8 +39,15 @@ interface Platform {
   context(builder: BridgeBuilder)
   fun load(
     baseAddress: CodeBlock,
-    offset: Int = 0,
+    offset: Int,
     type: CoreType,
+  ): CodeBlock = load(baseAddress, offset, type.integerType)
+
+  context(builder: BridgeBuilder)
+  fun load(
+    baseAddress: CodeBlock,
+    offset: Int = 0,
+    type: IntegerType,
   ): CodeBlock
 
   context(builder: BridgeBuilder)
@@ -48,6 +55,14 @@ interface Platform {
     baseAddress: CodeBlock,
     offset: Int = 0,
     type: CoreType,
+    value: CodeBlock,
+  ) = store(baseAddress, offset, type.integerType, value)
+
+  context(builder: BridgeBuilder)
+  fun store(
+    baseAddress: CodeBlock,
+    offset: Int = 0,
+    type: IntegerType,
     value: CodeBlock,
   )
 }

@@ -68,7 +68,7 @@ internal object GuestPlatform : Platform {
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
-    type: CoreType,
+    type: IntegerType,
   ): CodeBlock {
     return CodeBlock.of(
       "%L.%N()",
@@ -77,8 +77,10 @@ internal object GuestPlatform : Platform {
         else -> baseAddress
       },
       when (type) {
-        CoreType.I64 -> "loadLong"
-        else -> "loadInt"
+        IntegerType.S8 -> "loadByte"
+        IntegerType.S16 -> "loadShort"
+        IntegerType.S32 -> "loadInt"
+        IntegerType.S64 -> "loadLong"
       },
     )
   }
@@ -87,7 +89,7 @@ internal object GuestPlatform : Platform {
   override fun store(
     baseAddress: CodeBlock,
     offset: Int,
-    type: CoreType,
+    type: IntegerType,
     value: CodeBlock,
   ) {
     builder.code.addStatement(
@@ -97,8 +99,10 @@ internal object GuestPlatform : Platform {
         else -> baseAddress
       },
       when (type) {
-        CoreType.I64 -> "storeLong"
-        else -> "storeInt"
+        IntegerType.S8 -> "storeByte"
+        IntegerType.S16 -> "storeShort"
+        IntegerType.S32 -> "storeInt"
+        IntegerType.S64 -> "storeLong"
       },
       value,
     )
