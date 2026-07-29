@@ -48,14 +48,19 @@ class EncoderFactory(
         val declaredType = declarationIndex[typeName]
           ?: error("unexpected type: $typeName")
         when (declaredType) {
-          is IrEnum -> FallbackEncoder(typeName, CoreType.I32) // TODO: Variant.
+          is IrEnum -> EnumEncoder(
+            kotlinType = declaredType.type.kotlinApi,
+            cases = declaredType.cases,
+          )
+
           is IrFlags -> FallbackEncoder(typeName, CoreType.I32)
           is IrRecord -> FallbackEncoder(typeName, CoreType.I32) // TODO: RecordEncoder
           is IrResource -> ResourceEncoder(typeName)
           is IrTypeAlias -> FallbackEncoder(typeName, CoreType.I32) // TODO: target.
           is IrVariant -> VariantEncoder(
-            type = declaredType,
-            cases = declaredType.cases.map { case ->
+            kotlinType = declaredType.type.kotlinApi,
+            cases = declaredType.cases,
+            caseEncoders = declaredType.cases.map { case ->
               case.type?.let { get(it) }
             },
           )
@@ -76,7 +81,7 @@ class EncoderFactory(
       }
 
       is TypeName.Map -> FallbackEncoder(typeName, CoreType.I32) // TODO: List<Tuple>.
-      is TypeName.Option -> FallbackEncoder(typeName, CoreType.I32) // TODO: Variant.
+      is TypeName.Option -> OptionalEncoder(get(typeName.type))
       is TypeName.Result -> PairEncoder(
         listOf(
           typeName.ok?.let { get(it) } ?: FallbackEncoder(TypeName.S32, CoreType.I32),

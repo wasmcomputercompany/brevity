@@ -1,25 +1,44 @@
 package dev.wasmo.brevity.kotlin.encoders
 
+import com.squareup.kotlinpoet.BYTE
+import com.squareup.kotlinpoet.INT
+import com.squareup.kotlinpoet.LONG
+import com.squareup.kotlinpoet.SHORT
+import com.squareup.kotlinpoet.TypeName
+
 enum class IntegerType {
   S8 {
     override val byteCount: Int
       get() = 1
+
+    override val kotlinType: TypeName
+      get() = BYTE
   },
   S16 {
     override val byteCount: Int
       get() = 2
+
+    override val kotlinType: TypeName
+      get() = SHORT
   },
   S32 {
     override val byteCount: Int
       get() = 4
+
+    override val kotlinType: TypeName
+      get() = INT
   },
   S64 {
     override val byteCount: Int
       get() = 8
+
+    override val kotlinType: TypeName
+      get() = LONG
   },
   ;
 
   abstract val byteCount: Int
+  abstract val kotlinType: TypeName
 
   companion object {
     fun discriminant(caseCount: Int): IntegerType {

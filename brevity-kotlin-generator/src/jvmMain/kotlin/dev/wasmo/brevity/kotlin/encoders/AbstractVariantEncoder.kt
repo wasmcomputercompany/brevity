@@ -1,36 +1,47 @@
 package dev.wasmo.brevity.kotlin.encoders
 
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import dev.wasmo.brevity.ir.IrVariant
-import dev.wasmo.brevity.kotlin.generator.kotlinApi
+import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.kotlin.generator.kotlinName
 
+/**
+ * Implement the structure of variant encoding.
+ *
+ * Each element has a 1, 2, or 4-byte discriminator case index, followed by an optional
+ * case-specific value.
+ *
+ * When flattening, this does a bitwise union of all cases' case-specific value into a shared set
+ * of parameters.
+ *
+ * Subclasses select and construct the specific case values.
+ */
 abstract class AbstractVariantEncoder(
-  protected val cases: List<Encoder?>,
+  protected val caseEncoders: List<Encoder?>,
 ) : Encoder() {
-  private val discriminant = IntegerType.discriminant(cases.size)
+  private val discriminant = IntegerType.discriminant(caseEncoders.size)
 
   private val maxCaseAlignment: Int =
-    cases.maxOfOrNull { it?.alignment ?: 1 } ?: 1
+    caseEncoders.maxOfOrNull { it?.alignment ?: 1 } ?: 1
 
   override val alignment: Int = maxOf(maxCaseAlignment, discriminant.byteCount)
 
   override val byteCount: Int = run {
     val s = discriminant.byteCount.alignTo(maxCaseAlignment)
-    val cs = cases.maxOfOrNull { it?.byteCount ?: 0 } ?: 0
+    val cs = caseEncoders.maxOfOrNull { it?.byteCount ?: 0 } ?: 0
     (s + cs).alignTo(alignment)
   }
 
   private val casesCoreTypesBits: List<CoreType> =
-    cases.mapNotNull { it?.coreTypes }.bitwiseUnion()
+    caseEncoders.mapNotNull { it?.coreTypes }.bitwiseUnion()
 
   override val coreTypes = listOf(CoreType.I32) + casesCoreTypesBits
 
   /** Turns an index and argument into an instance. */
   abstract fun constructInstance(index: Int, value: CodeBlock?): CodeBlock
 
-  /** Returns a code block that is true if [candidate] matches [index]. */
-  abstract fun matchInstance(index: Int, candidate: CodeBlock): CodeBlock
+  /** Returns a when case that matches [index]. */
+  abstract fun matchInstance(index: Int): CodeBlock
 
   /** Returns a code block that extracts the value of [index]. */
   abstract fun instanceValue(index: Int, value: CodeBlock): CodeBlock?
@@ -46,14 +57,14 @@ abstract class AbstractVariantEncoder(
       variantName,
       platform.load(baseAddress, offset, discriminant),
     )
-    for ((index, case) in cases.withIndex()) {
+    for ((index, caseEncoder) in caseEncoders.withIndex()) {
       code.beginControlFlow("%L ->", index)
       code.addStatement(
         "%L",
         constructInstance(
           index = index,
-          value = case?.let {
-            with(case) {
+          value = caseEncoder?.let {
+            with(caseEncoder) {
               load(
                 baseAddress = baseAddress,
                 offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
@@ -75,25 +86,32 @@ abstract class AbstractVariantEncoder(
     offset: Int,
     value: CodeBlock,
   ) {
-    code.beginControlFlow("when")
-    for ((index, case) in cases.withIndex()) {
-      code.beginControlFlow("%L ->", matchInstance(index, value))
-      platform.store(baseAddress, offset, discriminant, CodeBlock.of("%L", index))
-
-      if (case != null) {
-        with(case) {
+    val variantName = nameAllocator.newName("variant")
+    val discriminatorName = nameAllocator.newName("discriminator")
+    code.beginControlFlow(
+      "val %N: %T = when (val %N = %L)",
+      discriminatorName,
+      discriminant.kotlinType,
+      variantName,
+      value,
+    )
+    for ((index, caseEncoder) in caseEncoders.withIndex()) {
+      code.beginControlFlow("%L ->", matchInstance(index))
+      if (caseEncoder != null) {
+        with(caseEncoder) {
           store(
             baseAddress = baseAddress,
             offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
-            value = instanceValue(index, value)
+            value = instanceValue(index, CodeBlock.of("%N", variantName))
               ?: error("case mismatch for $index"),
           )
         }
       }
+      code.addStatement("%L", index)
       code.endControlFlow()
     }
-    code.addStatement("else -> error(%S)", "unexpected case")
     code.endControlFlow()
+    platform.store(baseAddress, offset, discriminant, CodeBlock.of("%N", discriminatorName))
   }
 
   override fun FlatEncoder.liftFlat() {
@@ -107,23 +125,26 @@ abstract class AbstractVariantEncoder(
       variantName,
       discriminator,
     )
-    for ((caseIndex, case) in cases.withIndex()) {
-      val value = case?.let {
-        liftFlat(
-          values = case.coreTypes.withIndex().map { (v, requiredType) ->
-            requiredType.fromBits(
-              sourceType = casesCoreTypesBits[v],
-              value = caseCoreValuesBits[v],
+    for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
+      code.beginControlFlow("%L ->", caseIndex)
+      code.addStatement(
+        "%L",
+        constructInstance(
+          index = caseIndex,
+          value = caseEncoder?.let {
+            liftFlat(
+              values = caseEncoder.coreTypes.withIndex().map { (v, requiredType) ->
+                requiredType.fromBits(
+                  sourceType = casesCoreTypesBits[v],
+                  value = caseCoreValuesBits[v],
+                )
+              },
+              encoder = caseEncoder,
             )
           },
-          encoder = case,
-        )
-      }
-      code.addStatement(
-        "%L -> %L",
-        caseIndex,
-        constructInstance(index = caseIndex, value = value),
+        ),
       )
+      code.endControlFlow()
     }
     code.addStatement("else -> error(%S)", "unexpected case")
     code.endControlFlow()
@@ -143,23 +164,26 @@ abstract class AbstractVariantEncoder(
     }
 
     val discriminatorName = nameAllocator.newName("discriminator")
-    code.beginControlFlow("val %N = when", discriminatorName)
-    for ((caseIndex, case) in cases.withIndex()) {
-      code.beginControlFlow("%L ->", matchInstance(caseIndex, variant))
-      if (case != null) {
-        val values = lowerFlat(instanceValue(caseIndex, variant)!!, case)
-        for ((v, coreType) in case.coreTypes.withIndex()) {
+    code.beginControlFlow(
+      "val %N = when (%N)",
+      discriminatorName,
+      variantName,
+    )
+    for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
+      code.beginControlFlow("%L ->", matchInstance(caseIndex))
+      if (caseEncoder != null) {
+        val values = lowerFlat(instanceValue(caseIndex, variant)!!, caseEncoder)
+        for ((v, coreType) in caseEncoder.coreTypes.withIndex()) {
           code.addStatement(
             "%N = %L",
             caseCoreValuesBitsNames[v],
-            coreType.fromBits(casesCoreTypesBits[v], values[v])
+            coreType.fromBits(casesCoreTypesBits[v], values[v]),
           )
         }
       }
       code.addStatement("%L", caseIndex)
       code.endControlFlow()
     }
-    code.addStatement("else -> error(%S)", "unexpected case")
     code.endControlFlow()
 
     put("%N", discriminatorName)
@@ -170,33 +194,93 @@ abstract class AbstractVariantEncoder(
 }
 
 class VariantEncoder(
-  private val type: IrVariant,
-  cases: List<Encoder?>,
-) : AbstractVariantEncoder(cases) {
+  private val kotlinType: ClassName,
+  private val cases: List<IrCase>,
+  caseEncoders: List<Encoder?>,
+) : AbstractVariantEncoder(caseEncoders) {
   override fun constructInstance(index: Int, value: CodeBlock?): CodeBlock {
-    val case = type.cases[index]
-    val enclosingName = type.type.kotlinApi.nestedClass(case.kotlinName)
+    val case = cases[index]
     return when {
-      case.type != null -> CodeBlock.of("%T(%L)", enclosingName, value!!)
-      else -> CodeBlock.of("%T", enclosingName)
+      case.type != null -> CodeBlock.of(
+        "%T(%L)",
+        kotlinType.nestedClass(case.kotlinName),
+        value!!,
+      )
+
+      else -> CodeBlock.of(
+        "%T.%N",
+        kotlinType,
+        case.kotlinName,
+      )
     }
   }
 
-  override fun matchInstance(index: Int, candidate: CodeBlock): CodeBlock {
-    val case = type.cases[index]
-    return CodeBlock.of(
-      "%L is %T",
-      candidate,
-      type.type.kotlinApi.nestedClass(case.kotlinName),
-    )
+  override fun matchInstance(index: Int): CodeBlock {
+    val case = cases[index]
+    return when {
+      case.type != null -> CodeBlock.of(
+        "is %T",
+        kotlinType.nestedClass(case.kotlinName),
+      )
+
+      else -> CodeBlock.of(
+        "%T.%N",
+        kotlinType,
+        case.kotlinName,
+      )
+    }
   }
 
   override fun instanceValue(
     index: Int,
     value: CodeBlock,
   ): CodeBlock? {
-    val case = type.cases[index]
+    val case = cases[index]
     if (case.type == null) return null
     return CodeBlock.of("%L.value", value)
+  }
+}
+
+class EnumEncoder(
+  private val kotlinType: ClassName,
+  private val cases: List<IrCase>,
+) : AbstractVariantEncoder(cases.map { null }) {
+  override fun constructInstance(index: Int, value: CodeBlock?) =
+    CodeBlock.of("%T.%N", kotlinType, cases[index].kotlinName)
+
+  override fun matchInstance(index: Int) =
+    CodeBlock.of("%T.%N", kotlinType, cases[index].kotlinName)
+
+  override fun instanceValue(index: Int, value: CodeBlock): CodeBlock? = null
+}
+
+class OptionalEncoder(
+  some: Encoder,
+) : AbstractVariantEncoder(listOf(null, some)) {
+  override fun constructInstance(
+    index: Int,
+    value: CodeBlock?,
+  ): CodeBlock {
+    return when (index) {
+      0 -> CodeBlock.of("null")
+      else -> value!!
+    }
+  }
+
+  override fun matchInstance(index: Int): CodeBlock {
+    return when (index) {
+      0 -> CodeBlock.of("null")
+      else -> CodeBlock.of("else")
+    }
+  }
+
+  override fun instanceValue(
+    index: Int,
+    value: CodeBlock,
+  ): CodeBlock? {
+    return when (index) {
+      0 -> null
+      else -> value
+    }
   }
 }
