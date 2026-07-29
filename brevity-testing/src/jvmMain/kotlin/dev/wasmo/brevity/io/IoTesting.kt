@@ -4,6 +4,7 @@ import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.PackageName
 
 fun IoCase(
   documentation: String? = null,
@@ -246,6 +247,19 @@ fun IoVariant(
   name = Identifier(name),
   cases = cases,
 )
+
+fun IoWitFile(
+  packageDocumentation: Documentation? = null,
+  packageName: PackageName,
+  items: List<IoWitFile.Item> = listOf(),
+  location: Location,
+): IoWitFile = IoWitFile(
+  packageDocumentation,
+  IoPackageNameElement(packageName, location),
+  items,
+  location,
+)
+
 
 fun IoWorld(
   documentation: String? = null,

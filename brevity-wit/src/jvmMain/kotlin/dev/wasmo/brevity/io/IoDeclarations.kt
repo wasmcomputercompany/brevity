@@ -21,18 +21,6 @@ data class IoWitFile(
   val items: List<Item> = listOf(),
   val location: Location,
 ) {
-  // Provided for testing porpoises
-  constructor(
-    packageDocumentation: Documentation? = null,
-    packageName: PackageName,
-    items: List<Item> = listOf(),
-    location: Location,
-  ) : this(
-    packageDocumentation,
-    IoPackageNameElement(packageName, location),
-    items,
-    location,
-  )
   sealed interface Item : IoDeclaration
 }
 
