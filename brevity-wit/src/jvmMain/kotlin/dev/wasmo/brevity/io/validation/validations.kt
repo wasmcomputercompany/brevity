@@ -57,7 +57,7 @@ fun validateUniquePackageNames(
         when (witPackage) {
           is IoInlinePackage -> listOf(witPackage.location)
           is IoToplevelWitPackage -> witPackage.files.mapNotNull { witFile ->
-            witFile.location.takeIf { witFile.packageName != null }
+            witFile.packageName?.location
           }
         }
       }.toList(),

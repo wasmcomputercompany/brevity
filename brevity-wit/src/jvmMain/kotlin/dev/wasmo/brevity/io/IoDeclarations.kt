@@ -17,17 +17,37 @@ data class IoToplevelWitPackage(
 
 data class IoWitFile(
   val packageDocumentation: Documentation? = null,
-  val packageName: PackageName? = null,
+  val packageName: IoPackageNameElement? = null,
   val items: List<Item> = listOf(),
   val location: Location,
 ) {
+  // Provided for testing porpoises
+  constructor(
+    packageDocumentation: Documentation? = null,
+    packageName: PackageName,
+    items: List<Item> = listOf(),
+    location: Location,
+  ) : this(
+    packageDocumentation,
+    IoPackageNameElement(packageName, location),
+    items,
+    location,
+  )
   sealed interface Item : IoDeclaration
 }
 
-sealed interface IoDeclaration {
+sealed interface IoElement {
+  val location: Location
+}
+
+data class IoPackageNameElement(
+  val packageName: PackageName,
+  override val location: Location,
+) : IoElement
+
+sealed interface IoDeclaration : IoElement {
   val documentation: Documentation?
   val gate: Gate?
-  val location: Location
 }
 
 sealed interface IoService: IoDeclaration {

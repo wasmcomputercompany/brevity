@@ -58,8 +58,8 @@ class ValidateUniquePackageNamesTest {
 
   @Test
   fun throwsOnCollision() {
-    val cliLocation = Location("cli.wit")
-    val cliExtraLocation = Location("cli-extra.wit")
+    val cliLocation = Location("cli.wit", 1, 1)
+    val cliExtraLocation = Location("cli-extra.wit", 1, 1)
     val cliPackage = IoToplevelWitPackage(
       packageName = "wasi:cli".toPackageName(),
       files = listOf(
@@ -98,8 +98,8 @@ class ValidateUniquePackageNamesTest {
     assertThat(exception.message).isEqualTo(
       """
       |Duplicate definitions of wasi:cli
-      |${"\t"}at cli.wit
-      |${"\t"}at cli-extra.wit
+      |${"\t"}at cli.wit:1:1
+      |${"\t"}at cli-extra.wit:1:1
       |${"\t"}at other/other.wit:1:2""".trimMargin(),
     )
 

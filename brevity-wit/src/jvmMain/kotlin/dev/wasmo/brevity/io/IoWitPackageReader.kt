@@ -25,7 +25,7 @@ class IoWitPackageReader(
         }
       }
 
-    val packageNames = files.mapNotNull { it.packageName }.toSet()
+    val packageNames = files.mapNotNull { it.packageName?.packageName }.toSet()
     checkWit(packageNames.size == 1, location = Location(directory)) {
       when {
         packageNames.isEmpty() -> "no package declaration in directory"
