@@ -1,8 +1,8 @@
 package brevity.wasi.p2
 
-import wit.wasi.cli.v0_2_0.Command
 import wit.wasi.cli.v0_2_0.Environment
 import wit.wasi.cli.v0_2_0.Exit
+import wit.wasi.cli.v0_2_0.Imports
 import wit.wasi.cli.v0_2_0.Stderr
 import wit.wasi.cli.v0_2_0.Stdin
 import wit.wasi.cli.v0_2_0.Stdout
@@ -23,11 +23,9 @@ import wit.wasi.sockets.v0_2_0.TcpCreateSocket
 import wit.wasi.sockets.v0_2_0.UdpCreateSocket
 
 /**
- * Implement the WASIp2 CLI interface.
+ * Implement WASI Preview 2.
  */
-class RealCommandHost(
-  val guest: Command.Guest,
-) : Command.Host {
+class RealWasiP2Host : Imports.Host {
   override val environment: Environment
     get() = TODO("Not yet implemented")
   override val exit: Exit

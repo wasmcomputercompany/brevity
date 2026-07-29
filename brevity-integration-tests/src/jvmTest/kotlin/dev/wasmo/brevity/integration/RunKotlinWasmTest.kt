@@ -3,12 +3,12 @@ package dev.wasmo.brevity.integration
 import app.cash.burst.Burst
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import brevity.wasi.p2.RealCommandHost
+import brevity.wasi.p2.RealWasiP2Host
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 import okio.Path
 import okio.Path.Companion.toPath
-import wit.wasi.cli.v0_2_0.Command
+import wit.wasi.cli.v0_2_0.Imports
 import wit.wasi.cli.v0_2_0.World
 import wit.wasi.v0_1.Wasi
 import wit.wasi.v0_1.World
@@ -25,7 +25,7 @@ class RunKotlinWasmTest {
     val tester = WasmTester.Builder()
       .wasmPath(WasmSource.Kotlin.path)
       .addWorld(Wasi.World({ wasiP1 }))
-      .addWorld(Command.World { guest -> RealCommandHost(guest) })
+      .addWorld(Imports.World { RealWasiP2Host() })
       .addWorld(world)
       .build()
     val result = world.guest.sum(5L, 10L)
@@ -39,7 +39,7 @@ class RunKotlinWasmTest {
     val tester = WasmTester.Builder()
       .wasmPath(WasmSource.Kotlin.path)
       .addWorld(Wasi.World({ wasiP1 }))
-      .addWorld(Command.World { guest -> RealCommandHost(guest) })
+      .addWorld(Imports.World { RealWasiP2Host() })
       .addWorld(world)
       .build()
     val result = world.guest.calculator.multiply(5L, 10L)
@@ -47,13 +47,13 @@ class RunKotlinWasmTest {
   }
 
   @Test
-  fun `call concatenate`() = runTest {
+  fun `call concatenate`(wasmSource: WasmSource) = runTest {
     val world = WasmoTesting.World { Unit }
     val wasiP1 = FakeWasi()
     val tester = WasmTester.Builder()
-      .wasmPath(WasmSource.Kotlin.path)
+      .wasmPath(wasmSource.path)
       .addWorld(Wasi.World({ wasiP1 }))
-      .addWorld(Command.World { guest -> RealCommandHost(guest) })
+      .addWorld(Imports.World { RealWasiP2Host() })
       .addWorld(world)
       .build()
 
@@ -81,7 +81,7 @@ class RunKotlinWasmTest {
     val wasiP1 = FakeWasi()
     val tester = WasmTester.Builder()
       .addWorld(Wasi.World({ wasiP1 }))
-      .addWorld(Command.World { guest -> RealCommandHost(guest) })
+      .addWorld(Imports.World { RealWasiP2Host() })
       .addWorld(world)
       .wasmPath(WasmSource.Kotlin.path)
       .build()
@@ -98,7 +98,7 @@ class RunKotlinWasmTest {
     val wasiP1 = FakeWasi()
     val tester = WasmTester.Builder()
       .addWorld(Wasi.World({ wasiP1 }))
-      .addWorld(Command.World { guest -> RealCommandHost(guest) })
+      .addWorld(Imports.World { RealWasiP2Host() })
       .addWorld(world)
       .wasmPath(WasmSource.Kotlin.path)
       .build()
