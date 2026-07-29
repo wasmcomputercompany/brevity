@@ -22,7 +22,7 @@ class WitFileReaderTest {
       """.trimMargin().toWitFile(location)
     assertThat(wit).isEqualTo(
       IoWitFile(
-        packageName = "wasi:clocks@0.2.9".toPackageName(),
+        packageName = IoPackageNameElement("wasi:clocks@0.2.9".toPackageName(), location.at(1, 1)),
         location = location,
       ),
     )
@@ -261,7 +261,7 @@ class WitFileReaderTest {
       """.trimMargin().toWitFile(location)
     assertThat(wit).isEqualTo(
       IoWitFile(
-        packageName = "wasi:clocks@0.2.9".toPackageName(),
+        packageName = IoPackageNameElement("wasi:clocks@0.2.9".toPackageName(), location.at(1, 1)),
         items = listOf(
           IoInterface(
             location = location.at(3, 1),

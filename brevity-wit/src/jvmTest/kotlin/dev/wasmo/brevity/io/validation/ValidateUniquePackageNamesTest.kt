@@ -22,10 +22,10 @@ class ValidateUniquePackageNamesTest {
       packageName = "wasi:cli".toPackageName(),
       files = listOf(
         IoWitFile(
-location = cliLocation,
+          location = cliLocation,
           packageName = "wasi:cli".toPackageName(),
-        )
-      )
+        ),
+      ),
     )
     val otherLocation = Location("other/other.wit")
     val inlinePackage = IoInlinePackage(
@@ -37,13 +37,13 @@ location = cliLocation,
       packageName = "wasi:other".toPackageName(),
       files = listOf(
         IoWitFile(
-location = otherLocation,
+          location = otherLocation,
           packageName = "wasi:other".toPackageName(),
           items = listOf(
-            inlinePackage
-          )
-        )
-      )
+            inlinePackage,
+          ),
+        ),
+      ),
     )
     val packages = listOf(cliPackage, otherPackage)
 
@@ -58,15 +58,20 @@ location = otherLocation,
 
   @Test
   fun throwsOnCollision() {
-    val cliLocation = Location("cli.wit")
+    val cliLocation = Location("cli.wit", 1, 1)
+    val cliExtraLocation = Location("cli-extra.wit", 1, 1)
     val cliPackage = IoToplevelWitPackage(
       packageName = "wasi:cli".toPackageName(),
       files = listOf(
         IoWitFile(
-location = cliLocation,
+          location = cliLocation,
           packageName = "wasi:cli".toPackageName(),
-        )
-      )
+        ),
+        IoWitFile(
+          location = cliExtraLocation,
+          packageName = "wasi:cli".toPackageName(),
+        ),
+      ),
     )
     val otherLocation = Location("other/other.wit")
     val inlinePackage = IoInlinePackage(
@@ -78,26 +83,30 @@ location = cliLocation,
       packageName = "wasi:other".toPackageName(),
       files = listOf(
         IoWitFile(
-location = otherLocation,
+          location = otherLocation,
           packageName = "wasi:other".toPackageName(),
           items = listOf(
-            inlinePackage
-          )
-        )
-      )
+            inlinePackage,
+          ),
+        ),
+      ),
     )
     val exception = assertFailsWith<WitException> {
       validateUniquePackageNames(listOf(cliPackage, otherPackage))
     }
 
-    assertThat(exception.message).isEqualTo("""
+    assertThat(exception.message).isEqualTo(
+      """
       |Duplicate definitions of wasi:cli
-      |${"\t"}at cli.wit
-      |${"\t"}at other/other.wit:1:2""".trimMargin())
+      |${"\t"}at cli.wit:1:1
+      |${"\t"}at cli-extra.wit:1:1
+      |${"\t"}at other/other.wit:1:2""".trimMargin(),
+    )
 
     assertThat(exception.issue.locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
       cliLocation,
+      cliExtraLocation,
     )
   }
 
@@ -108,10 +117,10 @@ location = otherLocation,
       packageName = "wasi:cli".toPackageName(),
       files = listOf(
         IoWitFile(
-location = cliLocation,
+          location = cliLocation,
           packageName = "wasi:cli".toPackageName(),
-        )
-      )
+        ),
+      ),
     )
     val otherLocation = Location("other/other.wit")
     val inlinePackage = IoInlinePackage(
@@ -128,20 +137,21 @@ location = cliLocation,
       packageName = "wasi:other".toPackageName(),
       files = listOf(
         IoWitFile(
-location = otherLocation,
+          location = otherLocation,
           packageName = "wasi:other".toPackageName(),
           items = listOf(
             inlinePackage,
             anotherInlinePackage,
-          )
-        )
-      )
+          ),
+        ),
+      ),
     )
     val exception = assertFailsWith<WitCompoundException> {
       validateUniquePackageNames(listOf(cliPackage, otherPackage))
     }
 
-    assertThat(exception.message).isEqualTo("""
+    assertThat(exception.message).isEqualTo(
+      """
       |Multiple issues found:
       |Duplicate definitions of wasi:cli
       |${"\t"}at cli.wit
@@ -149,7 +159,8 @@ location = otherLocation,
       |Duplicate definitions of wasi:other
       |${"\t"}at other/other.wit
       |${"\t"}at other/other.wit:1:2
-      |""".trimMargin())
+      |""".trimMargin(),
+    )
 
     val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitException>()
 

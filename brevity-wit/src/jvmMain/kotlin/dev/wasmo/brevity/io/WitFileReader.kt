@@ -72,7 +72,11 @@ internal class WitFileReader(
 
     return IoWitFile(
       packageDocumentation = packageIdentifier?.documentation,
-      packageName = packageIdentifier?.packageName,
+      packageName = if (packageIdentifier != null) {
+        IoPackageNameElement(packageIdentifier.packageName, packageIdentifier.location)
+      } else {
+        null
+      },
       items = items,
       location = source.location.at(null, null),
     )

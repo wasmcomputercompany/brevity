@@ -83,7 +83,7 @@ class IoToplevelWitPackageReaderTest {
           ),
           IoWitFile(
             packageDocumentation = Documentation(" command line interfaces!"),
-            packageName = "wasi:cli".toPackageName(),
+            packageName = IoPackageNameElement("wasi:cli".toPackageName(), exitLocation.at(2, 1)),
             items = listOf(
               IoInterface(
                 location = exitLocation.at(4, 1),

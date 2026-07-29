@@ -19,41 +19,48 @@ import okio.Path
 fun validateUniquePackageNames(
   toplevelPackages: List<IoToplevelWitPackage>,
 ): Map<PackageName, IoWitPackage> {
-  val packageRefs = mutableMapOf<PackageName, MutableList<PackageRef>>()
+  val witPackageMap = mutableMapOf<PackageName, MutableList<IoWitPackage>>()
 
-  fun addPackage(packageName: PackageName, packageRef: PackageRef) {
-    packageRefs.getOrPut(packageName) { mutableListOf() }.add(packageRef)
+  fun addPackage(packageName: PackageName, witPackage: IoWitPackage) {
+    witPackageMap.getOrPut(packageName) { mutableListOf() }.add(witPackage)
   }
   for (topLevelPackage in toplevelPackages) {
-    addPackage(topLevelPackage.packageName, PackageRef.Directory(topLevelPackage))
+    addPackage(topLevelPackage.packageName, topLevelPackage)
 
     for (file in topLevelPackage.files) {
       for (inlinePackage in file.items.filterIsInstance<IoInlinePackage>()) {
         addPackage(
           inlinePackage.packageName,
-          PackageRef.Inline(file, inlinePackage),
+          inlinePackage,
         )
       }
     }
   }
-  val collisions = mutableMapOf<PackageName, List<PackageRef>>()
+  val collisions = mutableMapOf<PackageName, List<IoWitPackage>>()
   val output = mutableMapOf<PackageName, IoWitPackage>()
 
-  for ((packageName, packageRefs) in packageRefs) {
-    when (packageRefs.size) {
+  for ((packageName, witPackages) in witPackageMap) {
+    when (witPackages.size) {
       0 -> error("Invariant violated: package name exists without reference")
-      1 -> output[packageName] = packageRefs.single().`package`
+      1 -> output[packageName] = witPackages.single()
       else -> {
-        output[packageName] = packageRefs.first().`package`
-        collisions[packageName] = packageRefs
+        output[packageName] = witPackages.first()
+        collisions[packageName] = witPackages
       }
     }
   }
 
-  val collisionExceptions = collisions.map { (packageName, packageRefs) ->
+  val collisionExceptions = collisions.map { (packageName, packages) ->
     Issue(
       "Duplicate definitions of $packageName",
-      packageRefs.map { packageRef -> packageRef.location }.toList(),
+      packages.flatMap { witPackage ->
+        when (witPackage) {
+          is IoInlinePackage -> listOf(witPackage.location)
+          is IoToplevelWitPackage -> witPackage.files.mapNotNull { witFile ->
+            witFile.packageName?.location
+          }
+        }
+      }.toList(),
     )
   }.map(::WitException)
 
@@ -64,27 +71,6 @@ fun validateUniquePackageNames(
   }
 
   return output
-}
-
-sealed interface PackageRef {
-  val `package`: IoWitPackage
-  val location: Location
-
-  data class Directory(
-    override val `package`: IoToplevelWitPackage,
-  ) : PackageRef {
-    override val location = `package`.files.firstNotNullOf { file ->
-      file.location.takeIf { file.packageName != null }
-    }
-  }
-
-  data class Inline(
-    val file: IoWitFile,
-    override val `package`: IoInlinePackage,
-  ) : PackageRef {
-    override val location: Location
-      get() = `package`.location
-  }
 }
 
 fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>): Map<ServiceName, IoService> {
@@ -103,6 +89,7 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>): Ma
             ServiceName(pkg.packageName, item.name),
             item,
           )
+
           is IoTopLevelUse -> {}
         }
       }
@@ -138,7 +125,7 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>): Ma
 
 private fun processInlinePackage(
   pkg: IoInlinePackage,
-  addService: (ServiceName, IoService) -> Unit
+  addService: (ServiceName, IoService) -> Unit,
 ) {
   for (decl in pkg.declarations) {
     when (decl) {
@@ -147,6 +134,7 @@ private fun processInlinePackage(
         ServiceName(pkg.packageName, decl.name),
         decl,
       )
+
       is IoTopLevelUse -> {}
     }
   }
