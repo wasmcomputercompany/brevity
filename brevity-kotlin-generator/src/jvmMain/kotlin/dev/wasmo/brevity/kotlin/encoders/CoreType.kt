@@ -1,5 +1,7 @@
 package dev.wasmo.brevity.kotlin.encoders
 
+import com.squareup.kotlinpoet.CodeBlock
+
 sealed class CoreType {
   object I32 : CoreType()
   object I64 : CoreType()
@@ -43,3 +45,17 @@ internal fun Iterable<List<CoreType>>.bitwiseUnion(): List<CoreType> {
     }
   }
 }
+
+// TODO: floatToIntBits and back.
+fun CoreType.fromBits(sourceType: CoreType, value: CodeBlock): CodeBlock {
+  return value
+}
+
+val CoreType.zero: CodeBlock
+  get() = when (this){
+    CoreType.F32 -> CodeBlock.of("0.0f")
+    CoreType.F64 -> CodeBlock.of("0.0")
+    CoreType.I32 -> CodeBlock.of("0")
+    CoreType.I64 -> CodeBlock.of("0L")
+    CoreType.Pointer -> CodeBlock.of("0")
+  }

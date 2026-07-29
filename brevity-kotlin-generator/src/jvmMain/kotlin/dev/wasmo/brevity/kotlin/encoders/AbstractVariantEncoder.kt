@@ -21,8 +21,10 @@ abstract class AbstractVariantEncoder(
     (s + cs).alignTo(alignment)
   }
 
-  override val coreTypes: List<CoreType> =
-    listOf(CoreType.I32) + cases.mapNotNull { it?.coreTypes }.bitwiseUnion()
+  private val casesCoreTypesBits: List<CoreType> =
+    cases.mapNotNull { it?.coreTypes }.bitwiseUnion()
+
+  override val coreTypes = listOf(CoreType.I32) + casesCoreTypesBits
 
   /** Turns an index and argument into an instance. */
   abstract fun constructInstance(index: Int, value: CodeBlock?): CodeBlock
@@ -90,20 +92,79 @@ abstract class AbstractVariantEncoder(
       }
       code.endControlFlow()
     }
+    code.addStatement("else -> error(%S)", "unexpected case")
     code.endControlFlow()
   }
 
   override fun FlatEncoder.liftFlat() {
-    for (coreType in coreTypes) {
-      take()
+    val variantName = nameAllocator.newName("variant")
+
+    val discriminator = take()
+    val caseCoreValuesBits = casesCoreTypesBits.map { take() }
+
+    code.beginControlFlow(
+      "val %L = when (%L)",
+      variantName,
+      discriminator,
+    )
+    for ((caseIndex, case) in cases.withIndex()) {
+      val value = case?.let {
+        liftFlat(
+          values = case.coreTypes.withIndex().map { (v, requiredType) ->
+            requiredType.fromBits(
+              sourceType = casesCoreTypesBits[v],
+              value = caseCoreValuesBits[v],
+            )
+          },
+          encoder = case,
+        )
+      }
+      code.addStatement(
+        "%L -> %L",
+        caseIndex,
+        constructInstance(index = caseIndex, value = value),
+      )
     }
-    put("TODO(%S)", "lift variant")
+    code.addStatement("else -> error(%S)", "unexpected case")
+    code.endControlFlow()
+
+    return put(variantName)
   }
 
   override fun FlatEncoder.lowerFlat() {
-    take()
-    for (coreType in coreTypes) {
-      put("TODO(%S)", "lower variant")
+    val variantName = nameAllocator.newName("variant")
+    code.addStatement("val %N = %L", variantName, take())
+    val variant = CodeBlock.of("%N", variantName)
+
+    val caseCoreValuesBitsNames = casesCoreTypesBits.withIndex().map { (index, type) ->
+      val name = nameAllocator.newName("coreValueBits$index")
+      code.addStatement("var %N = %L", name, type.zero)
+      name
+    }
+
+    val discriminatorName = nameAllocator.newName("discriminator")
+    code.beginControlFlow("val %N = when", discriminatorName)
+    for ((caseIndex, case) in cases.withIndex()) {
+      code.beginControlFlow("%L ->", matchInstance(caseIndex, variant))
+      if (case != null) {
+        val values = lowerFlat(instanceValue(caseIndex, variant)!!, case)
+        for ((v, coreType) in case.coreTypes.withIndex()) {
+          code.addStatement(
+            "%N = %L",
+            caseCoreValuesBitsNames[v],
+            coreType.fromBits(casesCoreTypesBits[v], values[v])
+          )
+        }
+      }
+      code.addStatement("%L", caseIndex)
+      code.endControlFlow()
+    }
+    code.addStatement("else -> error(%S)", "unexpected case")
+    code.endControlFlow()
+
+    put("%N", discriminatorName)
+    for (caseCoreValueBits in caseCoreValuesBitsNames) {
+      put("%N", caseCoreValueBits)
     }
   }
 }
