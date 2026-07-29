@@ -21,7 +21,7 @@ kotlin {
 
 brevity {
   generateKotlin {
-    worlds.add("wasi:cli/command")
+    worlds.add("wasi:cli/imports")
     worlds.add("wasi:http/proxy")
     inputWitPackageDirectories.from(
       File(project.rootDir, "submodules/wasi-p2/preview2/cli"),

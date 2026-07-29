@@ -1,8 +1,5 @@
 package dev.wasmo.brevity.integration
 
-import wit.wasi.cli.v0_2_0.Command
-import wit.wasi.cli.v0_2_0.Run
-import wit.wasi.cli.v0_2_0.guest
 import wit.wasmo.testing.Calculator
 import wit.wasmo.testing.Streams
 import wit.wasmo.testing.Types
@@ -43,10 +40,5 @@ val actuallyInitialize = run {
     override fun sum(a: Long, b: Long): Long {
       return a + b
     }
-  }
-
-  Command.guest = object : Command.Guest {
-    override val run: Run
-      get() = TODO("Not yet implemented")
   }
 }
