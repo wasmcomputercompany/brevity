@@ -4,7 +4,6 @@ import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
-import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 
 abstract class Encoder {
   abstract val coreTypes: List<CoreType>
@@ -63,7 +62,7 @@ class FallbackEncoder(
 
   override fun FlatEncoder.lowerFlat() {
     take()
-    put("TODO(%S)", "lower ${coreType.kotlinCoreType}")
+    put("TODO(%S)", "lower ${type.kotlinApi}")
   }
 }
 

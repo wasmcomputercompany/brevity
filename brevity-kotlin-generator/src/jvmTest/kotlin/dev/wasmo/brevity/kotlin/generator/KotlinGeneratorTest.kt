@@ -382,13 +382,27 @@ class KotlinGeneratorTest {
       |        null,
       |        "args",
       |        FunctionType.of(
-      |          listOf(),
       |          listOf(ValType.I32),
+      |          listOf(),
       |        ),
       |        WasmFunctionHandle { instance, args ->
       |          val self = host
       |          val result = self.args()
-      |          return@WasmFunctionHandle longArrayOf(TODO("lower kotlin.Int").toLong())
+      |          val resultParameter = args[0].toInt()
+      |          val listAddress = bridge.allocate(result.size * 8)
+      |          for (i in result.indices) {
+      |            val elementAddress = listAddress + i * 8
+      |            val byteArray = result[i].encodeToByteArray()
+      |            val stringAddress = bridge.allocate(byteArray.size)
+      |            bridge.memory.write(stringAddress, byteArray)
+      |            val stringAddress_ = stringAddress
+      |            val stringByteCount = byteArray.size
+      |            bridge.memory.writeI32(elementAddress, stringAddress_)
+      |            bridge.memory.writeI32(elementAddress + 4, stringByteCount)
+      |          }
+      |          bridge.memory.writeI32(resultParameter, listAddress)
+      |          bridge.memory.writeI32(resultParameter + 4, result.size)
+      |          return@WasmFunctionHandle longArrayOf()
       |        },
       |      )
       |    )
@@ -446,7 +460,15 @@ class KotlinGeneratorTest {
       |    override fun args(): List<String> {
       |      val result = args.apply(
       |      )
-      |      return TODO("lift kotlin.collections.List<kotlin.String>")
+      |      val listAddress = bridge.memory.readInt(result[0].toInt())
+      |      val length = bridge.memory.readInt(result[0].toInt() + 4)
+      |      val list = List<String>(length) { i ->
+      |        val elementAddress = listAddress + i * 8
+      |        val stringAddress = bridge.memory.readInt(elementAddress)
+      |        val stringByteCount = bridge.memory.readInt(elementAddress + 4)
+      |        bridge.memory.readString(stringAddress, stringByteCount)
+      |      }
+      |      return list
       |    }
       |  }
       |}
@@ -562,11 +584,15 @@ class KotlinGeneratorTest {
       |
       |package wit.wasi.cli.v0_3_0
       |
+      |import dev.wasmo.brevity.loadString
       |import kotlin.Int
       |import kotlin.OptIn
+      |import kotlin.String
+      |import kotlin.collections.List
       |import kotlin.wasm.ExperimentalWasmInterop
       |import kotlin.wasm.WasmExport
       |import kotlin.wasm.unsafe.ComponentModelInternalApi
+      |import kotlin.wasm.unsafe.Pointer
       |import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
       |
       |private lateinit var guest_: Command.Guest
@@ -578,9 +604,17 @@ class KotlinGeneratorTest {
       |  }
       |
       |@WasmExport("run")
-      |private fun run_export(args: Int): Int {
+      |private fun run_export(argsAddress: Int, argsSize: Int): Int {
+      |  val listAddress = Pointer(argsAddress.toUInt())
+      |  val length = argsSize
+      |  val list = List<String>(length) { i ->
+      |    val elementAddress = listAddress + i * 8
+      |    val stringAddress = elementAddress.loadInt()
+      |    val stringByteCount = (elementAddress + 4).loadInt()
+      |    Pointer(stringAddress.toUInt()).loadString(stringByteCount)
+      |  }
       |  val result = guest_.run(
-      |    args = TODO("lift kotlin.collections.List<kotlin.String>"),
+      |    args = list,
       |  )
       |  return result
       |}
@@ -605,6 +639,7 @@ class KotlinGeneratorTest {
       |import kotlin.String
       |import kotlin.Unit
       |import kotlin.collections.List
+      |import kotlin.text.encodeToByteArray
       |
       |public fun Command.World(hostFactory: (Command.Guest) -> Unit): World<Unit, Command.Guest> {
       |  val bridge = HostBridge()
@@ -632,8 +667,20 @@ class KotlinGeneratorTest {
       |    internal lateinit var run: ExportFunction
       |
       |    override fun run(args: List<String>): Int {
+      |      val listAddress = bridge.allocate(args.size * 8)
+      |      for (i in args.indices) {
+      |        val elementAddress = listAddress + i * 8
+      |        val byteArray = args[i].encodeToByteArray()
+      |        val stringAddress = bridge.allocate(byteArray.size)
+      |        bridge.memory.write(stringAddress, byteArray)
+      |        val stringAddress_ = stringAddress
+      |        val stringByteCount = byteArray.size
+      |        bridge.memory.writeI32(elementAddress, stringAddress_)
+      |        bridge.memory.writeI32(elementAddress + 4, stringByteCount)
+      |      }
       |      val result = run.apply(
-      |        TODO("lower kotlin.Int").toLong(),
+      |        listAddress.toLong(),
+      |        args.size.toLong(),
       |      )
       |      return result[0].toInt()
       |    }
