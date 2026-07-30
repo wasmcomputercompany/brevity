@@ -31,18 +31,13 @@ import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.io.IoWitPackage
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.UsePath
-import dev.wasmo.brevity.io.validation.ValidatedIoWitPackages
-import dev.wasmo.brevity.io.validation.validate
-import dev.wasmo.brevity.io.validation.validateUniquePackageNames
+import dev.wasmo.brevity.io.validation.IoSymbolTable
+import dev.wasmo.brevity.io.validation.buildSymbolTable
 
 class IrMapper(
-  validatedIoWitPackages: ValidatedIoWitPackages,
+  private val packages: List<IoToplevelWitPackage>,
+  private val ioSymbolTable: IoSymbolTable,
 ) {
-  private val packages: List<IoToplevelWitPackage> = validatedIoWitPackages.toplevelPackages
-
-  // TODO: actually use the issue collector
-  private val packageNameToPackage = validatedIoWitPackages.packageNameMap
-  private val serviceNameToService = validatedIoWitPackages.serviceNameMap
   private val irPackages = mutableMapOf<PackageName, PackageBuilder>()
 
   internal class PackageBuilder {
@@ -316,9 +311,9 @@ class IrMapper(
 
   context(context: Context)
   internal fun IoTypeName.Declared.declaredTypeToIrOrNull(): TypeName.Declared? {
-    val witPackage = packageNameToPackage[context.serviceName.packageName] ?: return null
+    val witPackage = ioSymbolTable[context.serviceName.packageName] ?: return null
     val declarations = sequence {
-      serviceNameToService[context.serviceName]?.let { service ->
+      ioSymbolTable[context.serviceName]?.let { service ->
         when (service) {
           is IoInterface -> yieldAll(service.items)
           is IoWorld -> yieldAll(service.items)
@@ -456,14 +451,14 @@ class IrMapper(
   }
 
   internal fun getWorldOrNull(path: UsePath): IoWorld? {
-    val witPackage = packageNameToPackage[path.packageName] ?: return null
+    val witPackage = ioSymbolTable[path.packageName] ?: return null
     return witPackage.items
       .filterIsInstance<IoWorld>()
       .singleOrNull { it.name == path.name }
   }
 
   internal fun getInterfaceOrNull(path: UsePath): IoInterface? {
-    val witPackage = packageNameToPackage[path.packageName] ?: return null
+    val witPackage = ioSymbolTable[path.packageName] ?: return null
     return witPackage.items
       .filterIsInstance<IoInterface>()
       .singleOrNull { it.name == path.name }
@@ -509,4 +504,4 @@ private fun IoInterface.declaresApis(): Boolean =
 
 context(issueCollector: IssueCollector)
 fun IrMapper(toplevelWitPackages: List<IoToplevelWitPackage>): IrMapper? =
-  toplevelWitPackages.validate()?.let { IrMapper(it) }
+  toplevelWitPackages.buildSymbolTable()?.let { IrMapper(toplevelWitPackages, it) }
