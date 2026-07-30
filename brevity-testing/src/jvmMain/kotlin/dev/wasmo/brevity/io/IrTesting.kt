@@ -7,6 +7,6 @@ import dev.wasmo.brevity.withIssueCollector
 
 fun IrMapper(toplevelWitPackages: List<IoToplevelWitPackage>): IrMapper = withIssueCollector {
   val validatedPackages = toplevelWitPackages.validate()
-  contextOf<IssueCollector>().throwIfNotEmpty()
+  throwIfNotEmpty()
   IrMapper(validatedPackages!!)
 }

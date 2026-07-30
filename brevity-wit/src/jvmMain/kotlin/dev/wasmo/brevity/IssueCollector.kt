@@ -26,7 +26,7 @@ class IssueCollector {
  * Convenience function to run a block of code and throw if any issues are raised by it.
  */
 @OptIn(ExperimentalContracts::class)
-fun <T> withIssueCollector(block: context(IssueCollector)()->T): T {
+fun <T> withIssueCollector(block: IssueCollector.()->T): T {
   contract {
     callsInPlace(block, InvocationKind.EXACTLY_ONCE)
   }
