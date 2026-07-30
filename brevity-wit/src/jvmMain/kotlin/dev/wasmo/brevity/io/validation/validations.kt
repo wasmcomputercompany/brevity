@@ -1,24 +1,22 @@
 package dev.wasmo.brevity.io.validation
 
 import dev.wasmo.brevity.Issue
-import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
-import dev.wasmo.brevity.WitCompoundException
-import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoInterface
 import dev.wasmo.brevity.io.IoService
 import dev.wasmo.brevity.io.IoTopLevelUse
 import dev.wasmo.brevity.io.IoToplevelWitPackage
-import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.io.IoWitPackage
 import dev.wasmo.brevity.io.IoWorld
 import okio.Path
 
+context(issueCollector: IssueCollector)
 fun validateUniquePackageNames(
   toplevelPackages: List<IoToplevelWitPackage>,
-): Map<PackageName, IoWitPackage> {
+): Map<PackageName, IoWitPackage>? {
   val witPackageMap = mutableMapOf<PackageName, MutableList<IoWitPackage>>()
 
   fun addPackage(packageName: PackageName, witPackage: IoWitPackage) {
@@ -50,7 +48,7 @@ fun validateUniquePackageNames(
     }
   }
 
-  val collisionExceptions = collisions.map { (packageName, packages) ->
+  val issues = collisions.map { (packageName, packages) ->
     Issue(
       "Duplicate definitions of $packageName",
       packages.flatMap { witPackage ->
@@ -62,18 +60,19 @@ fun validateUniquePackageNames(
         }
       }.toList(),
     )
-  }.map(::WitException)
-
-  when (collisionExceptions.size) {
-    0 -> {}
-    1 -> throw collisionExceptions.single()
-    else -> throw WitCompoundException(collisionExceptions)
   }
 
-  return output
+  return if (issues.isEmpty()) {
+    output
+  } else {
+    issues.forEach(issueCollector::report)
+    null
+  }
 }
 
-fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>): Map<ServiceName, IoService> {
+context(issueCollector: IssueCollector)
+fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>):
+  Map<ServiceName, IoService>? {
   val services = mutableMapOf<ServiceName, MutableList<IoService>>()
 
   fun addService(serviceName: ServiceName, service: IoService) {
@@ -95,7 +94,7 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>): Ma
       }
     }
   }
-  val collisions = mutableMapOf<ServiceName, List<IoService>>()
+  val issues = mutableListOf<Issue>()
   val output = mutableMapOf<ServiceName, IoService>()
 
   for ((serviceName, serviceList) in services) {
@@ -104,23 +103,19 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>): Ma
       1 -> output[serviceName] = serviceList.single()
       else -> {
         output[serviceName] = serviceList.first()
-        collisions[serviceName] = serviceList
+        val locations = serviceList.map { it.location }
+        val issue = Issue("Duplicate definitions of $serviceName", locations)
+        issues += issue
+        issueCollector.report(issue)
       }
     }
   }
 
-  val collisionExceptions = collisions.map { (serviceName, serviceRefs) ->
-    val locations = serviceRefs.map { serviceRef -> serviceRef.location }
-    WitException(Issue("Duplicate definitions of $serviceName", locations))
+  return if (issues.isEmpty()) {
+    output
+  } else {
+    null
   }
-
-  when (collisionExceptions.size) {
-    0 -> {}
-    1 -> throw collisionExceptions.single()
-    else -> throw WitCompoundException(collisionExceptions)
-  }
-
-  return output
 }
 
 private fun processInlinePackage(

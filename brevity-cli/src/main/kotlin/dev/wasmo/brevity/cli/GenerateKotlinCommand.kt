@@ -6,6 +6,7 @@ import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.io.IoWitPackageReader
@@ -14,6 +15,7 @@ import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.ApiGenerator
 import dev.wasmo.brevity.kotlin.generator.GuestGenerator
 import dev.wasmo.brevity.kotlin.generator.HostGenerator
+import dev.wasmo.brevity.withIssueCollector
 import okio.FileSystem
 import okio.Path
 
@@ -39,7 +41,7 @@ class GenerateKotlinCommand(
     .multiple()
     .help("the world name like 'command', 'wasi:cli/command', or 'wasi:cli/command@0.3.0'")
 
-  override fun run() {
+  override fun run() = withIssueCollector {
     val packageReader = IoWitPackageReader(fileSystem)
 
     val ioWitPackages = inputWitDirectories.map {
@@ -58,7 +60,8 @@ class GenerateKotlinCommand(
     jvmMainDir.deleteRecursively()
     jvmMainDir.mkdirs()
 
-    val allIrPackages = IrMapper(ioWitPackages).map()
+    val irMapper = IrMapper(ioWitPackages) ?: return@withIssueCollector
+    val allIrPackages = irMapper.map()
 
     val irPackages = when {
       world.isEmpty() -> allIrPackages

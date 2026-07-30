@@ -1,6 +1,7 @@
 package dev.wasmo.brevity
 
 import dev.wasmo.brevity.io.IoWitPackageReader
+import dev.wasmo.brevity.io.IrMapper
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.ApiGenerator

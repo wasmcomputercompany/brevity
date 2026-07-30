@@ -3,15 +3,16 @@ package dev.wasmo.brevity.io.validation
 import assertk.assertThat
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.containsOnly
-import assertk.assertions.isEqualTo
+import assertk.assertions.isEmpty
+import assertk.assertions.isInstanceOf
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.WitCompoundException
-import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.toPackageName
-import kotlin.test.assertFailsWith
 import org.junit.Test
 
 class ValidateUniquePackageNamesTest {
@@ -47,13 +48,18 @@ class ValidateUniquePackageNamesTest {
     )
     val packages = listOf(cliPackage, otherPackage)
 
-    val map = validateUniquePackageNames(packages)
+    val issueCollector = IssueCollector()
+    val map = with(issueCollector) { validateUniquePackageNames(packages) }
 
-    assertThat(map).containsOnly(
+    assertThat(map).isNotNull()
+
+    assertThat(map!!).containsOnly(
       "wasi:cli".toPackageName() to cliPackage,
       "wasi:inline".toPackageName() to inlinePackage,
       "wasi:other".toPackageName() to otherPackage,
     )
+
+    assertThat(issueCollector.issues).isEmpty()
   }
 
   @Test
@@ -91,19 +97,12 @@ class ValidateUniquePackageNamesTest {
         ),
       ),
     )
-    val exception = assertFailsWith<WitException> {
-      validateUniquePackageNames(listOf(cliPackage, otherPackage))
-    }
+    val issueCollector = IssueCollector()
 
-    assertThat(exception.message).isEqualTo(
-      """
-      |Duplicate definitions of wasi:cli
-      |${"\t"}at cli.wit:1:1
-      |${"\t"}at cli-extra.wit:1:1
-      |${"\t"}at other/other.wit:1:2""".trimMargin(),
-    )
+    val result = with(issueCollector) { validateUniquePackageNames(listOf(cliPackage, otherPackage)) }
+    assertThat(result).isNull()
 
-    assertThat(exception.issue.locations).containsExactlyInAnyOrder(
+    assertThat(issueCollector.issues.single().locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
       cliLocation,
       cliExtraLocation,
@@ -146,31 +145,24 @@ class ValidateUniquePackageNamesTest {
         ),
       ),
     )
-    val exception = assertFailsWith<WitCompoundException> {
-      validateUniquePackageNames(listOf(cliPackage, otherPackage))
-    }
+    val issueCollector = IssueCollector()
+    val result = with(issueCollector) { validateUniquePackageNames(listOf(cliPackage, otherPackage)) }
+    assertThat(result).isNull()
 
-    assertThat(exception.message).isEqualTo(
-      """
-      |Multiple issues found:
-      |Duplicate definitions of wasi:cli
-      |${"\t"}at cli.wit
-      |${"\t"}at other/other.wit:1:2
-      |Duplicate definitions of wasi:other
-      |${"\t"}at other/other.wit
-      |${"\t"}at other/other.wit:1:2
-      |""".trimMargin(),
-    )
+    val (firstIssue, secondIssue) = issueCollector.issues
 
-    val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitException>()
-
-    assertThat(firstException.issue.locations).containsExactlyInAnyOrder(
+    assertThat(firstIssue.locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
       cliLocation,
     )
-    assertThat(secondException.issue.locations).containsExactlyInAnyOrder(
+    assertThat(secondIssue.locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
       otherLocation,
     )
   }
+}
+
+inline fun <reified T : Any> Any.assertIsInstanceOf(): T {
+  assertThat(this).isInstanceOf(T::class.java)
+  return this as T
 }

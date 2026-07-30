@@ -3,6 +3,7 @@ package dev.wasmo.brevity.ir
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
@@ -30,12 +31,18 @@ import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.io.IoWitPackage
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.UsePath
+import dev.wasmo.brevity.io.validation.ValidatedIoWitPackages
+import dev.wasmo.brevity.io.validation.validate
 import dev.wasmo.brevity.io.validation.validateUniquePackageNames
 
 class IrMapper(
-  private val packages: List<IoToplevelWitPackage>,
+  validatedIoWitPackages: ValidatedIoWitPackages,
 ) {
-  private val packageNameToPackage = validateUniquePackageNames(packages)
+  private val packages: List<IoToplevelWitPackage> = validatedIoWitPackages.toplevelPackages
+
+  // TODO: actually use the issue collector
+  private val packageNameToPackage = validatedIoWitPackages.packageNameMap
+  private val serviceNameToService = validatedIoWitPackages.serviceNameMap
   private val irPackages = mutableMapOf<PackageName, PackageBuilder>()
 
   internal class PackageBuilder {
@@ -311,12 +318,10 @@ class IrMapper(
   internal fun IoTypeName.Declared.declaredTypeToIrOrNull(): TypeName.Declared? {
     val witPackage = packageNameToPackage[context.serviceName.packageName] ?: return null
     val declarations = sequence {
-      val items = witPackage.items
-      for (service in items) {
+      serviceNameToService[context.serviceName]?.let { service ->
         when (service) {
-          is IoInterface if service.name == context.serviceName.name -> yieldAll(service.items)
-          is IoWorld if service.name == context.serviceName.name -> yieldAll(service.items)
-          else -> {}
+          is IoInterface -> yieldAll(service.items)
+          is IoWorld -> yieldAll(service.items)
         }
       }
     }
@@ -501,3 +506,7 @@ private val IoWitPackage.items: List<IoWitFile.Item>
  */
 private fun IoInterface.declaresApis(): Boolean =
   items.any { it is IoFunction }
+
+context(issueCollector: IssueCollector)
+fun IrMapper(toplevelWitPackages: List<IoToplevelWitPackage>): IrMapper? =
+  toplevelWitPackages.validate()?.let { IrMapper(it) }

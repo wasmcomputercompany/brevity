@@ -3,10 +3,13 @@ package dev.wasmo.brevity.io.validation
 import assertk.assertThat
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.containsOnly
+import assertk.assertions.isEmpty
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import dev.wasmo.brevity.Issue
+import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.WitCompoundException
-import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoInterface
 import dev.wasmo.brevity.io.IoToplevelWitPackage
@@ -14,7 +17,6 @@ import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.toServiceName
 import dev.wasmo.brevity.toPackageName
-import kotlin.test.assertFailsWith
 import org.junit.Test
 
 class ValidateUniqueServiceNamesTest {
@@ -32,8 +34,8 @@ class ValidateUniqueServiceNamesTest {
           location = cliLocation,
           packageName = "wasi:cli".toPackageName(),
           items = listOf(cliInterface),
-        )
-      )
+        ),
+      ),
     )
     val otherLocation = Location("other/other.wit")
     val inlineInterface = IoInterface(
@@ -58,19 +60,23 @@ class ValidateUniqueServiceNamesTest {
           items = listOf(
             inlinePackage,
             otherWorld,
-          )
-        )
-      )
+          ),
+        ),
+      ),
     )
     val packages = listOf(cliPackage, otherPackage)
+    val issueCollector = IssueCollector()
 
-    val map = validateUniqueServiceNames(packages)
+    val map = with(issueCollector) { validateUniqueServiceNames(packages) }
+    assertThat(map).isNotNull()
 
-    assertThat(map).containsOnly(
+    assertThat(map!!).containsOnly(
       "wasi:cli/monotonic-clock".toServiceName() to cliInterface,
       "wasi:inline/polytonic-clock".toServiceName() to inlineInterface,
       "wasi:other/clocks".toServiceName() to otherWorld,
     )
+
+    assertThat(issueCollector.issues).isEmpty()
   }
 
   @Test
@@ -97,8 +103,8 @@ class ValidateUniqueServiceNamesTest {
           location = secondLocation,
           packageName = "wasi:cli".toPackageName(),
           items = listOf(duplicateCliInterface),
-        )
-      )
+        ),
+      ),
     )
     val otherLocation = Location("other/other.wit")
     val inlineInterface = IoInterface(
@@ -123,20 +129,25 @@ class ValidateUniqueServiceNamesTest {
           items = listOf(
             inlinePackage,
             otherWorld,
-          )
-        )
-      )
+          ),
+        ),
+      ),
     )
     val packages = listOf(cliPackage, otherPackage)
+    val issueCollector = IssueCollector()
 
-    val exception = assertFailsWith<WitException> {
-      validateUniqueServiceNames(packages)
-    }
+    val result = with(issueCollector) { validateUniqueServiceNames(packages) }
+    assertThat(result).isNull()
 
-    assertThat(exception.message).isEqualTo("""
-      |Duplicate definitions of wasi:cli/monotonic-clock
-      |${"\t"}at first.wit:1:2
-      |${"\t"}at second.wit:1:3""".trimMargin())
+    assertThat(issueCollector.issues.single()).isEqualTo(
+      Issue(
+        "Duplicate definitions of wasi:cli/monotonic-clock",
+        listOf(
+          Location("first.wit", 1, 2),
+          Location("second.wit", 1, 3),
+        ),
+      ),
+    )
   }
 
   @Test
@@ -163,8 +174,8 @@ class ValidateUniqueServiceNamesTest {
           location = secondLocation,
           packageName = "wasi:cli".toPackageName(),
           items = listOf(duplicateCliInterface),
-        )
-      )
+        ),
+      ),
     )
     val otherLocation = Location("other/other.wit")
 
@@ -194,27 +205,26 @@ class ValidateUniqueServiceNamesTest {
           items = listOf(
             inlinePackage,
             otherWorld,
-            duplicateOtherWorld
-          )
-        )
-      )
+            duplicateOtherWorld,
+          ),
+        ),
+      ),
     )
     val packages = listOf(cliPackage, otherPackage)
+    val issueCollector = IssueCollector()
 
-    val exception = assertFailsWith<WitCompoundException> {
-      validateUniqueServiceNames(packages)
-    }
+    val result = with(issueCollector) { validateUniqueServiceNames(packages) }
+    assertThat(result).isNull()
 
-    val (firstException, secondException) = exception.witExceptions.filterIsInstance<WitException>()
+    val (firstIssue, secondIssue) = issueCollector.issues
 
-    assertThat(firstException.issue.locations).containsExactlyInAnyOrder(
+    assertThat(firstIssue.locations).containsExactlyInAnyOrder(
       Location("first.wit", 1, 2),
-      Location("second.wit", 1, 3)
+      Location("second.wit", 1, 3),
     )
-    assertThat(secondException.issue.locations).containsExactlyInAnyOrder(
+    assertThat(secondIssue.locations).containsExactlyInAnyOrder(
       Location("other/other.wit", 5, 6),
-      Location("other/other.wit", 7, 8)
+      Location("other/other.wit", 7, 8),
     )
   }
-
 }
