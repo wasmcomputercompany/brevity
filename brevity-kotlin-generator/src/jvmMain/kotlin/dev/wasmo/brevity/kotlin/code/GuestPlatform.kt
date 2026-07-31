@@ -1,13 +1,14 @@
-package dev.wasmo.brevity.kotlin.encoders
+package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.handleName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
 internal object GuestPlatform : Platform {
-  context(builder: BridgeBuilder)
+  context(codeBuilder: CodeBuilder)
   override fun allocate(
     memoryAllocatorName: String,
     byteCount: CodeBlock,
@@ -19,15 +20,15 @@ internal object GuestPlatform : Platform {
   override fun lowerAddress(address: CodeBlock) =
     CodeBlock.of("%L.address.toInt()", address)
 
-  context(builder: BridgeBuilder)
+  context(codeBuilder: CodeBuilder)
   override fun liftResource(id: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of("%L.fromId(%L, ::%T)", builder.bridge, id, handleType.handleName)
+    CodeBlock.of("%L.fromId(%L, ::%T)", codeBuilder.bridge, id, handleType.handleName)
 
-  context(builder: BridgeBuilder)
+  context(codeBuilder: CodeBuilder)
   override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of("%L.toId<%T>(%L)", builder.bridge, handleType.kotlinApi, resource)
+    CodeBlock.of("%L.toId<%T>(%L)", codeBuilder.bridge, handleType.kotlinApi, resource)
 
-  context(builder: BridgeBuilder)
+  context(codeBuilder: CodeBuilder)
   override fun loadString(address: CodeBlock, byteCount: CodeBlock): CodeBlock {
     return CodeBlock.of(
       "%T(%L.toUInt()).%M(%L)",
@@ -38,23 +39,23 @@ internal object GuestPlatform : Platform {
     )
   }
 
-  context(builder: BridgeBuilder)
+  context(codeBuilder: CodeBuilder)
   override fun storeString(string: CodeBlock): Pair<CodeBlock, CodeBlock> {
-    val byteArray = builder.nameAllocator.newName("byteArray")
-    val address = builder.nameAllocator.newName("stringAddress")
+    val byteArray = codeBuilder.newName("byteArray")
+    val address = codeBuilder.newName("stringAddress")
 
-    builder.code.addStatement(
+    codeBuilder.addStatement(
       "val %N = %L.%M()",
       byteArray,
       string,
       Symbols.Kotlin.EncodeToByteArray,
     )
-    builder.code.addStatement(
+    codeBuilder.addStatement(
       "val %N = %L",
       address,
-      builder.allocate("%N.size", byteArray),
+      codeBuilder.allocate("%N.size", byteArray),
     )
-    builder.code.addStatement(
+    codeBuilder.addStatement(
       "%N.%M(%N)",
       address,
       Symbols.Brevity.StoreByteArray,
@@ -64,7 +65,7 @@ internal object GuestPlatform : Platform {
     return lowerAddress(CodeBlock.of("%N", address)) to CodeBlock.of("%N.size", byteArray)
   }
 
-  context(builder: BridgeBuilder)
+  context(codeBuilder: CodeBuilder)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -85,14 +86,14 @@ internal object GuestPlatform : Platform {
     )
   }
 
-  context(builder: BridgeBuilder)
+  context(codeBuilder: CodeBuilder)
   override fun store(
     baseAddress: CodeBlock,
     offset: Int,
     type: IntegerType,
     value: CodeBlock,
   ) {
-    builder.code.addStatement(
+    codeBuilder.addStatement(
       "%L.%N(%L)",
       when {
         offset != 0 -> CodeBlock.of("(%L + %L)", baseAddress, offset)

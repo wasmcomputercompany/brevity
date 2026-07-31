@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.kotlin.code.CodeBuilder
 
 /**
  * Encode a [List], [ByteArray], [IntArray], etc., whose length is not known at build time.
@@ -22,59 +23,73 @@ class DynamicListEncoder(
   override val alignment: Int
     get() = CoreType.Pointer.alignment
 
-  override fun BridgeBuilder.load(
+  context(codeBuilder: CodeBuilder)
+  override fun load(
     baseAddress: CodeBlock,
     offset: Int,
   ): CodeBlock {
     return loadList(
-      address = platform.load(baseAddress, offset, CoreType.Pointer),
-      length = platform.load(baseAddress, offset + CoreType.Pointer.byteCount, CoreType.Pointer),
+      address = codeBuilder.platform.load(baseAddress, offset, CoreType.Pointer),
+      length = codeBuilder.platform.load(
+        baseAddress,
+        offset + CoreType.Pointer.byteCount,
+        CoreType.Pointer,
+      ),
     )
   }
 
-  override fun BridgeBuilder.store(
+  context(codeBuilder: CodeBuilder)
+  override fun store(
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
   ) {
     val (address, length) = storeList(value)
-    platform.store(baseAddress, offset, CoreType.Pointer, address)
-    platform.store(baseAddress, offset + CoreType.Pointer.byteCount, CoreType.Pointer, length)
+    codeBuilder.platform.store(baseAddress, offset, CoreType.Pointer, address)
+    codeBuilder.platform.store(
+      baseAddress,
+      offset + CoreType.Pointer.byteCount,
+      CoreType.Pointer,
+      length,
+    )
   }
 
-  override fun FlatEncoder.liftFlat() {
-    put(loadList(take(), take()))
+  context(codeBuilder: CodeBuilder)
+  override fun liftFlat(flatBuilder: FlatBuilder) {
+    flatBuilder.put(loadList(flatBuilder.take(), flatBuilder.take()))
   }
 
-  override fun FlatEncoder.lowerFlat() {
-    val value = take()
+  context(codeBuilder: CodeBuilder)
+  override fun lowerFlat(flatBuilder: FlatBuilder) {
+    val value = flatBuilder.take()
     val (address, length) = storeList(value)
-    put(address)
-    put(length)
+    flatBuilder.put(address)
+    flatBuilder.put(length)
   }
 
-  private fun BridgeBuilder.loadList(
+  context(codeBuilder: CodeBuilder)
+  private fun loadList(
     address: CodeBlock,
     length: CodeBlock,
   ): CodeBlock {
-    val addressName = nameAllocator.newName("listAddress")
-    val elementAddressName = nameAllocator.newName("elementAddress")
-    val lengthName = nameAllocator.newName("length")
+    val addressName = codeBuilder.newName("listAddress")
+    val elementAddressName = codeBuilder.newName("elementAddress")
+    val lengthName = codeBuilder.newName("length")
 
-    code.addStatement(
+    codeBuilder.addStatement(
       "val %N = %L",
       addressName,
-      platform.liftAddress(address),
+      codeBuilder.platform.liftAddress(address),
     )
-    code.addStatement(
+    codeBuilder.addStatement(
       "val %N = %L",
       lengthName,
       length,
     )
 
-    val listName = nameAllocator.newName("list")
-    val indexName = nameAllocator.newName("i")
-    code.beginControlFlow(
+    val listName = codeBuilder.newName("list")
+    val indexName = codeBuilder.newName("i")
+    codeBuilder.beginControlFlow(
       "val %N = %T(%L) { %N ->",
       listName,
       listType,
@@ -82,13 +97,14 @@ class DynamicListEncoder(
       indexName,
     )
     with(elementEncoder) {
-      code.addStatement("val %N = %N + %N * %L",
+      codeBuilder.addStatement(
+        "val %N = %N + %N * %L",
         elementAddressName,
         addressName,
         indexName,
         elementEncoder.byteCount,
       )
-      code.addStatement(
+      codeBuilder.addStatement(
         "%L",
         load(
           baseAddress = CodeBlock.of("%N", elementAddressName),
@@ -96,42 +112,47 @@ class DynamicListEncoder(
         ),
       )
     }
-    code.endControlFlow()
+    codeBuilder.endControlFlow()
     return CodeBlock.of("%N", listName)
   }
 
-  private fun BridgeBuilder.storeList(
+  context(codeBuilder: CodeBuilder)
+  private fun storeList(
     list: CodeBlock,
   ): Pair<CodeBlock, CodeBlock> {
-    val addressName = nameAllocator.newName("listAddress")
-    val elementAddressName = nameAllocator.newName("elementAddress")
-    val indexName = nameAllocator.newName("i")
+    val addressName = codeBuilder.newName("listAddress")
+    val elementAddressName = codeBuilder.newName("elementAddress")
+    val indexName = codeBuilder.newName("i")
 
-    code.addStatement(
+    codeBuilder.addStatement(
       "val %N = %L",
       addressName,
-      allocate(CodeBlock.of("%L.size * %L", list, elementEncoder.byteCount)),
+      codeBuilder.allocate(CodeBlock.of("%L.size * %L", list, elementEncoder.byteCount)),
     )
-    code.beginControlFlow(
+    codeBuilder.beginControlFlow(
       "for (%N in %L.indices)",
       indexName,
       list,
     )
-    with(elementEncoder) {
-      code.addStatement("val %N = %N + %N * %L",
-        elementAddressName,
-        addressName,
-        indexName,
-        elementEncoder.byteCount,
-      )
-      store(
-        CodeBlock.of("%N", elementAddressName),
-        0,
-        CodeBlock.of("%L[%N]", list, indexName),
-      )
-    }
-    code.endControlFlow()
+    codeBuilder.addStatement(
+      "val %N = %N + %N * %L",
+      elementAddressName,
+      addressName,
+      indexName,
+      elementEncoder.byteCount,
+    )
+    elementEncoder.store(
+      CodeBlock.of("%N", elementAddressName),
+      0,
+      CodeBlock.of("%L[%N]", list, indexName),
+    )
+    codeBuilder.endControlFlow()
 
-    return platform.lowerAddress(CodeBlock.of("%N", addressName)) to CodeBlock.of("%L.size", list)
+    return codeBuilder.platform.lowerAddress(
+      CodeBlock.of(
+        "%N",
+        addressName,
+      ),
+    ) to CodeBlock.of("%L.size", list)
   }
 }

@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
+import dev.wasmo.brevity.kotlin.code.CodeBuilder
 
 abstract class AbstractRecordEncoder(
   protected val fieldEncoders: List<Encoder>,
@@ -13,25 +14,23 @@ abstract class AbstractRecordEncoder(
   override val alignment: Int
     get() = fieldEncoders.maxOf { it.alignment }
 
-  override fun BridgeBuilder.load(
+  context(codeBuilder: CodeBuilder)
+  override fun load(
     baseAddress: CodeBlock,
     offset: Int,
-  ): CodeBlock {
-    return fieldValuesToInstance(
-      fieldValues = buildList {
-        var offset = offset
-        for (fieldEncoder in fieldEncoders) {
-          offset = offset.alignTo(fieldEncoder.alignment)
-          with(fieldEncoder) {
-            add(load(baseAddress, offset))
-          }
-          offset += fieldEncoder.byteCount
-        }
-      },
-    )
-  }
+  ) = fieldValuesToInstance(
+    fieldValues = buildList {
+      var offset = offset
+      for (fieldEncoder in fieldEncoders) {
+        offset = offset.alignTo(fieldEncoder.alignment)
+        add(fieldEncoder.load(baseAddress, offset))
+        offset += fieldEncoder.byteCount
+      }
+    },
+  )
 
-  override fun BridgeBuilder.store(
+  context(codeBuilder: CodeBuilder)
+  override fun store(
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
@@ -40,34 +39,33 @@ abstract class AbstractRecordEncoder(
     var offset = offset
     for ((index, fieldEncoder) in fieldEncoders.withIndex()) {
       offset = offset.alignTo(fieldEncoder.alignment)
-      with(fieldEncoder) {
-        store(baseAddress, offset, fieldValues[index])
-      }
+      fieldEncoder.store(baseAddress, offset, fieldValues[index])
       offset += fieldEncoder.byteCount
     }
   }
 
-  override fun FlatEncoder.liftFlat() {
-    put(
+  context(codeBuilder: CodeBuilder)
+  override fun liftFlat(flatBuilder: FlatBuilder) {
+    flatBuilder.put(
       fieldValuesToInstance(
         fieldValues = fieldEncoders.map { fieldEncoder ->
-          liftFlat(
-            values = fieldEncoder.coreTypes.map { take() },
-            encoder = fieldEncoder,
+          fieldEncoder.liftFlat(
+            values = fieldEncoder.coreTypes.map { flatBuilder.take() },
           )
         },
       ),
     )
   }
 
-  override fun FlatEncoder.lowerFlat() {
-    val tuple = nameAllocator.newName("tuple")
-    code.addStatement("val %N = %L", tuple, take())
+  context(codeBuilder: CodeBuilder)
+  override fun lowerFlat(flatBuilder: FlatBuilder) {
+    val tuple = codeBuilder.newName("tuple")
+    codeBuilder.addStatement("val %N = %L", tuple, flatBuilder.take())
 
     val fieldValues = instanceToFieldValues(CodeBlock.of("%N", tuple))
     for ((i, fieldEncoder) in fieldEncoders.withIndex()) {
-      for (coreType in lowerFlat(fieldValues[i], fieldEncoder)) {
-        put(coreType)
+      for (coreType in fieldEncoder.lowerFlat(fieldValues[i])) {
+        flatBuilder.put(coreType)
       }
     }
   }
