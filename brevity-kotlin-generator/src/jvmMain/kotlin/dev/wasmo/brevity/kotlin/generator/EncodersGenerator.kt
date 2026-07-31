@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.NameAllocator
+import com.squareup.kotlinpoet.ParameterSpec
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.RoleTracker
@@ -48,18 +49,22 @@ class EncodersGenerator(
     type: IrTypeDeclaration,
   ): FunSpec {
     val encoder = encoderFactory.get(type.type)
+    val nameAllocator = NameAllocator()
+    val bridgeParameter = ParameterSpec.builder(
+      nameAllocator.newName("bridge"),
+      platform.bridgeType,
+    ).build()
     val codeBuilder = CodeBuilder(
-      CodeBlock.of("%N", "bridge"),
-      nameAllocator = NameAllocator(),
-      code = CodeBlock.builder(),
+      bridge = CodeBlock.of("%N", bridgeParameter.name),
       platform = platform,
+      nameAllocator = nameAllocator,
     )
     context(codeBuilder) {
       return when (action) {
-        EncodeAction.Load -> createLoad(type, encoder)
-        EncodeAction.Store -> createStore(type, encoder)
-        EncodeAction.LiftFlat -> createLiftFlat(type, encoder)
-        EncodeAction.LowerFlat -> createLowerFlat(type, encoder)
+        EncodeAction.Load -> createLoad(type, bridgeParameter, encoder)
+        EncodeAction.Store -> createStore(type, bridgeParameter, encoder)
+        EncodeAction.LiftFlat -> createLiftFlat(type, bridgeParameter, encoder)
+        EncodeAction.LowerFlat -> createLowerFlat(type, bridgeParameter, encoder)
       }
     }
   }
@@ -67,43 +72,62 @@ class EncodersGenerator(
   context(codeBuilder: CodeBuilder)
   private fun createLoad(
     type: IrTypeDeclaration,
+    bridgeParameter: ParameterSpec,
     encoder: Encoder,
   ): FunSpec {
     val name = encodeFunctionName(type.type, EncodeAction.Load, codeBuilder.platform)
+    val addressName = codeBuilder.newName("address")
     val className = type.type.kotlinApi
     return FunSpec.builder(name)
-      .addParameter("bridge", codeBuilder.platform.bridgeType)
-      .addParameter("address", codeBuilder.platform.addressType)
+      .addParameter(bridgeParameter)
+      .addParameter(addressName, codeBuilder.platform.addressType)
       .returns(className)
-      .addCode("TODO(%S)", "load ${codeBuilder.platform.identifier} ${type.type.kotlinApi}")
+      .apply {
+        codeBuilder.addStatement(
+          "return %L",
+          encoder.load(CodeBlock.of("%N", addressName)),
+        )
+        addCode(codeBuilder.build())
+      }
       .build()
   }
 
   context(codeBuilder: CodeBuilder)
   private fun createStore(
     type: IrTypeDeclaration,
+    bridgeParameter: ParameterSpec,
     encoder: Encoder,
   ): FunSpec {
     val name = encodeFunctionName(type.type, EncodeAction.Store, codeBuilder.platform)
+    val addressName = codeBuilder.newName("address")
+    val valueName = codeBuilder.newName("value")
     val className = type.type.kotlinApi
     return FunSpec.builder(name)
-      .addParameter("bridge", codeBuilder.platform.bridgeType)
-      .addParameter("address", codeBuilder.platform.addressType)
-      .addParameter("value", className)
-      .addCode("TODO(%S)", "store ${codeBuilder.platform.identifier} ${type.type.kotlinApi}")
+      .addParameter(bridgeParameter)
+      .addParameter(addressName, codeBuilder.platform.addressType)
+      .addParameter(valueName, className)
+      .apply {
+        encoder.store(
+          baseAddress = CodeBlock.of("%L", addressName),
+          value = CodeBlock.of("%N", valueName)
+        )
+        addCode(codeBuilder.build())
+      }
       .build()
   }
 
   context(codeBuilder: CodeBuilder)
   private fun createLiftFlat(
     type: IrTypeDeclaration,
+    bridgeParameter: ParameterSpec,
     encoder: Encoder,
   ): FunSpec {
     val name = encodeFunctionName(type.type, EncodeAction.LiftFlat, codeBuilder.platform)
+    val addressName = codeBuilder.newName("address")
     val className = type.type.kotlinApi
     return FunSpec.builder(name)
-      .addParameter("bridge", codeBuilder.platform.bridgeType)
-      .addParameter("address", codeBuilder.platform.addressType)
+      .addParameter(bridgeParameter)
+      .addParameter(addressName, codeBuilder.platform.addressType)
       .returns(className)
       .apply {
         val coreValueNames = allocateNames("value", encoder.coreTypes.size)
@@ -114,7 +138,7 @@ class EncodersGenerator(
           "return %L",
           encoder.liftFlat(coreValueNames.map { CodeBlock.of("%N", it) }),
         )
-        addCode(codeBuilder.code.build())
+        addCode(codeBuilder.build())
       }
       .build()
   }
@@ -122,15 +146,15 @@ class EncodersGenerator(
   context(codeBuilder: CodeBuilder)
   private fun createLowerFlat(
     type: IrTypeDeclaration,
+    bridgeParameter: ParameterSpec,
     encoder: Encoder,
   ): FunSpec {
     val name = encodeFunctionName(type.type, EncodeAction.LowerFlat, codeBuilder.platform)
-    val bridgeName = codeBuilder.newName("bridge")
     val valueName = codeBuilder.newName("value")
     val flatSinkName = codeBuilder.newName("flatSink")
     val className = type.type.kotlinApi
     return FunSpec.builder(name)
-      .addParameter(bridgeName, codeBuilder.platform.bridgeType)
+      .addParameter(bridgeParameter)
       .addParameter(flatSinkName, Symbols.Brevity.FlatSink)
       .addParameter(valueName, className)
       .apply {
@@ -138,6 +162,7 @@ class EncodersGenerator(
         for (coreValue in codeBlocks) {
           codeBuilder.addStatement("%N.put(%L)", flatSinkName, coreValue)
         }
+        addCode(codeBuilder.build())
       }
       .build()
   }

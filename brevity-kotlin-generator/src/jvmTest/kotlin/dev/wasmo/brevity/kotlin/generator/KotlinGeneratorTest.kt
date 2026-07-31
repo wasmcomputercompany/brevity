@@ -1325,9 +1325,7 @@ class KotlinGeneratorTest {
         }
       }
 
-      public fun load_Test_Person_guest(bridge: GuestBridge, address: Pointer): Test.Person {
-        TODO("load guest wit.namespace.package_name.Test.Person")
-      }
+      public fun load_Test_Person_guest(bridge: GuestBridge, address: Pointer): Test.Person = TODO("ResourceEncoder")
 
       public fun liftFlat_Test_Person_guest(
         bridge: GuestBridge,
@@ -1350,9 +1348,9 @@ class KotlinGeneratorTest {
       public fun store_Test_Person_host(
         bridge: HostBridge,
         address: Int,
-        `value`: Test.Person,
+        value_: Test.Person,
       ) {
-        TODO("store host wit.namespace.package_name.Test.Person")
+        // TODO: ResourceEncoder
       }
 
       public fun lowerFlat_Test_Person_host(
@@ -1360,6 +1358,7 @@ class KotlinGeneratorTest {
         flatSink: FlatSink,
         value_: Test.Person,
       ) {
+        flatSink.put(bridge.toId<Test.Person>(value_))
       }
 
       """.trimIndent(),
