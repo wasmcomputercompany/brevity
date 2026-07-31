@@ -10,6 +10,8 @@ import assertk.assertions.isNull
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.io.IoFlag
+import dev.wasmo.brevity.io.IoFlags
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoInterface
 import dev.wasmo.brevity.io.IoToplevelWitPackage
@@ -226,5 +228,60 @@ class ValidateUniqueServiceNamesTest {
       Location("other/other.wit", 5, 6),
       Location("other/other.wit", 7, 8),
     )
+  }
+
+  @Test
+  fun invalidFlags() {
+    val cliLocation = Location("")
+    val flagCount = 33
+    val cliInterface = IoInterface(
+      location = cliLocation,
+      name = "monotonic-clock",
+      items = listOf(
+        IoFlags(
+          location = cliLocation.at(1, 2),
+          name = "streets",
+          flags = buildList {
+            repeat(flagCount) { index ->
+              val flag = IoFlag(
+                location = cliLocation.at(1, 2 + index),
+                name = "$index Street",
+              )
+
+              add(flag)
+            }
+          }
+        )
+      )
+    )
+    val cliPackage = IoToplevelWitPackage(
+      packageName = "wasi:cli".toPackageName(),
+      files = listOf(
+        IoWitFile(
+          location = cliLocation,
+          packageName = "wasi:cli".toPackageName(),
+          items = listOf(cliInterface),
+        ),
+      ),
+    )
+
+    val issueCollector = IssueCollector()
+
+    val results = with(issueCollector) {
+      validateUniqueServiceNames(listOf(cliPackage))
+    }
+
+    assertThat(issueCollector.issues).containsOnly(
+      Issue(
+        "Flags are limited to no more than 32 flags; $flagCount flags defined",
+        cliLocation.at(1, 2),
+      )
+    )
+
+    assertThat(results).isNotNull()
+
+    assertThat(results!!["wasi:cli/monotonic-clock".toServiceName()])
+      .isEqualTo(cliInterface)
+
   }
 }

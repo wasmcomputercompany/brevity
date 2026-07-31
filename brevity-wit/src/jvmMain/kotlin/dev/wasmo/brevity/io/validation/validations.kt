@@ -4,6 +4,8 @@ import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.io.IoDeclaration
+import dev.wasmo.brevity.io.IoFlags
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoInterface
 import dev.wasmo.brevity.io.IoService
@@ -11,7 +13,6 @@ import dev.wasmo.brevity.io.IoTopLevelUse
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWitPackage
 import dev.wasmo.brevity.io.IoWorld
-import okio.Path
 
 context(issueCollector: IssueCollector)
 fun validateUniquePackageNames(
@@ -76,6 +77,11 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>):
   val services = mutableMapOf<ServiceName, MutableList<IoService>>()
 
   fun addService(serviceName: ServiceName, service: IoService) {
+    when (service) {
+      is IoInterface -> service.items
+      is IoWorld -> service.items
+    }.forEach { validateDeclaration(it) }
+
     services.getOrPut(serviceName) { mutableListOf() }.add(service)
   }
 
@@ -94,7 +100,7 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>):
       }
     }
   }
-  val issues = mutableListOf<Issue>()
+  val serviceNameCollisions = mutableListOf<Issue>()
   val output = mutableMapOf<ServiceName, IoService>()
 
   for ((serviceName, serviceList) in services) {
@@ -105,13 +111,13 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>):
         output[serviceName] = serviceList.first()
         val locations = serviceList.map { it.location }
         val issue = Issue("Duplicate definitions of $serviceName", locations)
-        issues += issue
+        serviceNameCollisions += issue
         issueCollector.report(issue)
       }
     }
   }
 
-  return if (issues.isEmpty()) {
+  return if (serviceNameCollisions.isEmpty()) {
     output
   } else {
     null
@@ -135,7 +141,16 @@ private fun processInlinePackage(
   }
 }
 
-data class ServiceRef(
-  val path: Path,
-  val service: IoService,
-)
+context(issueCollector: IssueCollector)
+fun validateDeclaration(decl: IoDeclaration) {
+  if (decl !is IoFlags) return
+  val flagCount = decl.flags.size
+  if (flagCount > 32) {
+    issueCollector.report(
+      Issue(
+        "Flags are limited to no more than 32 flags; $flagCount flags defined",
+        listOf(decl.location),
+      ),
+    )
+  }
+}
