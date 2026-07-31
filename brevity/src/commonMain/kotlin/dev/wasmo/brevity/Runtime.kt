@@ -30,3 +30,24 @@ sealed interface Result<out S, out F> {
     val value: F,
   ) : Result<S, F>
 }
+
+/** This is used internally by Brevity to implement flattening. */
+class FlatSink(i32Count: Int, i64Count: Int) {
+  private var nextI32 = 0
+  private val i32s = IntArray(i32Count)
+  private var nextI64 = 0
+  private val i64s = LongArray(i64Count)
+
+  fun put(v: Int) {
+    i32s[nextI32++] = v
+  }
+  fun put(v: Long) {
+    i64s[nextI64++] = v
+  }
+  fun put(v: Float) {
+    i32s[nextI32++] = v.toBits()
+  }
+  fun put(v: Double) {
+    i64s[nextI64++] = v.toBits()
+  }
+}

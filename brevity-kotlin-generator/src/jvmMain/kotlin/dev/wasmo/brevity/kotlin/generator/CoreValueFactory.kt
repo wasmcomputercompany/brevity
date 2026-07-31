@@ -17,16 +17,16 @@ class CoreValueFactory(
 
     val specs = mutableListOf<ParameterSpec>()
     val names = mutableListOf<String>()
-    for ((index, coreType) in encoder.coreTypes.withIndex()) {
-      val nameHint = nameHints?.getOrNull(index)
+    for ((v, coreType) in encoder.coreTypes.withIndex()) {
+      val nameHint = nameHints?.getOrNull(v)
       val coreName = when {
         nameHint != null -> nameAllocator.newName(
           Identifier("${name}-${nameHint.name}").toCamelCase(upperCamel = false),
         )
-        index == 0 -> nameAllocator[name]
+        v == 0 -> nameAllocator[name]
         else -> nameAllocator.newName(
-          suggestion = "${name.toCamelCase(upperCamel = false)}${index + 1}",
-          tag = name to index,
+          suggestion = "${name.toCamelCase(upperCamel = false)}${v + 1}",
+          tag = name to v,
         )
       }
       specs += ParameterSpec(coreName, coreType.kotlinCoreType)

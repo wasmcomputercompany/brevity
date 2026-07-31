@@ -61,8 +61,8 @@ internal class HostFunctionFactory(
             val loweredParameters = coreParameter.encoder.lowerFlat(
               value = CodeBlock.of("%N", nameAllocator[parameter.name]),
             )
-            for ((c, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
-              longParameters += coreTypeToLong(loweredParameters[c], coreType)
+            for ((v, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
+              longParameters += coreTypeToLong(loweredParameters[v], coreType)
             }
           }
 

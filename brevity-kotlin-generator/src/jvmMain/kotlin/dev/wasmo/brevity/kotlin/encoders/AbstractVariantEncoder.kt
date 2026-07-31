@@ -183,7 +183,7 @@ abstract class AbstractVariantEncoder(
           codeBuilder.addStatement(
             "%N = %L",
             caseCoreValuesBitsNames[v],
-            coreType.fromBits(casesCoreTypesBits[v], values[v]),
+            coreType.toBits(casesCoreTypesBits[v], values[v]),
           )
         }
       }
