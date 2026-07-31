@@ -5,6 +5,7 @@ import dev.wasmo.brevity.io.IrMapper
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.ApiGenerator
+import dev.wasmo.brevity.kotlin.generator.EncodersGenerator
 import dev.wasmo.brevity.kotlin.generator.GuestGenerator
 import dev.wasmo.brevity.kotlin.generator.HostGenerator
 import okio.Path
@@ -37,8 +38,9 @@ class BrevityTester(
   val declarationIndex = DeclarationIndex(irPackages)
   val roleTracker = RoleTracker(declarationIndex, irPackages)
   val encoderFactory = EncoderFactory(declarationIndex)
-  val guestGenerator = GuestGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
-  val hostGenerator = HostGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
+  val encodersGenerator = EncodersGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
+  val guestGenerator = GuestGenerator(encoderFactory, declarationIndex, encodersGenerator, roleTracker, irPackages)
+  val hostGenerator = HostGenerator(encoderFactory, declarationIndex, encodersGenerator, roleTracker, irPackages)
 
   val apiFiles = buildMap {
     val apiGenerator = ApiGenerator(irPackages)

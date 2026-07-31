@@ -25,15 +25,36 @@ import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 class HostGenerator(
   private val encoderFactory: EncoderFactory,
   private val declarationIndex: DeclarationIndex,
+  private val encodersGenerator: EncodersGenerator,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
 ) {
   fun generate(): List<FileSpec> {
-    return packages.mapNotNull { witPackage ->
-      FileSpec.builder(witPackage.packageName.toKotlin().name, "Host")
-        .addBrevityComment(witPackage.services)
-        .apply {
-          for (service in witPackage.services) {
+    val types = packages.flatMap { it.services }
+      .flatMap { it.types }
+      .mapNotNull { type ->
+        val typeName = type.type
+        val className = typeName.kotlinApi
+        val roleTrackerEntry = roleTracker[typeName] ?: return@mapNotNull null
+        val fileName = className.simpleNames.joinToString(separator = "") + "Host"
+        FileSpec.builder(className.packageName, fileName)
+          .addBrevityComment(type)
+          .addAnnotation(optInToExperimentalWasm)
+          .apply {
+            for (encoder in encodersGenerator.hostEncoders(type, roleTrackerEntry)) {
+              addFunction(encoder)
+            }
+          }
+          .build()
+          .takeIf { it.members.isNotEmpty() }
+      }
+
+    val services = packages.flatMap { it.services }
+      .mapNotNull { service ->
+        val className = service.serviceName.kotlinApi
+        FileSpec.builder(className.peerClass("${className.simpleName}Host"))
+          .addBrevityComment(service)
+          .apply {
             if (service is IrWorld) {
               val worldFactoryFunction = worldFactoryFunction(service)
               if (worldFactoryFunction != null) {
@@ -41,13 +62,16 @@ class HostGenerator(
               }
             }
 
-            val typeSpec = serviceToHost(service) ?: continue
-            addType(typeSpec)
+            val typeSpec = serviceToHost(service)
+            if (typeSpec != null) {
+              addType(typeSpec)
+            }
           }
-        }
-        .build()
-        .takeIf { it.members.isNotEmpty() }
-    }
+          .build()
+          .takeIf { it.members.isNotEmpty() }
+      }
+
+    return types + services
   }
 
   private fun worldFactoryFunction(value: IrWorld): FunSpec? {
