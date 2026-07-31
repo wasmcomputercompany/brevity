@@ -7,9 +7,10 @@ import com.squareup.kotlinpoet.NameAllocator
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
+import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
-import dev.wasmo.brevity.kotlin.encoders.GuestPlatform
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -46,7 +47,7 @@ internal class GuestFunctionFactory(
 
   private val code = CodeBlock.Builder()
 
-  private val bridgeBuilder = RealBridgeBuilder(
+  private val codeBuilder = CodeBuilder(
     bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
     nameAllocator = nameAllocator,
     code = code,
@@ -60,61 +61,61 @@ internal class GuestFunctionFactory(
     return FunSpec.builder(value.kotlinName)
       .addModifiers(KModifier.OVERRIDE)
       .apply {
-        val loweredParameters = mutableListOf<CodeBlock>()
-        loweredParameters += CodeBlock.of("this.%L", "id")
+        context(codeBuilder) {
+          val loweredParameters = mutableListOf<CodeBlock>()
+          loweredParameters += CodeBlock.of("this.%L", "id")
 
-        for ((index, parameter) in value.parameters.withIndex()) {
-          addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
-          loweredParameters += bridgeBuilder.lowerFlat(
-            value = CodeBlock.of("%N", nameAllocator[parameter.name]),
-            encoder = coreParameters[index].encoder,
-          )
-        }
+          for ((index, parameter) in value.parameters.withIndex()) {
+            addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
+            loweredParameters += coreParameters[index].encoder.lowerFlat(
+              value = CodeBlock.of("%N", nameAllocator[parameter.name]),
+            )
+          }
 
-        if (coreResult != null) {
-          when {
-            coreResult.parameter != null -> {
-              code.addStatement("val %N = %L",
-                coreResult.parameter.name,
-                bridgeBuilder.allocate("%L", CodeBlock.of("%L", coreResult.encoder.byteCount)),
-              )
-              loweredParameters += with(bridgeBuilder) {
-                platform.lowerAddress(CodeBlock.of("%N", coreResult.parameter.name))
+          if (coreResult != null) {
+            when {
+              coreResult.parameter != null -> {
+                code.addStatement(
+                  "val %N = %L",
+                  coreResult.parameter.name,
+                  codeBuilder.allocate("%L", CodeBlock.of("%L", coreResult.encoder.byteCount)),
+                )
+                loweredParameters += with(codeBuilder) {
+                  platform.lowerAddress(CodeBlock.of("%N", coreResult.parameter.name))
+                }
+              }
+
+              else -> {
+                code.add("val %N = ", coreResult.name)
               }
             }
+          }
+          code.add("%N(⇥", value.functionName.importFunctionName)
+          if (loweredParameters.isNotEmpty()) {
+            code.add("\n")
+          }
+          for (output in loweredParameters) {
+            code.add("%L,\n", output)
+          }
+          code.add("⇤)\n")
 
-            else -> {
-              code.add("val %N = ", coreResult.name)
+          if (coreResult != null) {
+            returns(coreResult.type.kotlinApi)
+            val returnValue = when {
+              coreResult.parameter != null -> coreResult.encoder.load(
+                CodeBlock.of("%N", coreResult.parameter.name),
+                0,
+              )
+              else -> coreResult.encoder.liftFlat(
+                values = listOf(CodeBlock.of("%N", coreResult.name)),
+              )
             }
-          }
-        }
-        code.add("%N(⇥", value.functionName.importFunctionName)
-        if (loweredParameters.isNotEmpty()) {
-          code.add("\n")
-        }
-        for (output in loweredParameters) {
-          code.add("%L,\n", output)
-        }
-        code.add("⇤)\n")
-
-        if (coreResult != null) {
-          returns(coreResult.type.kotlinApi)
-          val returnValue = when {
-            coreResult.parameter != null -> bridgeBuilder.loadValue(
-              CodeBlock.of("%N", coreResult.parameter.name),
-              coreResult,
-            )
-
-            else -> bridgeBuilder.liftFlat(
-              values = listOf(CodeBlock.of("%N", coreResult.name)),
-              encoder = coreResult.encoder,
+            code.add("return %L", returnValue)
+            code.add(
+              "\n⇥.also { %M() }⇤\n",
+              Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
             )
           }
-          code.add("return %L", returnValue)
-          code.add(
-            "\n⇥.also { %M() }⇤\n",
-            Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
-          )
         }
       }
       .addCode(buildCodeBlock())
@@ -154,64 +155,64 @@ internal class GuestFunctionFactory(
       .addAnnotation(value.functionName.wasmExportAnnotation)
       .addModifiers(KModifier.PRIVATE)
       .apply {
-        val liftedReceiver = when (receiver) {
-          is Receiver.Id -> {
-            addParameters(coreReceiver!!.specs)
-            bridgeBuilder.liftFlat(
-              values = coreReceiver.names.map { CodeBlock.of("%N", it) },
-              encoder = coreReceiver.encoder,
+        context(codeBuilder) {
+          val liftedReceiver = when (receiver) {
+            is Receiver.Id -> {
+              addParameters(coreReceiver!!.specs)
+
+              coreReceiver.encoder.liftFlat(
+                values = coreReceiver.names.map { CodeBlock.of("%N", it) },
+              )
+            }
+
+            is Receiver.Global -> receiver.codeBlock
+          }
+
+          val liftedParameterValues = mutableListOf<CodeBlock>()
+          for (coreParameter in coreParameters) {
+            addParameters(coreParameter.specs)
+            liftedParameterValues += coreParameter.encoder.liftFlat(
+              values = coreParameter.names.map { CodeBlock.of("%N", it) },
             )
           }
 
-          is Receiver.Global -> receiver.codeBlock
-        }
+          if (coreResult != null) {
+            code.add("val %N = ", coreResult.name)
+          }
+          code.add("%L.%N(⇥\n", liftedReceiver, value.kotlinName)
+          for ((index, parameter) in value.parameters.withIndex()) {
+            code.add("%N = %L,\n", nameAllocator[parameter.name], liftedParameterValues[index])
+          }
+          code.add("⇤)\n")
 
-        val liftedParameterValues = mutableListOf<CodeBlock>()
-        for (coreParameter in coreParameters) {
-          addParameters(coreParameter.specs)
-          liftedParameterValues += bridgeBuilder.liftFlat(
-            values = coreParameter.names.map { CodeBlock.of("%N", it) },
-            encoder = coreParameter.encoder,
-          )
-        }
+          if (coreResult != null) {
+            when (coreResult.encoder.coreTypes.size) {
+              1 -> {
+                val loweredReturnValues = coreResult.encoder.lowerFlat(
+                  value = CodeBlock.of("%N", coreResult.name),
+                )
+                returns(coreResult.encoder.coreTypes.single().kotlinCoreType)
+                code.add("return %L\n", loweredReturnValues.single())
+              }
 
-        if (coreResult != null) {
-          code.add("val %N = ", coreResult.name)
-        }
-        code.add("%L.%N(⇥\n", liftedReceiver, value.kotlinName)
-        for ((index, parameter) in value.parameters.withIndex()) {
-          code.add("%N = %L,\n", nameAllocator[parameter.name], liftedParameterValues[index])
-        }
-        code.add("⇤)\n")
-
-        if (coreResult != null) {
-          when (coreResult.encoder.coreTypes.size) {
-            1 -> {
-              val loweredReturnValues = bridgeBuilder.lowerFlat(
-                value = CodeBlock.of("%N", coreResult.name),
-                encoder = coreResult.encoder,
-              )
-              returns(coreResult.encoder.coreTypes.single().kotlinCoreType)
-              code.add("return %L\n", loweredReturnValues.single())
-            }
-
-            else -> {
-              returns(CoreType.Pointer.kotlinCoreType)
-              val address = nameAllocator.newName("resultAddress")
-              code.addStatement(
-                "val %N = %L",
-                address,
-                bridgeBuilder.allocate("%L", coreResult.encoder.byteCount),
-              )
-              bridgeBuilder.storeValue(
-                address = CodeBlock.of("%N", address),
-                value = CodeBlock.of("%N", coreResult.name),
-                coreResult = coreResult,
-              )
-              code.add(
-                "return %L\n",
-                bridgeBuilder.platform.lowerAddress(CodeBlock.of("%N", address)),
-              )
+              else -> {
+                returns(CoreType.Pointer.kotlinCoreType)
+                val address = nameAllocator.newName("resultAddress")
+                code.addStatement(
+                  "val %N = %L",
+                  address,
+                  codeBuilder.allocate("%L", coreResult.encoder.byteCount),
+                )
+                coreResult.encoder.store(
+                  baseAddress = CodeBlock.of("%N", address),
+                  offset = 0,
+                  value = CodeBlock.of("%N", coreResult.name),
+                )
+                code.add(
+                  "return %L\n",
+                  codeBuilder.platform.lowerAddress(CodeBlock.of("%N", address)),
+                )
+              }
             }
           }
         }
@@ -221,7 +222,7 @@ internal class GuestFunctionFactory(
   }
 
   private fun buildCodeBlock(): CodeBlock {
-    val memoryAllocator = bridgeBuilder.memoryAllocator
+    val memoryAllocator = codeBuilder.memoryAllocator
     return when {
       memoryAllocator != null -> com.squareup.kotlinpoet.buildCodeBlock {
         beginControlFlow(
