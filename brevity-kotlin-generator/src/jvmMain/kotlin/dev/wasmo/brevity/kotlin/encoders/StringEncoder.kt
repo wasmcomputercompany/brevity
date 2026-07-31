@@ -65,14 +65,14 @@ object StringEncoder : Encoder() {
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun liftFlat(flatBuilder: FlatBuilder) {
-    flatBuilder.put(codeBuilder.platform.loadString(flatBuilder.take(), flatBuilder.take()))
+  override fun liftFlat(transformer: Transformer) {
+    transformer.put(codeBuilder.platform.loadString(transformer.take(), transformer.take()))
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(flatBuilder: FlatBuilder) {
-    val (address, size) = codeBuilder.platform.storeString(flatBuilder.take())
-    flatBuilder.put(address)
-    flatBuilder.put(size)
+  override fun lowerFlat(transformer: Transformer) {
+    val (address, size) = codeBuilder.platform.storeString(transformer.take())
+    transformer.put(address)
+    transformer.put(size)
   }
 }

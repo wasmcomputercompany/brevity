@@ -16,14 +16,13 @@ import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
-import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.GuestFunctionFactory.Receiver
 
 class GuestGenerator(
   private val encoderFactory: EncoderFactory,
   private val declarationIndex: DeclarationIndex,
-  private val encodersGenerator: EncodersGenerator,
+  private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
 ) {
@@ -33,14 +32,15 @@ class GuestGenerator(
       .mapNotNull { type ->
         val typeName = type.type
         val className = typeName.kotlinApi
-        val roles = roleTracker[typeName] ?: return@mapNotNull null
+        // TODO: this is hacked because we don't also prune unreachable callsites.
+        val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
         val fileName = className.simpleNames.joinToString(separator = "") + "Guest"
         FileSpec.builder(className.packageName, fileName)
           .addBrevityComment(type)
           .addAnnotation(optInToExperimentalWasm)
           .apply {
             addTypeFunctions(type, roles)
-            for (encoder in encodersGenerator.createEncoders(type, roles, GuestPlatform)) {
+            for (encoder in declaredTypeEncodersGenerator.generate(type, roles)) {
               addFunction(encoder)
             }
           }

@@ -2,10 +2,11 @@ package dev.wasmo.brevity
 
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.io.IrMapper
-import dev.wasmo.brevity.ir.IrMapper
+import dev.wasmo.brevity.kotlin.code.GuestPlatform
+import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.ApiGenerator
-import dev.wasmo.brevity.kotlin.generator.EncodersGenerator
+import dev.wasmo.brevity.kotlin.generator.DeclaredTypeEncodersGenerator
 import dev.wasmo.brevity.kotlin.generator.GuestGenerator
 import dev.wasmo.brevity.kotlin.generator.HostGenerator
 import okio.Path
@@ -38,34 +39,45 @@ class BrevityTester(
   val declarationIndex = DeclarationIndex(irPackages)
   val roleTracker = RoleTracker(declarationIndex, irPackages)
   val encoderFactory = EncoderFactory(declarationIndex)
-  val encodersGenerator = EncodersGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
-  val guestGenerator = GuestGenerator(encoderFactory, declarationIndex, encodersGenerator, roleTracker, irPackages)
-  val hostGenerator = HostGenerator(encoderFactory, declarationIndex, encodersGenerator, roleTracker, irPackages)
+  val guestGenerator = GuestGenerator(
+    encoderFactory = encoderFactory,
+    declarationIndex = declarationIndex,
+    declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(encoderFactory, GuestPlatform),
+    roleTracker = roleTracker,
+    packages = irPackages
+  )
+  val hostGenerator = HostGenerator(
+    encoderFactory = encoderFactory,
+    declarationIndex = declarationIndex,
+    declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(encoderFactory, HostPlatform),
+    roleTracker = roleTracker,
+    packages = irPackages
+  )
 
   val apiFiles = buildMap {
     val apiGenerator = ApiGenerator(irPackages)
     for (fileSpec in apiGenerator.generate()) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }
-  }
+  }.toSortedMap()
 
   val guestFiles = buildMap {
     for (fileSpec in guestGenerator.generate()) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }
-  }
+  }.toSortedMap()
 
   val hostFiles = buildMap {
     for (fileSpec in hostGenerator.generate()) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }
-  }
+  }.toSortedMap()
 
   val files = buildMap {
     putAll(apiFiles)
     putAll(guestFiles)
     putAll(hostFiles)
-  }
+  }.toSortedMap()
 
   operator fun get(path: Path): String? = files[path]
 }

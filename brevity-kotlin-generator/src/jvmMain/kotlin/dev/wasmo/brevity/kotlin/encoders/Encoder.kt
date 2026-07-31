@@ -22,42 +22,42 @@ abstract class Encoder {
 
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
   context(codeBuilder: CodeBuilder)
-  abstract fun liftFlat(flatBuilder: FlatBuilder)
+  abstract fun liftFlat(transformer: Transformer)
 
   context(codeBuilder: CodeBuilder)
   fun liftFlat(values: List<CodeBlock>): CodeBlock {
-    val flatBuilder = FlatBuilder(values.toMutableList())
-    liftFlat(flatBuilder)
+    val transformer = Transformer(values.toMutableList())
+    liftFlat(transformer)
 
-    check(flatBuilder.inputs.isEmpty()) {
-      "expected ${values.size} calls to take(), but was ${values.size - flatBuilder.inputs.size}"
+    check(transformer.inputs.isEmpty()) {
+      "expected ${values.size} calls to take(), but was ${values.size - transformer.inputs.size}"
     }
 
-    check(flatBuilder.outputs.size == 1) {
-      "expected 1 call to put(), but was ${flatBuilder.outputs.size}"
+    check(transformer.outputs.size == 1) {
+      "expected 1 call to put(), but was ${transformer.outputs.size}"
     }
 
-    return flatBuilder.outputs.single()
+    return transformer.outputs.single()
   }
 
   /** Lower an API value like a resource instance to an ABI value like a memory address. */
   context(codeBuilder: CodeBuilder)
-  abstract fun lowerFlat(flatBuilder: FlatBuilder)
+  abstract fun lowerFlat(transformer: Transformer)
 
   context(codeBuilder: CodeBuilder)
   fun lowerFlat(value: CodeBlock): List<CodeBlock> {
-    val flatBuilder = FlatBuilder(mutableListOf(value))
-    lowerFlat(flatBuilder)
+    val transformer = Transformer(mutableListOf(value))
+    lowerFlat(transformer)
 
-    check(flatBuilder.inputs.isEmpty()) {
+    check(transformer.inputs.isEmpty()) {
       "expected 1 call to take(), but was 0"
     }
 
-    check(flatBuilder.outputs.size == coreTypes.size) {
-      "expected ${coreTypes.size} calls to put(), but was ${flatBuilder.outputs.size}"
+    check(transformer.outputs.size == coreTypes.size) {
+      "expected ${coreTypes.size} calls to put(), but was ${transformer.outputs.size}"
     }
 
-    return flatBuilder.outputs.toList()
+    return transformer.outputs.toList()
   }
 
   /**
@@ -75,7 +75,7 @@ abstract class Encoder {
    *
    * Additional statements may be added to [code].
    */
-  class FlatBuilder internal constructor(
+  class Transformer internal constructor(
     internal val inputs: MutableList<CodeBlock>,
   ) {
     internal val outputs = mutableListOf<CodeBlock>()

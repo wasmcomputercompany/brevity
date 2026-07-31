@@ -120,11 +120,11 @@ abstract class AbstractVariantEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun liftFlat(flatBuilder: FlatBuilder) {
+  override fun liftFlat(transformer: Transformer) {
     val variantName = codeBuilder.newName("variant")
 
-    val discriminator = flatBuilder.take()
-    val caseCoreValuesBits = casesCoreTypesBits.map { flatBuilder.take() }
+    val discriminator = transformer.take()
+    val caseCoreValuesBits = casesCoreTypesBits.map { transformer.take() }
 
     codeBuilder.controlFlow(
       "val %L = when (%L)",
@@ -154,13 +154,13 @@ abstract class AbstractVariantEncoder(
       codeBuilder.addStatement("else -> error(%S)", "unexpected case")
     }
 
-    return flatBuilder.put(variantName)
+    return transformer.put(variantName)
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(flatBuilder: FlatBuilder) {
+  override fun lowerFlat(transformer: Transformer) {
     val variantName = codeBuilder.newName("variant")
-    codeBuilder.addStatement("val %N = %L", variantName, flatBuilder.take())
+    codeBuilder.addStatement("val %N = %L", variantName, transformer.take())
     val variant = CodeBlock.of("%N", variantName)
 
     val caseCoreValuesBitsNames = casesCoreTypesBits.withIndex().map { (index, type) ->
@@ -192,9 +192,9 @@ abstract class AbstractVariantEncoder(
       }
     }
 
-    flatBuilder.put("%N", discriminatorName)
+    transformer.put("%N", discriminatorName)
     for (caseCoreValueBits in caseCoreValuesBitsNames) {
-      flatBuilder.put("%N", caseCoreValueBits)
+      transformer.put("%N", caseCoreValueBits)
     }
   }
 }

@@ -54,12 +54,12 @@ abstract class AbstractRecordEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun liftFlat(flatBuilder: FlatBuilder) {
-    flatBuilder.put(
+  override fun liftFlat(transformer: Transformer) {
+    transformer.put(
       fieldValuesToInstance(
         fieldValues = fieldEncoders.map { fieldEncoder ->
           fieldEncoder.liftFlat(
-            values = fieldEncoder.coreTypes.map { flatBuilder.take() },
+            values = fieldEncoder.coreTypes.map { transformer.take() },
           )
         },
       ),
@@ -67,14 +67,14 @@ abstract class AbstractRecordEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(flatBuilder: FlatBuilder) {
+  override fun lowerFlat(transformer: Transformer) {
     val tuple = codeBuilder.newName("tuple")
-    codeBuilder.addStatement("val %N = %L", tuple, flatBuilder.take())
+    codeBuilder.addStatement("val %N = %L", tuple, transformer.take())
 
     val fieldValues = instanceToFieldValues(CodeBlock.of("%N", tuple))
     for ((i, fieldEncoder) in fieldEncoders.withIndex()) {
       for (coreType in fieldEncoder.lowerFlat(fieldValues[i])) {
-        flatBuilder.put(coreType)
+        transformer.put(coreType)
       }
     }
   }

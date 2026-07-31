@@ -8,8 +8,9 @@ import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
+import dev.wasmo.brevity.kotlin.generator.plus
 
-internal object HostPlatform : Platform {
+object HostPlatform : Platform {
   override val identifier: Identifier
     get() = Identifier("host")
 
@@ -88,10 +89,7 @@ internal object HostPlatform : Platform {
         IntegerType.S32 -> "readInt"
         IntegerType.S64 -> "readLong"
       },
-      when {
-        offset != 0 -> CodeBlock.of("%L + %L", baseAddress, offset)
-        else -> baseAddress
-      },
+      baseAddress + offset,
     )
   }
 
@@ -111,10 +109,7 @@ internal object HostPlatform : Platform {
         IntegerType.S32 -> "writeI32"
         IntegerType.S64 -> "writeLong"
       },
-      when {
-        offset != 0 -> CodeBlock.of("%L + %L", baseAddress, offset)
-        else -> baseAddress
-      },
+      baseAddress + offset,
       value,
     )
   }

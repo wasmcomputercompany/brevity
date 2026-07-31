@@ -5,7 +5,8 @@ import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.io.IrMapper
-import dev.wasmo.brevity.ir.IrMapper
+import dev.wasmo.brevity.kotlin.code.GuestPlatform
+import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import java.io.File
 import kotlin.test.Test
@@ -50,9 +51,20 @@ class GenerateWasiP2KotlinTest {
     val declarationIndex = DeclarationIndex(irPackages)
     val roleTracker = RoleTracker(declarationIndex, irPackages)
     val encoderFactory = EncoderFactory(declarationIndex)
-    val encodersGenerator = EncodersGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
-    val guestGenerator = GuestGenerator(encoderFactory, declarationIndex, encodersGenerator, roleTracker, irPackages)
-    val hostGenerator = HostGenerator(encoderFactory, declarationIndex, encodersGenerator, roleTracker, irPackages)
+    val guestGenerator = GuestGenerator(
+      encoderFactory = encoderFactory,
+      declarationIndex = declarationIndex,
+      declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(encoderFactory, GuestPlatform),
+      roleTracker = roleTracker,
+      packages = irPackages
+    )
+    val hostGenerator = HostGenerator(
+      encoderFactory = encoderFactory,
+      declarationIndex = declarationIndex,
+      declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(encoderFactory, HostPlatform),
+      roleTracker = roleTracker,
+      packages = irPackages
+    )
 
     for (fileSpec in ApiGenerator(irPackages).generate()) {
       fileSpec.writeTo(directory)
