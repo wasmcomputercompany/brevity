@@ -9,7 +9,7 @@ import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.handleName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
-internal object GuestPlatform : Platform {
+object GuestPlatform : Platform {
   override val identifier: Identifier
     get() = Identifier("guest")
 

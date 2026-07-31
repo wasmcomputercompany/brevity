@@ -9,7 +9,7 @@ import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
-internal object HostPlatform : Platform {
+object HostPlatform : Platform {
   override val identifier: Identifier
     get() = Identifier("host")
 

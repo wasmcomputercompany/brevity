@@ -1341,7 +1341,6 @@ class KotlinGeneratorTest {
       //   testing.wit
       package wit.namespace.package_name
 
-      import dev.wasmo.brevity.FlatSink
       import dev.wasmo.brevity.HostBridge
       import kotlin.Int
 
@@ -1353,13 +1352,7 @@ class KotlinGeneratorTest {
         // TODO: ResourceEncoder
       }
 
-      public fun lowerFlat_Test_Person_host(
-        bridge: HostBridge,
-        flatSink: FlatSink,
-        value_: Test.Person,
-      ) {
-        flatSink.put(bridge.toId<Test.Person>(value_))
-      }
+      public fun lowerFlat_Test_Person_host(bridge: HostBridge, value_: Test.Person): Int = bridge.toId<Test.Person>(value_)
 
       """.trimIndent(),
     )

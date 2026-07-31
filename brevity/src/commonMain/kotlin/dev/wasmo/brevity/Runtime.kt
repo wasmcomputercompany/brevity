@@ -32,7 +32,10 @@ sealed interface Result<out S, out F> {
 }
 
 /** This is used internally by Brevity to implement flattening. */
-class FlatSink(i32Count: Int, i64Count: Int) {
+class CallBuilder(
+  i32Count: Int = 0,
+  i64Count: Int = 0,
+) {
   private var nextI32 = 0
   private val i32s = IntArray(i32Count)
   private var nextI64 = 0
@@ -40,6 +43,8 @@ class FlatSink(i32Count: Int, i64Count: Int) {
 
   fun put(v: Any) {
   }
+
+  fun takeInt() : Int = TODO()
 
   // TODO(jwilson): restore these overloads once we've finished callers.
   //  fun put(v: Int) {

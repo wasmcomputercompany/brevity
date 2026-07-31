@@ -20,13 +20,12 @@ import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
-import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 
 class HostGenerator(
   private val encoderFactory: EncoderFactory,
   private val declarationIndex: DeclarationIndex,
-  private val encodersGenerator: EncodersGenerator,
+  private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
 ) {
@@ -41,7 +40,7 @@ class HostGenerator(
         FileSpec.builder(className.packageName, fileName)
           .addBrevityComment(type)
           .apply {
-            for (encoder in encodersGenerator.createEncoders(type, roles, HostPlatform)) {
+            for (encoder in declaredTypeEncodersGenerator.generate(type, roles)) {
               addFunction(encoder)
             }
           }
