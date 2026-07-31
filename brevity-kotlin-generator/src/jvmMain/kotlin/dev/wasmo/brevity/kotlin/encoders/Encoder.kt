@@ -14,11 +14,11 @@ abstract class Encoder {
 
   /** Loads a value from memory at [baseAddress] + [offset]. */
   context(codeBuilder: CodeBuilder)
-  abstract fun load(baseAddress: CodeBlock, offset: Int): CodeBlock
+  abstract fun load(baseAddress: CodeBlock, offset: Int = 0): CodeBlock
 
   /** Stores [value] in memory at [baseAddress] + [offset]. */
   context(codeBuilder: CodeBuilder)
-  abstract fun store(baseAddress: CodeBlock, offset: Int, value: CodeBlock)
+  abstract fun store(baseAddress: CodeBlock, offset: Int = 0, value: CodeBlock)
 
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
   context(codeBuilder: CodeBuilder)

@@ -23,7 +23,12 @@ abstract class AbstractRecordEncoder(
       var offset = offset
       for (fieldEncoder in fieldEncoders) {
         offset = offset.alignTo(fieldEncoder.alignment)
-        add(fieldEncoder.load(baseAddress, offset))
+        add(
+          fieldEncoder.load(
+            baseAddress = baseAddress,
+            offset = offset,
+          ),
+        )
         offset += fieldEncoder.byteCount
       }
     },
@@ -39,7 +44,11 @@ abstract class AbstractRecordEncoder(
     var offset = offset
     for ((index, fieldEncoder) in fieldEncoders.withIndex()) {
       offset = offset.alignTo(fieldEncoder.alignment)
-      fieldEncoder.store(baseAddress, offset, fieldValues[index])
+      fieldEncoder.store(
+        baseAddress = baseAddress,
+        offset = offset,
+        value = fieldValues[index],
+      )
       offset += fieldEncoder.byteCount
     }
   }

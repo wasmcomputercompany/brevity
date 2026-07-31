@@ -89,30 +89,27 @@ class DynamicListEncoder(
 
     val listName = codeBuilder.newName("list")
     val indexName = codeBuilder.newName("i")
-    codeBuilder.beginControlFlow(
+    codeBuilder.controlFlow(
       "val %N = %T(%L) { %N ->",
       listName,
       listType,
       lengthName,
       indexName,
-    )
-    with(elementEncoder) {
-      codeBuilder.addStatement(
-        "val %N = %N + %N * %L",
-        elementAddressName,
-        addressName,
-        indexName,
-        elementEncoder.byteCount,
-      )
-      codeBuilder.addStatement(
-        "%L",
-        load(
-          baseAddress = CodeBlock.of("%N", elementAddressName),
-          offset = 0,
-        ),
-      )
+    ) {
+      with(elementEncoder) {
+        codeBuilder.addStatement(
+          "val %N = %N + %N * %L",
+          elementAddressName,
+          addressName,
+          indexName,
+          elementEncoder.byteCount,
+        )
+        codeBuilder.addStatement(
+          "%L",
+          load(baseAddress = CodeBlock.of("%N", elementAddressName)),
+        )
+      }
     }
-    codeBuilder.endControlFlow()
     return CodeBlock.of("%N", listName)
   }
 
@@ -129,24 +126,23 @@ class DynamicListEncoder(
       addressName,
       codeBuilder.allocate(CodeBlock.of("%L.size * %L", list, elementEncoder.byteCount)),
     )
-    codeBuilder.beginControlFlow(
+    codeBuilder.controlFlow(
       "for (%N in %L.indices)",
       indexName,
       list,
-    )
-    codeBuilder.addStatement(
-      "val %N = %N + %N * %L",
-      elementAddressName,
-      addressName,
-      indexName,
-      elementEncoder.byteCount,
-    )
-    elementEncoder.store(
-      CodeBlock.of("%N", elementAddressName),
-      0,
-      CodeBlock.of("%L[%N]", list, indexName),
-    )
-    codeBuilder.endControlFlow()
+    ) {
+      codeBuilder.addStatement(
+        "val %N = %N + %N * %L",
+        elementAddressName,
+        addressName,
+        indexName,
+        elementEncoder.byteCount,
+      )
+      elementEncoder.store(
+        baseAddress = CodeBlock.of("%N", elementAddressName),
+        value = CodeBlock.of("%L[%N]", list, indexName),
+      )
+    }
 
     return codeBuilder.platform.lowerAddress(
       CodeBlock.of(

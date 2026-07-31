@@ -20,6 +20,7 @@ import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
+import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 
 class HostGenerator(
@@ -35,13 +36,12 @@ class HostGenerator(
       .mapNotNull { type ->
         val typeName = type.type
         val className = typeName.kotlinApi
-        val roleTrackerEntry = roleTracker[typeName] ?: return@mapNotNull null
+        val roles = roleTracker[typeName] ?: return@mapNotNull null
         val fileName = className.simpleNames.joinToString(separator = "") + "Host"
         FileSpec.builder(className.packageName, fileName)
           .addBrevityComment(type)
-          .addAnnotation(optInToExperimentalWasm)
           .apply {
-            for (encoder in encodersGenerator.hostEncoders(type, roleTrackerEntry)) {
+            for (encoder in encodersGenerator.createEncoders(type, roles, HostPlatform)) {
               addFunction(encoder)
             }
           }

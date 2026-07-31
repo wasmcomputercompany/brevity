@@ -1,12 +1,24 @@
 package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.INT
+import com.squareup.kotlinpoet.TypeName as KtTypeName
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
 internal object HostPlatform : Platform {
+  override val identifier: Identifier
+    get() = Identifier("host")
+
+  override val addressType: KtTypeName
+    get() = INT
+
+  override val bridgeType: KtTypeName
+    get() = Symbols.Brevity.HostBridge
+
   context(codeBuilder: CodeBuilder)
   override fun allocate(
     memoryAllocatorName: String,

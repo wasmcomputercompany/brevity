@@ -37,13 +37,10 @@ internal class HostFunctionFactory(
   private val coreParameters = value.parameters.map { coreValueFactory.parameter(it.name, it.type) }
   private val coreResult = value.returnType?.let { coreValueFactory.result(it) }
 
-  private val code = CodeBlock.Builder()
-
   private val codeBuilder = CodeBuilder(
     bridge = bridge,
-    nameAllocator = nameAllocator,
-    code = code,
     platform = HostPlatform,
+    nameAllocator = nameAllocator,
   )
 
   /** Returns a function that calls the guest. It implements the friendly API. */
@@ -61,19 +58,19 @@ internal class HostFunctionFactory(
             val loweredParameters = coreParameter.encoder.lowerFlat(
               value = CodeBlock.of("%N", nameAllocator[parameter.name]),
             )
-            for ((c, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
-              longParameters += coreTypeToLong(loweredParameters[c], coreType)
+            for ((v, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
+              longParameters += coreTypeToLong(loweredParameters[v], coreType)
             }
           }
 
           if (coreResult != null) {
-            code.add("val %N = ", coreResult.name)
+            codeBuilder.add("val %N = ", coreResult.name)
           }
-          code.add("%N.apply(⇥\n", value.kotlinName)
+          codeBuilder.add("%N.apply(⇥\n", value.kotlinName)
           for (longParameter in longParameters) {
-            code.add("%L,\n", longParameter)
+            codeBuilder.add("%L,\n", longParameter)
           }
-          code.add("⇤)\n")
+          codeBuilder.add("⇤)\n")
 
           if (coreResult != null) {
             returns(coreResult.type.kotlinApi)
@@ -86,14 +83,13 @@ internal class HostFunctionFactory(
 
               else -> coreResult.encoder.load(
                 longToCoreType(coreResult.name, 0, CoreType.Pointer),
-                0
               )
             }
-            code.add("return %L", returnValue)
+            codeBuilder.add("return %L", returnValue)
           }
         }
       }
-      .addCode(code.build())
+      .addCode(codeBuilder.build())
       .build()
   }
 
@@ -134,35 +130,34 @@ internal class HostFunctionFactory(
       }
 
       val self = nameAllocator.newName("self")
-      code.addStatement("val %N = %L", self, receiverValue)
+      codeBuilder.addStatement("val %N = %L", self, receiverValue)
       if (coreResult != null) {
-        code.add("val %N = ", coreResult.name)
+        codeBuilder.add("val %N = ", coreResult.name)
       }
-      code.add("%N.%N(⇥", self, value.kotlinName)
+      codeBuilder.add("%N.%N(⇥", self, value.kotlinName)
       if (value.parameters.isNotEmpty()) {
-        code.add("\n")
+        codeBuilder.add("\n")
       }
       for ((index, parameter) in value.parameters.withIndex()) {
-        code.add("%N = %L,\n", nameAllocator[parameter.name], liftedParameterValues[index])
+        codeBuilder.add("%N = %L,\n", nameAllocator[parameter.name], liftedParameterValues[index])
       }
-      code.add("⇤)\n")
+      codeBuilder.add("⇤)\n")
 
       val returnValType: CoreType?
       if (coreResult != null) {
         when {
           coreResult.parameter != null -> {
-            code.addStatement(
+            codeBuilder.addStatement(
               "val %N = %L",
               coreResult.parameter.name,
               longToCoreType("args", argIndex++, CoreType.Pointer),
             )
             coreResult.encoder.store(
               baseAddress = CodeBlock.of("%N", coreResult.parameter.name),
-              offset = 0,
               value = CodeBlock.of("%N", coreResult.name)
             )
             returnValType = null
-            code.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
+            codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
           }
 
           else -> {
@@ -170,7 +165,7 @@ internal class HostFunctionFactory(
               value = CodeBlock.of("%N", coreResult.name),
             )
             returnValType = coreResult.encoder.coreTypes.single()
-            code.add(
+            codeBuilder.add(
               "return@%T longArrayOf(%L)",
               Symbols.ChicoryRuntime.WasmFunctionHandle,
               coreTypeToLong(loweredReturnValues.single(), returnValType),
@@ -179,7 +174,7 @@ internal class HostFunctionFactory(
         }
       } else {
         returnValType = null
-        code.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
+        codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
       }
 
       return CodeBlock.of(
@@ -207,7 +202,7 @@ internal class HostFunctionFactory(
         coreParameterTypes.joinToCode { it.valType },
         returnValType?.valType ?: CodeBlock.of(""),
         Symbols.ChicoryRuntime.WasmFunctionHandle,
-        code.build(),
+        codeBuilder.build(),
       )
     }
   }

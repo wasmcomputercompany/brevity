@@ -45,13 +45,10 @@ internal class GuestFunctionFactory(
   private val coreParameters = value.parameters.map { coreValueFactory.parameter(it.name, it.type) }
   private val coreResult = value.returnType?.let { coreValueFactory.result(it) }
 
-  private val code = CodeBlock.Builder()
-
   private val codeBuilder = CodeBuilder(
     bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-    nameAllocator = nameAllocator,
-    code = code,
     platform = GuestPlatform,
+    nameAllocator = nameAllocator,
   )
 
   /** Bridge an API function into a call to [wasmImport]. */
@@ -75,7 +72,7 @@ internal class GuestFunctionFactory(
           if (coreResult != null) {
             when {
               coreResult.parameter != null -> {
-                code.addStatement(
+                codeBuilder.addStatement(
                   "val %N = %L",
                   coreResult.parameter.name,
                   codeBuilder.allocate("%L", CodeBlock.of("%L", coreResult.encoder.byteCount)),
@@ -86,39 +83,38 @@ internal class GuestFunctionFactory(
               }
 
               else -> {
-                code.add("val %N = ", coreResult.name)
+                codeBuilder.add("val %N = ", coreResult.name)
               }
             }
           }
-          code.add("%N(⇥", value.functionName.importFunctionName)
+          codeBuilder.add("%N(⇥", value.functionName.importFunctionName)
           if (loweredParameters.isNotEmpty()) {
-            code.add("\n")
+            codeBuilder.add("\n")
           }
           for (output in loweredParameters) {
-            code.add("%L,\n", output)
+            codeBuilder.add("%L,\n", output)
           }
-          code.add("⇤)\n")
+          codeBuilder.add("⇤)\n")
 
           if (coreResult != null) {
             returns(coreResult.type.kotlinApi)
             val returnValue = when {
               coreResult.parameter != null -> coreResult.encoder.load(
                 CodeBlock.of("%N", coreResult.parameter.name),
-                0,
               )
               else -> coreResult.encoder.liftFlat(
                 values = listOf(CodeBlock.of("%N", coreResult.name)),
               )
             }
-            code.add("return %L", returnValue)
-            code.add(
+            codeBuilder.add("return %L", returnValue)
+            codeBuilder.add(
               "\n⇥.also { %M() }⇤\n",
               Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
             )
           }
         }
       }
-      .addCode(buildCodeBlock())
+      .addCode(codeBuilder.build())
       .build()
   }
 
@@ -177,13 +173,17 @@ internal class GuestFunctionFactory(
           }
 
           if (coreResult != null) {
-            code.add("val %N = ", coreResult.name)
+            codeBuilder.add("val %N = ", coreResult.name)
           }
-          code.add("%L.%N(⇥\n", liftedReceiver, value.kotlinName)
+          codeBuilder.add("%L.%N(⇥\n", liftedReceiver, value.kotlinName)
           for ((index, parameter) in value.parameters.withIndex()) {
-            code.add("%N = %L,\n", nameAllocator[parameter.name], liftedParameterValues[index])
+            codeBuilder.add(
+              "%N = %L,\n",
+              nameAllocator[parameter.name],
+              liftedParameterValues[index],
+            )
           }
-          code.add("⇤)\n")
+          codeBuilder.add("⇤)\n")
 
           if (coreResult != null) {
             when (coreResult.encoder.coreTypes.size) {
@@ -192,23 +192,22 @@ internal class GuestFunctionFactory(
                   value = CodeBlock.of("%N", coreResult.name),
                 )
                 returns(coreResult.encoder.coreTypes.single().kotlinCoreType)
-                code.add("return %L\n", loweredReturnValues.single())
+                codeBuilder.add("return %L\n", loweredReturnValues.single())
               }
 
               else -> {
                 returns(CoreType.Pointer.kotlinCoreType)
                 val address = nameAllocator.newName("resultAddress")
-                code.addStatement(
+                codeBuilder.addStatement(
                   "val %N = %L",
                   address,
                   codeBuilder.allocate("%L", coreResult.encoder.byteCount),
                 )
                 coreResult.encoder.store(
                   baseAddress = CodeBlock.of("%N", address),
-                  offset = 0,
                   value = CodeBlock.of("%N", coreResult.name),
                 )
-                code.add(
+                codeBuilder.add(
                   "return %L\n",
                   codeBuilder.platform.lowerAddress(CodeBlock.of("%N", address)),
                 )
@@ -217,25 +216,8 @@ internal class GuestFunctionFactory(
           }
         }
       }
-      .addCode(buildCodeBlock())
+      .addCode(codeBuilder.build())
       .build()
-  }
-
-  private fun buildCodeBlock(): CodeBlock {
-    val memoryAllocator = codeBuilder.memoryAllocator
-    return when {
-      memoryAllocator != null -> com.squareup.kotlinpoet.buildCodeBlock {
-        beginControlFlow(
-          "%M { %N ->",
-          Symbols.KotlinWasm.WithScopedMemoryAllocator,
-          memoryAllocator,
-        )
-        add(code.build())
-        endControlFlow()
-      }
-
-      else -> code.build()
-    }
   }
 
   internal sealed interface Receiver {
@@ -251,4 +233,3 @@ internal class GuestFunctionFactory(
     }
   }
 }
-

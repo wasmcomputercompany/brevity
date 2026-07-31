@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
+import dev.wasmo.brevity.kotlin.generator.Symbols
 
 sealed class CoreType {
   object I32 : CoreType()
@@ -46,9 +47,54 @@ internal fun Iterable<List<CoreType>>.bitwiseUnion(): List<CoreType> {
   }
 }
 
-// TODO: floatToIntBits and back.
 fun CoreType.fromBits(sourceType: CoreType, value: CodeBlock): CodeBlock {
-  return value
+  return when (sourceType) {
+    this -> value
+
+    CoreType.I64 -> {
+      when (this) {
+        CoreType.F32 -> CodeBlock.of("%T.fromBits(%L.toInt())", Symbols.Kotlin.Float, value)
+        CoreType.F64 -> CodeBlock.of("%T.fromBits(%L)", Symbols.Kotlin.Double, value)
+        CoreType.I32, CoreType.Pointer -> CodeBlock.of("%L.toInt()", value)
+        else -> error("unexpected type conversion: $sourceType -> $this")
+      }
+    }
+
+    CoreType.I32 -> {
+      when (this) {
+        CoreType.F32 -> CodeBlock.of("%T.fromBits(%L)", Symbols.Kotlin.Float, value)
+        CoreType.Pointer -> value
+        else -> error("unexpected type conversion: $sourceType -> $this")
+      }
+    }
+
+    else -> error("unexpected source type: $sourceType")
+  }
+}
+
+fun CoreType.toBits(targetType: CoreType, value: CodeBlock): CodeBlock {
+  return when (targetType) {
+    this -> value
+
+    CoreType.I64 -> {
+      when (this) {
+        CoreType.F32 -> CodeBlock.of("%L.toBits().toLong()", value)
+        CoreType.F64 -> CodeBlock.of("%L.toBits()", value)
+        CoreType.I32, CoreType.Pointer -> CodeBlock.of("%L.toLong()", value)
+        else -> error("unexpected type conversion: $this -> $targetType")
+      }
+    }
+
+    CoreType.I32 -> {
+      when (this) {
+        CoreType.F32 -> CodeBlock.of("%L.toBits()", value)
+        CoreType.Pointer -> value
+        else -> error("unexpected type conversion: $this -> $targetType")
+      }
+    }
+
+    else -> error("unexpected type conversion: $this -> $targetType")
+  }
 }
 
 val CoreType.zero: CodeBlock

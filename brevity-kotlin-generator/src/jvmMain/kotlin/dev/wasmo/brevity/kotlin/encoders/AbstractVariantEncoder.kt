@@ -57,29 +57,29 @@ abstract class AbstractVariantEncoder(
   ): CodeBlock {
     val variantName = codeBuilder.newName("variant")
 
-    codeBuilder.beginControlFlow(
+    codeBuilder.controlFlow(
       "val %N = when (%L.toInt()) {",
       variantName,
       codeBuilder.platform.load(baseAddress, offset, discriminant),
-    )
-    for ((index, caseEncoder) in caseEncoders.withIndex()) {
-      codeBuilder.beginControlFlow("%L ->", index)
-      codeBuilder.addStatement(
-        "%L",
-        constructInstance(
-          index = index,
-          value = caseEncoder?.let {
-            caseEncoder.load(
-              baseAddress = baseAddress,
-              offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
-            )
-          },
-        ),
-      )
-      codeBuilder.endControlFlow()
+    ) {
+      for ((index, caseEncoder) in caseEncoders.withIndex()) {
+        codeBuilder.controlFlow("%L ->", index) {
+          codeBuilder.addStatement(
+            "%L",
+            constructInstance(
+              index = index,
+              value = caseEncoder?.let {
+                caseEncoder.load(
+                  baseAddress = baseAddress,
+                  offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
+                )
+              },
+            ),
+          )
+        }
+      }
+      codeBuilder.addStatement("else -> error(%S)", "unexpected case")
     }
-    codeBuilder.addStatement("else -> error(%S)", "unexpected case")
-    codeBuilder.endControlFlow()
 
     return CodeBlock.of("%N", variantName)
   }
@@ -92,25 +92,25 @@ abstract class AbstractVariantEncoder(
   ) {
     val variantName = codeBuilder.newName("variant")
     val discriminatorName = codeBuilder.newName("discriminator")
-    codeBuilder.beginControlFlow(
+    codeBuilder.controlFlow(
       "val %N: %T = when (val %N = %L)",
       discriminatorName,
       discriminant.kotlinType,
       variantName,
       value,
-    )
-    for ((index, caseEncoder) in caseEncoders.withIndex()) {
-      codeBuilder.beginControlFlow("%L ->", matchInstance(index))
-      caseEncoder?.store(
-        baseAddress = baseAddress,
-        offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
-        value = instanceValue(index, CodeBlock.of("%N", variantName))
+    ) {
+      for ((index, caseEncoder) in caseEncoders.withIndex()) {
+        codeBuilder.controlFlow("%L ->", matchInstance(index)) {
+          caseEncoder?.store(
+            baseAddress = baseAddress,
+            offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
+            value = instanceValue(index, CodeBlock.of("%N", variantName))
               ?: error("case mismatch for $index"),
-      )
-      codeBuilder.addStatement("%L", index)
-      codeBuilder.endControlFlow()
+          )
+          codeBuilder.addStatement("%L", index)
+        }
+      }
     }
-    codeBuilder.endControlFlow()
     codeBuilder.platform.store(
       baseAddress,
       offset,
@@ -126,33 +126,33 @@ abstract class AbstractVariantEncoder(
     val discriminator = flatBuilder.take()
     val caseCoreValuesBits = casesCoreTypesBits.map { flatBuilder.take() }
 
-    codeBuilder.beginControlFlow(
+    codeBuilder.controlFlow(
       "val %L = when (%L)",
       variantName,
       discriminator,
-    )
-    for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
-      codeBuilder.beginControlFlow("%L ->", caseIndex)
-      codeBuilder.addStatement(
-        "%L",
-        constructInstance(
-          index = caseIndex,
-          value = caseEncoder?.let {
-            caseEncoder.liftFlat(
-              values = caseEncoder.coreTypes.withIndex().map { (v, requiredType) ->
-                requiredType.fromBits(
-                  sourceType = casesCoreTypesBits[v],
-                  value = caseCoreValuesBits[v],
+    ) {
+      for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
+        codeBuilder.controlFlow("%L ->", caseIndex) {
+          codeBuilder.addStatement(
+            "%L",
+            constructInstance(
+              index = caseIndex,
+              value = caseEncoder?.let {
+                caseEncoder.liftFlat(
+                  values = caseEncoder.coreTypes.withIndex().map { (v, requiredType) ->
+                    requiredType.fromBits(
+                      sourceType = casesCoreTypesBits[v],
+                      value = caseCoreValuesBits[v],
+                    )
+                  },
                 )
               },
-            )
-          },
-        ),
-      )
-      codeBuilder.endControlFlow()
+            ),
+          )
+        }
+      }
+      codeBuilder.addStatement("else -> error(%S)", "unexpected case")
     }
-    codeBuilder.addStatement("else -> error(%S)", "unexpected case")
-    codeBuilder.endControlFlow()
 
     return flatBuilder.put(variantName)
   }
@@ -170,27 +170,27 @@ abstract class AbstractVariantEncoder(
     }
 
     val discriminatorName = codeBuilder.newName("discriminator")
-    codeBuilder.beginControlFlow(
+    codeBuilder.controlFlow(
       "val %N = when (%N)",
       discriminatorName,
       variantName,
-    )
-    for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
-      codeBuilder.beginControlFlow("%L ->", matchInstance(caseIndex))
-      if (caseEncoder != null) {
-        val values = caseEncoder.lowerFlat(instanceValue(caseIndex, variant)!!)
-        for ((v, coreType) in caseEncoder.coreTypes.withIndex()) {
-          codeBuilder.addStatement(
-            "%N = %L",
-            caseCoreValuesBitsNames[v],
-            coreType.fromBits(casesCoreTypesBits[v], values[v]),
-          )
+    ) {
+      for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
+        codeBuilder.controlFlow("%L ->", matchInstance(caseIndex)) {
+          if (caseEncoder != null) {
+            val values = caseEncoder.lowerFlat(instanceValue(caseIndex, variant)!!)
+            for ((v, coreType) in caseEncoder.coreTypes.withIndex()) {
+              codeBuilder.addStatement(
+                "%N = %L",
+                caseCoreValuesBitsNames[v],
+                coreType.toBits(casesCoreTypesBits[v], values[v]),
+              )
+            }
+          }
+          codeBuilder.addStatement("%L", caseIndex)
         }
       }
-      codeBuilder.addStatement("%L", caseIndex)
-      codeBuilder.endControlFlow()
     }
-    codeBuilder.endControlFlow()
 
     flatBuilder.put("%N", discriminatorName)
     for (caseCoreValueBits in caseCoreValuesBitsNames) {
