@@ -13,6 +13,7 @@ import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.ApiGenerator
+import dev.wasmo.brevity.kotlin.generator.EncodersGenerator
 import dev.wasmo.brevity.kotlin.generator.GuestGenerator
 import dev.wasmo.brevity.kotlin.generator.HostGenerator
 import dev.wasmo.brevity.withIssueCollector
@@ -71,8 +72,9 @@ class GenerateKotlinCommand(
     val declarationIndex = DeclarationIndex(irPackages)
     val roleTracker = RoleTracker(declarationIndex, irPackages)
     val encoderFactory = EncoderFactory(declarationIndex)
-    val guestGenerator = GuestGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
-    val hostGenerator = HostGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
+    val encodersGenerator = EncodersGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
+    val guestGenerator = GuestGenerator(encoderFactory, declarationIndex, encodersGenerator, roleTracker, irPackages)
+    val hostGenerator = HostGenerator(encoderFactory, declarationIndex, encodersGenerator, roleTracker, irPackages)
 
     for (fileSpec in ApiGenerator(irPackages).generate()) {
       fileSpec.writeTo(commonMainDir)

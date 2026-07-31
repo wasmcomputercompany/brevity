@@ -26,17 +26,20 @@ class ApiGenerator(
   private val packages: List<IrWitPackage>,
 ) {
   fun generate(): List<FileSpec> {
-    return packages.map { witPackage ->
-      FileSpec.builder(witPackage.packageName.toKotlin().name, "Api")
-        .addBrevityComment(witPackage.services)
-        .apply {
-          for (service in witPackage.services) {
-            val spec = serviceToApi(service) ?: continue
-            addType(spec)
+    return packages.flatMap { it.services }
+      .mapNotNull { service ->
+        val className = service.serviceName.kotlinApi
+        FileSpec.builder(className)
+          .addBrevityComment(service)
+          .apply {
+            val typeSpec = serviceToApi(service)
+            if (typeSpec != null) {
+              addType(typeSpec)
+            }
           }
-        }
-        .build()
-    }
+          .build()
+          .takeIf { it.members.isNotEmpty() }
+      }
   }
 
   private fun <T : Documentable.Builder<*>> T.setDeclaration(

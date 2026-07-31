@@ -9,11 +9,11 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.RoleTracker
-import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
+import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
@@ -22,43 +22,48 @@ import dev.wasmo.brevity.kotlin.generator.GuestFunctionFactory.Receiver
 class GuestGenerator(
   private val encoderFactory: EncoderFactory,
   private val declarationIndex: DeclarationIndex,
+  private val encodersGenerator: EncodersGenerator,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
 ) {
   fun generate(): List<FileSpec> {
-    val bridges = roleTracker.types.entries
-      .groupBy { (key, _) -> key.serviceName.packageName.toKotlin().name }
-      .mapNotNull { (`package`, entries) ->
-        FileSpec.builder(`package`, "GuestTypes")
-          .addBrevityComment(entries.mapNotNull { declarationIndex[it.key] })
+    val types = packages.flatMap { it.services }
+      .flatMap { it.types }
+      .mapNotNull { type ->
+        val typeName = type.type
+        val className = typeName.kotlinApi
+        val roleTrackerEntry = roleTracker[typeName] ?: return@mapNotNull null
+        val fileName = className.simpleNames.joinToString(separator = "") + "Guest"
+        FileSpec.builder(className.packageName, fileName)
+          .addBrevityComment(type)
           .addAnnotation(optInToExperimentalWasm)
           .apply {
-            for ((key, value) in entries) {
-              addCodec(key, value)
+            addTypeFunctions(type, roleTrackerEntry)
+            for (encoder in encodersGenerator.guestEncoders(type, roleTrackerEntry)) {
+              addFunction(encoder)
             }
           }
           .build()
           .takeIf { it.members.isNotEmpty() }
       }
 
-    val services = packages.mapNotNull { witPackage ->
-      FileSpec.builder(witPackage.packageName.toKotlin().name, "GuestServices")
-        .addBrevityComment(witPackage.services)
-        .addAnnotation(optInToExperimentalWasm)
-        .apply {
-          for (service in witPackage.services) {
+    val services = packages.flatMap { it.services }
+      .mapNotNull { service ->
+        val className = service.serviceName.kotlinApi
+        FileSpec.builder(className.peerClass("${className.simpleName}Guest"))
+          .addBrevityComment(service)
+          .addAnnotation(optInToExperimentalWasm)
+          .apply {
             generateService(service)
-
             if (service is IrWorld) {
               addExternalFunctions(service)
             }
           }
-        }
-        .build()
-        .takeIf { it.members.isNotEmpty() }
-    }
+          .build()
+          .takeIf { it.members.isNotEmpty() }
+      }
 
-    return bridges + services
+    return types + services
   }
 
   private fun FileSpec.Builder.generateService(value: IrWitPackage.Service) {
@@ -92,24 +97,20 @@ class GuestGenerator(
     }
   }
 
-  private fun FileSpec.Builder.addCodec(
-    typeName: TypeName.Declared,
+  private fun FileSpec.Builder.addTypeFunctions(
+    typeDeclaration: IrTypeDeclaration,
     entry: RoleTracker.Entry,
   ) {
-    when (val typeDeclaration = declarationIndex[typeName]) {
-      is IrResource -> {
-        addResource(
-          value = typeDeclaration,
-          host = entry.host,
-          guest = entry.guest,
-        )
-      }
-
-      else -> {} // TODO
+    if (typeDeclaration is IrResource) {
+      addResourceFunctions(
+        value = typeDeclaration,
+        host = entry.host,
+        guest = entry.guest,
+      )
     }
   }
 
-  private fun FileSpec.Builder.addResource(
+  private fun FileSpec.Builder.addResourceFunctions(
     value: IrResource,
     host: Boolean,
     guest: Boolean,
@@ -144,7 +145,7 @@ class GuestGenerator(
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
         handleBuilder.addFunction(
-          GuestFunctionFactory(encoderFactory, receiver, function).callHost()
+          GuestFunctionFactory(encoderFactory, receiver, function).callHost(),
         )
         addFunction(GuestFunctionFactory(encoderFactory, receiver, function).wasmImport())
       }

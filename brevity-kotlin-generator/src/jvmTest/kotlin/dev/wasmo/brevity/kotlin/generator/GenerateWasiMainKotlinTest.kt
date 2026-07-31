@@ -40,8 +40,9 @@ class GenerateWasiMainKotlinTest {
     val declarationIndex = DeclarationIndex(irPackages)
     val roleTracker = RoleTracker(declarationIndex, irPackages)
     val encoderFactory = EncoderFactory(declarationIndex)
-    val guestGenerator = GuestGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
-    val hostGenerator = HostGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
+    val encodersGenerator = EncodersGenerator(encoderFactory, declarationIndex, roleTracker, irPackages)
+    val guestGenerator = GuestGenerator(encoderFactory, declarationIndex, encodersGenerator, roleTracker, irPackages)
+    val hostGenerator = HostGenerator(encoderFactory, declarationIndex, encodersGenerator, roleTracker, irPackages)
 
     for (fileSpec in ApiGenerator(irPackages).generate()) {
       fileSpec.writeTo(directory)
