@@ -8,6 +8,7 @@ import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.handleName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
+import dev.wasmo.brevity.kotlin.generator.plus
 
 object GuestPlatform : Platform {
   override val identifier: Identifier
@@ -83,11 +84,8 @@ object GuestPlatform : Platform {
     type: IntegerType,
   ): CodeBlock {
     return CodeBlock.of(
-      "%L.%N()",
-      when {
-        offset != 0 -> CodeBlock.of("(%L + %L)", baseAddress, offset)
-        else -> baseAddress
-      },
+      "(%L).%N()",
+      baseAddress + offset,
       when (type) {
         IntegerType.S8 -> "loadByte"
         IntegerType.S16 -> "loadShort"
@@ -105,11 +103,8 @@ object GuestPlatform : Platform {
     value: CodeBlock,
   ) {
     codeBuilder.addStatement(
-      "%L.%N(%L)",
-      when {
-        offset != 0 -> CodeBlock.of("(%L + %L)", baseAddress, offset)
-        else -> baseAddress
-      },
+      "(%L).%N(%L)",
+      baseAddress + offset,
       when (type) {
         IntegerType.S8 -> "storeByte"
         IntegerType.S16 -> "storeShort"

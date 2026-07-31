@@ -55,16 +55,16 @@ class DynamicListEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun liftFlat(flatBuilder: FlatBuilder) {
-    flatBuilder.put(loadList(flatBuilder.take(), flatBuilder.take()))
+  override fun liftFlat(transformer: Transformer) {
+    transformer.put(loadList(transformer.take(), transformer.take()))
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(flatBuilder: FlatBuilder) {
-    val value = flatBuilder.take()
+  override fun lowerFlat(transformer: Transformer) {
+    val value = transformer.take()
     val (address, length) = storeList(value)
-    flatBuilder.put(address)
-    flatBuilder.put(length)
+    transformer.put(address)
+    transformer.put(length)
   }
 
   context(codeBuilder: CodeBuilder)

@@ -2,8 +2,10 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.ir.IrTypeDeclaration
@@ -11,8 +13,10 @@ import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.code.Platform
+import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.Encoder
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.kotlin.encoders.byteCount
 
 class DeclaredTypeEncodersGenerator(
   private val encoderFactory: EncoderFactory,
@@ -36,7 +40,7 @@ class DeclaredTypeEncodersGenerator(
     encode: Boolean,
     decode: Boolean,
   ): List<FunSpec> {
-    val encoder = encoderFactory.get(type.type)
+    val encoder = encoderFactory.getImplementationEncoder(type)
     return buildList {
       if (encode) {
         add(DeclaredTypeStoreGenerator(type, encoder, platform).generate())
@@ -53,32 +57,41 @@ class DeclaredTypeEncodersGenerator(
 abstract class DeclaredTypeEncoderGenerator(
   protected val type: IrTypeDeclaration,
   protected val encoder: Encoder,
-  platform: Platform,
+  protected val platform: Platform,
   encodeAction: Identifier,
 ) {
-  val nameAllocator = NameAllocator()
-  val bridgeParameter = ParameterSpec.builder(
-    nameAllocator.newName("bridge"),
-    platform.bridgeType,
-  ).build()
-  val codeBuilder = CodeBuilder(
-    bridge = CodeBlock.of("%N", bridgeParameter.name),
-    platform = platform,
-    nameAllocator = nameAllocator,
+  val className = type.type.kotlinApi
+  val memberName = MemberName(
+    className.packageName,
+    buildString {
+      append(encodeAction.toCamelCase(upperCamel = false))
+      append("_")
+      append(type.type.serviceName.name.toCamelCase(upperCamel = true))
+      append("_")
+      append(type.name.toCamelCase(upperCamel = true))
+      append("_")
+      append(platform.identifier.toCamelCase(upperCamel = false))
+    },
   )
 
-  val className = type.type.kotlinApi
-  val name = buildString {
-    append(encodeAction.toCamelCase(upperCamel = false))
-    append("_")
-    append(type.type.serviceName.name.toCamelCase(upperCamel = true))
-    append("_")
-    append(type.name.toCamelCase(upperCamel = true))
-    append("_")
-    append(codeBuilder.platform.identifier.toCamelCase(upperCamel = false))
+  fun generate(): FunSpec {
+    val nameAllocator = NameAllocator()
+    val bridgeParameter = ParameterSpec.builder(
+      nameAllocator.newName("bridge"),
+      platform.bridgeType,
+    ).build()
+    val codeBuilder = CodeBuilder(
+      bridge = CodeBlock.of("%N", bridgeParameter.name),
+      platform = platform,
+      nameAllocator = nameAllocator,
+    )
+    context(codeBuilder) {
+      return generate(bridgeParameter)
+    }
   }
 
-  abstract fun generate(): FunSpec
+  context(codeBuilder: CodeBuilder)
+  abstract fun generate(bridgeParameter: ParameterSpec): FunSpec
 }
 
 class DeclaredTypeLoadGenerator(
@@ -86,9 +99,12 @@ class DeclaredTypeLoadGenerator(
   encoder: Encoder,
   platform: Platform,
 ) : DeclaredTypeEncoderGenerator(type, encoder, platform, Identifier("load")) {
-  override fun generate(): FunSpec {
+  context(codeBuilder: CodeBuilder)
+  override fun generate(
+    bridgeParameter: ParameterSpec,
+  ): FunSpec {
     val addressName = codeBuilder.newName("address")
-    return FunSpec.builder(name)
+    return FunSpec.builder(memberName)
       .addParameter(bridgeParameter)
       .addParameter(addressName, codeBuilder.platform.addressType)
       .returns(className)
@@ -103,6 +119,16 @@ class DeclaredTypeLoadGenerator(
       }
       .build()
   }
+
+  context(codeBuilder: CodeBuilder)
+  fun call(baseAddress: CodeBlock): CodeBlock {
+    return CodeBlock.of(
+      "%M(%L, %L)",
+      memberName,
+      codeBuilder.bridge,
+      baseAddress,
+    )
+  }
 }
 
 class DeclaredTypeStoreGenerator(
@@ -110,10 +136,13 @@ class DeclaredTypeStoreGenerator(
   encoder: Encoder,
   platform: Platform,
 ) : DeclaredTypeEncoderGenerator(type, encoder, platform, Identifier("store")) {
-  override fun generate(): FunSpec {
+  context(codeBuilder: CodeBuilder)
+  override fun generate(
+    bridgeParameter: ParameterSpec,
+  ): FunSpec {
     val addressName = codeBuilder.newName("address")
     val valueName = codeBuilder.newName("value")
-    return FunSpec.builder(name)
+    return FunSpec.builder(memberName)
       .addParameter(bridgeParameter)
       .addParameter(addressName, codeBuilder.platform.addressType)
       .addParameter(valueName, className)
@@ -128,6 +157,17 @@ class DeclaredTypeStoreGenerator(
       }
       .build()
   }
+
+  context(codeBuilder: CodeBuilder)
+  fun call(baseAddress: CodeBlock, value: CodeBlock) {
+    codeBuilder.addStatement(
+      "%M(%L, %L, %L)",
+      memberName,
+      codeBuilder.bridge,
+      baseAddress,
+      value,
+    )
+  }
 }
 
 class DeclaredTypeLiftFlatGenerator(
@@ -135,11 +175,10 @@ class DeclaredTypeLiftFlatGenerator(
   encoder: Encoder,
   platform: Platform,
 ) : DeclaredTypeEncoderGenerator(type, encoder, platform, Identifier("lift-flat")) {
-  override fun generate(): FunSpec {
-    val addressName = codeBuilder.newName("address")
-    return FunSpec.builder(name)
+  context(codeBuilder: CodeBuilder)
+  override fun generate(bridgeParameter: ParameterSpec): FunSpec {
+    return FunSpec.builder(memberName)
       .addParameter(bridgeParameter)
-      .addParameter(addressName, codeBuilder.platform.addressType)
       .returns(className)
       .apply {
         context(codeBuilder) {
@@ -156,6 +195,20 @@ class DeclaredTypeLiftFlatGenerator(
       }
       .build()
   }
+
+  context(codeBuilder: CodeBuilder)
+  fun call(transformer: Encoder.Transformer) {
+    transformer.put(
+      buildCodeBlock {
+        add("%M(⇥\n", memberName)
+        add("%L,\n", codeBuilder.bridge)
+        for (i in encoder.coreTypes.indices) {
+          add("%L,\n", transformer.take())
+        }
+        add("⇤)", memberName)
+      },
+    )
+  }
 }
 
 class DeclaredTypeLowerFlatGenerator(
@@ -163,9 +216,12 @@ class DeclaredTypeLowerFlatGenerator(
   encoder: Encoder,
   platform: Platform,
 ) : DeclaredTypeEncoderGenerator(type, encoder, platform, Identifier("lower-flat")) {
-  override fun generate(): FunSpec {
+  context(codeBuilder: CodeBuilder)
+  override fun generate(
+    bridgeParameter: ParameterSpec,
+  ): FunSpec {
     val valueName = codeBuilder.newName("value")
-    return FunSpec.builder(name)
+    return FunSpec.builder(memberName)
       .addParameter(bridgeParameter)
       .addParameter(valueName, className)
       .apply {
@@ -188,6 +244,57 @@ class DeclaredTypeLowerFlatGenerator(
         addCode(codeBuilder.build())
       }
       .build()
+  }
+
+  context(codeBuilder: CodeBuilder)
+  fun call(transformer: Encoder.Transformer) {
+    if (encoder.coreTypes.size > 1) {
+      val callBuilderName = codeBuilder.newName("callBuilder")
+      val i32Count = encoder.coreTypes.count { it.byteCount == 4 }
+      val i64Count = encoder.coreTypes.count { it.byteCount == 8 }
+
+      codeBuilder.addStatement(
+        "val %N = %T(i32Count = %L, i64Count = %L)",
+        callBuilderName,
+        Symbols.Brevity.CallBuilder,
+        i32Count,
+        i64Count,
+      )
+
+      codeBuilder.addStatement(
+        "%M(%L, %L, %N)",
+        memberName,
+        codeBuilder.bridge,
+        transformer.take(),
+        callBuilderName,
+      )
+
+      val coreValueNames = allocateNames("value", encoder.coreTypes.size)
+      for ((v, coreType) in encoder.coreTypes.withIndex()) {
+        val takeFunction = when (coreType) {
+          CoreType.F32 -> "takeF32"
+          CoreType.F64 -> "takeF64"
+          CoreType.I32, CoreType.Pointer -> "takeI32"
+          CoreType.I64 -> "takeI64"
+        }
+        codeBuilder.addStatement(
+          "val %N = %N.%N()",
+          coreValueNames[v],
+          callBuilderName,
+          takeFunction,
+        )
+        transformer.put(CodeBlock.of("%N", coreValueNames[v]))
+      }
+    } else {
+      transformer.put(
+        CodeBlock.of(
+          "%M(%L, %L)",
+          memberName,
+          codeBuilder.bridge,
+          transformer.take(),
+        ),
+      )
+    }
   }
 }
 

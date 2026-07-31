@@ -32,7 +32,8 @@ class GuestGenerator(
       .mapNotNull { type ->
         val typeName = type.type
         val className = typeName.kotlinApi
-        val roles = roleTracker[typeName] ?: return@mapNotNull null
+        // TODO: this is hacked because we don't also prune unreachable callsites.
+        val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
         val fileName = className.simpleNames.joinToString(separator = "") + "Guest"
         FileSpec.builder(className.packageName, fileName)
           .addBrevityComment(type)

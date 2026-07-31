@@ -59,25 +59,25 @@ class BrevityTester(
     for (fileSpec in apiGenerator.generate()) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }
-  }
+  }.toSortedMap()
 
   val guestFiles = buildMap {
     for (fileSpec in guestGenerator.generate()) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }
-  }
+  }.toSortedMap()
 
   val hostFiles = buildMap {
     for (fileSpec in hostGenerator.generate()) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }
-  }
+  }.toSortedMap()
 
   val files = buildMap {
     putAll(apiFiles)
     putAll(guestFiles)
     putAll(hostFiles)
-  }
+  }.toSortedMap()
 
   operator fun get(path: Path): String? = files[path]
 }

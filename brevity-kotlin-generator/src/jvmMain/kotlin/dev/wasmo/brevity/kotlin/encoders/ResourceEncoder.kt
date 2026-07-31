@@ -31,12 +31,12 @@ class ResourceEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun liftFlat(flatBuilder: FlatBuilder) {
-    flatBuilder.put(codeBuilder.platform.liftResource(flatBuilder.take(), type))
+  override fun liftFlat(transformer: Transformer) {
+    transformer.put(codeBuilder.platform.liftResource(transformer.take(), type))
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(flatBuilder: FlatBuilder) {
-    flatBuilder.put(codeBuilder.platform.lowerResource(flatBuilder.take(), type))
+  override fun lowerFlat(transformer: Transformer) {
+    transformer.put(codeBuilder.platform.lowerResource(transformer.take(), type))
   }
 }

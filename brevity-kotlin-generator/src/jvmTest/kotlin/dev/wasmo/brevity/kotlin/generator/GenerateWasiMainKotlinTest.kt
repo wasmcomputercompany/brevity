@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.generator
 
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.RoleTracker
+import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.io.IrMapper
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
@@ -33,7 +34,12 @@ class GenerateWasiMainKotlinTest {
       packageReader.read(it)
     }
 
-    val irPackages = IrMapper(ioWitPackages).map()
+    val allIrPackages = IrMapper(ioWitPackages).map()
+    val irPackages = allIrPackages.filterNamedWorlds(
+      listOf(
+        "wasi:http/service@0.3.0",
+      )
+    )
 
     val directory = File("build/GenerateWasiMainKotlinTest")
     directory.mkdirs()

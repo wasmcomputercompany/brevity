@@ -31,13 +31,13 @@ open class DirectEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun liftFlat(flatBuilder: FlatBuilder) {
-    flatBuilder.put(coreTypeToValue(flatBuilder.take()))
+  override fun liftFlat(transformer: Transformer) {
+    transformer.put(coreTypeToValue(transformer.take()))
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(flatBuilder: FlatBuilder) {
-    flatBuilder.put(valueToCoreType(flatBuilder.take()))
+  override fun lowerFlat(transformer: Transformer) {
+    transformer.put(valueToCoreType(transformer.take()))
   }
 
   open fun coreTypeToValue(coreType: CodeBlock): CodeBlock = coreType

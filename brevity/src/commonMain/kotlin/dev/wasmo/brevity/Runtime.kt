@@ -44,7 +44,10 @@ class CallBuilder(
   fun put(v: Any) {
   }
 
-  fun takeInt() : Int = TODO()
+  fun takeF32() : Float = TODO()
+  fun takeF64() : Double = TODO()
+  fun takeI32() : Int = TODO()
+  fun takeI64() : Long = TODO()
 
   // TODO(jwilson): restore these overloads once we've finished callers.
   //  fun put(v: Int) {

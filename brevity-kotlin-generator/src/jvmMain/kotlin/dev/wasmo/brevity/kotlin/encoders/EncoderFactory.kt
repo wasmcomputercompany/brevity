@@ -7,6 +7,7 @@ import dev.wasmo.brevity.ir.IrFlags
 import dev.wasmo.brevity.ir.IrRecord
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeAlias
+import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
@@ -47,24 +48,7 @@ class EncoderFactory(
       is TypeName.Declared -> {
         val declaredType = declarationIndex[typeName]
           ?: error("unexpected type: $typeName")
-        when (declaredType) {
-          is IrEnum -> EnumEncoder(
-            kotlinType = declaredType.type.kotlinApi,
-            cases = declaredType.cases,
-          )
-
-          is IrFlags -> FallbackEncoder(typeName, CoreType.I32)
-          is IrRecord -> FallbackEncoder(typeName, CoreType.I32) // TODO: RecordEncoder
-          is IrResource -> ResourceEncoder(typeName)
-          is IrTypeAlias -> FallbackEncoder(typeName, CoreType.I32) // TODO: target.
-          is IrVariant -> VariantEncoder(
-            kotlinType = declaredType.type.kotlinApi,
-            cases = declaredType.cases,
-            caseEncoders = declaredType.cases.map { case ->
-              case.type?.let { get(it) }
-            },
-          )
-        }
+        CallDeclaredTypeEncoder(declaredType, getImplementationEncoder(declaredType))
       }
 
       is TypeName.Future -> FallbackEncoder(typeName, CoreType.I32)
@@ -85,6 +69,28 @@ class EncoderFactory(
       is TypeName.Result -> ResultEncoder(
         ok = typeName.ok?.let { it.kotlinApi to get(it) },
         error = typeName.error?.let { it.kotlinApi to get(it) },
+      )
+    }
+  }
+
+  /** Returns an encoder that is used to implement [CallDeclaredTypeEncoder]. */
+  fun getImplementationEncoder(type: IrTypeDeclaration): Encoder {
+    return when (type) {
+      is IrEnum -> EnumEncoder(
+        kotlinType = type.type.kotlinApi,
+        cases = type.cases,
+      )
+
+      is IrFlags -> FallbackEncoder(type.type, CoreType.I32)
+      is IrRecord -> FallbackEncoder(type.type, CoreType.I32) // TODO: RecordEncoder
+      is IrResource -> ResourceEncoder(type.type)
+      is IrTypeAlias -> FallbackEncoder(type.type, CoreType.I32) // TODO: target.
+      is IrVariant -> VariantEncoder(
+        kotlinType = type.type.kotlinApi,
+        cases = type.cases,
+        caseEncoders = type.cases.map { case ->
+          case.type?.let { get(it) }
+        },
       )
     }
   }

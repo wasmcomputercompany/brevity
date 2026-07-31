@@ -37,14 +37,14 @@ class FallbackEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun liftFlat(flatBuilder: FlatBuilder) {
-    flatBuilder.take()
-    flatBuilder.put("TODO(%S)", "lift ${type.kotlinApi}")
+  override fun liftFlat(transformer: Transformer) {
+    transformer.take()
+    transformer.put("TODO(%S)", "lift ${type.kotlinApi}")
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(flatBuilder: FlatBuilder) {
-    flatBuilder.take()
-    flatBuilder.put("TODO(%S)", "lower ${type.kotlinApi}")
+  override fun lowerFlat(transformer: Transformer) {
+    transformer.take()
+    transformer.put("TODO(%S)", "lower ${type.kotlinApi}")
   }
 }
