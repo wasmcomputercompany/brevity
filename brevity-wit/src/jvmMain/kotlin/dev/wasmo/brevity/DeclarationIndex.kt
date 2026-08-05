@@ -5,7 +5,7 @@ import dev.wasmo.brevity.ir.IrWitPackage
 
 /** Associate types with their declarations. */
 class DeclarationIndex(
-  private val types: Map<TypeName.Declared, IrTypeDeclaration>,
+  val types: Map<TypeName.Declared, IrTypeDeclaration>,
   private val services: Map<ServiceName, IrWitPackage.Service>,
 ) {
   operator fun get(typeName: TypeName): IrTypeDeclaration? = types[typeName]
