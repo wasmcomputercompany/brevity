@@ -917,14 +917,17 @@ class KotlinGeneratorTest {
         address: Pointer,
         value_: WallClock.Instant,
       ) {
-        // TODO: store wit.wasi.clocks.v0_2_12.WallClock.Instant
+        store_WallClock_Datetime_guest(bridge, address, (value_).`value`)
       }
 
-      public fun lowerFlat_WallClock_Instant_guest(bridge: GuestBridge, value_: WallClock.Instant): Int = TODO("lower wit.wasi.clocks.v0_2_12.WallClock.Instant")
+      public fun lowerFlat_WallClock_Instant_guest(bridge: GuestBridge, value_: WallClock.Instant): Int = lowerFlat_WallClock_Datetime_guest(bridge, (value_).`value`)
 
-      public fun load_WallClock_Instant_guest(bridge: GuestBridge, address: Pointer): WallClock.Instant = TODO("load wit.wasi.clocks.v0_2_12.WallClock.Instant")
+      public fun load_WallClock_Instant_guest(bridge: GuestBridge, address: Pointer): WallClock.Instant = WallClock.Instant(load_WallClock_Datetime_guest(bridge, address))
 
-      public fun liftFlat_WallClock_Instant_guest(bridge: GuestBridge, value_: Int): WallClock.Instant = TODO("lift wit.wasi.clocks.v0_2_12.WallClock.Instant")
+      public fun liftFlat_WallClock_Instant_guest(bridge: GuestBridge, value_: Int): WallClock.Instant = WallClock.Instant(liftFlat_WallClock_Datetime_guest(
+        bridge,
+        value_,
+      ))
 
       """.trimIndent(),
     )
@@ -946,14 +949,17 @@ class KotlinGeneratorTest {
         address: Int,
         value_: WallClock.Instant,
       ) {
-        // TODO: store wit.wasi.clocks.v0_2_12.WallClock.Instant
+        store_WallClock_Datetime_host(bridge, address, (value_).`value`)
       }
 
-      public fun lowerFlat_WallClock_Instant_host(bridge: HostBridge, value_: WallClock.Instant): Int = TODO("lower wit.wasi.clocks.v0_2_12.WallClock.Instant")
+      public fun lowerFlat_WallClock_Instant_host(bridge: HostBridge, value_: WallClock.Instant): Int = lowerFlat_WallClock_Datetime_host(bridge, (value_).`value`)
 
-      public fun load_WallClock_Instant_host(bridge: HostBridge, address: Int): WallClock.Instant = TODO("load wit.wasi.clocks.v0_2_12.WallClock.Instant")
+      public fun load_WallClock_Instant_host(bridge: HostBridge, address: Int): WallClock.Instant = WallClock.Instant(load_WallClock_Datetime_host(bridge, address))
 
-      public fun liftFlat_WallClock_Instant_host(bridge: HostBridge, value_: Int): WallClock.Instant = TODO("lift wit.wasi.clocks.v0_2_12.WallClock.Instant")
+      public fun liftFlat_WallClock_Instant_host(bridge: HostBridge, value_: Int): WallClock.Instant = WallClock.Instant(liftFlat_WallClock_Datetime_host(
+        bridge,
+        value_,
+      ))
 
       """.trimIndent(),
     )

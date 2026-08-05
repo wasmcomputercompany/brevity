@@ -3,7 +3,9 @@ package dev.wasmo.brevity.kotlin.generator
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.STRING
 import com.squareup.kotlinpoet.U_INT
 import dev.wasmo.brevity.TypeName
@@ -32,5 +34,23 @@ class TypeMappingTest {
       .isEqualTo(ClassName("kotlin", "UIntArray"))
     assertThat(TypeName.List(TypeName.String).kotlinApi)
       .isEqualTo(Symbols.KotlinCollections.List.parameterizedBy(STRING))
+  }
+
+  /**
+   * WASI uses types like `tuple<u16, u16, u16, u16, u16, u16, u16, u16>`. We want this to be
+   * represented as a `List<UShort>` and not a `List<*>`.
+   */
+  @Test
+  fun `map large homogenous tuples`() {
+    val types = listOf(TypeName.S32, TypeName.S32, TypeName.S32, TypeName.S32, TypeName.S32)
+    assertThat(TypeName.Tuple(types).kotlinApi)
+      .isEqualTo(Symbols.KotlinCollections.List.parameterizedBy(INT))
+  }
+
+  @Test
+  fun `map large heterogeneous tuples`() {
+    val types = listOf(TypeName.S32, TypeName.S32, TypeName.S32, TypeName.S32, TypeName.U32)
+    assertThat(TypeName.Tuple(types).kotlinApi)
+      .isEqualTo(Symbols.KotlinCollections.List.parameterizedBy(STAR))
   }
 }
