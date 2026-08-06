@@ -16,154 +16,67 @@ import kotlin.test.Test
 class FindRecursiveTypeSetsTest {
   @Test
   fun `finds mutual recursion`() {
-    val mutuallyRecursiveRecord1 = IrRecord(
-      serviceName = "wasi:cli/world",
-      name = "mutuallyRecursiveRecord1",
-      fields = listOf(
-        IrField(
-          name = "mutuallyRecursiveRecord2",
-          type = TypeNameDeclared("wasi:cli/world", "mutuallyRecursiveRecord2"),
-        ),
-      ),
+    val mutuallyRecursive1 = "mutuallyRecursive1"
+    val mutuallyRecursive2 = "mutuallyRecursive2"
+    val result = testFinder(
+      mutuallyRecursive1 to mutuallyRecursive2,
+      mutuallyRecursive2 to mutuallyRecursive1,
+      "nonRecursive" to mutuallyRecursive1,
     )
-    val mutuallyRecursiveRecord2 = IrRecord(
-      serviceName = "wasi:cli/world",
-      name = "mutuallyRecursiveRecord1",
-      fields = listOf(
-        IrField(
-          name = "record1",
-          type = TypeNameDeclared("wasi:cli/world", "mutuallyRecursiveRecord1"),
-        ),
-      ),
-    )
-
-    val nonRecursiveRecord = IrRecord(
-      serviceName = "wasi:cli/world",
-      name = "nonRecursiveRecord",
-      fields = listOf(
-        IrField(
-          name = "boolean",
-          type = TypeName.Bool,
-        ),
-      ),
-    )
-    val index = DeclarationIndex(
-      listOf(
-        IrWitPackage(
-          packageName = "wasi:cli".toPackageName(),
-          services = listOf(
-            IrWorld(
-              serviceName = "wasi:cli/world",
-              types = listOf(
-                mutuallyRecursiveRecord1,
-                mutuallyRecursiveRecord2,
-                nonRecursiveRecord,
-              ),
-            ),
-          ),
-        ),
-      ),
-    )
-
-    val result = findRecursiveTypeSets(index)
 
     assertThat(result).isEqualTo(
-      listOf(setOf(mutuallyRecursiveRecord1.type, mutuallyRecursiveRecord2.type)),
+      listOf(setOf(mutuallyRecursive1, mutuallyRecursive2)),
     )
   }
 
   @Test
   fun `finds simple recursion, but not single types`() {
-    val simplyRecursiveRecord = IrRecord(
-      serviceName = "wasi:cli/world",
-      name = "simplyRecursiveRecord",
-      fields = listOf(
-        IrField(
-          name = "simplyRecursiveRecord",
-          type = TypeNameDeclared("wasi:cli/world", "simplyRecursiveRecord"),
-        ),
-      ),
+    val simpleRecursion = "simpleRecursion"
+    val result = testFinder(
+      simpleRecursion to simpleRecursion,
+      "nonRecursive" to simpleRecursion,
     )
-
-    val nonRecursiveRecord = IrRecord(
-      serviceName = "wasi:cli/world",
-      name = "nonRecursiveRecord",
-      fields = listOf(
-        IrField(
-          name = "boolean",
-          type = TypeName.Bool,
-        ),
-      ),
-    )
-    val index = DeclarationIndex(
-      listOf(
-        IrWitPackage(
-          packageName = "wasi:cli".toPackageName(),
-          services = listOf(
-            IrWorld(
-              serviceName = "wasi:cli/world",
-              types = listOf(
-                nonRecursiveRecord,
-                simplyRecursiveRecord,
-              ),
-            ),
-          ),
-        ),
-      ),
-    )
-
-    val result = findRecursiveTypeSets(index)
 
     assertThat(result).isEqualTo(
-      listOf(setOf(simplyRecursiveRecord.type)),
+      listOf(setOf(simpleRecursion)),
+    )
+
+    // Repeat with nodes in opposite order
+    val result2 = testFinder(
+      "nonRecursive" to simpleRecursion,
+      simpleRecursion to simpleRecursion,
+    )
+
+    assertThat(result2).isEqualTo(
+      listOf(setOf(simpleRecursion)),
     )
   }
+}
 
-  @Test
-  fun `finds alias cycles`() {
-    val recursiveAlias1 = IrTypeAlias(
-      serviceName = "wasi:cli/world",
-      name = "recursiveAlias1",
-      target = TypeNameDeclared("wasi:cli/world", "recursiveAlias2"),
-    )
-    val recursiveAlias2 = IrTypeAlias(
-      serviceName = "wasi:cli/world",
-      name = "recursiveAlias2",
-      target = TypeNameDeclared("wasi:cli/world", "recursiveAlias1"),
-    )
-
-    val nonRecursiveRecord = IrRecord(
-      serviceName = "wasi:cli/world",
-      name = "nonRecursiveRecord",
-      fields = listOf(
-        IrField(
-          name = "boolean",
-          type = TypeName.Bool,
-        ),
-      ),
-    )
-    val index = DeclarationIndex(
-      listOf(
-        IrWitPackage(
-          packageName = "wasi:cli".toPackageName(),
-          services = listOf(
-            IrWorld(
-              serviceName = "wasi:cli/world",
-              types = listOf(
-                nonRecursiveRecord,
-                recursiveAlias1,
-                recursiveAlias2,
-              ),
-            ),
-          ),
-        ),
-      ),
-    )
-
-    val result = findRecursiveTypeSets(index)
-
-    assertThat(result).isEqualTo(
-      listOf(setOf(recursiveAlias1.type, recursiveAlias2.type)),
-    )
+/**
+ * Nodes are always in the following order:
+ *
+ * * Predecessors from edges
+ * * Successors from edges
+ *
+ * If you need standalone nodes, use edges with zero successors.
+ */
+fun <V> testFinder(
+  vararg edges: Pair<V, V>,
+): List<Set<V>> {
+  val graph = buildMap {
+    for ((prev, next) in edges) {
+      getOrPut(prev) { mutableListOf() }.add(next)
+    }
   }
+  val nodes = buildList {
+    for ((prev, _) in edges) {
+      add(prev)
+    }
+    for ((_, next) in edges) {
+      add(next)
+    }
+  }.distinct()
+
+  return findRecursiveGroups(nodes) { graph[it]!!.asSequence() }
 }
