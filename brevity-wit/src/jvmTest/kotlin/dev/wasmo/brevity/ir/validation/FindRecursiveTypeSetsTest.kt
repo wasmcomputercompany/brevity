@@ -59,7 +59,7 @@ class FindRecursiveTypeSetsTest {
  * * Predecessors from edges
  * * Successors from edges
  *
- * If you need standalone nodes, use edges with nil successors.
+ * If you need standalone nodes, use edges with zero successors.
  */
 fun <V> testFinder(
   vararg edges: Pair<V, V>,
