@@ -40,7 +40,21 @@ class EncoderFactory(
           2 -> PairEncoder(fieldEncoders)
           3 -> TripleEncoder(fieldEncoders)
           4 -> QuadEncoder(fieldEncoders)
-          else -> LargeTupleEncoder(fieldEncoders)
+          else -> {
+            val onlyTypeOrNull = typeName.types.toSet().singleOrNull()
+            when {
+              onlyTypeOrNull != null -> StaticListEncoder(
+                size = typeName.types.size,
+                elementType = onlyTypeOrNull.kotlinApi,
+                elementEncoder = get(onlyTypeOrNull),
+              )
+
+              else -> LargeTupleEncoder(
+                typeName.types.map { it.kotlinApi },
+                fieldEncoders,
+              )
+            }
+          }
         }
       }
 
@@ -53,9 +67,13 @@ class EncoderFactory(
 
       is TypeName.Future -> FallbackEncoder(typeName, CoreType.I32)
       is TypeName.List -> {
+        val staticSize = typeName.size
         when {
-          // TODO: Statically-sized lists.
-          typeName.size != null -> FallbackEncoder(typeName, CoreType.I32)
+          staticSize != null -> StaticListEncoder(
+            size = staticSize.toInt(),
+            elementType = typeName.type.kotlinApi,
+            elementEncoder = get(typeName.type),
+          )
 
           else -> DynamicListEncoder(
             elementEncoder = get(typeName.type),
@@ -84,7 +102,7 @@ class EncoderFactory(
       is IrFlags -> FallbackEncoder(type.type, CoreType.I32)
       is IrRecord -> FallbackEncoder(type.type, CoreType.I32) // TODO: RecordEncoder
       is IrResource -> ResourceEncoder(type.type)
-      is IrTypeAlias -> FallbackEncoder(type.type, CoreType.I32) // TODO: target.
+      is IrTypeAlias -> TypeAliasEncoder(type.type.kotlinApi, get(type.target))
       is IrVariant -> VariantEncoder(
         kotlinType = type.type.kotlinApi,
         cases = type.cases,

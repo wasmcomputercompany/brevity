@@ -129,7 +129,10 @@ val TypeName.kotlinApi: KtTypeName
         2 -> Symbols.Kotlin.Pair.parameterizedBy(*types.map { it.kotlinApi }.toTypedArray())
         3 -> Symbols.Kotlin.Triple.parameterizedBy(*types.map { it.kotlinApi }.toTypedArray())
         4 -> Symbols.Brevity.Quad.parameterizedBy(*types.map { it.kotlinApi }.toTypedArray())
-        else -> Symbols.KotlinCollections.List.parameterizedBy(STAR)
+        else -> {
+          val elementType = types.toSet().singleOrNull()?.kotlinApi ?: STAR
+          Symbols.KotlinCollections.List.parameterizedBy(elementType)
+        }
       }
     }
   }

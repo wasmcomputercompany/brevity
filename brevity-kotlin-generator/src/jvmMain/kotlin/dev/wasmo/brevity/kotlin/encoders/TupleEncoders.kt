@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.TypeName as KtTypeName
 import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.kotlin.generator.Symbols
 
@@ -69,8 +70,9 @@ class QuadEncoder(
   )
 }
 
-/** 5 or more elements. */
+/** 5 or more heterogeneous elements. */
 class LargeTupleEncoder(
+  private val elementTypes: List<KtTypeName>,
   fieldEncoders: List<Encoder>,
 ) : AbstractRecordEncoder(fieldEncoders) {
   override fun fieldValuesToInstance(
@@ -80,12 +82,12 @@ class LargeTupleEncoder(
     for (fieldValue in fieldValues) {
       add("%L,\n", fieldValue)
     }
-    add("⇤)", Symbols.KotlinCollections.ListOf)
+    add("⇤)")
   }
 
   override fun instanceToFieldValues(
     tuple: CodeBlock,
   ) = fieldEncoders.withIndex().map { (i, _) ->
-    CodeBlock.of("%L[%L]", tuple, i)
+    CodeBlock.of("(%L[%L] as %T)", tuple, i, elementTypes[i])
   }
 }
