@@ -4,7 +4,7 @@ Brevity
 > _‘brevity is the soul of wit’_
 >  –– Polonius in Shakespeare’s Hamlet
 
-This is a Kotlin implementation of a WIT processor.
+This is a Kotlin implementation of a WIT processor. It compiles WIT specifications into Kotlin interfaces, as well as host and guest bridging code for the WASM runtime.
 
 See the [Explainer], [Overview] and [Spec].
 
