@@ -5,18 +5,8 @@ import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
-import dev.wasmo.brevity.DeclarationIndex
-import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.filterNamedWorlds
-import dev.wasmo.brevity.io.IoWitPackageReader
-import dev.wasmo.brevity.ir.IrMapper
-import dev.wasmo.brevity.kotlin.code.GuestPlatform
-import dev.wasmo.brevity.kotlin.code.HostPlatform
-import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
-import dev.wasmo.brevity.kotlin.generator.ApiGenerator
-import dev.wasmo.brevity.kotlin.generator.DeclaredTypeEncodersGenerator
-import dev.wasmo.brevity.kotlin.generator.GuestGenerator
-import dev.wasmo.brevity.kotlin.generator.HostGenerator
+import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
 import dev.wasmo.brevity.withIssueCollector
 import okio.FileSystem
 import okio.Path
@@ -44,12 +34,6 @@ class GenerateKotlinCommand(
     .help("the world name like 'command', 'wasi:cli/command', or 'wasi:cli/command@0.3.0'")
 
   override fun run() = withIssueCollector {
-    val packageReader = IoWitPackageReader(fileSystem)
-
-    val ioWitPackages = inputWitDirectories.map {
-      packageReader.read(it)
-    }
-
     val commonMainDir = outputKotlinCommonMain.toFile()
     commonMainDir.deleteRecursively()
     commonMainDir.mkdirs()
@@ -62,39 +46,24 @@ class GenerateKotlinCommand(
     jvmMainDir.deleteRecursively()
     jvmMainDir.mkdirs()
 
-    val irMapper = IrMapper(ioWitPackages) ?: return@withIssueCollector
-    val allIrPackages = irMapper.map()
+    val generator = WitBridgeGenerator.precompile(
+      fileSystem = fileSystem,
+      packageDirectories = inputWitDirectories,
+      irFilter = {
+        when {
+          world.isEmpty() -> it
+          else -> it.filterNamedWorlds(world)
+        }
+      },
+    ) ?: return@withIssueCollector
 
-    val irPackages = when {
-      world.isEmpty() -> allIrPackages
-      else -> allIrPackages.filterNamedWorlds(world)
-    }
-
-    val declarationIndex = DeclarationIndex(irPackages)
-    val roleTracker = RoleTracker(declarationIndex, irPackages)
-    val encoderFactory = EncoderFactory(declarationIndex)
-    val guestGenerator = GuestGenerator(
-      encoderFactory = encoderFactory,
-      declarationIndex = declarationIndex,
-      declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(encoderFactory, GuestPlatform),
-      roleTracker = roleTracker,
-      packages = irPackages
-    )
-    val hostGenerator = HostGenerator(
-      encoderFactory = encoderFactory,
-      declarationIndex = declarationIndex,
-      declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(encoderFactory, HostPlatform),
-      roleTracker = roleTracker,
-      packages = irPackages
-    )
-
-    for (fileSpec in ApiGenerator(irPackages).generate()) {
+    for (fileSpec in generator.api.generate()) {
       fileSpec.writeTo(commonMainDir)
     }
-    for (fileSpec in guestGenerator.generate()) {
+    for (fileSpec in generator.guest.generate()) {
       fileSpec.writeTo(wasmWasiMainDir)
     }
-    for (fileSpec in hostGenerator.generate()) {
+    for (fileSpec in generator.host.generate()) {
       fileSpec.writeTo(jvmMainDir)
     }
   }
