@@ -50,6 +50,10 @@ internal fun typeNameGraphSuccessors(index: DeclarationIndex, node: TypeName.Dec
   }
 }
 
+/**
+ * Finds groups in a graph that contain recursive loops. Trees (including solitary non-recursive
+ * nodes) are omitted.
+ */
 internal fun <V> findRecursiveGroups(
   nodes: Iterable<V>,
   successors: (V)->Sequence<V>,
