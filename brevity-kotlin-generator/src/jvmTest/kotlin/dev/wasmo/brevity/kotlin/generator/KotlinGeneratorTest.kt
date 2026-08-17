@@ -198,13 +198,15 @@ class KotlinGeneratorTest {
               "wasi:clocks/wall-clock@0.2.12",
               "now",
               FunctionType.of(
-                listOf(),
                 listOf(ValType.I32),
+                listOf(),
               ),
               WasmFunctionHandle { instance, args ->
                 val self = host.wallClock
                 val result = self.now()
-                return@WasmFunctionHandle longArrayOf(lowerFlat_WallClock_Datetime_host(bridge, result).toLong())
+                val resultParameter = args[0].toInt()
+                store_WallClock_Datetime_host(bridge, resultParameter, result)
+                return@WasmFunctionHandle longArrayOf()
               },
             )
           )
@@ -507,8 +509,10 @@ class KotlinGeneratorTest {
 
       package wit.wasi.clocks.v0_2_12
 
+      import dev.wasmo.brevity.CallBuilder
       import dev.wasmo.brevity.GuestBridge
       import kotlin.Int
+      import kotlin.Long
       import kotlin.OptIn
       import kotlin.wasm.ExperimentalWasmInterop
       import kotlin.wasm.unsafe.ComponentModelInternalApi
@@ -520,14 +524,33 @@ class KotlinGeneratorTest {
         address: Pointer,
         value_: WallClock.Datetime,
       ) {
-        // TODO: store wit.wasi.clocks.v0_2_12.WallClock.Datetime
+        (address).storeLong(value_.seconds.toLong())
+        (address + 8).storeInt(value_.nanoseconds.toInt())
       }
 
-      public fun lowerFlat_WallClock_Datetime_guest(bridge: GuestBridge, value_: WallClock.Datetime): Int = TODO("lower wit.wasi.clocks.v0_2_12.WallClock.Datetime")
+      public fun lowerFlat_WallClock_Datetime_guest(
+        bridge: GuestBridge,
+        value_: WallClock.Datetime,
+        callBuilder: CallBuilder,
+      ) {
+        val tuple = value_
+        callBuilder.put(tuple.seconds.toLong())
+        callBuilder.put(tuple.nanoseconds.toInt())
+      }
 
-      public fun load_WallClock_Datetime_guest(bridge: GuestBridge, address: Pointer): WallClock.Datetime = TODO("load wit.wasi.clocks.v0_2_12.WallClock.Datetime")
+      public fun load_WallClock_Datetime_guest(bridge: GuestBridge, address: Pointer): WallClock.Datetime = WallClock.Datetime(
+        seconds = (address).loadLong().toULong(),
+        nanoseconds = (address + 8).loadInt().toUInt(),
+      )
 
-      public fun liftFlat_WallClock_Datetime_guest(bridge: GuestBridge, value_: Int): WallClock.Datetime = TODO("lift wit.wasi.clocks.v0_2_12.WallClock.Datetime")
+      public fun liftFlat_WallClock_Datetime_guest(
+        bridge: GuestBridge,
+        value_: Long,
+        value1: Int,
+      ): WallClock.Datetime = WallClock.Datetime(
+        seconds = value_.toULong(),
+        nanoseconds = value1.toUInt(),
+      )
 
       """.trimIndent(),
     )
@@ -541,22 +564,43 @@ class KotlinGeneratorTest {
       //   clock.wit
       package wit.wasi.clocks.v0_2_12
 
+      import dev.wasmo.brevity.CallBuilder
       import dev.wasmo.brevity.HostBridge
       import kotlin.Int
+      import kotlin.Long
 
       public fun store_WallClock_Datetime_host(
         bridge: HostBridge,
         address: Int,
         value_: WallClock.Datetime,
       ) {
-        // TODO: store wit.wasi.clocks.v0_2_12.WallClock.Datetime
+        bridge.memory.writeLong(address, value_.seconds.toLong())
+        bridge.memory.writeI32(address + 8, value_.nanoseconds.toInt())
       }
 
-      public fun lowerFlat_WallClock_Datetime_host(bridge: HostBridge, value_: WallClock.Datetime): Int = TODO("lower wit.wasi.clocks.v0_2_12.WallClock.Datetime")
+      public fun lowerFlat_WallClock_Datetime_host(
+        bridge: HostBridge,
+        value_: WallClock.Datetime,
+        callBuilder: CallBuilder,
+      ) {
+        val tuple = value_
+        callBuilder.put(tuple.seconds.toLong())
+        callBuilder.put(tuple.nanoseconds.toInt())
+      }
 
-      public fun load_WallClock_Datetime_host(bridge: HostBridge, address: Int): WallClock.Datetime = TODO("load wit.wasi.clocks.v0_2_12.WallClock.Datetime")
+      public fun load_WallClock_Datetime_host(bridge: HostBridge, address: Int): WallClock.Datetime = WallClock.Datetime(
+        seconds = bridge.memory.readLong(address).toULong(),
+        nanoseconds = bridge.memory.readInt(address + 8).toUInt(),
+      )
 
-      public fun liftFlat_WallClock_Datetime_host(bridge: HostBridge, value_: Int): WallClock.Datetime = TODO("lift wit.wasi.clocks.v0_2_12.WallClock.Datetime")
+      public fun liftFlat_WallClock_Datetime_host(
+        bridge: HostBridge,
+        value_: Long,
+        value1: Int,
+      ): WallClock.Datetime = WallClock.Datetime(
+        seconds = value_.toULong(),
+        nanoseconds = value1.toUInt(),
+      )
 
       """.trimIndent(),
     )
@@ -883,10 +927,7 @@ class KotlinGeneratorTest {
         override fun now(): WallClock.Datetime {
           val result = now.apply(
           )
-          return liftFlat_WallClock_Datetime_host(
-            bridge,
-            result[0].toInt(),
-          )
+          return load_WallClock_Datetime_host(bridge, result[0].toInt())
         }
       }
 
@@ -904,8 +945,10 @@ class KotlinGeneratorTest {
 
       package wit.wasi.clocks.v0_2_12
 
+      import dev.wasmo.brevity.CallBuilder
       import dev.wasmo.brevity.GuestBridge
       import kotlin.Int
+      import kotlin.Long
       import kotlin.OptIn
       import kotlin.wasm.ExperimentalWasmInterop
       import kotlin.wasm.unsafe.ComponentModelInternalApi
@@ -920,13 +963,29 @@ class KotlinGeneratorTest {
         store_WallClock_Datetime_guest(bridge, address, (value_).`value`)
       }
 
-      public fun lowerFlat_WallClock_Instant_guest(bridge: GuestBridge, value_: WallClock.Instant): Int = lowerFlat_WallClock_Datetime_guest(bridge, (value_).`value`)
+      public fun lowerFlat_WallClock_Instant_guest(
+        bridge: GuestBridge,
+        value_: WallClock.Instant,
+        callBuilder: CallBuilder,
+      ) {
+        val callBuilder_ = CallBuilder(i32Count = 1, i64Count = 1)
+        lowerFlat_WallClock_Datetime_guest(bridge, (value_).`value`, callBuilder_)
+        val value__ = callBuilder_.takeI64()
+        val value1 = callBuilder_.takeI32()
+        callBuilder.put(value__)
+        callBuilder.put(value1)
+      }
 
       public fun load_WallClock_Instant_guest(bridge: GuestBridge, address: Pointer): WallClock.Instant = WallClock.Instant(load_WallClock_Datetime_guest(bridge, address))
 
-      public fun liftFlat_WallClock_Instant_guest(bridge: GuestBridge, value_: Int): WallClock.Instant = WallClock.Instant(liftFlat_WallClock_Datetime_guest(
+      public fun liftFlat_WallClock_Instant_guest(
+        bridge: GuestBridge,
+        value_: Long,
+        value1: Int,
+      ): WallClock.Instant = WallClock.Instant(liftFlat_WallClock_Datetime_guest(
         bridge,
         value_,
+        value1,
       ))
 
       """.trimIndent(),
@@ -941,8 +1000,10 @@ class KotlinGeneratorTest {
       //   clock.wit
       package wit.wasi.clocks.v0_2_12
 
+      import dev.wasmo.brevity.CallBuilder
       import dev.wasmo.brevity.HostBridge
       import kotlin.Int
+      import kotlin.Long
 
       public fun store_WallClock_Instant_host(
         bridge: HostBridge,
@@ -952,13 +1013,29 @@ class KotlinGeneratorTest {
         store_WallClock_Datetime_host(bridge, address, (value_).`value`)
       }
 
-      public fun lowerFlat_WallClock_Instant_host(bridge: HostBridge, value_: WallClock.Instant): Int = lowerFlat_WallClock_Datetime_host(bridge, (value_).`value`)
+      public fun lowerFlat_WallClock_Instant_host(
+        bridge: HostBridge,
+        value_: WallClock.Instant,
+        callBuilder: CallBuilder,
+      ) {
+        val callBuilder_ = CallBuilder(i32Count = 1, i64Count = 1)
+        lowerFlat_WallClock_Datetime_host(bridge, (value_).`value`, callBuilder_)
+        val value__ = callBuilder_.takeI64()
+        val value1 = callBuilder_.takeI32()
+        callBuilder.put(value__)
+        callBuilder.put(value1)
+      }
 
       public fun load_WallClock_Instant_host(bridge: HostBridge, address: Int): WallClock.Instant = WallClock.Instant(load_WallClock_Datetime_host(bridge, address))
 
-      public fun liftFlat_WallClock_Instant_host(bridge: HostBridge, value_: Int): WallClock.Instant = WallClock.Instant(liftFlat_WallClock_Datetime_host(
+      public fun liftFlat_WallClock_Instant_host(
+        bridge: HostBridge,
+        value_: Long,
+        value1: Int,
+      ): WallClock.Instant = WallClock.Instant(liftFlat_WallClock_Datetime_host(
         bridge,
         value_,
+        value1,
       ))
 
       """.trimIndent(),

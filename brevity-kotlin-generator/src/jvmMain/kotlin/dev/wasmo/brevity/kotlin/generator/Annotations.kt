@@ -21,7 +21,6 @@ internal val FunctionName.wasmExportAnnotation: AnnotationSpec
     .addMember("%S", toString())
     .build()
 
-
 val optInToExperimentalWasm: AnnotationSpec
   get() = AnnotationSpec.builder(Symbols.Kotlin.OptIn)
     .addMember(

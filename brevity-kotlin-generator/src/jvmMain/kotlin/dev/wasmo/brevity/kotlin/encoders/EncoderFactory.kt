@@ -10,6 +10,7 @@ import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
+import dev.wasmo.brevity.kotlin.generator.toCamelCase
 
 val MAX_FLAT_PARAMS = 16
 val MAX_FLAT_RESULTS = 1
@@ -100,7 +101,13 @@ class EncoderFactory(
       )
 
       is IrFlags -> FallbackEncoder(type.type, CoreType.I32)
-      is IrRecord -> FallbackEncoder(type.type, CoreType.I32) // TODO: RecordEncoder
+      is IrRecord -> RecordEncoder(
+        kotlinType = type.type.kotlinApi,
+        instanceNameHint = type.name.toCamelCase(upperCamel = false),
+        fields = type.fields,
+        fieldEncoders = type.fields.map { get(it.type) },
+      )
+
       is IrResource -> ResourceEncoder(type.type)
       is IrTypeAlias -> TypeAliasEncoder(type.type.kotlinApi, get(type.target))
       is IrVariant -> VariantEncoder(
