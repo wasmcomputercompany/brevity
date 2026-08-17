@@ -85,7 +85,13 @@ class EncoderFactory(
       }
 
       is TypeName.Map -> FallbackEncoder(typeName, CoreType.I32) // TODO: List<Tuple>.
-      is TypeName.Option -> OptionalEncoder(get(typeName.type))
+      is TypeName.Option -> OptionalEncoder(
+        some = get(typeName.type),
+        instanceNameHint = when (val element = typeName.type) {
+          is TypeName.Declared -> element.name.toCamelCase(upperCamel = false)
+          else -> "optional"
+        }
+      )
       is TypeName.Result -> ResultEncoder(
         ok = typeName.ok?.let { it.kotlinApi to get(it) },
         error = typeName.error?.let { it.kotlinApi to get(it) },
@@ -98,6 +104,7 @@ class EncoderFactory(
     return when (type) {
       is IrEnum -> EnumEncoder(
         kotlinType = type.type.kotlinApi,
+        instanceNameHint = type.type.name.toCamelCase(upperCamel = false),
         cases = type.cases,
       )
 
@@ -113,6 +120,7 @@ class EncoderFactory(
       is IrTypeAlias -> TypeAliasEncoder(type.type.kotlinApi, get(type.target))
       is IrVariant -> VariantEncoder(
         kotlinType = type.type.kotlinApi,
+        instanceNameHint = type.type.name.toCamelCase(upperCamel = false),
         cases = type.cases,
         caseEncoders = type.cases.map { case ->
           case.type?.let { get(it) }

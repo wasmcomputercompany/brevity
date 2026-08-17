@@ -374,7 +374,7 @@ class KotlinGeneratorTest {
         address: Pointer,
         value_: WallClock.Advice,
       ) {
-        val discriminator: Byte = when (val variant = value_) {
+        val adviceDiscriminator: Byte = when (val advice = value_) {
           WallClock.Advice.Normal -> {
             0
           }
@@ -382,12 +382,12 @@ class KotlinGeneratorTest {
             1
           }
         }
-        (address).storeByte(discriminator)
+        (address).storeByte(adviceDiscriminator)
       }
 
       public fun lowerFlat_WallClock_Advice_guest(bridge: GuestBridge, value_: WallClock.Advice): Int {
-        val variant = value_
-        val discriminator = when (variant) {
+        val advice = value_
+        val adviceDiscriminator = when (advice) {
           WallClock.Advice.Normal -> {
             0
           }
@@ -395,11 +395,11 @@ class KotlinGeneratorTest {
             1
           }
         }
-        return discriminator
+        return adviceDiscriminator
       }
 
       public fun load_WallClock_Advice_guest(bridge: GuestBridge, address: Pointer): WallClock.Advice {
-        val variant = when ((address).loadByte().toInt()) {
+        val advice = when ((address).loadByte().toInt()) {
           0 -> {
             WallClock.Advice.Normal
           }
@@ -408,11 +408,11 @@ class KotlinGeneratorTest {
           }
           else -> error("unexpected case")
         }
-        return variant
+        return advice
       }
 
       public fun liftFlat_WallClock_Advice_guest(bridge: GuestBridge, value_: Int): WallClock.Advice {
-        val variant = when (value_) {
+        val advice = when (value_) {
           0 -> {
             WallClock.Advice.Normal
           }
@@ -421,7 +421,7 @@ class KotlinGeneratorTest {
           }
           else -> error("unexpected case")
         }
-        return variant
+        return advice
       }
 
       """.trimIndent(),
@@ -445,7 +445,7 @@ class KotlinGeneratorTest {
         address: Int,
         value_: WallClock.Advice,
       ) {
-        val discriminator: Byte = when (val variant = value_) {
+        val adviceDiscriminator: Byte = when (val advice = value_) {
           WallClock.Advice.Normal -> {
             0
           }
@@ -453,12 +453,12 @@ class KotlinGeneratorTest {
             1
           }
         }
-        bridge.memory.writeByte(address, discriminator)
+        bridge.memory.writeByte(address, adviceDiscriminator)
       }
 
       public fun lowerFlat_WallClock_Advice_host(bridge: HostBridge, value_: WallClock.Advice): Int {
-        val variant = value_
-        val discriminator = when (variant) {
+        val advice = value_
+        val adviceDiscriminator = when (advice) {
           WallClock.Advice.Normal -> {
             0
           }
@@ -466,11 +466,11 @@ class KotlinGeneratorTest {
             1
           }
         }
-        return discriminator
+        return adviceDiscriminator
       }
 
       public fun load_WallClock_Advice_host(bridge: HostBridge, address: Int): WallClock.Advice {
-        val variant = when (bridge.memory.read(address).toInt()) {
+        val advice = when (bridge.memory.read(address).toInt()) {
           0 -> {
             WallClock.Advice.Normal
           }
@@ -479,11 +479,11 @@ class KotlinGeneratorTest {
           }
           else -> error("unexpected case")
         }
-        return variant
+        return advice
       }
 
       public fun liftFlat_WallClock_Advice_host(bridge: HostBridge, value_: Int): WallClock.Advice {
-        val variant = when (value_) {
+        val advice = when (value_) {
           0 -> {
             WallClock.Advice.Normal
           }
@@ -492,7 +492,7 @@ class KotlinGeneratorTest {
           }
           else -> error("unexpected case")
         }
-        return variant
+        return advice
       }
 
       """.trimIndent(),
@@ -636,17 +636,17 @@ class KotlinGeneratorTest {
         value_: WallClock.ErrorCode,
       ) {
         withScopedMemoryAllocator { memoryAllocator ->
-          val discriminator: Byte = when (val variant = value_) {
+          val errorCodeDiscriminator: Byte = when (val errorCode = value_) {
             WallClock.ErrorCode.AccessDenied -> {
               0
             }
             is WallClock.ErrorCode.Other -> {
-              val discriminator_: Byte = when (val variant_ = variant.value) {
+              val optionalDiscriminator: Byte = when (val optional = errorCode.value) {
                 null -> {
                   0
                 }
                 else -> {
-                  val byteArray = variant_.encodeToByteArray()
+                  val byteArray = optional.encodeToByteArray()
                   val stringAddress = memoryAllocator.allocate(byteArray.size)
                   stringAddress.storeByteArray(byteArray)
                   val stringAddress_ = stringAddress.address.toInt()
@@ -656,11 +656,11 @@ class KotlinGeneratorTest {
                   1
                 }
               }
-              (address + 4).storeByte(discriminator_)
+              (address + 4).storeByte(optionalDiscriminator)
               1
             }
           }
-          (address).storeByte(discriminator)
+          (address).storeByte(errorCodeDiscriminator)
         }
       }
 
@@ -670,51 +670,51 @@ class KotlinGeneratorTest {
         callBuilder: CallBuilder,
       ) {
         withScopedMemoryAllocator { memoryAllocator ->
-          val variant = value_
-          var coreValueBits0 = 0
-          var coreValueBits1 = 0
-          var coreValueBits2 = 0
-          val discriminator = when (variant) {
+          val errorCode = value_
+          var errorCodeCoreValueBits0 = 0
+          var errorCodeCoreValueBits1 = 0
+          var errorCodeCoreValueBits2 = 0
+          val errorCodeDiscriminator = when (errorCode) {
             WallClock.ErrorCode.AccessDenied -> {
               0
             }
             is WallClock.ErrorCode.Other -> {
-              val variant_ = variant.value
-              var coreValueBits0_ = 0
-              var coreValueBits1_ = 0
-              val discriminator_ = when (variant_) {
+              val optional = errorCode.value
+              var optionalCoreValueBits0 = 0
+              var optionalCoreValueBits1 = 0
+              val optionalDiscriminator = when (optional) {
                 null -> {
                   0
                 }
                 else -> {
-                  val byteArray = variant_.encodeToByteArray()
+                  val byteArray = optional.encodeToByteArray()
                   val stringAddress = memoryAllocator.allocate(byteArray.size)
                   stringAddress.storeByteArray(byteArray)
-                  coreValueBits0_ = stringAddress.address.toInt()
-                  coreValueBits1_ = byteArray.size
+                  optionalCoreValueBits0 = stringAddress.address.toInt()
+                  optionalCoreValueBits1 = byteArray.size
                   1
                 }
               }
-              coreValueBits0 = discriminator_
-              coreValueBits1 = coreValueBits0_
-              coreValueBits2 = coreValueBits1_
+              errorCodeCoreValueBits0 = optionalDiscriminator
+              errorCodeCoreValueBits1 = optionalCoreValueBits0
+              errorCodeCoreValueBits2 = optionalCoreValueBits1
               1
             }
           }
-          callBuilder.put(discriminator)
-          callBuilder.put(coreValueBits0)
-          callBuilder.put(coreValueBits1)
-          callBuilder.put(coreValueBits2)
+          callBuilder.put(errorCodeDiscriminator)
+          callBuilder.put(errorCodeCoreValueBits0)
+          callBuilder.put(errorCodeCoreValueBits1)
+          callBuilder.put(errorCodeCoreValueBits2)
         }
       }
 
       public fun load_WallClock_ErrorCode_guest(bridge: GuestBridge, address: Pointer): WallClock.ErrorCode {
-        val variant = when ((address).loadByte().toInt()) {
+        val errorCode = when ((address).loadByte().toInt()) {
           0 -> {
             WallClock.ErrorCode.AccessDenied
           }
           1 -> {
-            val variant_ = when ((address + 4).loadByte().toInt()) {
+            val optional = when ((address + 4).loadByte().toInt()) {
               0 -> {
                 null
               }
@@ -725,11 +725,11 @@ class KotlinGeneratorTest {
               }
               else -> error("unexpected case")
             }
-            WallClock.ErrorCode.Other(variant_)
+            WallClock.ErrorCode.Other(optional)
           }
           else -> error("unexpected case")
         }
-        return variant
+        return errorCode
       }
 
       public fun liftFlat_WallClock_ErrorCode_guest(
@@ -739,12 +739,12 @@ class KotlinGeneratorTest {
         value2: Int,
         value3: Int,
       ): WallClock.ErrorCode {
-        val variant = when (value_) {
+        val errorCode = when (value_) {
           0 -> {
             WallClock.ErrorCode.AccessDenied
           }
           1 -> {
-            val variant_ = when (value1) {
+            val optional = when (value1) {
               0 -> {
                 null
               }
@@ -753,11 +753,11 @@ class KotlinGeneratorTest {
               }
               else -> error("unexpected case")
             }
-            WallClock.ErrorCode.Other(variant_)
+            WallClock.ErrorCode.Other(optional)
           }
           else -> error("unexpected case")
         }
-        return variant
+        return errorCode
       }
 
       """.trimIndent(),
@@ -783,17 +783,17 @@ class KotlinGeneratorTest {
         address: Int,
         value_: WallClock.ErrorCode,
       ) {
-        val discriminator: Byte = when (val variant = value_) {
+        val errorCodeDiscriminator: Byte = when (val errorCode = value_) {
           WallClock.ErrorCode.AccessDenied -> {
             0
           }
           is WallClock.ErrorCode.Other -> {
-            val discriminator_: Byte = when (val variant_ = variant.value) {
+            val optionalDiscriminator: Byte = when (val optional = errorCode.value) {
               null -> {
                 0
               }
               else -> {
-                val byteArray = variant_.encodeToByteArray()
+                val byteArray = optional.encodeToByteArray()
                 val stringAddress = bridge.allocate(byteArray.size)
                 bridge.memory.write(stringAddress, byteArray)
                 val stringAddress_ = stringAddress
@@ -803,11 +803,11 @@ class KotlinGeneratorTest {
                 1
               }
             }
-            bridge.memory.writeByte(address + 4, discriminator_)
+            bridge.memory.writeByte(address + 4, optionalDiscriminator)
             1
           }
         }
-        bridge.memory.writeByte(address, discriminator)
+        bridge.memory.writeByte(address, errorCodeDiscriminator)
       }
 
       public fun lowerFlat_WallClock_ErrorCode_host(
@@ -815,50 +815,50 @@ class KotlinGeneratorTest {
         value_: WallClock.ErrorCode,
         callBuilder: CallBuilder,
       ) {
-        val variant = value_
-        var coreValueBits0 = 0
-        var coreValueBits1 = 0
-        var coreValueBits2 = 0
-        val discriminator = when (variant) {
+        val errorCode = value_
+        var errorCodeCoreValueBits0 = 0
+        var errorCodeCoreValueBits1 = 0
+        var errorCodeCoreValueBits2 = 0
+        val errorCodeDiscriminator = when (errorCode) {
           WallClock.ErrorCode.AccessDenied -> {
             0
           }
           is WallClock.ErrorCode.Other -> {
-            val variant_ = variant.value
-            var coreValueBits0_ = 0
-            var coreValueBits1_ = 0
-            val discriminator_ = when (variant_) {
+            val optional = errorCode.value
+            var optionalCoreValueBits0 = 0
+            var optionalCoreValueBits1 = 0
+            val optionalDiscriminator = when (optional) {
               null -> {
                 0
               }
               else -> {
-                val byteArray = variant_.encodeToByteArray()
+                val byteArray = optional.encodeToByteArray()
                 val stringAddress = bridge.allocate(byteArray.size)
                 bridge.memory.write(stringAddress, byteArray)
-                coreValueBits0_ = stringAddress
-                coreValueBits1_ = byteArray.size
+                optionalCoreValueBits0 = stringAddress
+                optionalCoreValueBits1 = byteArray.size
                 1
               }
             }
-            coreValueBits0 = discriminator_
-            coreValueBits1 = coreValueBits0_
-            coreValueBits2 = coreValueBits1_
+            errorCodeCoreValueBits0 = optionalDiscriminator
+            errorCodeCoreValueBits1 = optionalCoreValueBits0
+            errorCodeCoreValueBits2 = optionalCoreValueBits1
             1
           }
         }
-        callBuilder.put(discriminator)
-        callBuilder.put(coreValueBits0)
-        callBuilder.put(coreValueBits1)
-        callBuilder.put(coreValueBits2)
+        callBuilder.put(errorCodeDiscriminator)
+        callBuilder.put(errorCodeCoreValueBits0)
+        callBuilder.put(errorCodeCoreValueBits1)
+        callBuilder.put(errorCodeCoreValueBits2)
       }
 
       public fun load_WallClock_ErrorCode_host(bridge: HostBridge, address: Int): WallClock.ErrorCode {
-        val variant = when (bridge.memory.read(address).toInt()) {
+        val errorCode = when (bridge.memory.read(address).toInt()) {
           0 -> {
             WallClock.ErrorCode.AccessDenied
           }
           1 -> {
-            val variant_ = when (bridge.memory.read(address + 4).toInt()) {
+            val optional = when (bridge.memory.read(address + 4).toInt()) {
               0 -> {
                 null
               }
@@ -869,11 +869,11 @@ class KotlinGeneratorTest {
               }
               else -> error("unexpected case")
             }
-            WallClock.ErrorCode.Other(variant_)
+            WallClock.ErrorCode.Other(optional)
           }
           else -> error("unexpected case")
         }
-        return variant
+        return errorCode
       }
 
       public fun liftFlat_WallClock_ErrorCode_host(
@@ -883,12 +883,12 @@ class KotlinGeneratorTest {
         value2: Int,
         value3: Int,
       ): WallClock.ErrorCode {
-        val variant = when (value_) {
+        val errorCode = when (value_) {
           0 -> {
             WallClock.ErrorCode.AccessDenied
           }
           1 -> {
-            val variant_ = when (value1) {
+            val optional = when (value1) {
               0 -> {
                 null
               }
@@ -897,11 +897,11 @@ class KotlinGeneratorTest {
               }
               else -> error("unexpected case")
             }
-            WallClock.ErrorCode.Other(variant_)
+            WallClock.ErrorCode.Other(optional)
           }
           else -> error("unexpected case")
         }
-        return variant
+        return errorCode
       }
 
       """.trimIndent(),
