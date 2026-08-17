@@ -1183,12 +1183,12 @@ class KotlinGeneratorTest {
         address: Pointer,
         value_: WallClock.Pollable,
       ) {
-        // TODO: ResourceEncoder
+        (address).storeInt(bridge.toId<WallClock.Pollable>(value_))
       }
 
       public fun lowerFlat_WallClock_Pollable_guest(bridge: GuestBridge, value_: WallClock.Pollable): Int = bridge.toId<WallClock.Pollable>(value_)
 
-      public fun load_WallClock_Pollable_guest(bridge: GuestBridge, address: Pointer): WallClock.Pollable = TODO("ResourceEncoder")
+      public fun load_WallClock_Pollable_guest(bridge: GuestBridge, address: Pointer): WallClock.Pollable = bridge.fromId((address).loadInt(), ::PollableHandle)
 
       public fun liftFlat_WallClock_Pollable_guest(bridge: GuestBridge, value_: Int): WallClock.Pollable = bridge.fromId(value_, ::PollableHandle)
 
@@ -1213,12 +1213,12 @@ class KotlinGeneratorTest {
         address: Int,
         value_: WallClock.Pollable,
       ) {
-        // TODO: ResourceEncoder
+        bridge.memory.writeI32(address, bridge.toId<WallClock.Pollable>(value_))
       }
 
       public fun lowerFlat_WallClock_Pollable_host(bridge: HostBridge, value_: WallClock.Pollable): Int = bridge.toId<WallClock.Pollable>(value_)
 
-      public fun load_WallClock_Pollable_host(bridge: HostBridge, address: Int): WallClock.Pollable = TODO("ResourceEncoder")
+      public fun load_WallClock_Pollable_host(bridge: HostBridge, address: Int): WallClock.Pollable = bridge.`get`<WallClock.Pollable>(bridge.memory.readInt(address))
 
       public fun liftFlat_WallClock_Pollable_host(bridge: HostBridge, value_: Int): WallClock.Pollable = bridge.`get`<WallClock.Pollable>(value_)
 

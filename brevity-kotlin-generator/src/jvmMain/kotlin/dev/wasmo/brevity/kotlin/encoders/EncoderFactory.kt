@@ -59,7 +59,8 @@ class EncoderFactory(
         }
       }
 
-      is TypeName.Borrow -> FallbackEncoder(typeName, CoreType.I32)
+      // TODO: runtime support for borrow.
+      is TypeName.Borrow -> get(typeName.type)
       is TypeName.Declared -> {
         val declaredType = declarationIndex[typeName]
           ?: error("unexpected type: $typeName")
