@@ -19,7 +19,10 @@ class ResourceEncoder(
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
-  ) = CodeBlock.of("TODO(%S)", "ResourceEncoder")
+  ): CodeBlock {
+    val address = codeBuilder.platform.load(baseAddress, offset, CoreType.Pointer)
+    return codeBuilder.platform.liftResource(address, type)
+  }
 
   context(codeBuilder: CodeBuilder)
   override fun store(
@@ -27,7 +30,8 @@ class ResourceEncoder(
     offset: Int,
     value: CodeBlock,
   ) {
-    codeBuilder.addStatement("// TODO: ResourceEncoder")
+    val address = codeBuilder.platform.lowerResource(value, type)
+    codeBuilder.platform.store(baseAddress, offset, CoreType.Pointer, address)
   }
 
   context(codeBuilder: CodeBuilder)

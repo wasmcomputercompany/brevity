@@ -10,6 +10,7 @@ import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
+import dev.wasmo.brevity.kotlin.generator.toCamelCase
 
 val MAX_FLAT_PARAMS = 16
 val MAX_FLAT_RESULTS = 1
@@ -58,7 +59,8 @@ class EncoderFactory(
         }
       }
 
-      is TypeName.Borrow -> FallbackEncoder(typeName, CoreType.I32)
+      // TODO: runtime support for borrow.
+      is TypeName.Borrow -> get(typeName.type)
       is TypeName.Declared -> {
         val declaredType = declarationIndex[typeName]
           ?: error("unexpected type: $typeName")
@@ -83,7 +85,13 @@ class EncoderFactory(
       }
 
       is TypeName.Map -> FallbackEncoder(typeName, CoreType.I32) // TODO: List<Tuple>.
-      is TypeName.Option -> OptionalEncoder(get(typeName.type))
+      is TypeName.Option -> OptionalEncoder(
+        some = get(typeName.type),
+        instanceNameHint = when (val element = typeName.type) {
+          is TypeName.Declared -> element.name.toCamelCase(upperCamel = false)
+          else -> "optional"
+        }
+      )
       is TypeName.Result -> ResultEncoder(
         ok = typeName.ok?.let { it.kotlinApi to get(it) },
         error = typeName.error?.let { it.kotlinApi to get(it) },
@@ -96,15 +104,23 @@ class EncoderFactory(
     return when (type) {
       is IrEnum -> EnumEncoder(
         kotlinType = type.type.kotlinApi,
+        instanceNameHint = type.type.name.toCamelCase(upperCamel = false),
         cases = type.cases,
       )
 
       is IrFlags -> FallbackEncoder(type.type, CoreType.I32)
-      is IrRecord -> FallbackEncoder(type.type, CoreType.I32) // TODO: RecordEncoder
+      is IrRecord -> RecordEncoder(
+        kotlinType = type.type.kotlinApi,
+        instanceNameHint = type.name.toCamelCase(upperCamel = false),
+        fields = type.fields,
+        fieldEncoders = type.fields.map { get(it.type) },
+      )
+
       is IrResource -> ResourceEncoder(type.type)
       is IrTypeAlias -> TypeAliasEncoder(type.type.kotlinApi, get(type.target))
       is IrVariant -> VariantEncoder(
         kotlinType = type.type.kotlinApi,
+        instanceNameHint = type.type.name.toCamelCase(upperCamel = false),
         cases = type.cases,
         caseEncoders = type.cases.map { case ->
           case.type?.let { get(it) }

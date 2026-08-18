@@ -41,6 +41,8 @@ abstract class AbstractVariantEncoder(
 
   override val coreTypes = listOf(CoreType.I32) + casesCoreTypesBits
 
+  abstract val instanceNameHint: String
+
   /** Turns an index and argument into an instance. */
   abstract fun constructInstance(index: Int, value: CodeBlock?): CodeBlock
 
@@ -55,7 +57,7 @@ abstract class AbstractVariantEncoder(
     baseAddress: CodeBlock,
     offset: Int,
   ): CodeBlock {
-    val variantName = codeBuilder.newName("variant")
+    val variantName = codeBuilder.newName(instanceNameHint)
 
     codeBuilder.controlFlow(
       "val %N = when (%L.toInt()) {",
@@ -90,8 +92,8 @@ abstract class AbstractVariantEncoder(
     offset: Int,
     value: CodeBlock,
   ) {
-    val variantName = codeBuilder.newName("variant")
-    val discriminatorName = codeBuilder.newName("discriminator")
+    val variantName = codeBuilder.newName(instanceNameHint)
+    val discriminatorName = codeBuilder.newName("${instanceNameHint}Discriminator")
     codeBuilder.controlFlow(
       "val %N: %T = when (val %N = %L)",
       discriminatorName,
@@ -121,7 +123,7 @@ abstract class AbstractVariantEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun liftFlat(transformer: Transformer) {
-    val variantName = codeBuilder.newName("variant")
+    val variantName = codeBuilder.newName(instanceNameHint)
 
     val discriminator = transformer.take()
     val caseCoreValuesBits = casesCoreTypesBits.map { transformer.take() }
@@ -159,17 +161,17 @@ abstract class AbstractVariantEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun lowerFlat(transformer: Transformer) {
-    val variantName = codeBuilder.newName("variant")
+    val variantName = codeBuilder.newName(instanceNameHint)
     codeBuilder.addStatement("val %N = %L", variantName, transformer.take())
     val variant = CodeBlock.of("%N", variantName)
 
     val caseCoreValuesBitsNames = casesCoreTypesBits.withIndex().map { (index, type) ->
-      val name = codeBuilder.newName("coreValueBits$index")
+      val name = codeBuilder.newName("${instanceNameHint}CoreValueBits$index")
       codeBuilder.addStatement("var %N = %L", name, type.zero)
       name
     }
 
-    val discriminatorName = codeBuilder.newName("discriminator")
+    val discriminatorName = codeBuilder.newName("${instanceNameHint}Discriminator")
     codeBuilder.controlFlow(
       "val %N = when (%N)",
       discriminatorName,
@@ -201,6 +203,7 @@ abstract class AbstractVariantEncoder(
 
 class VariantEncoder(
   private val kotlinType: ClassName,
+  override val instanceNameHint: String,
   private val cases: List<IrCase>,
   caseEncoders: List<Encoder?>,
 ) : AbstractVariantEncoder(caseEncoders) {
@@ -249,6 +252,7 @@ class VariantEncoder(
 
 class EnumEncoder(
   private val kotlinType: ClassName,
+  override val instanceNameHint: String,
   private val cases: List<IrCase>,
 ) : AbstractVariantEncoder(cases.map { null }) {
   override fun constructInstance(index: Int, value: CodeBlock?) =
@@ -262,6 +266,7 @@ class EnumEncoder(
 
 class OptionalEncoder(
   some: Encoder,
+  override val instanceNameHint: String,
 ) : AbstractVariantEncoder(listOf(null, some)) {
   override fun constructInstance(
     index: Int,
@@ -295,6 +300,9 @@ class ResultEncoder(
   private val ok: Pair<TypeName, Encoder>?,
   private val error: Pair<TypeName, Encoder>?,
 ) : AbstractVariantEncoder(listOf(ok?.second, error?.second)) {
+  override val instanceNameHint: String
+    get() = "result"
+
   override fun constructInstance(index: Int, value: CodeBlock?) =
     CodeBlock.of(
       "%T<%T, %T>(%L)",

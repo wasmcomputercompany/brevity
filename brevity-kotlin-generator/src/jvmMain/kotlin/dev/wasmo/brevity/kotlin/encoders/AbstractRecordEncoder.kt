@@ -14,6 +14,8 @@ abstract class AbstractRecordEncoder(
   override val alignment: Int
     get() = fieldEncoders.maxOf { it.alignment }
 
+  abstract val instanceNameHint: String
+
   context(codeBuilder: CodeBuilder)
   override fun load(
     baseAddress: CodeBlock,
@@ -81,5 +83,5 @@ abstract class AbstractRecordEncoder(
 
   abstract fun fieldValuesToInstance(fieldValues: List<CodeBlock>): CodeBlock
 
-  abstract fun instanceToFieldValues(tuple: CodeBlock): List<CodeBlock>
+  abstract fun instanceToFieldValues(record: CodeBlock): List<CodeBlock>
 }

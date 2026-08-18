@@ -7,13 +7,16 @@ import dev.wasmo.brevity.kotlin.generator.Symbols
 
 /**
  * A list whose size is statically specified in `.wit`. This is also used for tuples of length
- * greater than `Quad` with heterogeneous element types.
+ * greater than `Quad` with homogenous element types.
  */
 class StaticListEncoder(
   size: Int,
   private val elementType: TypeName,
   elementEncoder: Encoder,
 ) : AbstractRecordEncoder(List(size) { elementEncoder }) {
+  override val instanceNameHint: String
+    get() = "list"
+
   override fun fieldValuesToInstance(
     fieldValues: List<CodeBlock>,
   ) = buildCodeBlock {
@@ -29,8 +32,8 @@ class StaticListEncoder(
   }
 
   override fun instanceToFieldValues(
-    tuple: CodeBlock,
+    record: CodeBlock,
   ) = fieldEncoders.withIndex().map { (i, _) ->
-    CodeBlock.of("%L[%L]", tuple, i)
+    CodeBlock.of("%L[%L]", record, i)
   }
 }

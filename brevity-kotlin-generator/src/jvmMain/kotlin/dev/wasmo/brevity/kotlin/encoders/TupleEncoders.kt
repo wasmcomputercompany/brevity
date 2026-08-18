@@ -8,6 +8,9 @@ import dev.wasmo.brevity.kotlin.generator.Symbols
 class PairEncoder(
   fieldEncoders: List<Encoder>,
 ) : AbstractRecordEncoder(fieldEncoders) {
+  override val instanceNameHint: String
+    get() = "pair"
+
   override fun fieldValuesToInstance(
     fieldValues: List<CodeBlock>,
   ) = CodeBlock.of(
@@ -17,16 +20,19 @@ class PairEncoder(
   )
 
   override fun instanceToFieldValues(
-    tuple: CodeBlock,
+    record: CodeBlock,
   ) = listOf(
-    CodeBlock.of("%L.first", tuple),
-    CodeBlock.of("%L.second", tuple),
+    CodeBlock.of("%L.first", record),
+    CodeBlock.of("%L.second", record),
   )
 }
 
 class TripleEncoder(
   fieldEncoders: List<Encoder>,
 ) : AbstractRecordEncoder(fieldEncoders) {
+  override val instanceNameHint: String
+    get() = "triple"
+
   override fun fieldValuesToInstance(
     fieldValues: List<CodeBlock>,
   ) = CodeBlock.of(
@@ -38,17 +44,20 @@ class TripleEncoder(
   )
 
   override fun instanceToFieldValues(
-    tuple: CodeBlock,
+    record: CodeBlock,
   ) = listOf(
-    CodeBlock.of("%L.first", tuple),
-    CodeBlock.of("%L.second", tuple),
-    CodeBlock.of("%L.third", tuple),
+    CodeBlock.of("%L.first", record),
+    CodeBlock.of("%L.second", record),
+    CodeBlock.of("%L.third", record),
   )
 }
 
 class QuadEncoder(
   fieldEncoders: List<Encoder>,
 ) : AbstractRecordEncoder(fieldEncoders) {
+  override val instanceNameHint: String
+    get() = "quad"
+
   override fun fieldValuesToInstance(
     fieldValues: List<CodeBlock>,
   ) = CodeBlock.of(
@@ -61,12 +70,12 @@ class QuadEncoder(
   )
 
   override fun instanceToFieldValues(
-    tuple: CodeBlock,
+    record: CodeBlock,
   ) = listOf(
-    CodeBlock.of("%L.a", tuple),
-    CodeBlock.of("%L.b", tuple),
-    CodeBlock.of("%L.c", tuple),
-    CodeBlock.of("%L.d", tuple),
+    CodeBlock.of("%L.a", record),
+    CodeBlock.of("%L.b", record),
+    CodeBlock.of("%L.c", record),
+    CodeBlock.of("%L.d", record),
   )
 }
 
@@ -75,6 +84,9 @@ class LargeTupleEncoder(
   private val elementTypes: List<KtTypeName>,
   fieldEncoders: List<Encoder>,
 ) : AbstractRecordEncoder(fieldEncoders) {
+  override val instanceNameHint: String
+    get() = "tuple"
+
   override fun fieldValuesToInstance(
     fieldValues: List<CodeBlock>,
   ) = buildCodeBlock {
@@ -86,8 +98,8 @@ class LargeTupleEncoder(
   }
 
   override fun instanceToFieldValues(
-    tuple: CodeBlock,
+    record: CodeBlock,
   ) = fieldEncoders.withIndex().map { (i, _) ->
-    CodeBlock.of("(%L[%L] as %T)", tuple, i, elementTypes[i])
+    CodeBlock.of("(%L[%L] as %T)", record, i, elementTypes[i])
   }
 }
