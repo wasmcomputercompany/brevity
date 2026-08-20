@@ -21,11 +21,11 @@ class CoreValueFactory(
       val nameHint = nameHints?.getOrNull(v)
       val coreName = when {
         nameHint != null -> nameAllocator.newName(
-          Identifier("${name}-${nameHint.name}").toCamelCase(upperCamel = false),
+          Identifier("${name}-${nameHint.name}").lowerCamelCase,
         )
         v == 0 -> nameAllocator[name]
         else -> nameAllocator.newName(
-          suggestion = "${name.toCamelCase(upperCamel = false)}${v + 1}",
+          suggestion = "${name.lowerCamelCase}${v + 1}",
           tag = name to v,
         )
       }

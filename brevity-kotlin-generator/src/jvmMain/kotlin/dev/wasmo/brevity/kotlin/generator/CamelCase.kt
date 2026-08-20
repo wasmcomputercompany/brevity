@@ -3,9 +3,18 @@ package dev.wasmo.brevity.kotlin.generator
 import dev.wasmo.brevity.Identifier
 
 /**
- * Converts `kabob-case` to `UpperCamelCase` or `lowerCamelCase`.
+ * Returns the `kabob-case` [Identifier.name] as `lowerCamelCase`.
  */
-internal fun Identifier.toCamelCase(upperCamel: Boolean): String {
+internal val Identifier.lowerCamelCase: String
+  get() = toCamelCase(false)
+
+/**
+ * Returns the `kabob-case` [Identifier.name] as `UpperCamelCase`.
+ */
+internal val Identifier.upperCamelCase: String
+  get() = toCamelCase(true)
+
+private fun Identifier.toCamelCase(upperCamel: Boolean): String {
   return buildString {
     var uppercase = upperCamel
     for (char in name) {

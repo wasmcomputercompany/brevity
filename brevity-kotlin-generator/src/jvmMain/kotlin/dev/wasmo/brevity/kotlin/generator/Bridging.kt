@@ -21,16 +21,16 @@ import dev.wasmo.brevity.kotlin.encoders.CoreType
 const val kotlinPackagePrefix: String = "wit"
 
 val IrCase.kotlinName: String
-  get() = name.toCamelCase(upperCamel = true)
+  get() = name.upperCamelCase
 
 val IrParameter.kotlinName: String
-  get() = name.toCamelCase(upperCamel = false)
+  get() = name.lowerCamelCase
 
 val IrField.kotlinName: String
-  get() = name.toCamelCase(upperCamel = false)
+  get() = name.lowerCamelCase
 
 val IrFlag.kotlinName: String
-  get() = name.toCamelCase(upperCamel = false)
+  get() = name.lowerCamelCase
 
 val IrFunction.kotlinName: String
   get() {
@@ -42,11 +42,11 @@ val IrFunction.kotlinName: String
       is FunctionName.Static -> functionName.name
       is FunctionName.World -> functionName.name
     }
-    return identifier.toCamelCase(upperCamel = false)
+    return identifier.lowerCamelCase
   }
 
 val IrExternalApi.instanceName: String
-  get() = (plainName ?: serviceName.name).toCamelCase(upperCamel = false)
+  get() = (plainName ?: serviceName.name).lowerCamelCase
 
 val ServiceName.kotlinApi: ClassName
   get() = (packageName.toKotlin() + name).name
@@ -54,7 +54,7 @@ val ServiceName.kotlinApi: ClassName
 val ServiceName.bridgeType: ClassName
   get() = ClassName(
     kotlinApi.packageName,
-    "Bridge${name.toCamelCase(upperCamel = true)}",
+    "Bridge${name.upperCamelCase}",
   )
 
 val CoreType.kotlinCoreType: KtTypeName
@@ -80,7 +80,7 @@ private val specialCases = mapOf(
 )
 
 val TypeName.Declared.kotlinApi: ClassName
-  get() = serviceName.kotlinApi.nestedClass(name.toCamelCase(upperCamel = true))
+  get() = serviceName.kotlinApi.nestedClass(name.upperCamelCase)
 
 /** Map WIT types to Kotlin types. */
 val TypeName.kotlinApi: KtTypeName
