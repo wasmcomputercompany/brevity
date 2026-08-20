@@ -6,6 +6,7 @@ plugins {
 
 brevityBuild {
   library(jvm = true, wasm = true)
+  publish()
 }
 
 kotlin {

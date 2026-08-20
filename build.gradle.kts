@@ -21,6 +21,7 @@ allprojects {
           name = "test"
           url = project.rootProject.layout.buildDirectory.dir("localMaven").get().asFile.toURI()
         }
+        mavenLocal()
       }
     }
     extensions.configure<MavenPublishBaseExtension> {
