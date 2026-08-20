@@ -64,13 +64,13 @@ abstract class DeclaredTypeEncoderGenerator(
   val memberName = MemberName(
     className.packageName,
     buildString {
-      append(encodeAction.toCamelCase(upperCamel = false))
+      append(encodeAction.lowerCamelCase)
       append("_")
-      append(type.type.serviceName.name.toCamelCase(upperCamel = true))
+      append(type.type.serviceName.name.upperCamelCase)
       append("_")
-      append(type.name.toCamelCase(upperCamel = true))
+      append(type.name.upperCamelCase)
       append("_")
-      append(platform.identifier.toCamelCase(upperCamel = false))
+      append(platform.identifier.lowerCamelCase)
     },
   )
 

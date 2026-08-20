@@ -10,7 +10,7 @@ import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
-import dev.wasmo.brevity.kotlin.generator.toCamelCase
+import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 
 val MAX_FLAT_PARAMS = 16
 val MAX_FLAT_RESULTS = 1
@@ -88,7 +88,7 @@ class EncoderFactory(
       is TypeName.Option -> OptionalEncoder(
         some = get(typeName.type),
         instanceNameHint = when (val element = typeName.type) {
-          is TypeName.Declared -> element.name.toCamelCase(upperCamel = false)
+          is TypeName.Declared -> element.name.lowerCamelCase
           else -> "optional"
         }
       )
@@ -104,14 +104,14 @@ class EncoderFactory(
     return when (type) {
       is IrEnum -> EnumEncoder(
         kotlinType = type.type.kotlinApi,
-        instanceNameHint = type.type.name.toCamelCase(upperCamel = false),
+        instanceNameHint = type.type.name.lowerCamelCase,
         cases = type.cases,
       )
 
       is IrFlags -> FallbackEncoder(type.type, CoreType.I32)
       is IrRecord -> RecordEncoder(
         kotlinType = type.type.kotlinApi,
-        instanceNameHint = type.name.toCamelCase(upperCamel = false),
+        instanceNameHint = type.name.lowerCamelCase,
         fields = type.fields,
         fieldEncoders = type.fields.map { get(it.type) },
       )
@@ -120,7 +120,7 @@ class EncoderFactory(
       is IrTypeAlias -> TypeAliasEncoder(type.type.kotlinApi, get(type.target))
       is IrVariant -> VariantEncoder(
         kotlinType = type.type.kotlinApi,
-        instanceNameHint = type.type.name.toCamelCase(upperCamel = false),
+        instanceNameHint = type.type.name.lowerCamelCase,
         cases = type.cases,
         caseEncoders = type.cases.map { case ->
           case.type?.let { get(it) }

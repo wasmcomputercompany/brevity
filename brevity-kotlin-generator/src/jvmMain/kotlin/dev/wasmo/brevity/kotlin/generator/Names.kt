@@ -20,7 +20,7 @@ private fun FunctionName.toExternalName(suffix: Identifier): String {
   }
 
   return segments.joinToString(separator = "_") {
-    it.toCamelCase(upperCamel = false).replace(Regex("\\W"), "_")
+    it.lowerCamelCase.replace(Regex("\\W"), "_")
   }
 }
 
