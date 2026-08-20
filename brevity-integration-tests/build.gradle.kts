@@ -70,10 +70,16 @@ val rustComponentUnbundle = tasks.register("rustComponentUnbundle", Exec::class.
   )
 }
 
+/**
+ * For some inexplicable reason Java’s PATH isn’t resolving
+ * certain Rust tools, so we do that manually.
+ */
 fun probeForCargoTool(tool: String): String {
-  val probePaths = System.getenv("PATH").orEmpty().split(File.pathSeparatorChar) +
-    "${System.getProperty("user.home")}/.cargo/bin" // rustup's standard install path.
-  return probePaths.map { File(it, tool) }.firstOrNull { it.canExecute() } ?.absolutePath ?: tool
+  val paths = System.getenv("PATH").orEmpty().split(File.pathSeparatorChar)
+  return paths.map { File(it, tool) }
+    .firstOrNull { it.canExecute() }
+    ?.absolutePath
+    ?: tool
 }
 
 // Required by RunKotlinWasmTest.
