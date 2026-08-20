@@ -43,10 +43,10 @@ RUN apk add --no-cache \
         ca-certificates \
         musl-dev \
         gcc
-ENV RUSTUP_HOME=/usr/local/rustup \
-    CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:$PATH \
-    RUST_VERSION=1.96.0
+ENV RUSTUP_HOME="/usr/local/rustup"
+ENV CARGO_HOME="/usr/local/cargo"
+ENV PATH="/usr/local/cargo/bin:$PATH"
+ENV RUST_VERSION="1.96.0"
 RUN set -eux; \
     \
     arch="$(apk --print-arch)"; \
@@ -94,11 +94,11 @@ RUN echo "Adding Rust WebAssembly tools" \
     && rm -rf /root/sample_project
 
 # Gradle.
-ENV GRADLE_VERSION=9.5.1
-ARG GRADLE_DOWNLOAD_SHA256=bafc141b619ad6350fd975fc903156dd5c151998cc8b058e8c1044ab5f7b031f
-ENV GRADLE_HOME=/opt/gradle
-VOLUME /home/gradle/.gradle
-WORKDIR /home/gradle
+ENV GRADLE_VERSION="9.5.1"
+ARG GRADLE_DOWNLOAD_SHA256="bafc141b619ad6350fd975fc903156dd5c151998cc8b058e8c1044ab5f7b031f"
+ENV GRADLE_HOME="/opt/gradle"
+VOLUME "/home/gradle/.gradle"
+WORKDIR "/home/gradle"
 RUN --mount=type=cache,target=/downloads,rw \
     set -o errexit -o nounset \
     \
@@ -130,7 +130,7 @@ RUN set -o errexit -o nounset \
 USER root
 
 # Node.
-ENV NODE_VERSION=26.1.0
+ENV NODE_VERSION="26.1.0"
 RUN --mount=type=cache,target=/downloads,rw \
     set -o errexit -o nounset \
     \
@@ -163,5 +163,16 @@ RUN --mount=type=cache,target=/downloads,rw \
     && node --version \
     && npm --version \
     && rm -rf /tmp/*
+
+# Kotlin toolchain.
+# We run '--version' because it downloads its dependencies on the first run.
+ENV KOTLIN_CLI_NO_WELCOME_BANNER="1"
+ENV KOTLIN_CLI_JAVA_HOME="$JAVA_HOME"
+ENV HOME="/root"
+ENV PATH="/root/.local/bin:$PATH"
+RUN echo "Installing Kotlin toolchain" \
+    && set -o errexit -o nounset \
+    && curl -fsSL https://kotl.in/install.sh | sh \
+    && kotlin --version
 
 CMD ["gradle"]

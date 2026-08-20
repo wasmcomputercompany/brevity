@@ -1,3 +1,7 @@
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class)
+
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+
 plugins {
   id("org.jetbrains.kotlin.multiplatform")
   alias(libs.plugins.burst)
@@ -21,7 +25,6 @@ kotlin {
     }
     jvmMain {
       dependencies {
-        implementation(libs.okio)
         implementation(libs.chicory.runtime)
         implementation(libs.chicory.wabt)
         implementation(libs.okhttp)
@@ -31,7 +34,10 @@ kotlin {
     jvmTest {
       dependencies {
         implementation(libs.burst.coroutines)
+        implementation(libs.kotlinpoet)
         implementation(libs.okio.fakefilesystem)
+        implementation(projects.brevityWit)
+        implementation(projects.brevityKotlinGenerator)
       }
     }
   }

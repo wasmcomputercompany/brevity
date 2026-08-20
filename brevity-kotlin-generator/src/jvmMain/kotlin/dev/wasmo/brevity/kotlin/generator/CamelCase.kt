@@ -5,13 +5,13 @@ import dev.wasmo.brevity.Identifier
 /**
  * Returns the `kabob-case` [Identifier.name] as `lowerCamelCase`.
  */
-internal val Identifier.lowerCamelCase: String
+val Identifier.lowerCamelCase: String
   get() = toCamelCase(false)
 
 /**
  * Returns the `kabob-case` [Identifier.name] as `UpperCamelCase`.
  */
-internal val Identifier.upperCamelCase: String
+val Identifier.upperCamelCase: String
   get() = toCamelCase(true)
 
 private fun Identifier.toCamelCase(upperCamel: Boolean): String {
