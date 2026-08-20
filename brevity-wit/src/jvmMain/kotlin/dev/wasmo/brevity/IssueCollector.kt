@@ -12,6 +12,8 @@ class IssueCollector {
     _issues += issue
   }
 
+  fun clear() = _issues.clear()
+
   fun throwIfNotEmpty() {
     if (issues.isNotEmpty()) {
       throw WitCompoundException(

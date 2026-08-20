@@ -1,0 +1,65 @@
+package dev.wasmo.brevity.kotlin.generator
+
+import assertk.assertThat
+import assertk.assertions.containsExactlyInAnyOrder
+import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.Issue
+import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.ir.IrCase
+import dev.wasmo.brevity.ir.IrVariant
+import dev.wasmo.brevity.ir.TypeNameDeclared
+import dev.wasmo.brevity.withIssueCollector
+import okio.Path.Companion.toPath
+import org.junit.Test
+
+class RecursionValidatorTest {
+  @Test
+  fun happyPath() {
+    val recursive = IrVariant(
+      serviceName = "wit:cli/console", name = "recursiveType", cases = emptyList(),
+      location = Location("file.wit".toPath(), 1, 2),
+    )
+    val mutuallyRecursive1 = IrVariant(
+      serviceName = "wit:cli/console", name = "mutuallyRecursive1", cases = emptyList(),
+      location = Location("file.wit".toPath(), 3, 4),
+    )
+    val mutuallyRecursive2 = IrVariant(
+      serviceName = "wit:cli/console", name = "mutuallyRecursive2", cases = emptyList(),
+      location = Location("file.wit".toPath(), 5, 6),
+    )
+
+    val index = DeclarationIndex(
+      types = listOf(recursive, mutuallyRecursive1, mutuallyRecursive2)
+        .associateBy { it.type },
+      services = emptyMap(),
+    )
+
+    val subject = RecursionValidator { declarationIndex ->
+      listOf(
+        setOf(recursive.type),
+        setOf(
+          mutuallyRecursive1.type,
+          mutuallyRecursive2.type,
+        ),
+      )
+    }
+
+    withIssueCollector {
+      subject.validate(index)
+
+      assertThat(issues).containsExactlyInAnyOrder(
+        Issue("Invalid recursion", Location("file.wit", 1, 2)),
+        Issue(
+          "Invalid mutual recursion",
+          listOf(
+            Location("file.wit", 3, 4),
+            Location("file.wit", 5, 6),
+          ),
+        ),
+      )
+
+      clear()
+    }
+  }
+}

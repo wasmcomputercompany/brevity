@@ -21,6 +21,11 @@ class WitBridgeGenerator private constructor(
   val api: ApiGenerator,
   val roleTracker: RoleTracker,
 ) {
+  interface Validation {
+    context(issueCollector: IssueCollector)
+    fun validate(declarationIndex: DeclarationIndex)
+  }
+
   companion object {
     /**
      * Perform all necessary precompilation analysis and validation necessary to generate code.
@@ -30,6 +35,7 @@ class WitBridgeGenerator private constructor(
       fileSystem: FileSystem,
       packageDirectories: Collection<Path>,
       irFilter: (List<IrWitPackage>) -> List<IrWitPackage> = { it },
+      validations: List<Validation> = listOf(RecursionValidator()),
     ): WitBridgeGenerator? = with(issueCollector) {
       val packageReader = IoWitPackageReader(fileSystem)
 
@@ -43,6 +49,9 @@ class WitBridgeGenerator private constructor(
 
       val declarationIndex = DeclarationIndex(irPackages)
       val roleTracker = RoleTracker(declarationIndex, irPackages)
+
+      validations.forEach { it.validate(declarationIndex) }
+
       val encoderFactory = EncoderFactory(declarationIndex)
       val guestGenerator = GuestGenerator(
         encoderFactory = encoderFactory,
