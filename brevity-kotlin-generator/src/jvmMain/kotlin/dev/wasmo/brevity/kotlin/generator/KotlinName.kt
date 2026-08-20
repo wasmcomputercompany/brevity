@@ -13,14 +13,14 @@ sealed interface KotlinName {
     val name: String,
   ) : KotlinName {
     override fun plus(identifier: Identifier) =
-      Class(ClassName(name, identifier.toCamelCase(upperCamel = true)))
+      Class(ClassName(name, identifier.upperCamelCase))
   }
 
   class Class(
     val name: ClassName,
   ) : KotlinName {
     override fun plus(identifier: Identifier) =
-      Class(name.nestedClass(identifier.toCamelCase(upperCamel = true)))
+      Class(name.nestedClass(identifier.upperCamelCase))
   }
 }
 

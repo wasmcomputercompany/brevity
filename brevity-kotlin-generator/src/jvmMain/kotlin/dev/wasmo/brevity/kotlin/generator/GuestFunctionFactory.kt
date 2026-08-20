@@ -29,7 +29,7 @@ internal class GuestFunctionFactory(
       newName(parameter.kotlinName, parameter.name)
     }
     if (receiver is Receiver.Id) {
-      newName(receiver.name.toCamelCase(upperCamel = false), receiver.name)
+      newName(receiver.name.lowerCamelCase, receiver.name)
     }
   }
 
