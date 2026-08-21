@@ -88,9 +88,24 @@ fun probeForCargoTool(tool: String): String {
     ?: tool
 }
 
-// Required by RunKotlinWasmTest.
+val publishTestingArtifacts = tasks.register("publishToMavenLocal", Exec::class.java) {
+  description = "Publish the library to ~/.m2/repository for testing"
+  workingDir = rootDir
+  commandLine(
+    "${rootDir}/gradlew",
+    "-Pbrevity.version=0-testing",
+    "-Pbrevity.build.directory=build/publish-for-tests",
+    "publishAllPublicationsToMavenLocalRepository",
+  )
+}
+
 val compileDevelopmentExecutableKotlinWasmWasi = tasks.named("compileDevelopmentExecutableKotlinWasmWasi")
+
 tasks.named("jvmTest") {
+  // Required by RunKotlinWasmTest.
   dependsOn(compileDevelopmentExecutableKotlinWasmWasi)
   dependsOn(rustComponentUnbundle)
+
+  // Required by BridgeEveryTypeTest.
+  dependsOn(publishTestingArtifacts)
 }

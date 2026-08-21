@@ -1,23 +1,14 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
-import kotlin.test.Ignore
 import kotlin.test.Test
 import okio.Path.Companion.toPath
 
-/**
- * To run this test:
- *
- *  - publish to maven local with version 0.1.0 (not SNAPSHOT)
- *    - may require commenting out 'sign all publications'
- *  - install the Kotlin toolchain
- */
 class BridgeEveryTypeTest {
   @Test
-  @Ignore("the dependencies of this test aren't wired up yet")
   fun primitives() {
     val test = BrevityExecutionTester(
-      path = "build/BridgeTypeTest/primitives".toPath(),
+      path = "build/BridgeEveryTypeTest/primitives".toPath(),
       types = listOf(
         SampleType(
           id = Identifier("s32"),
