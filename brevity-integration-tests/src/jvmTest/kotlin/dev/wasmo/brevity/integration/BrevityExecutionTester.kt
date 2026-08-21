@@ -139,9 +139,9 @@ class BrevityExecutionTester(
         |
         |dependencies:
         |  - com.squareup.okio:okio:3.16.4
-        |  - dev.wasmo.brevity:brevity:0.1.0
-        |  - dev.wasmo.brevity:brevity-wasi-p1:0.1.0
-        |  - dev.wasmo.brevity:brevity-wasi-p2:0.1.0
+        |  - dev.wasmo.brevity:brevity:0-testing
+        |  - dev.wasmo.brevity:brevity-wasi-p1:0-testing
+        |  - dev.wasmo.brevity:brevity-wasi-p2:0-testing
         |
         |dependencies@jvm:
         |  - com.dylibso.chicory:runtime:1.7.5
@@ -172,7 +172,7 @@ class BrevityExecutionTester(
         |dependencies:
         |  - ../api
         |  - com.squareup.okio:okio:3.16.4
-        |  - dev.wasmo.brevity:brevity:0.1.0
+        |  - dev.wasmo.brevity:brevity:0-testing
         |
         """.trimMargin(),
       )
@@ -201,9 +201,9 @@ class BrevityExecutionTester(
         |dependencies:
         |  - ../api
         |  - com.squareup.okio:okio:3.16.4
-        |  - dev.wasmo.brevity:brevity:0.1.0
-        |  - dev.wasmo.brevity:brevity-wasi-p1:0.1.0
-        |  - dev.wasmo.brevity:brevity-wasi-p2:0.1.0
+        |  - dev.wasmo.brevity:brevity:0-testing
+        |  - dev.wasmo.brevity:brevity-wasi-p1:0-testing
+        |  - dev.wasmo.brevity:brevity-wasi-p2:0-testing
         |  - com.dylibso.chicory:runtime:1.7.5
         |
         """.trimMargin(),

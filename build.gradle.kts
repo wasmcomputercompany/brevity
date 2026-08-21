@@ -12,7 +12,7 @@ plugins {
 
 allprojects {
   group = "dev.wasmo.brevity"
-  version = "0.1.0-SNAPSHOT"
+  version = project.property("brevity.version")!!
 
   plugins.withType<MavenPublishBasePlugin> {
     extensions.configure<PublishingExtension> {
@@ -26,7 +26,9 @@ allprojects {
     }
     extensions.configure<MavenPublishBaseExtension> {
       publishToMavenCentral(automaticRelease = true)
-      signAllPublications()
+      if (project.hasProperty("signingInMemoryKey")) {
+        signAllPublications()
+      }
       pom {
         name = project.name
         description = "WebAssembly WIT and Components in Kotlin"
@@ -65,5 +67,9 @@ allprojects {
       version = "26.1.0"
     }
   }
-}
 
+  val buildDirectory = project.findProperty("brevity.build.directory")
+  if (buildDirectory != null) {
+    layout.buildDirectory.set(File(rootDir, "${buildDirectory}/${project.name}"))
+  }
+}
