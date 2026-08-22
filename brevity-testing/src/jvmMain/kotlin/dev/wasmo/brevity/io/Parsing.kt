@@ -5,19 +5,20 @@ package dev.wasmo.brevity.io
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.WitCoreInternalApi
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 
-fun String.toIoTypeName(): IoTypeName {
-  val reader = WitSyntaxReader(Location("file.wit"), this)
-  val result = reader.readTypeName()
-  check(reader.exhausted)
-  return result
+fun String.toIoTypeName(): IoTypeName = collectNoIssuesOrThrow {
+  val reader = WitSyntaxReader(Location("file.wit"), this@toIoTypeName)
+  reader.readTypeName().also {
+    check(reader.exhausted)
+  }
 }
 
-fun String.toUsePath(): UsePath {
-  val reader = WitSyntaxReader(Location("file.wit"), this)
-  val result = reader.readUsePath()
-  check(reader.exhausted)
-  return result
+fun String.toUsePath(): UsePath = collectNoIssuesOrThrow {
+  val reader = WitSyntaxReader(Location("file.wit"), this@toUsePath)
+  reader.readUsePath().also {
+    check(reader.exhausted)
+  }
 }
 
 fun String.toServiceName(): ServiceName {

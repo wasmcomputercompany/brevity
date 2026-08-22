@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Documentation
+import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import okio.FileSystem
 import okio.Path
@@ -15,6 +16,7 @@ import okio.Path
 class IoWitPackageReader(
   private val fileSystem: FileSystem,
 ) {
+  context(issueCollector: IssueCollector)
   fun read(directory: Path): IoToplevelWitPackage {
     val files = fileSystem.list(directory)
       .filter { it.name.endsWith(".wit", ignoreCase = true) }

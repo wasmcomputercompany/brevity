@@ -16,6 +16,7 @@ import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.collectIssues
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoTypeName
 import dev.wasmo.brevity.io.IrMapper
@@ -23,7 +24,6 @@ import dev.wasmo.brevity.io.toServiceName
 import dev.wasmo.brevity.io.toUsePath
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.toPackageName
-import dev.wasmo.brevity.collectNoIssuesOrThrow
 import kotlin.test.Test
 
 class IrMapperTest {
@@ -461,11 +461,12 @@ class IrMapperTest {
   fun `imports failure scenarios`() {
     val commandLocation = Location("command.wit")
     val worldLocation = Location("world.wit")
-    val ioPackages = listOf(
-      IoToplevelWitPackage(
-        packageName = "wasi:cli@0.3.0".toPackageName(),
-        files = listOf(
-          """
+    val ioPackages = collectNoIssuesOrThrow {
+      listOf(
+        IoToplevelWitPackage(
+          packageName = "wasi:cli@0.3.0".toPackageName(),
+          files = listOf(
+            """
           |package wasi:cli@0.3.0;
           |
           |world command {
@@ -476,12 +477,12 @@ class IrMapperTest {
           |  import wasi:clucks/monotonic-cluck@0.3.0;   // complete whiff
           |}
           """.trimMargin().toWitFile(commandLocation),
+          ),
         ),
-      ),
-      IoToplevelWitPackage(
-        packageName = "wasi:clocks@0.3.0".toPackageName(),
-        files = listOf(
-          """
+        IoToplevelWitPackage(
+          packageName = "wasi:clocks@0.3.0".toPackageName(),
+          files = listOf(
+            """
           |package wasi:clocks@0.3.0;
           |
           |world clocks-world {
@@ -491,9 +492,10 @@ class IrMapperTest {
           |  now: func() -> s64;
           |}
           """.trimMargin().toWitFile(worldLocation),
+          ),
         ),
-      ),
-    )
+      )
+    }
     val irMapper = IrMapper(ioPackages)
     var (_, issues) = collectIssues { irMapper.map() }
 

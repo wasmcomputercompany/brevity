@@ -6,6 +6,7 @@ import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.WitException
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
@@ -14,7 +15,7 @@ import okio.fakefilesystem.FakeFileSystem
 
 class IoToplevelWitPackageReaderTest {
   @Test
-  fun happyPath() {
+  fun happyPath() = collectNoIssuesOrThrow {
     val directory = "/my-package".toPath()
     val fileSystem = FakeFileSystem()
     fileSystem.createDirectories(directory)
@@ -148,7 +149,9 @@ class IoToplevelWitPackageReaderTest {
 
     val packageReader = IoWitPackageReader(fileSystem)
     val e = assertFailsWith<WitException> {
-      packageReader.read(directory)
+      collectNoIssuesOrThrow {
+        packageReader.read(directory)
+      }
     }
     assertThat(e).hasMessage(
       """
@@ -183,7 +186,9 @@ class IoToplevelWitPackageReaderTest {
 
     val packageReader = IoWitPackageReader(fileSystem)
     val e = assertFailsWith<WitException> {
-      packageReader.read(directory)
+      collectNoIssuesOrThrow {
+        packageReader.read(directory)
+      }
     }
     assertThat(e).hasMessage("no package declaration in directory at /my-package")
   }

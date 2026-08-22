@@ -9,11 +9,14 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
 import dev.wasmo.brevity.WitException
+import dev.wasmo.brevity.collectIssues
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.toIdentifier
 import dev.wasmo.brevity.toPackageName
 import dev.wasmo.brevity.toSemVer
@@ -317,23 +320,35 @@ class WitSyntaxReaderTest {
   }
 
   @Test
-  fun `readIdentifier success`() {
-    fun String.parseIdentifier() = WitSyntaxReader(location, this).readIdentifier()
+  fun `readIdentifier scenarios`() {
+    val baseLocation = location.at(1, 1)
 
-    assertThat("a".parseIdentifier()).isEqualTo(Identifier("a"))
-    assertThat("a ".parseIdentifier()).isEqualTo(Identifier("a"))
-    assertThat("a,".parseIdentifier()).isEqualTo(Identifier("a"))
-    assertThat("a)".parseIdentifier()).isEqualTo(Identifier("a"))
-    assertThat("a}".parseIdentifier()).isEqualTo(Identifier("a"))
-    assertThat("a:".parseIdentifier()).isEqualTo(Identifier("a"))
-    assertThat("abc".parseIdentifier()).isEqualTo(Identifier("abc"))
-    assertThat("abc ".parseIdentifier()).isEqualTo(Identifier("abc"))
-    assertThat("def-ghi-xyz ".parseIdentifier()).isEqualTo(Identifier("def-ghi-xyz"))
-    assertThat("DEF-GHI-XYZ ".parseIdentifier()).isEqualTo(Identifier("DEF-GHI-XYZ"))
-    assertThat("abc1234-ABC1234 ".parseIdentifier()).isEqualTo(Identifier("abc1234-ABC1234"))
-    assertThat("%a".parseIdentifier()).isEqualTo(Identifier("%a"))
-    assertThat("%abc".parseIdentifier()).isEqualTo(Identifier("%abc"))
-    assertThat("%abc%d".parseIdentifier()).isEqualTo(Identifier("%abc"))
+    fun String.parseIdentifier(): Pair<Identifier, List<Issue>> {
+      return collectIssues {
+        WitSyntaxReader(baseLocation, this@parseIdentifier).readIdentifier()
+      }
+    }
+
+    val noIssues = emptyList<Issue>()
+    assertThat("a".parseIdentifier()).isEqualTo(Identifier("a") to noIssues)
+    assertThat("a ".parseIdentifier()).isEqualTo(Identifier("a") to noIssues)
+    assertThat("a,".parseIdentifier()).isEqualTo(Identifier("a") to noIssues)
+    assertThat("a)".parseIdentifier()).isEqualTo(Identifier("a") to noIssues)
+    assertThat("a}".parseIdentifier()).isEqualTo(Identifier("a") to noIssues)
+    assertThat("a:".parseIdentifier()).isEqualTo(Identifier("a") to noIssues)
+    assertThat("abc".parseIdentifier()).isEqualTo(Identifier("abc") to noIssues)
+    assertThat("abc ".parseIdentifier()).isEqualTo(Identifier("abc") to noIssues)
+    assertThat("def-ghi-xyz ".parseIdentifier()).isEqualTo(Identifier("def-ghi-xyz") to noIssues)
+    assertThat("DEF-GHI-XYZ ".parseIdentifier()).isEqualTo(Identifier("DEF-GHI-XYZ") to noIssues)
+    assertThat("abc1234-ABC1234 ".parseIdentifier()).isEqualTo(Identifier("abc1234-ABC1234") to noIssues)
+    assertThat("%a".parseIdentifier()).isEqualTo(Identifier("%a") to noIssues)
+    assertThat("%abc".parseIdentifier()).isEqualTo(Identifier("%abc") to noIssues)
+    assertThat("%abc%d".parseIdentifier()).isEqualTo(Identifier("%abc") to noIssues)
+    assertThat("-abc-d".parseIdentifier()).isEqualTo(
+      Identifier("-abc-d") to listOf(
+        Issue("malformed identifier: -abc-d", baseLocation),
+      ),
+    )
   }
 
   @Test
@@ -482,7 +497,7 @@ class WitSyntaxReaderTest {
   }
 
   @Test
-  fun `readUsePath semver`() {
+  fun `readUsePath semver`() = collectNoIssuesOrThrow {
     val reader = WitSyntaxReader(location, "my-interface@1.2.3")
     assertThat(reader.readUsePath()).isEqualTo(
       UsePath(name = Identifier("my-interface")),

@@ -5,6 +5,7 @@ package dev.wasmo.brevity.io
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
@@ -14,6 +15,7 @@ import dev.wasmo.brevity.io.Keywords.since
 import dev.wasmo.brevity.io.Keywords.unstable
 import dev.wasmo.brevity.io.Keywords.version
 
+context(issueCollector: IssueCollector)
 fun String.toWitFile(location: Location): IoWitFile = WitFileReader(location, this).read()
 
 internal class WitFileReader(
@@ -24,6 +26,7 @@ internal class WitFileReader(
     string: String,
   ) : this(WitSyntaxReader(baseLocation, string))
 
+  context(issueCollector: IssueCollector)
   fun read(): IoWitFile {
     val items = mutableListOf<IoWitFile.Item>()
 
@@ -90,6 +93,7 @@ internal class WitFileReader(
    * package-items ::= toplevel-use-item | interface-item | world-item
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readPackage(
     documentation: Documentation?,
     gate: Gate?,
@@ -144,11 +148,27 @@ internal class WitFileReader(
     Nested
   }
 
+  context(issueCollector: IssueCollector)
+  private fun readInterfaceItems(): List<IoInterface.Item> {
+    source.skipWhitespace()
+    source.readLiteral('{')
+
+    val result = mutableListOf<IoInterface.Item>()
+    while (true) {
+      source.skipWhitespace()
+      if (source.tryReadLiteral('}')) break
+
+      result += readInterfaceItem()
+    }
+    return result
+  }
+
   /**
    * ```ebnf
    * interface-item ::= gate 'interface' id '{' interface-items* '}'
    * ```
    */
+  context(issueCollector: IssueCollector)
   internal fun readInterface(
     documentation: Documentation?,
     gate: Gate?,
@@ -164,20 +184,6 @@ internal class WitFileReader(
       name = name,
       items = declarations,
     )
-  }
-
-  private fun readInterfaceItems(): List<IoInterface.Item> {
-    source.skipWhitespace()
-    source.readLiteral('{')
-
-    val result = mutableListOf<IoInterface.Item>()
-    while (true) {
-      source.skipWhitespace()
-      if (source.tryReadLiteral('}')) break
-
-      result += readInterfaceItem()
-    }
-    return result
   }
 
   /**
@@ -196,6 +202,7 @@ internal class WitFileReader(
    *                | type-item
    * ```
    */
+  context(issueCollector: IssueCollector)
   internal fun readInterfaceItem(): IoInterface.Item {
     val gate = readGateOrNull()
     val documentation = source.takeDocumentation()
@@ -223,6 +230,7 @@ internal class WitFileReader(
    * record-field ::= id ':' ty
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readRecord(
     documentation: Documentation?,
     gate: Gate?,
@@ -272,6 +280,7 @@ internal class WitFileReader(
    *                | id '(' ty ')'
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readVariant(
     documentation: Documentation?,
     gate: Gate?,
@@ -327,6 +336,7 @@ internal class WitFileReader(
    *                   | 'constructor' param-list ';'
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readResource(
     documentation: Documentation?,
     gate: Gate?,
@@ -392,6 +402,7 @@ internal class WitFileReader(
    *                | id ',' flags-fields?
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readFlags(
     documentation: Documentation?,
     gate: Gate?,
@@ -431,6 +442,7 @@ internal class WitFileReader(
    *              | id ',' enum-cases?
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readEnum(
     documentation: Documentation?,
     gate: Gate?,
@@ -467,6 +479,7 @@ internal class WitFileReader(
    * type-item ::= 'type' id '=' ty ';'
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readTypeAlias(
     documentation: Documentation?,
     gate: Gate?,
@@ -498,6 +511,7 @@ internal class WitFileReader(
    * toplevel-use-item ::= 'use' use-path ('as' id)? ';'
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readTopLevelUse(
     documentation: Documentation?,
     gate: Gate?,
@@ -539,6 +553,7 @@ internal class WitFileReader(
    *                  | id 'as' id
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readUse(
     documentation: Documentation?,
     gate: Gate?,
@@ -589,28 +604,13 @@ internal class WitFileReader(
 
   /**
    * ```ebnf
-   * func-item ::= id ':' func-type ';'
-   * ```
-   */
-  private fun readFuncItem(
-    documentation: Documentation?,
-    gate: Gate?,
-    location: Location,
-    identifier: Identifier,
-  ): IoFunction {
-    source.skipWhitespace()
-    source.readLiteral(':')
-    return readFuncType(documentation, gate, location, identifier)
-  }
-
-  /**
-   * ```ebnf
    * func-type ::= 'async'? 'func' param-list result-list
    *
    * result-list ::= ϵ
    *               | '->' ty
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readFuncType(
     documentation: Documentation?,
     gate: Gate?,
@@ -661,6 +661,23 @@ internal class WitFileReader(
 
   /**
    * ```ebnf
+   * func-item ::= id ':' func-type ';'
+   * ```
+   */
+  context(issueCollector: IssueCollector)
+  private fun readFuncItem(
+    documentation: Documentation?,
+    gate: Gate?,
+    location: Location,
+    identifier: Identifier,
+  ): IoFunction {
+    source.skipWhitespace()
+    source.readLiteral(':')
+    return readFuncType(documentation, gate, location, identifier)
+  }
+
+  /**
+   * ```ebnf
    * param-list ::= '(' named-type-list ')'
    *
    * named-type-list ::= ϵ
@@ -669,6 +686,7 @@ internal class WitFileReader(
    * named-type ::= id ':' ty
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readParameterList(): List<IoParameter> {
     return source.readCommaSeparatedList(minSize = 0, '(', ')') {
       val documentation = source.takeDocumentation()
@@ -703,6 +721,7 @@ internal class WitFileReader(
    *                    | include-item
    * ```
    */
+  context(issueCollector: IssueCollector)
   internal fun readWorld(
     documentation: Documentation?,
     gate: Gate?,
@@ -759,6 +778,7 @@ internal class WitFileReader(
    *               | 'export' use-path ';'
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readWorldApi(
     documentation: Documentation?,
     gate: Gate?,
@@ -794,6 +814,7 @@ internal class WitFileReader(
    *               | use-path ';'
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readExternalType(
     documentation: Documentation?,
     gate: Gate?,
@@ -842,6 +863,7 @@ internal class WitFileReader(
    * include-names-item ::= id 'as' id
    * ```
    */
+  context(issueCollector: IssueCollector)
   private fun readInclude(
     documentation: Documentation?,
     gate: Gate?,
@@ -905,6 +927,7 @@ internal class WitFileReader(
    * version-field ::= 'version' '=' <valid semver>
    * ```
    */
+  context(issueCollector: IssueCollector)
   internal fun readGateOrNull(): Gate? {
     var unstableFeature: Identifier? = null
     var sinceVersion: SemVer? = null
