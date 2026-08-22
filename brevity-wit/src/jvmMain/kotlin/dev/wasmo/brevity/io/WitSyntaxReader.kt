@@ -584,3 +584,15 @@ internal val Char.isDigit: Boolean
     in '0'..'9' -> true
     else -> false
   }
+
+internal val Char.isLowerCase: Boolean
+  get() = when (this) {
+    in 'a'..'z' -> true
+    else -> false
+  }
+
+internal val Char.isUpperCase: Boolean
+  get() = when (this) {
+    in 'A'..'Z' -> true
+    else -> false
+  }
