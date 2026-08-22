@@ -1,15 +1,22 @@
 package dev.wasmo.brevity
 
-import dev.wasmo.brevity.io.isDigit
-import dev.wasmo.brevity.io.isLowerCase
-import dev.wasmo.brevity.io.isUpperCase
-
 sealed interface Identifier {
   val name: String
 }
 
+/**
+ * Private implementation used exclusively to represent malformed identifiers.
+ *
+ * Would prefer to do something like this:
+ * value class WitIdentifier : IoIdentifier
+ * value class IoIdentifier
+ *
+ * ...but value classes are required to be final.
+ *
+ * Value classes are pretty restrictive, as it turns out!
+ */
 @JvmInline
-value class MalformedIdentifier internal constructor(
+private value class MalformedIdentifier(
   override val name: String,
 ): Identifier
 
@@ -28,6 +35,10 @@ value class WitIdentifier internal constructor(
 
 private val identifierRegex = Regex("^%?([a-z][a-z0-9]*|[A-Z][A-Z0-9]*)(-[a-z0-9]+|-[A-Z0-9]+)*$")
 
+/**
+ * Parse [name] into an instance of [Identifier]. Valid WIT identifiers will be instances of
+ * [WitIdentifier].
+ */
 fun Identifier(name: String): Identifier {
   return if (identifierRegex.matches(name)) {
     WitIdentifier(name)

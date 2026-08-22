@@ -1,7 +1,6 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.MalformedIdentifier
 import dev.wasmo.brevity.WitIdentifier
 
 /**
@@ -16,9 +15,9 @@ val Identifier.lowerCamelCase: String
 val Identifier.upperCamelCase: String
   get() = toCamelCase(true)
 
-private fun Identifier.toCamelCase(upperCamel: Boolean): String = when (this) {
-  is MalformedIdentifier -> error("Generating code for malformed identifier ${this.name}")
-  is WitIdentifier ->
+private fun Identifier.toCamelCase(upperCamel: Boolean): String = if (this !is WitIdentifier) {
+  error("Generating code for malformed identifier ${this.name}")
+} else {
   return buildString {
     var uppercase = upperCamel
     for (char in name) {
