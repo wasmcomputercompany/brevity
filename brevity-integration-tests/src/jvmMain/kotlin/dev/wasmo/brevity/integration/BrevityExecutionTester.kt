@@ -78,6 +78,10 @@ class BrevityExecutionTester(
         GuestKotlinTarget(fileSystem, layout, types).generate()
       }
       val guestKtWasm = async {
+        // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
+        // https://kotlinlang.slack.com/archives/C062WG3A7T8/p1787598848694559
+        hostKtJar.await()
+
         brevityKt.join()
         guestKt.join()
         kotlinToolchain.join()
