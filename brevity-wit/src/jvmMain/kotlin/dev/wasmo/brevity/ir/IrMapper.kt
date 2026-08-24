@@ -3,7 +3,9 @@ package dev.wasmo.brevity.ir
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
@@ -45,6 +47,7 @@ class IrMapper(
     val services = mutableListOf<IrWitPackage.Service>()
   }
 
+  context(issueCollector: IssueCollector)
   fun map(): List<IrWitPackage> {
     check(irPackages.isEmpty())
 
@@ -64,6 +67,7 @@ class IrMapper(
     }
   }
 
+  context(issueCollector: IssueCollector)
   private fun addPackage(ioPackage: IoWitPackage) {
     val builder = irPackages.getOrPut(ioPackage.packageName) { PackageBuilder() }
 
@@ -79,7 +83,7 @@ class IrMapper(
     }
   }
 
-  context(builder: PackageBuilder)
+  context(builder: PackageBuilder, issueCollector: IssueCollector)
   private fun IoInterface.interfaceToIr(packageName: PackageName) {
     val serviceName = ServiceName(packageName, name)
     context(Context(serviceName)) {
@@ -95,7 +99,7 @@ class IrMapper(
     }
   }
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoInterface.Item.interfaceItemToIrOrNull(): IrInterface.Item? {
     return when (this) {
       is IoFunction -> functionToIr()
@@ -109,22 +113,22 @@ class IrMapper(
     }
   }
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoCase.caseToIr() = IrCase(
     documentation = documentation,
     gate = gate,
     location = location,
     name = name,
-    type = type?.typeNameToIr(),
+    type = type?.typeNameToIr(location),
   )
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoField.fieldToIr() = IrField(
     documentation = documentation,
     gate = gate,
     location = location,
     name = name,
-    type = type.typeNameToIr(),
+    type = type.typeNameToIr(location),
   )
 
   context(context: Context)
@@ -135,7 +139,7 @@ class IrMapper(
     name = name,
   )
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoFunction.functionToIr(
     worldFunction: Boolean = false,
     resourceName: Identifier? = null,
@@ -145,7 +149,7 @@ class IrMapper(
     location = location,
     async = async,
     parameters = parameters.map { it.parameterToIr() },
-    returnType = returnType?.typeNameToIr(),
+    returnType = returnType?.typeNameToIr(location),
     functionName = when {
       worldFunction -> FunctionName.World(
         name = name,
@@ -186,15 +190,15 @@ class IrMapper(
     )
   }
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoParameter.parameterToIr() = IrParameter(
     documentation = documentation,
     location = location,
     name = name,
-    type = type.typeNameToIr(),
+    type = type.typeNameToIr(location),
   )
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoEnum.enumToIr() = IrEnum(
     documentation = documentation,
     gate = gate,
@@ -212,7 +216,7 @@ class IrMapper(
     flags = flags.map { it.flagToIr() },
   )
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoRecord.recordToIr() = IrRecord(
     documentation = documentation,
     gate = gate,
@@ -221,7 +225,7 @@ class IrMapper(
     fields = fields.map { it.fieldToIr() },
   )
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoResource.resourceToIr() = IrResource(
     documentation = documentation,
     gate = gate,
@@ -237,16 +241,16 @@ class IrMapper(
     },
   )
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoTypeAlias.typeAliasToIr() = IrTypeAlias(
     documentation = documentation,
     gate = gate,
     location = location,
     type = TypeName.Declared(context.serviceName, name),
-    target = target.typeNameToIr(),
+    target = target.typeNameToIr(location),
   )
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoVariant.variantToIr() = IrVariant(
     documentation = documentation,
     gate = gate,
@@ -273,8 +277,8 @@ class IrMapper(
     name = name,
   )
 
-  context(context: Context)
-  internal fun IoTypeName.typeNameToIr(): TypeName {
+  context(context: Context, issueCollector: IssueCollector)
+  internal fun IoTypeName.typeNameToIr(referenceSite: Location): TypeName {
     return when (this) {
       IoTypeName.Bool -> TypeName.Bool
       IoTypeName.S8 -> TypeName.S8
@@ -289,29 +293,36 @@ class IrMapper(
       IoTypeName.F64 -> TypeName.F64
       IoTypeName.Char -> TypeName.Char
       IoTypeName.String -> TypeName.String
-      is IoTypeName.Borrow -> TypeName.Borrow(type.typeNameToIr())
-      is IoTypeName.Declared -> declaredTypeToIr()
-      is IoTypeName.Future -> TypeName.Future(type?.typeNameToIr())
-      is IoTypeName.List -> TypeName.List(type.typeNameToIr(), size)
-      is IoTypeName.Map -> TypeName.Map(key.typeNameToIr(), value.typeNameToIr())
-      is IoTypeName.Option -> TypeName.Option(type.typeNameToIr())
-      is IoTypeName.Result -> TypeName.Result(ok?.typeNameToIr(), error?.typeNameToIr())
-      is IoTypeName.Stream -> TypeName.Stream(type?.typeNameToIr())
-      is IoTypeName.Tuple -> TypeName.Tuple(types.map { it.typeNameToIr() })
+      is IoTypeName.Borrow -> TypeName.Borrow(type.typeNameToIr(referenceSite))
+      is IoTypeName.Declared -> declaredTypeToIr(referenceSite)
+      is IoTypeName.Future -> TypeName.Future(type?.typeNameToIr(referenceSite))
+      is IoTypeName.List -> TypeName.List(type.typeNameToIr(referenceSite), size)
+      is IoTypeName.Map -> TypeName.Map(key.typeNameToIr(referenceSite), value.typeNameToIr(referenceSite))
+      is IoTypeName.Option -> TypeName.Option(type.typeNameToIr(referenceSite))
+      is IoTypeName.Result -> TypeName.Result(ok?.typeNameToIr(referenceSite), error?.typeNameToIr(referenceSite))
+      is IoTypeName.Stream -> TypeName.Stream(type?.typeNameToIr(referenceSite))
+      is IoTypeName.Tuple -> TypeName.Tuple(types.map { it.typeNameToIr(referenceSite) })
     }
   }
 
-  context(context: Context)
-  private fun IoTypeName.Declared.declaredTypeToIr(): TypeName.Declared {
-    return declaredTypeToIrOrNull()
+  context(context: Context, issueCollector: IssueCollector)
+  private fun IoTypeName.Declared.declaredTypeToIr(referenceSite: Location): TypeName.Declared {
+    return declaredTypeToIrOrNull(referenceSite)
+      // TODO: raise an issue and resolve to some sort of unrenderable nothing value
       ?: throw IllegalArgumentException(
         "unable to find $this in ${context.serviceName}",
       )
   }
 
-  context(context: Context)
-  internal fun IoTypeName.Declared.declaredTypeToIrOrNull(): TypeName.Declared? {
-    val witPackage = ioSymbolTable[context.serviceName.packageName] ?: return null
+  context(context: Context, issueCollector: IssueCollector)
+  internal fun IoTypeName.Declared.declaredTypeToIrOrNull(referenceSite: Location): TypeName.Declared? {
+    val witPackage = ioSymbolTable[context.serviceName.packageName] ?: run {
+      issueCollector.report(Issue(
+        "unable to find ${this@declaredTypeToIrOrNull} in ${context.serviceName}",
+        referenceSite,
+      ))
+      return null
+    }
     val declarations = sequence {
       ioSymbolTable[context.serviceName]?.let { service ->
         when (service) {
@@ -344,7 +355,7 @@ class IrMapper(
               ),
             )
             context(useContext) {
-              return itemMatch.type.declaredTypeToIrOrNull()
+              return itemMatch.type.declaredTypeToIrOrNull(itemMatch.location)
             }
           }
         }
@@ -357,7 +368,7 @@ class IrMapper(
   }
 
   /** Collect includes recursively. */
-  context(builder: PackageBuilder)
+  context(builder: PackageBuilder, issueCollector: IssueCollector)
   private fun IoWorld.worldToIr(packageName: PackageName) {
     val seed = IncludedWorld(
       packageName = packageName,
@@ -390,7 +401,7 @@ class IrMapper(
     )
   }
 
-  context(context: Context)
+  context(context: Context, issueCollector: IssueCollector)
   private fun IoWorld.Item.worldItemToIrTypeDeclarationOrNull(): IrTypeDeclaration? {
     return when (this) {
       is IoInclude -> null
@@ -409,7 +420,7 @@ class IrMapper(
    * to express in WIT, but not useful for generating bindings. (It also triggers name collisions
    * because some WASI worlds import multiple 'types' interfaces.)
    */
-  context(context: Context, builder: PackageBuilder)
+  context(context: Context, builder: PackageBuilder, issueCollector: IssueCollector)
   private fun IoWorld.Api.worldApiToIr(): IrWorld.Api? {
     return when (this) {
       is IoExternalApi -> externalUsePathToIr()
@@ -428,6 +439,7 @@ class IrMapper(
     }
   }
 
+  context(issueCollector: IssueCollector)
   private fun IncludedWorld.collectIncludesRecursively(
     set: MutableSet<IncludedWorld>,
   ) {
@@ -438,15 +450,24 @@ class IrMapper(
       val lookupPath = include.path.copy(
         packageName = packageName,
       )
+      
       val world = getWorldOrNull(lookupPath)
-        ?: error("unable to find world $lookupPath included by $this")
 
-      IncludedWorld(
-        packageName = packageName,
-        world = world,
-      ).collectIncludesRecursively(
-        set = set,
-      )
+      if (world == null) {
+        issueCollector.report(
+          Issue(
+            "Unable to find world $lookupPath included by ${this@collectIncludesRecursively}",
+            include.location,
+          )
+        )
+      } else {
+        IncludedWorld(
+          packageName = packageName,
+          world = world,
+        ).collectIncludesRecursively(
+          set = set,
+        )
+      }
     }
   }
 
@@ -501,7 +522,3 @@ private val IoWitPackage.items: List<IoWitFile.Item>
  */
 private fun IoInterface.declaresApis(): Boolean =
   items.any { it is IoFunction }
-
-context(issueCollector: IssueCollector)
-fun IrMapper(toplevelWitPackages: List<IoToplevelWitPackage>): IrMapper? =
-  toplevelWitPackages.buildSymbolTable()?.let { IrMapper(toplevelWitPackages, it) }

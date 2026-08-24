@@ -10,6 +10,7 @@ import dev.wasmo.brevity.FunctionNameInterface
 import dev.wasmo.brevity.FunctionNameMethod
 import dev.wasmo.brevity.FunctionNameResourceDrop
 import dev.wasmo.brevity.FunctionNameStatic
+import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
@@ -20,12 +21,13 @@ import dev.wasmo.brevity.io.toServiceName
 import dev.wasmo.brevity.io.toUsePath
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.toPackageName
+import dev.wasmo.brevity.withIssueCollector
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
 
 class IrMapperTest {
   @Test
-  fun `find local symbols`() {
+  fun `find local symbols`() = withIssueCollector {
     val clockLocation = Location("clock.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -68,7 +70,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `find symbols across packages with use`() {
+  fun `find symbols across packages with use`() = withIssueCollector {
     val stdioLocation = Location("stdio.wit")
     val streamsLocation = Location("streams.wit")
     val ioPackages = listOf(
@@ -116,7 +118,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `find symbols across inline packages with use`() {
+  fun `find symbols across inline packages with use`() = withIssueCollector {
     val stdioLocation = Location("stdio.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -159,7 +161,7 @@ class IrMapperTest {
 
 
   @Test
-  fun `find symbols across services with use`() {
+  fun `find symbols across services with use`() = withIssueCollector {
     val stdioLocation = Location("stdio.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -199,7 +201,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `imports across packages`() {
+  fun `imports across packages`() = withIssueCollector {
     val commandLocation = Location("command.wit")
     val importsLocation = Location("imports.wit")
     val worldLocation = Location("world.wit")
@@ -307,7 +309,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `imports across inline packages`() {
+  fun `imports across inline packages`() = withIssueCollector {
     val commandLocation = Location("command.wit")
     val importsLocation = Location("imports.wit")
     val ioPackages = listOf(
@@ -403,7 +405,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `inline interface is flattened`() {
+  fun `inline interface is flattened`() = withIssueCollector {
     val location = Location("world.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -460,7 +462,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `find symbols in same package with use`() {
+  fun `find symbols in same package with use`() = withIssueCollector {
     val timezoneLocation = Location("timezone.wit")
     val wallClockLocation = Location("wall-clock.wit")
     val ioPackages = listOf(
@@ -504,7 +506,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `get world`() {
+  fun `get world`() = withIssueCollector {
     val worldLocation = Location("world.wit")
     val commandLocation = Location("command.wit")
     val wasiCli = IoToplevelWitPackage(
@@ -542,7 +544,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `interface function abi names`() {
+  fun `interface function abi names`() = withIssueCollector {
     val systemClockLocation = Location("system-clock.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -572,7 +574,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `resource function abi names`() {
+  fun `resource function abi names`() = withIssueCollector {
     val typesLocation = Location("types.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -625,7 +627,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `resolve all type codecs`() {
+  fun `resolve all type codecs`() = withIssueCollector {
     val typesLocation = Location("types.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -793,12 +795,13 @@ class IrMapperTest {
     )
   }
 
+  context(issueCollector: IssueCollector)
   private fun IrMapper.getType(
     serviceName: String,
     typeName: IoTypeName,
   ): TypeName {
     context(IrMapper.Context(serviceName.toServiceName())) {
-      return typeName.typeNameToIr()
+      return typeName.typeNameToIr(Location("file.wit"))
     }
   }
 }

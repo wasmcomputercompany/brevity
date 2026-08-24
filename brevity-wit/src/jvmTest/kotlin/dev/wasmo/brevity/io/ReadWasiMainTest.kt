@@ -5,6 +5,7 @@ import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.ir.IrMapper
+import dev.wasmo.brevity.withIssueCollector
 import kotlin.test.Test
 import kotlin.test.fail
 import okio.FileSystem
@@ -41,7 +42,7 @@ class ReadWasiMainTest {
   }
 
   @Test
-  fun `map all files`() {
+  fun `map all files`(): Unit = withIssueCollector {
     val directories = mutableListOf(
       wasiMainProposals / "cli/wit",
       wasiMainProposals / "clocks/wit",

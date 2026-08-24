@@ -35,7 +35,7 @@ class WorldFilterTest {
   )
 
   @Test
-  fun filterSuccess() {
+  fun filterSuccess() = withIssueCollector {
     val irPackages = IrMapper(ioPackages).map()
     val commandWorld = irPackages.single().services.single {
       (it as? IrWorld)?.serviceName?.name?.name == "command"
@@ -50,7 +50,7 @@ class WorldFilterTest {
   }
 
   @Test
-  fun filterDoesntMatch() {
+  fun filterDoesntMatch() = withIssueCollector {
     val irPackages = IrMapper(ioPackages).map()
 
     val e = assertFailsWith<IllegalArgumentException> {
