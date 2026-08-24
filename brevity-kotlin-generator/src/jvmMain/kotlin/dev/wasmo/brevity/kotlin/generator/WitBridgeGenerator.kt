@@ -4,6 +4,7 @@ import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.io.IoWitPackageReader
+import dev.wasmo.brevity.io.validation.buildSymbolTable
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
@@ -43,7 +44,10 @@ class WitBridgeGenerator private constructor(
         packageReader.read(directory)
       }
 
-      val irMapper = IrMapper(ioToplevelPackages) ?: return@with null
+      val symbolTable = ioToplevelPackages.buildSymbolTable()
+        ?: return null
+
+      val irMapper = IrMapper(ioToplevelPackages, symbolTable)
 
       val irPackages = irFilter(irMapper.map())
 
