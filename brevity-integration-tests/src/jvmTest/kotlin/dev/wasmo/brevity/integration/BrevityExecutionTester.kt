@@ -1,13 +1,15 @@
 package dev.wasmo.brevity.integration
 
+import assertk.fail
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 import dev.wasmo.brevity.withIssueCollector
+import kotlin.concurrent.thread
 import okio.Buffer
 import okio.FileSystem
-import okio.Path
+import okio.Path.Companion.toPath
 import okio.source
 
 /**
@@ -29,9 +31,10 @@ import okio.source
  */
 class BrevityExecutionTester(
   val fileSystem: FileSystem = FileSystem.SYSTEM,
-  val path: Path,
+  val name: String,
   val types: List<SampleType>,
 ) {
+  private val path = "build/BrevityExecutionTester/$name".toPath()
   private val witPath = path / "wit"
   private val apiPath = path / "api"
   private val apiSrcPath = apiPath / "src"
@@ -70,7 +73,8 @@ class BrevityExecutionTester(
       for (type in types) {
         writeUtf8(
           """
-          |  export pass-as-parameter-${type.idLower}: func(v: ${type.witType});
+          |  export pass-as-parameter-${type.idLower}: func(v: ${type.witType}) -> s32;
+          |  export pass-as-return-value-${type.idLower}: func(index: s32) -> ${type.witType};
           |
           """.trimMargin(),
         )
@@ -200,11 +204,12 @@ class BrevityExecutionTester(
         |
         |dependencies:
         |  - ../api
+        |  - com.dylibso.chicory:runtime:1.7.5
         |  - com.squareup.okio:okio:3.16.4
-        |  - dev.wasmo.brevity:brevity:0-testing
+        |  - com.willowtreeapps.assertk:assertk:0.28.1
         |  - dev.wasmo.brevity:brevity-wasi-p1:0-testing
         |  - dev.wasmo.brevity:brevity-wasi-p2:0-testing
-        |  - com.dylibso.chicory:runtime:1.7.5
+        |  - dev.wasmo.brevity:brevity:0-testing
         |
         """.trimMargin(),
       )
@@ -253,8 +258,8 @@ class BrevityExecutionTester(
       for (type in types) {
         writeUtf8(
           """
-          |  override fun passAsParameter${type.idUpper}(v: ${type.kotlinType}) {
-          |    val index = when (v) {
+          |  override fun passAsParameter${type.idUpper}(v: ${type.kotlinType}): Int {
+          |    return when (v) {
           |
           """.trimMargin(),
         )
@@ -267,10 +272,33 @@ class BrevityExecutionTester(
           )
         }
         writeUtf8(
-          """
+          $$"""
           |      else -> -1
           |    }
-          |    println("${type.idLower} index=${'$'}index")
+          |  }
+          |
+          """.trimMargin(),
+        )
+
+        writeUtf8(
+          """
+          |  override fun passAsReturnValue${type.idUpper}(index: Int): ${type.kotlinType} {
+          |    return when (index) {
+          |
+          """.trimMargin(),
+        )
+        for ((index, value) in type.values.withIndex()) {
+          writeUtf8(
+            """
+            |      $index -> ${value.kotlin}
+            |
+            """.trimMargin(),
+          )
+        }
+        writeUtf8(
+          $$"""
+          |      else -> error("unexpected index: $index")
+          |    }
           |  }
           |
           """.trimMargin(),
@@ -293,6 +321,8 @@ class BrevityExecutionTester(
         """
         |package dev.wasmo.brevity.integration
         |
+        |import assertk.assertThat
+        |import assertk.assertions.isEqualTo
         |import dev.wasmo.brevity.WasmInstance
         |import okio.Path.Companion.toPath
         |import wit.wasi.v0_1.SystemWasiP1
@@ -318,8 +348,8 @@ class BrevityExecutionTester(
         for ((index, value) in type.values.withIndex()) {
           writeUtf8(
             """
-            |  println("${type.idLower} index=$index")
-            |  world.guest.passAsParameter${type.idUpper}(${value.kotlin})
+            |  assertThat(world.guest.passAsParameter${type.idUpper}(${value.kotlin})).isEqualTo($index)
+            |  assertThat(world.guest.passAsReturnValue${type.idUpper}($index)).isEqualTo(${value.kotlin})
             |
             """.trimMargin(),
           )
@@ -335,57 +365,66 @@ class BrevityExecutionTester(
   }
 
   fun compileKotlinGuest() {
-    val process = ProcessBuilder()
-      .directory(path.toFile())
-      .command(
-        "kotlin",
-        "build",
-        "--module",
-        "guest",
-      )
-      .redirectError(ProcessBuilder.Redirect.INHERIT)
-      .start()
-
-    val output = Buffer()
-    output.writeAll(process.inputStream.source())
-
-    println(output.readUtf8())
+    executeCommand(
+      "compileKotlinGuest",
+      "kotlin",
+      "build",
+      "--module",
+      "guest",
+    )
   }
 
   fun compileKotlinHost() {
-    val process = ProcessBuilder()
-      .directory(path.toFile())
-      .command(
-        "kotlin",
-        "package",
-        "--module",
-        "host",
-      )
-      .redirectError(ProcessBuilder.Redirect.INHERIT)
-      .start()
-
-    val output = Buffer()
-    output.writeAll(process.inputStream.source())
-
-    println(output.readUtf8())
+    executeCommand(
+      "compileKotlinHost",
+      "kotlin",
+      "package",
+      "--module",
+      "host",
+    )
   }
 
   fun executeKotlinHostKotlinGuest() {
+    executeCommand(
+      "executeKotlinHostKotlinGuest",
+      "java",
+      "-jar",
+      "build/tasks/_host_executableJarJvm/host-jvm-executable.jar",
+      "build/tasks/_guest_linkWasmWasi/guest.wasm",
+    )
+  }
+
+  fun executeCommand(name: String, vararg command: String) {
     val process = ProcessBuilder()
       .directory(path.toFile())
-      .command(
-        "java",
-        "-jar",
-        "build/tasks/_host_executableJarJvm/host-jvm-executable.jar",
-        "build/tasks/_guest_linkWasmWasi/guest.wasm",
-      )
-      .redirectError(ProcessBuilder.Redirect.INHERIT)
+      .command(*command)
       .start()
 
-    val output = Buffer()
-    output.writeAll(process.inputStream.source())
+    val stdout = Buffer()
+    val readOutput = thread(name = "${this.name}.$name stderr") {
+      stdout.writeAll(process.inputStream.source())
+    }
 
-    println(output.readUtf8())
+    val stderr = Buffer()
+    val readStderr = thread(name = "${this.name}.$name stderr") {
+      stderr.writeAll(process.errorStream.source())
+    }
+
+    if (process.waitFor() != 0) {
+      readOutput.join()
+      readStderr.join()
+      fail(
+        """
+        |expected process to return normally
+        |
+        |stdout:
+        |${stdout.readUtf8().replace("\n", "\n  ")}
+        |
+        |stderr:
+        |${stderr.readUtf8().replace("\n", "\n  ")}
+        """.trimMargin(),
+      )
+    }
   }
 }
 
