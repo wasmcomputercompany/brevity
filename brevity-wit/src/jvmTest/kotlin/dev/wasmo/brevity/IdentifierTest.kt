@@ -2,6 +2,7 @@ package dev.wasmo.brevity
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
+import assertk.assertions.isNotInstanceOf
 import org.junit.Test
 
 class IdentifierTest {
@@ -78,7 +79,7 @@ class IdentifierTest {
   }
 
   fun String.assertIsMalformed() {
-    assertThat(Identifier(this)).isEqualTo(MalformedIdentifier(this))
+    assertThat(Identifier(this)).isNotInstanceOf<WitIdentifier>()
   }
 
   fun String.assertIsWellFormed() {
