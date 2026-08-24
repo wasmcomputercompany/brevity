@@ -38,29 +38,31 @@ class GuestRustTarget(
       """.trimMargin(),
     )
     for (type in types) {
-      writeUtf8(
-        """
-        |  fn pass_as_parameter_${type.idLowerSnake}(v: ${type.rustType}) -> i32 {
-        |    match v {
-        |
-        """.trimMargin(),
-      )
-      for ((index, value) in type.values.withIndex()) {
+      if (!type.mustAllocate) {
         writeUtf8(
           """
-          |      ${value.rust} => $index,
+          |  fn pass_as_parameter_${type.idLowerSnake}(v: ${type.rustType}) -> i32 {
+          |    match v {
+          |
+          """.trimMargin(),
+        )
+        for ((index, value) in type.values.withIndex()) {
+          writeUtf8(
+            """
+            |      ${value.rust} => $index,
+            |
+            """.trimMargin(),
+          )
+        }
+        writeUtf8(
+          """
+          |      _ => panic!("unexpected value {}", v)
+          |    }
+          |  }
           |
           """.trimMargin(),
         )
       }
-      writeUtf8(
-        """
-        |      _ => panic!("unexpected value {}", v)
-        |    }
-        |  }
-        |
-        """.trimMargin(),
-      )
 
       writeUtf8(
         """
@@ -72,7 +74,7 @@ class GuestRustTarget(
       for ((index, value) in type.values.withIndex()) {
         writeUtf8(
           """
-          |      $index => ${value.rust},
+          |      $index => (${value.rust}).to_owned(),
           |
           """.trimMargin(),
         )

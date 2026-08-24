@@ -28,9 +28,16 @@ class WitTarget(
       """.trimMargin(),
     )
     for (type in types) {
+      if (!type.mustAllocate) {
+        writeUtf8(
+          """
+          |  export pass-as-parameter-${type.idLowerCamel}: func(v: ${type.witType}) -> s32;
+          |
+          """.trimMargin(),
+        )
+      }
       writeUtf8(
         """
-        |  export pass-as-parameter-${type.idLowerCamel}: func(v: ${type.witType}) -> s32;
         |  export pass-as-return-value-${type.idLowerCamel}: func(index: s32) -> ${type.witType};
         |
         """.trimMargin(),

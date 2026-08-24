@@ -51,13 +51,20 @@ class HostKotlinTarget(
     )
     for (type in types) {
       for ((index, value) in type.values.withIndex()) {
+        if (!type.mustAllocate) {
+          writeUtf8(
+            """
+            |  assertThat(
+            |    world.guest.passAsParameter${type.idUpperCamel}(${value.kotlin}),
+            |    "${type.id}.$index.parameter",
+            |  ).isEqualTo($index)
+            |
+            """.trimMargin(),
+          )
+        }
+
         writeUtf8(
           """
-          |  assertThat(
-          |    world.guest.passAsParameter${type.idUpperCamel}(${value.kotlin}),
-          |    "${type.id}.$index.parameter",
-          |  ).isEqualTo($index)
-          |
           |  assertThat(
           |    world.guest.passAsReturnValue${type.idUpperCamel}($index),
           |    "${type.id}.$index.return",

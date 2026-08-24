@@ -7,6 +7,7 @@ import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 
 data class SampleType(
   val id: Identifier,
+  val mustAllocate: Boolean = false,
   val witType: String,
   val kotlinType: String,
   val rustType: String,
