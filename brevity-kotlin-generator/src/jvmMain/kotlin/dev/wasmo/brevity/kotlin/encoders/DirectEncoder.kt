@@ -73,13 +73,25 @@ object ByteEncoder : DirectEncoder(
   alignment = 1,
   coreType = CoreType.I32,
   integerType = IntegerType.S8,
-)
+) {
+  override fun valueToCoreType(value: CodeBlock) =
+    CodeBlock.of("%L.toInt()", value)
+
+  override fun coreTypeToValue(coreType: CodeBlock) =
+    CodeBlock.of("%L.toByte()", coreType)
+}
 
 object ShortEncoder : DirectEncoder(
   alignment = 2,
   coreType = CoreType.I32,
   integerType = IntegerType.S16,
-)
+) {
+  override fun valueToCoreType(value: CodeBlock) =
+    CodeBlock.of("%L.toInt()", value)
+
+  override fun coreTypeToValue(coreType: CodeBlock) =
+    CodeBlock.of("%L.toShort()", coreType)
+}
 
 object IntEncoder : DirectEncoder(
   alignment = 4,
