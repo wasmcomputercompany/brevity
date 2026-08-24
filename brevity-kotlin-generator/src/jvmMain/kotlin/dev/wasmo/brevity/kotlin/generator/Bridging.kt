@@ -134,6 +134,7 @@ val TypeName.kotlinApi: KtTypeName
           Symbols.KotlinCollections.List.parameterizedBy(elementType)
         }
       }
+      is TypeName.Unresolved -> error("no Kotlin API for unresolved type")
     }
   }
 

@@ -306,22 +306,16 @@ class IrMapper(
   }
 
   context(context: Context, issueCollector: IssueCollector)
-  private fun IoTypeName.Declared.declaredTypeToIr(referenceSite: Location): TypeName.Declared {
-    return declaredTypeToIrOrNull(referenceSite)
-      // TODO: raise an issue and resolve to some sort of unrenderable nothing value
-      ?: throw IllegalArgumentException(
-        "unable to find $this in ${context.serviceName}",
-      )
-  }
-
-  context(context: Context, issueCollector: IssueCollector)
-  internal fun IoTypeName.Declared.declaredTypeToIrOrNull(referenceSite: Location): TypeName.Declared? {
-    val witPackage = ioSymbolTable[context.serviceName.packageName] ?: run {
+  internal fun IoTypeName.Declared.declaredTypeToIr(referenceSite: Location): TypeName {
+    fun reportIssue() {
       issueCollector.report(Issue(
-        "unable to find ${this@declaredTypeToIrOrNull} in ${context.serviceName}",
+        "unable to find ${this@declaredTypeToIr} in ${context.serviceName}",
         referenceSite,
       ))
-      return null
+    }
+    val witPackage = ioSymbolTable[context.serviceName.packageName] ?: run {
+      reportIssue()
+      return TypeName.Unresolved
     }
     val declarations = sequence {
       ioSymbolTable[context.serviceName]?.let { service ->
@@ -355,7 +349,7 @@ class IrMapper(
               ),
             )
             context(useContext) {
-              return itemMatch.type.declaredTypeToIrOrNull(itemMatch.location)
+              return itemMatch.type.declaredTypeToIr(itemMatch.location)
             }
           }
         }
@@ -364,7 +358,9 @@ class IrMapper(
       }
     }
 
-    return null
+    reportIssue()
+
+    return TypeName.Unresolved
   }
 
   /** Collect includes recursively. */
@@ -450,7 +446,7 @@ class IrMapper(
       val lookupPath = include.path.copy(
         packageName = packageName,
       )
-      
+
       val world = getWorldOrNull(lookupPath)
 
       if (world == null) {

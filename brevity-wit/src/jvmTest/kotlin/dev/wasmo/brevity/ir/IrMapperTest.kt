@@ -10,6 +10,7 @@ import dev.wasmo.brevity.FunctionNameInterface
 import dev.wasmo.brevity.FunctionNameMethod
 import dev.wasmo.brevity.FunctionNameResourceDrop
 import dev.wasmo.brevity.FunctionNameStatic
+import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.ServiceName
@@ -59,14 +60,22 @@ class IrMapperTest {
       ),
     )
 
-    assertThat(
-      assertFailsWith<IllegalArgumentException> {
-        irMapper.getType(
-          serviceName = "wasi:clocks/wall-clock",
-          typeName = IoTypeName.Declared("instant"),
-        )
-      },
-    ).hasMessage("unable to find instant in wasi:clocks/wall-clock")
+    withIssueCollector {
+      assertThat(
+          irMapper.getType(
+            serviceName = "wasi:clocks/wall-clock",
+            typeName = IoTypeName.Declared("instant"),
+            location = Location("clock.wit", 5, 6),
+          )
+      ).isEqualTo(TypeName.Unresolved)
+
+      assertThat(issues).containsExactly(Issue(
+        "unable to find instant in wasi:clocks/wall-clock",
+        Location("clock.wit", 5, 6),
+      ))
+
+      clear()
+    }
   }
 
   @Test
@@ -799,9 +808,10 @@ class IrMapperTest {
   private fun IrMapper.getType(
     serviceName: String,
     typeName: IoTypeName,
+    location: Location = Location("file.wit"),
   ): TypeName {
     context(IrMapper.Context(serviceName.toServiceName())) {
-      return typeName.typeNameToIr(Location("file.wit"))
+      return typeName.typeNameToIr(location)
     }
   }
 }
