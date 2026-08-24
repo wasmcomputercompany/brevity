@@ -54,22 +54,56 @@ class GuestKotlinTarget(
         writeUtf8(
           """
           |  override fun passAsParameter${type.idUpperCamel}(v: ${type.kotlinType}): Int {
-          |    return when (v) {
           |
           """.trimMargin(),
         )
-        for ((index, value) in type.values.withIndex()) {
+        if (type.compareAsString) {
           writeUtf8(
             """
-            |      ${value.kotlin} -> $index
+            |    return when (v.toString()) {
+            |
+            """.trimMargin(),
+          )
+          for ((index, value) in type.values.withIndex()) {
+            writeUtf8(
+              """
+              |      (${value.kotlin}).toString() -> $index
+              |
+              """.trimMargin(),
+            )
+          }
+          writeUtf8(
+            """
+            |      else -> -1
+            |    }
+            |
+            """.trimMargin(),
+          )
+        } else {
+          writeUtf8(
+            """
+            |    return when (v) {
+            |
+            """.trimMargin(),
+          )
+          for ((index, value) in type.values.withIndex()) {
+            writeUtf8(
+              """
+              |      ${value.kotlin} -> $index
+              |
+              """.trimMargin(),
+            )
+          }
+          writeUtf8(
+            """
+            |      else -> -1
+            |    }
             |
             """.trimMargin(),
           )
         }
         writeUtf8(
           """
-          |      else -> -1
-          |    }
           |  }
           |
           """.trimMargin(),

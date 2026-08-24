@@ -21,8 +21,8 @@ fun longToCoreType(
   coreType: CoreType,
 ): CodeBlock {
   return when (coreType) {
-    CoreType.F32 -> CodeBlock.of("%T.fromBits(%N[%L])", DOUBLE, arrayName, arrayIndex)
-    CoreType.F64 -> CodeBlock.of("%T.fromBits(%N[%L].toInt())", FLOAT, arrayName, arrayIndex)
+    CoreType.F32 -> CodeBlock.of("%T.fromBits(%N[%L].toInt())", FLOAT, arrayName, arrayIndex)
+    CoreType.F64 -> CodeBlock.of("%T.fromBits(%N[%L])", DOUBLE, arrayName, arrayIndex)
     CoreType.I32 -> CodeBlock.of("%N[%L].toInt()", arrayName, arrayIndex)
     CoreType.I64 -> CodeBlock.of("%N[%L]", arrayName, arrayIndex)
     CoreType.Pointer -> CodeBlock.of("%N[%L].toInt()", arrayName, arrayIndex)

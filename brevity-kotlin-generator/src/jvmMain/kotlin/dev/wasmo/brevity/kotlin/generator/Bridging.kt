@@ -1,6 +1,8 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.DOUBLE
+import com.squareup.kotlinpoet.FLOAT
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.LIST
 import com.squareup.kotlinpoet.LONG
@@ -59,8 +61,11 @@ val ServiceName.bridgeType: ClassName
 
 val CoreType.kotlinCoreType: KtTypeName
   get() = when (this) {
+    CoreType.I32 -> INT
     CoreType.I64 -> LONG
-    else -> INT
+    CoreType.F32 -> FLOAT
+    CoreType.F64 -> DOUBLE
+    CoreType.Pointer -> INT
   }
 
 val TypeName.Declared.handleName: ClassName
