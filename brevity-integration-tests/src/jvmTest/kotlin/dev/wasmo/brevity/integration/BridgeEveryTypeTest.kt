@@ -2,13 +2,12 @@ package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
 import kotlin.test.Test
-import okio.Path.Companion.toPath
 
 class BridgeEveryTypeTest {
   @Test
   fun primitives() {
     val test = BrevityExecutionTester(
-      path = "build/BridgeEveryTypeTest/primitives".toPath(),
+      name = "primitives",
       types = listOf(
         SampleType(
           id = Identifier("s32"),
