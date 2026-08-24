@@ -1,13 +1,11 @@
 package dev.wasmo.brevity.integration
 
-import app.cash.burst.Burst
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import brevity.wasi.p2.RealWasiP2Host
 import dev.wasmo.brevity.WasmInstance
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
-import okio.Path
 import okio.Path.Companion.toPath
 import wit.wasi.cli.v0_2_0.Imports
 import wit.wasi.cli.v0_2_0.World
@@ -17,14 +15,15 @@ import wit.wasmo.testing.Types
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.World
 
-@Burst
 class RunKotlinWasmTest {
+  private val kotlinWasmPath = "build/compileSync/wasmWasi/main/developmentExecutable/kotlin/brevity-root-brevity-integration-tests.wasm".toPath()
+
   @Test
   fun `call function declared on world`() = runTest {
     val world = WasmoTesting.World { }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      path = WasmSource.Kotlin.path,
+      path = kotlinWasmPath,
       worlds = listOf(
         Wasi.World({ wasiP1 }),
         Imports.World { RealWasiP2Host() },
@@ -40,7 +39,7 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      path = WasmSource.Kotlin.path,
+      path = kotlinWasmPath,
       worlds = listOf(
         Wasi.World({ wasiP1 }),
         Imports.World { RealWasiP2Host() },
@@ -52,11 +51,11 @@ class RunKotlinWasmTest {
   }
 
   @Test
-  fun `call concatenate`(wasmSource: WasmSource) = runTest {
+  fun `call concatenate`() = runTest {
     val world = WasmoTesting.World { }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      path = wasmSource.path,
+      path = kotlinWasmPath,
       worlds = listOf(
         Wasi.World({ wasiP1 }),
         Imports.World { RealWasiP2Host() },
@@ -86,7 +85,7 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      path = WasmSource.Kotlin.path,
+      path = kotlinWasmPath,
       worlds = listOf(
         Wasi.World({ wasiP1 }),
         Imports.World { RealWasiP2Host() },
@@ -104,7 +103,7 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      path = WasmSource.Kotlin.path,
+      path = kotlinWasmPath,
       worlds = listOf(
         Wasi.World({ wasiP1 }),
         Imports.World { RealWasiP2Host() },
@@ -115,16 +114,5 @@ class RunKotlinWasmTest {
     world.guest.streams.printError(name)
 
     assertThat(wasiP1.stderr.readUtf8()).isEqualTo("Exception: boom, Jesse!\n\n")
-  }
-
-  enum class WasmSource(
-    val path: Path,
-  ) {
-    Kotlin(
-      path = "build/compileSync/wasmWasi/main/developmentExecutable/kotlin/brevity-root-brevity-integration-tests.wasm".toPath(),
-    ),
-    Rust(
-      path = "rust/target/unbundled/unbundled-module0.wasm".toPath(),
-    )
   }
 }
