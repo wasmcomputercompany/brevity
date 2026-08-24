@@ -50,29 +50,31 @@ class GuestKotlinTarget(
       """.trimMargin(),
     )
     for (type in types) {
-      writeUtf8(
-        """
-        |  override fun passAsParameter${type.idUpperCamel}(v: ${type.kotlinType}): Int {
-        |    return when (v) {
-        |
-        """.trimMargin(),
-      )
-      for ((index, value) in type.values.withIndex()) {
+      if (!type.mustAllocate) {
         writeUtf8(
           """
-          |      ${value.kotlin} -> $index
+          |  override fun passAsParameter${type.idUpperCamel}(v: ${type.kotlinType}): Int {
+          |    return when (v) {
+          |
+          """.trimMargin(),
+        )
+        for ((index, value) in type.values.withIndex()) {
+          writeUtf8(
+            """
+            |      ${value.kotlin} -> $index
+            |
+            """.trimMargin(),
+          )
+        }
+        writeUtf8(
+          """
+          |      else -> -1
+          |    }
+          |  }
           |
           """.trimMargin(),
         )
       }
-      writeUtf8(
-        $$"""
-        |      else -> -1
-        |    }
-        |  }
-        |
-        """.trimMargin(),
-      )
 
       writeUtf8(
         """

@@ -32,6 +32,19 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "true", rust = "true"),
           ),
         ),
+        SampleType(
+          id = Identifier("string"),
+          mustAllocate = true,
+          witType = "string",
+          kotlinType = "String",
+          rustType = "String",
+          values = listOf(
+            SampleValue(kotlin = "\"hello\"", rust = "\"hello\""),
+            SampleValue(kotlin = "\"\"", rust = "\"\""),
+            SampleValue(kotlin = "\"abc\\u0000def\"", rust = "\"abc\\u{0000}def\""),
+            SampleValue(kotlin = "\"\uD83C\uDF69\"", rust = "\"\uD83C\uDF69\""),
+          ),
+        ),
       ),
     )
 
