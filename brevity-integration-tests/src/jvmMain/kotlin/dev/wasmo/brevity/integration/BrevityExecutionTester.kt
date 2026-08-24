@@ -1,0 +1,369 @@
+package dev.wasmo.brevity.integration
+
+import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
+import dev.wasmo.brevity.withIssueCollector
+import kotlinx.coroutines.CoroutineName
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okio.Buffer
+import okio.FileSystem
+import okio.Path
+import okio.Path.Companion.toPath
+import okio.source
+
+/**
+ * Generate a bunch of code:
+ *  - `.wit`
+ *  - `.kt` manually with string templating
+ *  - `.rs` manually with string templating
+ *  - `.kt` via Brevity
+ *
+ * Then compile and execute the generated code to confirm that types are bridged correctly.
+ *
+ * This uses the Kotlin Toolchain.
+ * https://kotlin-toolchain.org/latest/
+ *
+ * This requires Brevity artifacts are published to Maven Local.
+ *
+ * ```
+ * ./gradlew publishAllPublicationsToMavenLocalRepository
+ * ```
+ */
+class BrevityExecutionTester(
+  val fileSystem: FileSystem = FileSystem.SYSTEM,
+  val name: String,
+  val types: List<SampleType>,
+) {
+  private val layout = ProjectLayout(
+    path = "build/BrevityExecutionTester/$name".toPath(),
+  )
+
+  suspend fun execute() {
+    deleteRecursively()
+
+    coroutineScope {
+      launch {
+        WitTarget(fileSystem, layout, types).generate()
+      }
+      launch {
+        generateKotlinProject()
+      }
+      launch {
+        generateApiKotlinModule()
+      }
+      launch {
+        generateGuestAppKotlinModule()
+      }
+      launch {
+        generateHostAppKotlinModule()
+      }
+      launch {
+        generateGuestAppRustCargoToml()
+      }
+      launch {
+        HostKotlinTarget(fileSystem, layout, types).generate()
+      }
+      launch {
+        GuestRustTarget(fileSystem, layout, types).generate()
+      }
+      launch {
+        GuestKotlinTarget(fileSystem, layout, types).generate()
+      }
+    }
+
+    generateBrevity()
+    compileKotlinHost()
+
+    coroutineScope {
+      launch {
+        compileKotlinGuest()
+        executeKotlinHostKotlinGuest()
+      }
+
+      launch {
+        compileRustGuest()
+        executeKotlinHostRustGuest()
+      }
+    }
+  }
+
+  private suspend fun deleteRecursively() {
+    withContext(Dispatchers.IO + CoroutineName("deleteRecursively")) {
+      fileSystem.deleteRecursively(layout.path)
+    }
+  }
+
+  suspend fun generateBrevity() {
+    withContext(Dispatchers.IO + CoroutineName("generateBrevity")) {
+      withIssueCollector {
+        val generator = WitBridgeGenerator.precompile(
+          fileSystem = fileSystem,
+          packageDirectories = listOf(layout.wit),
+        ) ?: return@withIssueCollector
+
+        for (fileSpec in generator.api.generate()) {
+          fileSpec.writeTo(layout.apiSrc.toFile())
+        }
+        for (fileSpec in generator.guest.generate()) {
+          fileSpec.writeTo(layout.guestSrc.toFile())
+        }
+        for (fileSpec in generator.host.generate()) {
+          fileSpec.writeTo(layout.hostSrc.toFile())
+        }
+      }
+    }
+  }
+
+  suspend fun generateKotlinProject() {
+    withContext(Dispatchers.IO + CoroutineName("generateKotlinProject")) {
+      fileSystem.createDirectories(layout.path)
+      fileSystem.write(layout.path / "project.yaml") {
+        writeUtf8(
+          """
+          |modules:
+          |  - ./api
+          |  - ./guest
+          |  - ./host
+          |
+          """.trimMargin(),
+        )
+      }
+    }
+  }
+
+  suspend fun generateApiKotlinModule() {
+    withContext(Dispatchers.IO + CoroutineName("generateApiKotlinModule")) {
+      fileSystem.createDirectories(layout.api)
+      fileSystem.write(layout.api / "module.yaml") {
+        writeUtf8(
+          """
+          |product:
+          |  type: kmp/lib
+          |  platforms: [jvm, wasmWasi]
+          |
+          |settings:
+          |  kotlin:
+          |    version: 2.4.0
+          |  jvm:
+          |    jdk:
+          |      version: 25
+          |
+          |repositories:
+          |  - mavenLocal
+          |
+          |dependencies:
+          |  - com.squareup.okio:okio:3.16.4
+          |  - dev.wasmo.brevity:brevity:0-testing
+          |  - dev.wasmo.brevity:brevity-wasi-p1:0-testing
+          |  - dev.wasmo.brevity:brevity-wasi-p2:0-testing
+          |
+          |dependencies@jvm:
+          |  - com.dylibso.chicory:runtime:1.7.5
+          |
+          """.trimMargin(),
+        )
+      }
+    }
+  }
+
+  suspend fun generateGuestAppKotlinModule() {
+    withContext(Dispatchers.IO + CoroutineName("generateGuestAppKotlinModule")) {
+      fileSystem.createDirectories(layout.guest)
+      fileSystem.write(layout.guest / "module.yaml") {
+        writeUtf8(
+          """
+          |product:
+          |  type: wasm-wasi/app
+          |
+          |settings:
+          |  kotlin:
+          |    version: 2.4.0
+          |  jvm:
+          |    jdk:
+          |      version: 25
+          |
+          |repositories:
+          |  - mavenLocal
+          |
+          |dependencies:
+          |  - ../api
+          |  - com.squareup.okio:okio:3.16.4
+          |  - dev.wasmo.brevity:brevity:0-testing
+          |
+          """.trimMargin(),
+        )
+      }
+    }
+  }
+
+  suspend fun generateGuestAppRustCargoToml() {
+    withContext(Dispatchers.IO + CoroutineName("generateGuestAppRustCargoToml")) {
+      fileSystem.createDirectories(layout.rust)
+      fileSystem.write(layout.rust / "Cargo.toml") {
+        writeUtf8(
+          """
+          |[package]
+          |name = "brevity-testing"
+          |version = "0.1.0"
+          |edition = "2024"
+          |
+          |[dependencies]
+          |wit-bindgen = "0.58.0"
+          |
+          |[lib]
+          |crate-type = ['cdylib']
+          |
+          """.trimMargin(),
+        )
+      }
+    }
+  }
+
+  suspend fun generateHostAppKotlinModule() {
+    withContext(Dispatchers.IO + CoroutineName("generateHostAppKotlinModule")) {
+      fileSystem.createDirectories(layout.host)
+      fileSystem.write(layout.host / "module.yaml") {
+        writeUtf8(
+          """
+          |product:
+          |  type: jvm/app
+          |
+          |settings:
+          |  kotlin:
+          |    version: 2.4.0
+          |  jvm:
+          |    jdk:
+          |      version: 25
+          |    mainClass: dev.wasmo.brevity.integration.HostMainKt
+          |
+          |repositories:
+          |  - mavenLocal
+          |
+          |dependencies:
+          |  - ../api
+          |  - com.dylibso.chicory:runtime:1.7.5
+          |  - com.squareup.okio:okio:3.16.4
+          |  - com.willowtreeapps.assertk:assertk:0.28.1
+          |  - dev.wasmo.brevity:brevity-wasi-p1:0-testing
+          |  - dev.wasmo.brevity:brevity-wasi-p2:0-testing
+          |  - dev.wasmo.brevity:brevity:0-testing
+          |
+          """.trimMargin(),
+        )
+      }
+    }
+  }
+
+  suspend fun compileKotlinGuest() {
+    executeCommand(
+      "compileKotlinGuest",
+      layout.path,
+      "kotlin",
+      "build",
+      "--module",
+      "guest",
+    )
+  }
+
+  suspend fun compileKotlinHost() {
+    executeCommand(
+      "compileKotlinHost",
+      layout.path,
+      "kotlin",
+      "package",
+      "--module",
+      "host",
+    )
+  }
+
+  suspend fun executeKotlinHostKotlinGuest() {
+    executeKotlinHost("build/tasks/_guest_linkWasmWasi/guest.wasm")
+  }
+
+  suspend fun executeKotlinHostRustGuest() {
+    executeKotlinHost("rust/target/unbundled/unbundled-module0.wasm")
+  }
+
+  suspend fun executeKotlinHost(guestWasm: String) {
+    executeCommand(
+      "executeKotlinHostKotlinGuest",
+      layout.path,
+      "java",
+      "-jar",
+      "build/tasks/_host_executableJarJvm/host-jvm-executable.jar",
+      guestWasm,
+    )
+  }
+
+  suspend fun compileRustGuest() {
+    // Generate .wasm components from Rust sources
+    executeCommand(
+      "compileRustGuest",
+      layout.rust,
+      "cargo",
+      "build",
+      "--target=wasm32-wasip2",
+      "--release",
+    )
+
+    // Unbundle the .wasm component into a .wasm core module
+    executeCommand(
+      "compileRustGuest",
+      layout.rust,
+      "wasm-tools",
+      "component",
+      "unbundle",
+      "--module-dir",
+      "target/unbundled/",
+      "--output",
+      "target/unbundled/component.wasm",
+      "./target/wasm32-wasip2/release/brevity_testing.wasm",
+    )
+  }
+
+  suspend fun executeCommand(
+    name: String,
+    directory: Path,
+    vararg command: String,
+  ) {
+    withContext(Dispatchers.IO + CoroutineName("${this.name}.$name")) {
+      val process = ProcessBuilder()
+        .directory(directory.toFile())
+        .command(*command)
+        .start()
+
+      val stdout = async {
+        Buffer()
+          .apply {
+            writeAll(process.inputStream.source())
+          }
+      }
+
+      val stderr = async {
+        Buffer()
+          .apply {
+            writeAll(process.errorStream.source())
+          }
+      }
+
+      if (process.waitFor() != 0) {
+        stdout.join()
+        stderr.join()
+        throw AssertionError(
+          """
+          |expected process to return normally
+          |
+          |stdout:
+          |${stdout.await().readUtf8().replace("\n", "\n  ")}
+          |
+          |stderr:
+          |${stderr.await().readUtf8().replace("\n", "\n  ")}
+          """.trimMargin(),
+        )
+      }
+    }
+  }
+}
