@@ -63,7 +63,7 @@ class GuestRustTarget(
           }
           writeUtf8(
             """
-            |    panic!("unexpected value {}", v)
+            |    panic!("unexpected value")
             |  }
             |
             """.trimMargin(),
@@ -85,7 +85,7 @@ class GuestRustTarget(
           }
           writeUtf8(
             """
-            |      _ => panic!("unexpected value {}", v)
+            |      _ => panic!("unexpected value")
             |    }
             |  }
             |

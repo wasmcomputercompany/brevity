@@ -10,6 +10,7 @@ class WitTarget(
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val types: List<SampleType>,
+  private val rawWit: String,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("WitTarget")) {
@@ -31,20 +32,22 @@ class WitTarget(
       if (!type.mustAllocate) {
         writeUtf8(
           """
-          |  export pass-as-parameter-${type.idLowerCamel}: func(v: ${type.witType}) -> s32;
+          |  export pass-as-parameter-${type.id}: func(v: ${type.witType}) -> s32;
           |
           """.trimMargin(),
         )
       }
       writeUtf8(
         """
-        |  export pass-as-return-value-${type.idLowerCamel}: func(index: s32) -> ${type.witType};
+        |  export pass-as-return-value-${type.id}: func(index: s32) -> ${type.witType};
         |
         """.trimMargin(),
       )
     }
     writeUtf8(
       """
+      |$rawWit
+      |
       |}
       |
       """.trimMargin(),
