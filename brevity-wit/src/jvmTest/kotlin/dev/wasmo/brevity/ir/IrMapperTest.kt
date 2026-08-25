@@ -67,7 +67,7 @@ class IrMapperTest {
             typeName = IoTypeName.Declared("instant"),
             location = Location("clock.wit", 5, 6),
           )
-      ).isEqualTo(TypeName.Unresolved)
+      ).isEqualTo(null)
 
       assertThat(issues).containsExactly(Issue(
         "unable to find instant in wasi:clocks/wall-clock",
@@ -809,7 +809,7 @@ class IrMapperTest {
     serviceName: String,
     typeName: IoTypeName,
     location: Location = Location("file.wit"),
-  ): TypeName {
+  ): TypeName? {
     context(IrMapper.Context(serviceName.toServiceName())) {
       return typeName.typeNameToIr(location)
     }

@@ -96,7 +96,6 @@ class EncoderFactory(
         ok = typeName.ok?.let { it.kotlinApi to get(it) },
         error = typeName.error?.let { it.kotlinApi to get(it) },
       )
-      is TypeName.Unresolved -> error("no encoder for unresolved type")
     }
   }
 

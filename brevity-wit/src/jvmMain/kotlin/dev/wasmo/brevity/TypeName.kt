@@ -4,11 +4,6 @@ package dev.wasmo.brevity
  * A built-in or resolved type name.
  */
 sealed class TypeName {
-  /**
-   * Unresolved is a special unrenderable type name that is used when a bad reference occurs
-   * during IR lowering.
-   */
-  data object Unresolved : TypeName()
   data object Bool : TypeName()
   data object S8 : TypeName()
   data object S16 : TypeName()

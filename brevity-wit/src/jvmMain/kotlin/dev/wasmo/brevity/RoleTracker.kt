@@ -274,7 +274,6 @@ internal class TypeTraverser(
         TypeName.F64 -> {}
         TypeName.Char -> {}
         TypeName.String -> {}
-        TypeName.Unresolved -> {}
         null -> {}
       }
     }
