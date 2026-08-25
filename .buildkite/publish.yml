@@ -5,7 +5,7 @@ steps:
       - "gradle publishAndReleaseToMavenCentral"
     plugins:
       - docker#v5.13.0:
-          image: wasmo/brevity-ci@sha256:04f5e898051ed3dac03eb4407bce409720e70787dcd7aaef83dc960a911b99f7
+          image: wasmo/brevity-ci@sha256:00a5829f37e64c7c459184ec6312b0d6134bea7ab96ce10c10bc1ee0ac8dcc40
           run: ci-build
           environment:
             - "ORG_GRADLE_PROJECT_mavenCentralUsername"
