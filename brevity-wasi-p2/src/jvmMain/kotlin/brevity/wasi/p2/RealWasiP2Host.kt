@@ -24,18 +24,21 @@ import wit.wasi.sockets.v0_2_0.UdpCreateSocket
 
 /**
  * Implement WASI Preview 2.
+ *
+ * Note: when Rust panics, it checks [environment] for `RUST_BACKTRACE=1`.
  */
 class RealWasiP2Host : Imports.Host {
-  override val environment: Environment
-    get() = TODO("Not yet implemented")
+  override val environment: Environment = RealEnvironment()
   override val exit: Exit
     get() = TODO("Not yet implemented")
   override val stdin: Stdin
     get() = TODO("Not yet implemented")
-  override val stdout: Stdout
-    get() = TODO("Not yet implemented")
-  override val stderr: Stderr
-    get() = TODO("Not yet implemented")
+  override val stdout: Stdout = object : Stdout {
+    override fun getStdout() = RealOutputStream(System.out)
+  }
+  override val stderr: Stderr = object : Stderr {
+    override fun getStderr() = RealOutputStream(System.err)
+  }
   override val terminalStdin: TerminalStdin
     get() = TODO("Not yet implemented")
   override val terminalStdout: TerminalStdout

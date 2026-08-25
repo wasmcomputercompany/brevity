@@ -63,8 +63,20 @@ class HostKotlinTarget(
           )
         }
 
-        writeUtf8(
-          """
+        if (type.compareAsString) {
+          writeUtf8(
+            """
+          |  assertThat(
+          |    world.guest.passAsReturnValue${type.idUpperCamel}($index).toString(),
+          |    "${type.id}.$index.return",
+          |  ).isEqualTo((${value.kotlin}).toString())
+          |
+          |
+          """.trimMargin(),
+          )
+        } else {
+          writeUtf8(
+            """
           |  assertThat(
           |    world.guest.passAsReturnValue${type.idUpperCamel}($index),
           |    "${type.id}.$index.return",
@@ -72,7 +84,8 @@ class HostKotlinTarget(
           |
           |
           """.trimMargin(),
-        )
+          )
+        }
       }
     }
     writeUtf8(

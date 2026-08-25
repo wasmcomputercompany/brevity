@@ -42,26 +42,56 @@ class GuestRustTarget(
         writeUtf8(
           """
           |  fn pass_as_parameter_${type.idLowerSnake}(v: ${type.rustType}) -> i32 {
-          |    match v {
           |
           """.trimMargin(),
         )
-        for ((index, value) in type.values.withIndex()) {
+
+        if (type.compareAsString) {
           writeUtf8(
             """
-            |      ${value.rust} => $index,
+            |    let v_str = v.to_string();
+            |
+            """.trimMargin(),
+          )
+          for ((index, value) in type.values.withIndex()) {
+            writeUtf8(
+              """
+              |    if v_str == (${value.rust}).to_string() { return $index }
+              |
+              """.trimMargin(),
+            )
+          }
+          writeUtf8(
+            """
+            |    panic!("unexpected value {}", v)
+            |  }
+            |
+            """.trimMargin(),
+          )
+        } else {
+          writeUtf8(
+            """
+            |    match v {
+            |
+            """.trimMargin(),
+          )
+          for ((index, value) in type.values.withIndex()) {
+            writeUtf8(
+              """
+              |      ${value.rust} => $index,
+              |
+              """.trimMargin(),
+            )
+          }
+          writeUtf8(
+            """
+            |      _ => panic!("unexpected value {}", v)
+            |    }
+            |  }
             |
             """.trimMargin(),
           )
         }
-        writeUtf8(
-          """
-          |      _ => panic!("unexpected value {}", v)
-          |    }
-          |  }
-          |
-          """.trimMargin(),
-        )
       }
 
       writeUtf8(
