@@ -38,6 +38,7 @@ import okio.source
 class BrevityExecutionTester(
   val fileSystem: FileSystem = FileSystem.SYSTEM,
   val name: String,
+  val rawWit: String = "",
   val types: List<SampleType>,
 ) {
   private val layout = ProjectLayout(
@@ -56,7 +57,7 @@ class BrevityExecutionTester(
       }
 
       val wit = launch {
-        WitTarget(fileSystem, layout, types).generate()
+        WitTarget(fileSystem, layout, types, rawWit).generate()
       }
       val brevityKt = launch {
         wit.join()
@@ -336,7 +337,7 @@ class BrevityExecutionTester(
     executeCommand(
       name,
       layout.path,
-      "java",
+      "${System.getProperty("java.home")}/bin/java",
       "-jar",
       hostJar,
       guestWasm,
