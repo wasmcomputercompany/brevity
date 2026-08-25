@@ -123,13 +123,15 @@ class IrMapper(
   )
 
   context(context: Context, issueCollector: IssueCollector)
-  private fun IoField.fieldToIr() = IrField(
-    documentation = documentation,
-    gate = gate,
-    location = location,
-    name = name,
-    type = type.typeNameToIr(location),
-  )
+  private fun IoField.fieldToIr() = type.typeNameToIr(location)?.let { resolved ->
+    IrField(
+      documentation = documentation,
+      gate = gate,
+      location = location,
+      name = name,
+      type = resolved,
+    )
+  }
 
   context(context: Context)
   private fun IoFlag.flagToIr() = IrFlag(
@@ -148,7 +150,7 @@ class IrMapper(
     gate = gate,
     location = location,
     async = async,
-    parameters = parameters.map { it.parameterToIr() },
+    parameters = parameters.mapNotNull { it.parameterToIr() },
     returnType = returnType?.typeNameToIr(location),
     functionName = when {
       worldFunction -> FunctionName.World(
@@ -191,12 +193,14 @@ class IrMapper(
   }
 
   context(context: Context, issueCollector: IssueCollector)
-  private fun IoParameter.parameterToIr() = IrParameter(
-    documentation = documentation,
-    location = location,
-    name = name,
-    type = type.typeNameToIr(location),
-  )
+  private fun IoParameter.parameterToIr() = type.typeNameToIr(location)?.let { resolved ->
+    IrParameter(
+      documentation = documentation,
+      location = location,
+      name = name,
+      type = resolved,
+    )
+  }
 
   context(context: Context, issueCollector: IssueCollector)
   private fun IoEnum.enumToIr() = IrEnum(
@@ -222,7 +226,7 @@ class IrMapper(
     gate = gate,
     location = location,
     type = TypeName.Declared(context.serviceName, name),
-    fields = fields.map { it.fieldToIr() },
+    fields = fields.mapNotNull { it.fieldToIr() },
   )
 
   context(context: Context, issueCollector: IssueCollector)
@@ -242,13 +246,15 @@ class IrMapper(
   )
 
   context(context: Context, issueCollector: IssueCollector)
-  private fun IoTypeAlias.typeAliasToIr() = IrTypeAlias(
-    documentation = documentation,
-    gate = gate,
-    location = location,
-    type = TypeName.Declared(context.serviceName, name),
-    target = target.typeNameToIr(location),
-  )
+  private fun IoTypeAlias.typeAliasToIr() = target.typeNameToIr(location)?.let { resolvedTarget ->
+    IrTypeAlias(
+      documentation = documentation,
+      gate = gate,
+      location = location,
+      type = TypeName.Declared(context.serviceName, name),
+      target = resolvedTarget,
+    )
+  }
 
   context(context: Context, issueCollector: IssueCollector)
   private fun IoVariant.variantToIr() = IrVariant(
@@ -277,8 +283,15 @@ class IrMapper(
     name = name,
   )
 
+  /**
+   * Resolve an [IoTypeName] to an IR [TypeName].
+   *
+   * Typename resolution can fail, yielding null and raising an issue. It's still possible to
+   * build an IR tree under these circumstances by propagating nulls and dropping values from lists,
+   * but obviously that IR tree is no longer an accurate representation of the source.
+   */
   context(context: Context, issueCollector: IssueCollector)
-  internal fun IoTypeName.typeNameToIr(referenceSite: Location): TypeName {
+  internal fun IoTypeName.typeNameToIr(referenceSite: Location): TypeName? {
     return when (this) {
       IoTypeName.Bool -> TypeName.Bool
       IoTypeName.S8 -> TypeName.S8
@@ -293,20 +306,28 @@ class IrMapper(
       IoTypeName.F64 -> TypeName.F64
       IoTypeName.Char -> TypeName.Char
       IoTypeName.String -> TypeName.String
-      is IoTypeName.Borrow -> TypeName.Borrow(type.typeNameToIr(referenceSite))
+      is IoTypeName.Borrow -> type.typeNameToIr(referenceSite)?.let { TypeName.Borrow(it) }
       is IoTypeName.Declared -> declaredTypeToIr(referenceSite)
-      is IoTypeName.Future -> TypeName.Future(type?.typeNameToIr(referenceSite))
-      is IoTypeName.List -> TypeName.List(type.typeNameToIr(referenceSite), size)
-      is IoTypeName.Map -> TypeName.Map(key.typeNameToIr(referenceSite), value.typeNameToIr(referenceSite))
-      is IoTypeName.Option -> TypeName.Option(type.typeNameToIr(referenceSite))
-      is IoTypeName.Result -> TypeName.Result(ok?.typeNameToIr(referenceSite), error?.typeNameToIr(referenceSite))
+      is IoTypeName.Future -> type?.typeNameToIr(referenceSite)?.let { TypeName.Future(it) }
+      is IoTypeName.List -> type.typeNameToIr(referenceSite)?.let { TypeName.List(it, size) }
+      is IoTypeName.Map -> (key.typeNameToIr(referenceSite) to value.typeNameToIr(referenceSite)).let { (resolvedKey, resolvedValue) ->
+        if (resolvedKey != null && resolvedValue != null) {
+          TypeName.Map(resolvedKey, resolvedValue)
+        } else {
+          null
+        }
+      }
+      is IoTypeName.Option -> type.typeNameToIr(referenceSite)?.let { TypeName.Option(it) }
+      is IoTypeName.Result -> (ok?.typeNameToIr(referenceSite) to error?.typeNameToIr(referenceSite)).let { (resolvedOk, resolvedError) ->
+        TypeName.Result(resolvedOk, resolvedError)
+      }
       is IoTypeName.Stream -> TypeName.Stream(type?.typeNameToIr(referenceSite))
-      is IoTypeName.Tuple -> TypeName.Tuple(types.map { it.typeNameToIr(referenceSite) })
+      is IoTypeName.Tuple -> TypeName.Tuple(types.mapNotNull { it.typeNameToIr(referenceSite) })
     }
   }
 
   context(context: Context, issueCollector: IssueCollector)
-  internal fun IoTypeName.Declared.declaredTypeToIr(referenceSite: Location): TypeName {
+  internal fun IoTypeName.Declared.declaredTypeToIr(referenceSite: Location): TypeName? {
     fun reportIssue() {
       issueCollector.report(Issue(
         "unable to find ${this@declaredTypeToIr} in ${context.serviceName}",
@@ -315,7 +336,7 @@ class IrMapper(
     }
     val witPackage = ioSymbolTable[context.serviceName.packageName] ?: run {
       reportIssue()
-      return TypeName.Unresolved
+      return null
     }
     val declarations = sequence {
       ioSymbolTable[context.serviceName]?.let { service ->
@@ -360,7 +381,7 @@ class IrMapper(
 
     reportIssue()
 
-    return TypeName.Unresolved
+    return null
   }
 
   /** Collect includes recursively. */
