@@ -166,13 +166,17 @@ RUN --mount=type=cache,target=/downloads,rw \
 
 # Kotlin toolchain.
 # We run '--version' because it downloads its dependencies on the first run.
-ENV KOTLIN_CLI_NO_WELCOME_BANNER="1"
+ENV KOTLIN_CLI_VERSION="0.12.0"
+ENV KOTLIN_CLI_HOME="/root/.local/bin"
 ENV KOTLIN_CLI_JAVA_HOME="$JAVA_HOME"
-ENV HOME="/root"
-ENV PATH="/root/.local/bin:$PATH"
+ENV KOTLIN_CLI_NO_WELCOME_BANNER="1"
+ENV PATH="$KOTLIN_CLI_HOME:$PATH"
 RUN echo "Installing Kotlin toolchain" \
     && set -o errexit -o nounset \
     && curl -fsSL https://kotl.in/install.sh | sh \
-    && kotlin --version
+    && cd "$KOTLIN_CLI_HOME" \
+    && kotlin update --target-version "$KOTLIN_CLI_VERSION" --create \
+    && kotlin --version \
+    && cd / \
 
 CMD ["gradle"]
