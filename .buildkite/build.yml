@@ -5,7 +5,7 @@ steps:
       - "gradle check"
     plugins:
       - docker#v5.13.0:
-          image: wasmo/brevity-ci@sha256:95d56ca6811c4466dba041868ec19d381c0c2ff855d85680e31ac5f5d2b58849
+          image: wasmo/brevity-ci@sha256:04f5e898051ed3dac03eb4407bce409720e70787dcd7aaef83dc960a911b99f7
           run: ci-build
           environment:
             - "BUILDKITE_ANALYTICS_TOKEN"

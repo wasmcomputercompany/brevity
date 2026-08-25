@@ -86,7 +86,7 @@ class BrevityExecutionTester(
         guestKt.join()
         kotlinToolchain.join()
         compileKotlinGuest()
-        "build/tasks/_guest_linkWasmWasi/guest.wasm"
+        "build/artifacts/CompiledWebArtifact/guestwasmWasidebug/kotlin-output/guest.wasm"
       }
 
       val guestRsToml = launch {
