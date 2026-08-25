@@ -160,6 +160,54 @@ class ValidateUniquePackageNamesTest {
       otherLocation,
     )
   }
+
+  @Test
+  fun caseInsensitiveCollisionsDetected() {
+    val cliLocation = Location("cli.wit", 1, 1)
+    val cliExtraLocation = Location("cli-extra.wit", 1, 1)
+    val cliPackage = IoToplevelWitPackage(
+      packageName = "wasi:cli".toPackageName(),
+      files = listOf(
+        IoWitFile(
+          location = cliLocation,
+          packageName = "wasi:cli".toPackageName(),
+        ),
+        IoWitFile(
+          location = cliExtraLocation,
+          packageName = "wasi:cli".toPackageName(),
+        ),
+      ),
+    )
+    val otherLocation = Location("other/other.wit")
+    val inlinePackage = IoInlinePackage(
+      packageName = "wasi:CLI".toPackageName(),
+      location = otherLocation.at(1, 2),
+      declarations = emptyList(),
+    )
+    val otherPackage = IoToplevelWitPackage(
+      packageName = "wasi:other".toPackageName(),
+      files = listOf(
+        IoWitFile(
+          location = otherLocation,
+          packageName = "wasi:other".toPackageName(),
+          items = listOf(
+            inlinePackage,
+          ),
+        ),
+      ),
+    )
+    val issueCollector = IssueCollector()
+
+    val result = with(issueCollector) { validateUniquePackageNames(listOf(cliPackage, otherPackage)) }
+    assertThat(result).isNull()
+
+    assertThat(issueCollector.issues.single().locations).containsExactlyInAnyOrder(
+      otherLocation.at(1, 2),
+      cliLocation,
+      cliExtraLocation,
+    )
+  }
+
 }
 
 inline fun <reified T : Any> Any.assertIsInstanceOf(): T {
