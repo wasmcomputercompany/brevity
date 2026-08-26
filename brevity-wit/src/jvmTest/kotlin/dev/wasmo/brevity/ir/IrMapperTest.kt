@@ -62,17 +62,168 @@ class IrMapperTest {
 
     withIssueCollector {
       assertThat(
-          irMapper.getType(
-            serviceName = "wasi:clocks/wall-clock",
-            typeName = IoTypeName.Declared("instant"),
-            location = Location("clock.wit", 5, 6),
-          )
+        irMapper.getType(
+          serviceName = "wasi:clocks/wall-clock",
+          typeName = IoTypeName.Declared("instant"),
+          location = Location("clock.wit", 5, 6),
+        ),
       ).isEqualTo(null)
 
-      assertThat(issues).containsExactly(Issue(
-        "unable to find instant in wasi:clocks/wall-clock",
-        Location("clock.wit", 5, 6),
-      ))
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find instant in wasi:clocks/wall-clock",
+          Location("clock.wit", 5, 6),
+        ),
+      )
+
+      clear()
+
+      assertThat(
+        irMapper.getType(
+          serviceName = "wasi:clocks/wall-clock",
+          typeName = IoTypeName.Declared("DATETIME"),
+          location = Location("clock.wit", 5, 6),
+        ),
+      ).isEqualTo(null)
+
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find DATETIME in wasi:clocks/wall-clock, maybe you meant datetime at clock.wit:4:5",
+          Location("clock.wit", 5, 6),
+        ),
+      )
+
+      clear()
+    }
+  }
+
+  @Test
+  fun `find local symbols with bad package references`() = withIssueCollector {
+    val clockLocation = Location("clock.wit")
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "wasi:clocks".toPackageName(),
+        files = listOf(
+          """
+          |package wasi:clocks;
+          |
+          |interface wall-clock {
+          |    record datetime {
+          |        seconds: u64,
+          |    }
+          |}
+          """.trimMargin().toWitFile(clockLocation),
+        ),
+      ),
+    )
+    val irMapper = IrMapper(ioPackages)
+
+    assertThat(
+      irMapper.getType(
+        serviceName = "wasi:clocks/wall-clock",
+        typeName = IoTypeName.Declared("datetime"),
+      ),
+    ).isEqualTo(
+      TypeNameDeclared(
+        serviceName = "wasi:clocks/wall-clock",
+        typeName = "datetime",
+      ),
+    )
+
+    withIssueCollector {
+      assertThat(
+        irMapper.getType(
+          serviceName = "wasi:clucks/wall-clock",
+          typeName = IoTypeName.Declared("datetime"),
+          location = Location("clock.wit", 5, 6),
+        ),
+      ).isEqualTo(null)
+
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find datetime in wasi:clucks/wall-clock, no package found by that name",
+          Location("clock.wit", 5, 6),
+        ),
+      )
+
+      clear()
+    }
+
+    withIssueCollector {
+      assertThat(
+        irMapper.getType(
+          serviceName = "wasi:CLOCKS/wall-clock",
+          typeName = IoTypeName.Declared("datetime"),
+          location = Location("clock.wit", 5, 6),
+        ),
+      ).isEqualTo(null)
+
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find datetime in wasi:CLOCKS/wall-clock, no package found by that name, maybe you meant wasi:clocks",
+          Location("clock.wit", 5, 6),
+        ),
+      )
+
+      clear()
+    }
+  }
+
+  @Test
+  fun `find local symbols with bad service references`() = withIssueCollector {
+    val clockLocation = Location("clock.wit")
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "wasi:clocks".toPackageName(),
+        files = listOf(
+          """
+          |package wasi:clocks;
+          |
+          |interface wall-clock {
+          |    record datetime {
+          |        seconds: u64,
+          |    }
+          |}
+          """.trimMargin().toWitFile(clockLocation),
+        ),
+      ),
+    )
+    val irMapper = IrMapper(ioPackages)
+
+    withIssueCollector {
+      assertThat(
+        irMapper.getType(
+          serviceName = "wasi:clocks/wall-cluck",
+          typeName = IoTypeName.Declared("datetime"),
+          location = Location("clock.wit", 5, 6),
+        ),
+      ).isEqualTo(null)
+
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find datetime in wasi:clocks/wall-cluck, no service found by that name",
+          Location("clock.wit", 5, 6),
+        ),
+      )
+
+      clear()
+    }
+
+    withIssueCollector {
+      assertThat(
+        irMapper.getType(
+          serviceName = "wasi:clocks/wall-CLOCK",
+          typeName = IoTypeName.Declared("datetime"),
+          location = Location("clock.wit", 5, 6),
+        ),
+      ).isEqualTo(null)
+
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find datetime in wasi:clocks/wall-CLOCK, no service found by that name, maybe you meant wasi:clocks/wall-clock",
+          Location("clock.wit", 5, 6),
+        ),
+      )
 
       clear()
     }

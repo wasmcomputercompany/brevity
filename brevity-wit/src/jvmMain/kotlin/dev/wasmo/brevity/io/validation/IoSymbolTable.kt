@@ -14,9 +14,22 @@ class IoSymbolTable(
   private val packageNameMap: Map<PackageName, IoWitPackage>,
   private val serviceNameMap: Map<ServiceName, IoService>,
 ) {
+  private val packageNameCaseInsensitiveMatchMap by lazy {
+    packageNameMap.map { (packageName, _) -> packageName.normalized() to packageName }.toMap()
+  }
+  private val serviceNameCaseInsensitiveMatchMap by lazy {
+    serviceNameMap.map { (serviceName, _) -> serviceName.normalized() to serviceName }.toMap()
+  }
+
   operator fun get(packageName: PackageName?): IoWitPackage? = packageNameMap[packageName]
 
   operator fun get(serviceName: ServiceName?): IoService? = serviceNameMap[serviceName]
+
+  fun getCaseInsensitiveMatch(packageName: PackageName?): PackageName?
+    = packageNameCaseInsensitiveMatchMap[packageName?.normalized()]
+
+  fun getCaseInsensitiveMatch(serviceName: ServiceName?): ServiceName?
+    = serviceNameCaseInsensitiveMatchMap[serviceName?.normalized()]
 }
 
 context(issueCollector: IssueCollector)
