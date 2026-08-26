@@ -519,12 +519,7 @@ class IrMapper(
   }
 }
 
-private fun IoUse.Item.matches(typeName: IoTypeName.Declared): Boolean {
-  return when {
-    alias != null -> alias == typeName.name
-    else -> type == typeName
-  }
-}
+private fun IoUse.Item.matches(typeName: IoTypeName.Declared): Boolean = name == typeName.name
 
 private val IoWitPackage.items: List<IoWitFile.Item>
   get() = when (this) {
