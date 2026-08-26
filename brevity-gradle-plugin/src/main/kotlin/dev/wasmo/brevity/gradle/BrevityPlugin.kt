@@ -30,7 +30,7 @@ internal class RealBrevityExtension(
         isCanBeResolved = true
       }.also { cliConfiguration ->
         project.dependencies {
-          cliConfiguration(project.project(":brevity-cli"))
+          cliConfiguration(project.brevityDependency("brevity-cli"))
         }
       }
     } catch (_: InvalidUserDataException) {
@@ -60,6 +60,17 @@ internal class RealBrevityExtension(
           generatedKotlin.srcDir(brevityTask.map { it.outputKotlinJvmMain })
         }
       }
+    }
+  }
+
+  /**
+   * Returns either an internal project dependency (when running within Brevity's own build), or a
+   * regular Maven dependency otherwise.
+   */
+  internal fun Project.brevityDependency(artifactId: String): Any {
+    return when {
+      extensions.findByName("brevityBuild") != null -> project(":$artifactId")
+      else -> "dev.wasmo.brevity:$artifactId:$BREVITY_VERSION"
     }
   }
 }
