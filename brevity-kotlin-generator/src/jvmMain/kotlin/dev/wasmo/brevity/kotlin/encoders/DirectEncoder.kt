@@ -77,6 +77,9 @@ object ByteEncoder : DirectEncoder(
   override fun valueToCoreType(value: CodeBlock) =
     CodeBlock.of("%L.toInt()", value)
 
+  override fun valueToIntegerType(value: CodeBlock): CodeBlock =
+    CodeBlock.of("%L.toByte()", value)
+
   override fun coreTypeToValue(coreType: CodeBlock) =
     CodeBlock.of("%L.toByte()", coreType)
 }
@@ -148,7 +151,7 @@ object UIntEncoder : DirectEncoder(
 }
 
 object ULongEncoder : DirectEncoder(
-  alignment = 4,
+  alignment = 8,
   coreType = CoreType.I64,
   integerType = IntegerType.S64,
 ) {

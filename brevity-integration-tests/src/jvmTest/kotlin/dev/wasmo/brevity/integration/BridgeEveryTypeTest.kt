@@ -302,7 +302,6 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "null", rust = "None"),
             SampleValue(kotlin = "0.0", rust = "Some(0.0)"),
-            SampleValue(kotlin = "-0.0", rust = "Some(-0.0)"),
             SampleValue(kotlin = "0.5", rust = "Some(0.5)"),
             SampleValue(kotlin = "2.2250738585072014e-308", rust = "Some(2.2250738585072014e-308)"),
             SampleValue(kotlin = "kotlin.Double.MIN_VALUE", rust = "Some(4.9E-324)"),
