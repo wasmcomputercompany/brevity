@@ -418,7 +418,7 @@ class BrevityExecutionTester(
         stderr.join()
         throw AssertionError(
           """
-          |expected process to return normally
+          |expected process $name to return normally
           |
           |stdout:
           |${stdout.await().readUtf8().replace("\n", "\n  ")}
