@@ -284,4 +284,76 @@ class ValidateUniqueServiceNamesTest {
       .isEqualTo(cliInterface)
 
   }
+
+  @Test
+  fun collisionsAreCaseInsensitive() {
+    val firstLocation = Location("first.wit")
+    val secondLocation = Location("second.wit")
+    val cliInterface = IoInterface(
+      location = firstLocation.at(1, 2),
+      name = "MONOTONIC-clock",
+    )
+    val duplicateCliInterface = IoInterface(
+      location = secondLocation.at(1, 3),
+      name = "monotonic-clock",
+    )
+    val cliPackage = IoToplevelWitPackage(
+      packageName = "wasi:cli".toPackageName(),
+      files = listOf(
+        IoWitFile(
+          location = firstLocation,
+          packageName = "wasi:cli".toPackageName(),
+          items = listOf(cliInterface),
+        ),
+        IoWitFile(
+          location = secondLocation,
+          packageName = "wasi:cli".toPackageName(),
+          items = listOf(duplicateCliInterface),
+        ),
+      ),
+    )
+    val otherLocation = Location("other/other.wit")
+    val inlineInterface = IoInterface(
+      location = otherLocation.at(3, 4),
+      name = "polytonic-clock",
+    )
+    val inlinePackage = IoInlinePackage(
+      packageName = "wasi:inline".toPackageName(),
+      location = otherLocation.at(1, 2),
+      declarations = listOf(inlineInterface),
+    )
+    val otherWorld = IoWorld(
+      location = otherLocation.at(5, 6),
+      name = "clocks",
+    )
+    val otherPackage = IoToplevelWitPackage(
+      packageName = "wasi:other".toPackageName(),
+      files = listOf(
+        IoWitFile(
+          location = otherLocation,
+          packageName = "wasi:other".toPackageName(),
+          items = listOf(
+            inlinePackage,
+            otherWorld,
+          ),
+        ),
+      ),
+    )
+    val packages = listOf(cliPackage, otherPackage)
+    val issueCollector = IssueCollector()
+
+    val result = with(issueCollector) { validateUniqueServiceNames(packages) }
+    assertThat(result).isNull()
+
+    assertThat(issueCollector.issues.single()).isEqualTo(
+      Issue(
+        "Duplicate definitions of wasi:cli/monotonic-clock",
+        listOf(
+          Location("first.wit", 1, 2),
+          Location("second.wit", 1, 3),
+        ),
+      ),
+    )
+  }
+
 }

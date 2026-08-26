@@ -21,7 +21,7 @@ fun validateUniquePackageNames(
   val witPackageMap = mutableMapOf<PackageName, MutableList<IoWitPackage>>()
 
   fun addPackage(packageName: PackageName, witPackage: IoWitPackage) {
-    witPackageMap.getOrPut(packageName) { mutableListOf() }.add(witPackage)
+    witPackageMap.getOrPut(packageName.normalized()) { mutableListOf() }.add(witPackage)
   }
   for (topLevelPackage in toplevelPackages) {
     addPackage(topLevelPackage.packageName, topLevelPackage)
@@ -82,7 +82,7 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>):
       is IoWorld -> service.items
     }.forEach { validateDeclaration(it) }
 
-    services.getOrPut(serviceName) { mutableListOf() }.add(service)
+    services.getOrPut(serviceName.normalized()) { mutableListOf() }.add(service)
   }
 
   for (pkg in toplevelPackages) {

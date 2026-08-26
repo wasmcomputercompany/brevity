@@ -9,6 +9,8 @@ data class ServiceName(
   val packageName: PackageName,
   val name: Identifier,
 ) {
+  fun normalized() = ServiceName(packageName.normalized(), name.normalized())
+
   val usePath: UsePath
     get() = UsePath(packageName, name)
 

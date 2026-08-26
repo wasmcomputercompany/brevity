@@ -2,6 +2,8 @@ package dev.wasmo.brevity
 
 sealed interface Identifier {
   val name: String
+
+  fun normalized(): Identifier
 }
 
 /**
@@ -18,12 +20,16 @@ sealed interface Identifier {
 @JvmInline
 private value class MalformedIdentifier(
   override val name: String,
-): Identifier
+): Identifier {
+  override fun normalized(): Identifier = MalformedIdentifier(name.lowercase())
+}
 
 @JvmInline
 value class WitIdentifier internal constructor(
   override val name: String,
 ): Identifier {
+  override fun normalized(): Identifier = WitIdentifier(name.lowercase())
+
   override fun toString() = name
   /**
    * List of components that constitute this identifier.
