@@ -35,6 +35,18 @@ gradlePlugin {
   }
 }
 
+val copyKotlinTemplates = tasks.register<Copy>("copyKotlinTemplates") {
+  from("src/main/kotlinTemplates")
+  into(layout.buildDirectory.dir("kotlinTemplates"))
+  filteringCharset = Charsets.UTF_8.toString()
+  expand("BREVITY_VERSION" to project.version.toString())
+}
+sourceSets {
+  main {
+    kotlin.srcDir(copyKotlinTemplates.map { it.outputs })
+  }
+}
+
 project.plugins.withType<MavenPublishBasePlugin> {
   project.extensions.configure<MavenPublishBaseExtension> {
     configure(
