@@ -135,7 +135,7 @@ fun IoIncludeItem(
   gate = gate,
   location = location,
   type = IoTypeName.Declared(type),
-  alias = Identifier(alias),
+  name = Identifier(alias),
 )
 
 fun IoInterface(

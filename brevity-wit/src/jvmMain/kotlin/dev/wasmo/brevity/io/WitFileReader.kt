@@ -870,7 +870,7 @@ internal class WitFileReader(
             gate = itemGate,
             location = itemLocation,
             type = type,
-            alias = alias,
+            name = alias,
           )
         }
       }

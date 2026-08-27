@@ -38,6 +38,13 @@ sealed interface IoDeclaration : IoElement {
   val gate: Gate?
 }
 
+/**
+ * Common interface for anything that has an identifier that functions as a legible name.
+ */
+sealed interface IoNamedDeclaration : IoDeclaration {
+  val name: Identifier
+}
+
 sealed interface IoService: IoDeclaration {
   val name: Identifier
 }
@@ -47,9 +54,7 @@ sealed interface IoWitPackage {
   val packageName: PackageName
 }
 
-sealed interface IoTypeDeclaration : IoDeclaration, IoInterface.Item, IoWorld.Item {
-  val name: Identifier
-}
+sealed interface IoTypeDeclaration : IoNamedDeclaration, IoInterface.Item, IoWorld.Item
 
 /**
  * An inline package.
@@ -124,21 +129,21 @@ data class IoField(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  val name: Identifier,
+  override val name: Identifier,
   val type: IoTypeName,
-) : IoDeclaration
+) : IoNamedDeclaration
 
 data class IoFunction(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
+  override val name: Identifier,
   val async: Boolean = false,
   val static: Boolean = false,
   val constructor: Boolean = false,
-  val name: Identifier,
   val parameters: List<IoParameter>,
   val returnType: IoTypeName? = null,
-) : IoDeclaration, IoWorld.Api, IoInterface.Item
+) : IoNamedDeclaration, IoWorld.Api, IoInterface.Item
 
 data class IoVariant(
   override val documentation: Documentation? = null,
@@ -160,16 +165,18 @@ data class IoCase(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  val name: Identifier,
+  override val name: Identifier,
   val type: IoTypeName? = null,
-) : IoDeclaration
+) : IoNamedDeclaration
 
 data class IoParameter(
-  val documentation: Documentation? = null,
-  val location: Location,
-  val name: Identifier,
+  override val documentation: Documentation? = null,
+  override val location: Location,
+  override val name: Identifier,
   val type: IoTypeName,
-)
+) : IoNamedDeclaration {
+  override val gate: Gate? = null
+}
 
 data class IoFlags(
   override val documentation: Documentation? = null,
@@ -183,8 +190,8 @@ data class IoFlag(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  val name: Identifier,
-) : IoDeclaration
+  override val name: Identifier,
+) : IoNamedDeclaration
 
 data class IoTypeAlias(
   override val documentation: Documentation? = null,
@@ -219,13 +226,17 @@ data class IoUse(
   val path: UsePath,
   val items: List<Item>,
 ) : IoDeclaration, IoInterface.Item, IoWorld.Item {
+
   data class Item(
     override val documentation: Documentation? = null,
     override val gate: Gate? = null,
     override val location: Location,
     val type: IoTypeName.Declared,
     val alias: Identifier? = null,
-  ) : IoDeclaration
+  ) : IoNamedDeclaration {
+    override val name: Identifier
+      get() = alias ?: type.name
+  }
 }
 
 data class IoExternalApi(
@@ -255,7 +266,7 @@ data class IoInclude(
     override val documentation: Documentation? = null,
     override val gate: Gate? = null,
     override val location: Location,
+    override val name: Identifier,
     val type: IoTypeName.Declared,
-    val alias: Identifier,
-  ) : IoDeclaration
+  ) : IoNamedDeclaration
 }

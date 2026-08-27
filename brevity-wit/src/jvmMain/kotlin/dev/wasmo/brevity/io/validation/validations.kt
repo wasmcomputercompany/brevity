@@ -4,13 +4,27 @@ import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.io.IoCase
 import dev.wasmo.brevity.io.IoDeclaration
+import dev.wasmo.brevity.io.IoEnum
+import dev.wasmo.brevity.io.IoExternalApi
+import dev.wasmo.brevity.io.IoField
+import dev.wasmo.brevity.io.IoFlag
 import dev.wasmo.brevity.io.IoFlags
+import dev.wasmo.brevity.io.IoFunction
+import dev.wasmo.brevity.io.IoInclude
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoInterface
+import dev.wasmo.brevity.io.IoNamedDeclaration
+import dev.wasmo.brevity.io.IoParameter
+import dev.wasmo.brevity.io.IoRecord
+import dev.wasmo.brevity.io.IoResource
 import dev.wasmo.brevity.io.IoService
 import dev.wasmo.brevity.io.IoTopLevelUse
 import dev.wasmo.brevity.io.IoToplevelWitPackage
+import dev.wasmo.brevity.io.IoTypeAlias
+import dev.wasmo.brevity.io.IoUse
+import dev.wasmo.brevity.io.IoVariant
 import dev.wasmo.brevity.io.IoWitPackage
 import dev.wasmo.brevity.io.IoWorld
 
@@ -77,6 +91,7 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>):
   val services = mutableMapOf<ServiceName, MutableList<IoService>>()
 
   fun addService(serviceName: ServiceName, service: IoService) {
+    validateUniqueInternalNames(service)
     when (service) {
       is IoInterface -> service.items
       is IoWorld -> service.items
@@ -143,7 +158,99 @@ private fun processInlinePackage(
 
 context(issueCollector: IssueCollector)
 fun validateDeclaration(decl: IoDeclaration) {
+  validateFlagCount(decl)
+
+  validateUniqueInternalNames(decl)
+}
+
+context(issueCollector: IssueCollector)
+private fun validateUniqueInternalNames(decl: IoDeclaration) {
+  val namedDeclarations: List<IoNamedDeclaration> = when (decl) {
+    is IoFlags -> decl.flags
+    is IoFunction -> decl.parameters
+    // This only handles collisions within an alias list. The following are not
+    // handled and, since the inclusion target is not yet resolved, cannot be handled before
+    // lowering to IR:
+    //
+    // * Collisions by an alias against an included name
+    // * Collisions by any included name against names at the inclusion site
+    is IoInclude -> decl.items
+    is IoInterface -> decl.items.filterIsInstance<IoNamedDeclaration>()
+    is IoRecord -> decl.fields
+    is IoResource -> decl.functions
+    is IoVariant -> decl.cases
+    is IoUse -> decl.items
+    is IoWorld -> decl.items.filterIsInstance<IoNamedDeclaration>()
+
+    // Names defined in packages do need to be unique, but they are already handled by the service
+    // name validator which also works across files
+    is IoInlinePackage -> return
+
+    // Declarations without need of internal duplicate checks
+    is IoCase,
+    is IoExternalApi,
+    is IoField,
+    is IoFlag,
+    is IoInclude.Item,
+    is IoEnum,
+    is IoTypeAlias,
+    is IoTopLevelUse,
+    is IoUse.Item,
+    is IoParameter,
+      -> return
+  }
+
+  val collisions = namedDeclarations.groupBy { it.name.normalized() }
+    .filterValues { it.size > 1 }
+
+  for ((normalizedName, declarations) in collisions) {
+    val firstName = declarations.first().name
+    val displayName = if (declarations.all { it.name == firstName }) {
+      firstName
+    } else {
+      normalizedName
+    }
+
+    val thingName = when (decl) {
+      is IoFlags -> "flags"
+      is IoFunction -> "parameters"
+      is IoInclude -> "include aliases"
+      is IoInterface -> "interface items"
+      is IoRecord -> "fields"
+      is IoResource -> "functions"
+      is IoVariant -> "cases"
+      is IoUse -> "use"
+      is IoWorld -> "world items"
+
+      is IoCase,
+      is IoField,
+      is IoFlag,
+      is IoInclude.Item,
+      is IoParameter,
+      is IoEnum,
+      is IoTypeAlias,
+      is IoUse.Item,
+      is IoExternalApi,
+      is IoInlinePackage,
+      is IoTopLevelUse,
+        // None of these have subnames and so this should not happen.
+        // If it does, though... hello, friend. You are now one step closer.
+        -> "prisencolinensinainciusols"
+    }
+
+    issueCollector.report(
+      Issue(
+        "Duplicate $thingName named $displayName",
+        declarations.map { it.location },
+      ),
+    )
+  }
+}
+
+context(issueCollector: IssueCollector)
+private fun validateFlagCount(decl: IoDeclaration) {
   if (decl !is IoFlags) return
+
   val flagCount = decl.flags.size
   if (flagCount > 32) {
     issueCollector.report(
