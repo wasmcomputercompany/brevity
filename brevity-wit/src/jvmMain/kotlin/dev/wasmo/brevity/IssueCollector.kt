@@ -2,6 +2,7 @@
 
 package dev.wasmo.brevity
 
+import kotlin.collections.plus
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -16,7 +17,7 @@ class IssueCollector private constructor(
   val issues: List<Issue> = _issues
 
   fun report(issue: Issue) {
-    _issues += issue
+    _issues += issue.copy(locationStack = locationStack)
   }
 
   fun throwIfNotEmpty() {
@@ -27,13 +28,17 @@ class IssueCollector private constructor(
     }
   }
 
-  fun <T> pushIssueLocation(location: Location, block: IssueCollector.() -> T): T {
-    contract {
-      callsInPlace(block, InvocationKind.EXACTLY_ONCE)
-    }
-    val issueCollector = IssueCollector(_issues, locationStack + location)
-    return issueCollector.block()
+  internal fun pushIssueLocation(location: Location)
+    = IssueCollector(_issues, locationStack + location)
+}
+
+context(issueCollector: IssueCollector)
+fun <T> pushIssueLocation(location: Location, block: IssueCollector.() -> T): T {
+  contract {
+    callsInPlace(block, InvocationKind.EXACTLY_ONCE)
   }
+  val issueCollector = issueCollector.pushIssueLocation(location)
+  return issueCollector.block()
 }
 
 /**

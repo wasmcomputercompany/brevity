@@ -17,6 +17,10 @@ class WitException(
         append("\tat $location")
       }
     }
+    for (contextualLocation in issue.locationStack) {
+      appendLine()
+      append("\twithin $contextualLocation")
+    }
   },
 ) {
   constructor(

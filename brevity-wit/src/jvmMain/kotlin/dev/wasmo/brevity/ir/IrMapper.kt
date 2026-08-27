@@ -35,6 +35,7 @@ import dev.wasmo.brevity.io.IoWitPackage
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.UsePath
 import dev.wasmo.brevity.io.validation.IoSymbolTable
+import dev.wasmo.brevity.pushIssueLocation
 
 class IrMapper(
   private val packages: List<IoToplevelWitPackage>,
@@ -84,7 +85,7 @@ class IrMapper(
   }
 
   context(builder: PackageBuilder, issueCollector: IssueCollector)
-  private fun IoInterface.interfaceToIr(packageName: PackageName) {
+  private fun IoInterface.interfaceToIr(packageName: PackageName) = pushIssueLocation(location) {
     val serviceName = ServiceName(packageName, name)
     context(Context(serviceName)) {
       builder.services += IrInterface(
@@ -230,7 +231,8 @@ class IrMapper(
   )
 
   context(context: Context, issueCollector: IssueCollector)
-  private fun IoResource.resourceToIr() = IrResource(
+  private fun IoResource.resourceToIr() = pushIssueLocation(this.location) {
+    IrResource(
     documentation = documentation,
     gate = gate,
     location = location,
@@ -244,6 +246,7 @@ class IrMapper(
       add(dropFunction())
     },
   )
+  }
 
   context(context: Context, issueCollector: IssueCollector)
   private fun IoTypeAlias.typeAliasToIr() = target.typeNameToIr(location)?.let { resolvedTarget ->
@@ -423,10 +426,10 @@ class IrMapper(
 
   /** Collect includes recursively. */
   context(builder: PackageBuilder, issueCollector: IssueCollector)
-  private fun IoWorld.worldToIr(packageName: PackageName) {
+  private fun IoWorld.worldToIr(packageName: PackageName) = pushIssueLocation(location) {
     val seed = IncludedWorld(
       packageName = packageName,
-      world = this,
+      world = this@worldToIr,
     )
 
     val set = LinkedHashSet<IncludedWorld>()
