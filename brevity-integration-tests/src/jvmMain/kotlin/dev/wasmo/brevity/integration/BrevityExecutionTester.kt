@@ -57,7 +57,7 @@ class BrevityExecutionTester(
       }
 
       val wit = launch {
-        WitTarget(fileSystem, layout, types, rawWit).generate()
+        WitTarget(name, fileSystem, layout, types, rawWit).generate()
       }
       val brevityKt = launch {
         wit.join()
@@ -65,7 +65,7 @@ class BrevityExecutionTester(
       }
 
       val hostKt = launch {
-        HostKotlinTarget(fileSystem, layout, types).generate()
+        HostKotlinTarget(name, fileSystem, layout, types).generate()
       }
       val hostKtJar = async {
         brevityKt.join()
@@ -76,7 +76,7 @@ class BrevityExecutionTester(
       }
 
       val guestKt = launch {
-        GuestKotlinTarget(fileSystem, layout, types).generate()
+        GuestKotlinTarget(name, fileSystem, layout, types).generate()
       }
       val guestKtWasm = async {
         // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
@@ -94,7 +94,7 @@ class BrevityExecutionTester(
         generateGuestAppRustCargoToml()
       }
       val guestRs = launch {
-        GuestRustTarget(fileSystem, layout, types).generate()
+        GuestRustTarget(name, fileSystem, layout, types).generate()
       }
       val guestRsWasm = async {
         guestRs.join()
@@ -256,7 +256,7 @@ class BrevityExecutionTester(
         writeUtf8(
           """
           |[package]
-          |name = "brevity-testing"
+          |name = "brevity-testing-$name"
           |version = "0.1.0"
           |edition = "2024"
           |
@@ -264,6 +264,7 @@ class BrevityExecutionTester(
           |wit-bindgen = "0.58.0"
           |
           |[lib]
+          |path = "src/${name}_lib.rs"
           |crate-type = ['cdylib']
           |
           """.trimMargin(),
@@ -287,7 +288,7 @@ class BrevityExecutionTester(
           |  jvm:
           |    jdk:
           |      version: 25
-          |    mainClass: dev.wasmo.brevity.integration.HostMainKt
+          |    mainClass: dev.wasmo.brevity.integration.Host${name.replaceFirstChar { it.uppercase() }}MainKt
           |
           |repositories:
           |  - mavenLocal
@@ -366,7 +367,7 @@ class BrevityExecutionTester(
       "target/unbundled/",
       "--output",
       "target/unbundled/component.wasm",
-      "./target/wasm32-wasip2/release/brevity_testing.wasm",
+      "./target/wasm32-wasip2/release/brevity_testing_${name}.wasm",
     )
   }
 

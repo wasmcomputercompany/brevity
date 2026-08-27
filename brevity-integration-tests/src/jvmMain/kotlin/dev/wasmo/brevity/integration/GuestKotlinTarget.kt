@@ -7,13 +7,14 @@ import okio.BufferedSink
 import okio.FileSystem
 
 class GuestKotlinTarget(
+  private val name: String,
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val types: List<SampleType>,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("GuestKotlinTarget")) {
-      val path = layout.guestSrc / "dev/wasmo/brevity/integration/GuestImplementation.kt"
+      val path = layout.guestSrc / "dev/wasmo/brevity/integration/Guest${name.replaceFirstChar { it.uppercase() }}Implementation.kt"
       fileSystem.createDirectories(path.parent!!)
       fileSystem.write(path) { writeKotlin() }
     }

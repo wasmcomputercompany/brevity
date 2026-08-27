@@ -7,13 +7,14 @@ import okio.BufferedSink
 import okio.FileSystem
 
 class GuestRustTarget(
+  private val name: String,
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val types: List<SampleType>,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("GuestRustTarget")) {
-      val path = layout.rustSrc / "lib.rs"
+      val path = layout.rustSrc / "${name}_lib.rs"
       fileSystem.createDirectories(layout.rustSrc)
       fileSystem.write(path) { writeRust() }
     }
@@ -24,7 +25,7 @@ class GuestRustTarget(
       """
       |mod bindings {
       |    wit_bindgen::generate!({
-      |        path: "../wit/bridge-type-test.wit",
+      |        path: "../wit/bridge-type-$name-test.wit",
       |    });
       |
       |    use super::BrevityTesting;

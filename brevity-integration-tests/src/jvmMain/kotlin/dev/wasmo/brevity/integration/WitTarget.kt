@@ -7,6 +7,7 @@ import okio.BufferedSink
 import okio.FileSystem
 
 class WitTarget(
+  private val name: String,
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val types: List<SampleType>,
@@ -15,7 +16,7 @@ class WitTarget(
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("WitTarget")) {
       fileSystem.createDirectories(layout.wit)
-      fileSystem.write(layout.wit / "bridge-type-test.wit") { writeWit() }
+      fileSystem.write(layout.wit / "bridge-type-$name-test.wit") { writeWit() }
     }
   }
 
