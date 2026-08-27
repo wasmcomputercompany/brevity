@@ -115,6 +115,7 @@ class KotlinGeneratorTest {
       package wit.wasi.clocks.v0_2_12
 
       import dev.wasmo.brevity.loadString
+      import dev.wasmo.brevity.retainWasmExportsForGuestBridge
       import kotlin.Int
       import kotlin.OptIn
       import kotlin.String
@@ -130,8 +131,22 @@ class KotlinGeneratorTest {
       public var Time.guest: Time.Guest
         get() = guest_
         set(`value`) {
+          retainWasmExportsForGuestBridge()
+          retainWasmExportsForTime()
           guest_ = `value`
         }
+
+      /**
+       * This function does nothing. But by calling it the compiler retains exported symbols that
+       * would otherwise be eliminated as unused.
+       *
+       * https://youtrack.jetbrains.com/issue/KT-88068/
+       */
+      private fun retainWasmExportsForTime() {
+        // Equivalent to 'if (true) return', but immune to dead code elimination.
+        if ("".hashCode() == 0) return
+        run_export(0, 0)
+      }
 
       @WasmExport("run")
       private fun run_export(argsAddress: Int, argsSize: Int): Int {

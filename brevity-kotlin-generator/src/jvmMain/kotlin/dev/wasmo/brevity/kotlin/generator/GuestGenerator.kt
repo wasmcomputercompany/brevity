@@ -57,6 +57,7 @@ class GuestGenerator(
           .apply {
             generateService(service)
             if (service is IrWorld) {
+              retainWasmExportsFunction(service)
               addExternalFunctions(service)
             }
           }
@@ -89,6 +90,8 @@ class GuestGenerator(
             .setter(
               FunSpec.setterBuilder()
                 .addParameter("value", guestApis.type)
+                .addStatement("%M()", Symbols.Brevity.RetainWasmExportsForGuestBridge)
+                .addStatement("%N()", value.retainWasmExportsFunctionName)
                 .addCode("%N = %N", "${guestApis.instanceName}_", "value")
                 .build(),
             )
@@ -160,29 +163,60 @@ class GuestGenerator(
    * and functions recursively held by [value].
    */
   private fun FileSpec.Builder.addExternalFunctions(value: IrWorld) {
-    // The object to dereference that defines the true implementation. This is either the guest
-    // interface or one of its members.
-    val guestApis = value.guestApis ?: return
+    for (factory in exportedGuestFunctionFactories(value)) {
+      addFunction(factory.wasmExport())
+    }
+  }
 
-    for (item in guestApis.items) {
-      when (item) {
-        is IrFunction -> {
-          val receiver = Receiver.Global(
-            CodeBlock.of("%N_", guestApis.instanceName),
-          )
-          addFunction(GuestFunctionFactory(encoderFactory, receiver, item).wasmExport())
-        }
+  private fun exportedGuestFunctionFactories(value: IrWorld): List<GuestFunctionFactory> {
+    return buildList {
+      // The object to dereference that defines the true implementation. This is either the guest
+      // interface or one of its members.
+      val guestApis = value.guestApis ?: return@buildList
 
-        is IrExternalApi -> {
-          val irInterface = declarationIndex[item.serviceName] as IrInterface
-          val receiver = Receiver.Global(
-            CodeBlock.of("%N_.%N", guestApis.instanceName, item.instanceName),
-          )
-          for (function in irInterface.functions) {
-            addFunction(GuestFunctionFactory(encoderFactory, receiver, function).wasmExport())
+      for (item in guestApis.items) {
+        when (item) {
+          is IrFunction -> {
+            val receiver = Receiver.Global(
+              CodeBlock.of("%N_", guestApis.instanceName),
+            )
+            add(GuestFunctionFactory(encoderFactory, receiver, item))
+          }
+
+          is IrExternalApi -> {
+            val irInterface = declarationIndex[item.serviceName] as IrInterface
+            val receiver = Receiver.Global(
+              CodeBlock.of("%N_.%N", guestApis.instanceName, item.instanceName),
+            )
+            for (function in irInterface.functions) {
+              add(GuestFunctionFactory(encoderFactory, receiver, function))
+            }
           }
         }
       }
     }
+  }
+
+  private fun FileSpec.Builder.retainWasmExportsFunction(value: IrWorld) {
+    addFunction(
+      FunSpec.builder(value.retainWasmExportsFunctionName)
+        .addModifiers(KModifier.PRIVATE)
+        .addKdoc(
+          """
+          |This function does nothing. But by calling it the compiler retains exported symbols that
+          |would otherwise be eliminated as unused.
+          |
+          |https://youtrack.jetbrains.com/issue/KT-88068/
+          """.trimMargin(),
+        )
+        .addStatement("// Equivalent to 'if (true) return', but immune to dead code elimination.")
+        .addStatement("if (%S.hashCode() == 0) return", "")
+        .apply {
+          for (factory in exportedGuestFunctionFactories(value)) {
+            addStatement("%L", factory.callWasmExportFunctionWithPlaceholders())
+          }
+        }
+        .build(),
+    )
   }
 }
