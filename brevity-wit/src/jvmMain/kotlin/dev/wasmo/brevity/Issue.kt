@@ -9,4 +9,10 @@ data class Issue(
     description: String,
     location: Location,
   ) : this(description, listOf(location), emptyList())
+  constructor(
+    description: String,
+    location: Location,
+    locationStack: Location,
+  ) : this(description, listOf(location), listOf(locationStack))
+
 }
