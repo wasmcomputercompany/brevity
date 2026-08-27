@@ -18,12 +18,25 @@ internal class ApiFunctionFactory(
 
   fun api() = FunSpec.builder(value.kotlinName)
     .addModifiers(KModifier.ABSTRACT)
-    .apply {
-      val documentation = value.documentation
-      if (documentation != null) {
-        addKdoc(documentation.content.trimIndent())
-      }
+    .addKdoc(
+      "%L",
+      buildString {
+        val functionDocumentation = value.documentation
+        if (functionDocumentation != null) {
+          append(functionDocumentation.content.trimIndent())
+          append("\n\n")
+        }
 
+        for (parameter in value.parameters) {
+          val parameterDocumentation = parameter.documentation ?: continue
+          val parameterName = nameAllocator[parameter.name]
+          append("@param $parameterName ")
+          append(parameterDocumentation.content.trimIndent().replace("\n", "\n  "))
+          append("\n\n")
+        }
+      }.trim()
+    )
+    .apply {
       for (parameter in value.parameters) {
         addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
       }
