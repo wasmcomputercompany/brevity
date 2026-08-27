@@ -71,6 +71,10 @@ object Symbols {
     val Result = ClassName("dev.wasmo.brevity", "Result")
     val ResultError = Result.nestedClass("Error")
     val ResultOk = Result.nestedClass("Ok")
+    val RetainWasmExportsForGuestBridge = MemberName(
+      "dev.wasmo.brevity",
+      "retainWasmExportsForGuestBridge",
+    )
     val StoreByteArray = MemberName("dev.wasmo.brevity", "storeByteArray")
     val Stream = ClassName("dev.wasmo.brevity", "Stream")
     val World = ClassName("dev.wasmo.brevity", "World")

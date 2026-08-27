@@ -36,10 +36,6 @@ class GuestKotlinTarget(
       |import wit.brevity.testing.BrevityTest
       |import wit.brevity.testing.guest
       |
-      |@WasmExport(name = "cabi_realloc")
-      |fun cabi_realloc(ptr: Int, oldSize: Int, align: Int, newSize: Int): Int =
-      |  componentModelRealloc(ptr, oldSize, newSize)
-      |
       |@EagerInitialization
       |val actuallyInitialize = run {
       |  BrevityTest.guest = GuestImplementation

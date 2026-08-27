@@ -1,12 +1,7 @@
-@file:OptIn(
-  UnsafeWasmMemoryApi::class,
-  ExperimentalWasmInterop::class,
-  ComponentModelInternalApi::class,
-)
+@file:OptIn(UnsafeWasmMemoryApi::class)
 
 package dev.wasmo.brevity
 
-import kotlin.wasm.unsafe.ComponentModelInternalApi
 import kotlin.wasm.unsafe.Pointer
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 

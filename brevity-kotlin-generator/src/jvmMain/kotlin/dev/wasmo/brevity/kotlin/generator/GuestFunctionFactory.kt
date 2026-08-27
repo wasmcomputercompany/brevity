@@ -1,9 +1,15 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.DOUBLE
+import com.squareup.kotlinpoet.FLOAT
 import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.NameAllocator
+import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
@@ -219,6 +225,32 @@ internal class GuestFunctionFactory(
       .addCode(codeBuilder.build())
       .build()
   }
+
+  fun callWasmExportFunctionWithPlaceholders(): CodeBlock {
+    val receiverAndParameters = buildList {
+      if (coreReceiver != null) {
+        addAll(coreReceiver.specs)
+      }
+      for (parameter in coreParameters) {
+        addAll(parameter.specs)
+      }
+    }
+
+    return receiverAndParameters.joinToCode(
+      prefix = "${value.functionName.exportFunctionName}(",
+      suffix = ")",
+      transform = { it.placeholder },
+    )
+  }
+
+  private val ParameterSpec.placeholder: CodeBlock
+    get() = when (type) {
+      INT -> CodeBlock.of("%L", 0)
+      LONG -> CodeBlock.of("%LL", 0)
+      FLOAT -> CodeBlock.of("%Lf", 0.0)
+      DOUBLE -> CodeBlock.of("%L", 0.0)
+      else -> error("unexpected core parameter type")
+    }
 
   internal sealed interface Receiver {
     data class Global(
