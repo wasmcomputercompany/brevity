@@ -5,11 +5,8 @@ import assertk.assertions.containsExactlyInAnyOrder
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.TypeName
-import dev.wasmo.brevity.ir.IrCase
+import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.ir.IrVariant
-import dev.wasmo.brevity.ir.TypeNameDeclared
-import dev.wasmo.brevity.withIssueCollector
 import okio.Path.Companion.toPath
 import org.junit.Test
 
@@ -45,21 +42,19 @@ class RecursionValidatorTest {
       )
     }
 
-    withIssueCollector {
+    val (_, issues) = collectIssues {
       subject.validate(index)
-
-      assertThat(issues).containsExactlyInAnyOrder(
-        Issue("Invalid recursion", Location("file.wit", 1, 2)),
-        Issue(
-          "Invalid mutual recursion",
-          listOf(
-            Location("file.wit", 3, 4),
-            Location("file.wit", 5, 6),
-          ),
-        ),
-      )
-
-      clear()
     }
+
+    assertThat(issues).containsExactlyInAnyOrder(
+      Issue("Invalid recursion", Location("file.wit", 1, 2)),
+      Issue(
+        "Invalid mutual recursion",
+        listOf(
+          Location("file.wit", 3, 4),
+          Location("file.wit", 5, 6),
+        ),
+      ),
+    )
   }
 }

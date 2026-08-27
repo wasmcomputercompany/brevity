@@ -1,7 +1,7 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import dev.wasmo.brevity.filterNamedWorlds
-import dev.wasmo.brevity.withIssueCollector
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import java.io.File
 import kotlin.test.Test
 import okio.FileSystem
@@ -23,7 +23,7 @@ class GenerateWasiMainKotlinTest {
       wasiMainProposals / "sockets/wit",
     )
 
-    val generator = withIssueCollector {
+    val generator = collectNoIssuesOrThrow {
       WitBridgeGenerator.precompile(
         fileSystem = fileSystem,
         packageDirectories = directories,

@@ -50,7 +50,7 @@ class BrevityTester(
             }
           }
         }
-      val generator = withIssueCollector {
+      val generator = collectNoIssuesOrThrow {
         WitBridgeGenerator.precompile(fileSystem, packageDirectories)
       }!!
 

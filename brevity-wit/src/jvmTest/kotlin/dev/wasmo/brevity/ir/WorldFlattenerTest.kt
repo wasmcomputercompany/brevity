@@ -17,7 +17,7 @@ import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.IrMapper
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.toPackageName
-import dev.wasmo.brevity.withIssueCollector
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import kotlin.test.Test
 
 class WorldFlattenerTest {
@@ -26,7 +26,7 @@ class WorldFlattenerTest {
    * function.
    */
   @Test
-  fun `include relative path`() = withIssueCollector {
+  fun `include relative path`() = collectNoIssuesOrThrow {
     val command = IoWorld(
       name = "command",
       items = listOf(IoInclude(path = "imports")),
@@ -117,7 +117,7 @@ class WorldFlattenerTest {
    * https://github.com/bytecodealliance/wit-bindgen/issues/1647
    */
   @Test
-  fun `included types are not mapped`() = withIssueCollector {
+  fun `included types are not mapped`() = collectNoIssuesOrThrow {
     val subjectLocation = Location("subject/world.wit")
     val exportedLocation = Location("exported/world.wit")
     val ioPackages = listOf(

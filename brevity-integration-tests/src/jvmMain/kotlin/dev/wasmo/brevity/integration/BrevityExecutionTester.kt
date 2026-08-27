@@ -1,7 +1,7 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
-import dev.wasmo.brevity.withIssueCollector
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.TimeSource
 import kotlinx.coroutines.CoroutineName
@@ -148,11 +148,11 @@ class BrevityExecutionTester(
 
   suspend fun generateBrevity() {
     executeIo("generateBrevity") {
-      withIssueCollector {
+      collectNoIssuesOrThrow {
         val generator = WitBridgeGenerator.precompile(
           fileSystem = fileSystem,
           packageDirectories = listOf(layout.wit),
-        ) ?: return@withIssueCollector
+        ) ?: return@collectNoIssuesOrThrow
 
         for (fileSpec in generator.api.generate()) {
           fileSpec.writeTo(layout.apiSrc.toFile())
