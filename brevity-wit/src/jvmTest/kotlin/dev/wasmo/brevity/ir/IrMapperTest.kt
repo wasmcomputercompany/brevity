@@ -2,7 +2,6 @@ package dev.wasmo.brevity.ir
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
-import assertk.assertions.hasMessage
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
 import dev.wasmo.brevity.FunctionNameConstructor
@@ -15,6 +14,7 @@ import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoTypeName
 import dev.wasmo.brevity.io.IrMapper
@@ -22,13 +22,12 @@ import dev.wasmo.brevity.io.toServiceName
 import dev.wasmo.brevity.io.toUsePath
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.toPackageName
-import dev.wasmo.brevity.withIssueCollector
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import kotlin.test.Test
-import kotlin.test.assertFailsWith
 
 class IrMapperTest {
   @Test
-  fun `find local symbols`() = withIssueCollector {
+  fun `find local symbols`(): Unit = collectNoIssuesOrThrow {
     val clockLocation = Location("clock.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -60,26 +59,166 @@ class IrMapperTest {
       ),
     )
 
-    withIssueCollector {
+    collectIssues {
       assertThat(
-          irMapper.getType(
-            serviceName = "wasi:clocks/wall-clock",
-            typeName = IoTypeName.Declared("instant"),
-            location = Location("clock.wit", 5, 6),
-          )
+        irMapper.getType(
+          serviceName = "wasi:clocks/wall-clock",
+          typeName = IoTypeName.Declared("instant"),
+          location = Location("clock.wit", 5, 6),
+        ),
       ).isEqualTo(null)
 
-      assertThat(issues).containsExactly(Issue(
-        "unable to find instant in wasi:clocks/wall-clock",
-        Location("clock.wit", 5, 6),
-      ))
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find instant in wasi:clocks/wall-clock",
+          Location("clock.wit", 5, 6),
+        ),
+      )
+    }
+    collectIssues {
+      assertThat(
+        irMapper.getType(
+          serviceName = "wasi:clocks/wall-clock",
+          typeName = IoTypeName.Declared("DATETIME"),
+          location = Location("clock.wit", 5, 6),
+        ),
+      ).isEqualTo(null)
 
-      clear()
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find DATETIME in wasi:clocks/wall-clock, maybe you meant datetime at clock.wit:4:5",
+          Location("clock.wit", 5, 6),
+        ),
+      )
     }
   }
 
   @Test
-  fun `find symbols across packages with use`() = withIssueCollector {
+  fun `find local symbols with bad package references`(): Unit = collectNoIssuesOrThrow {
+    val clockLocation = Location("clock.wit")
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "wasi:clocks".toPackageName(),
+        files = listOf(
+          """
+          |package wasi:clocks;
+          |
+          |interface wall-clock {
+          |    record datetime {
+          |        seconds: u64,
+          |    }
+          |}
+          """.trimMargin().toWitFile(clockLocation),
+        ),
+      ),
+    )
+    val irMapper = IrMapper(ioPackages)
+
+    assertThat(
+      irMapper.getType(
+        serviceName = "wasi:clocks/wall-clock",
+        typeName = IoTypeName.Declared("datetime"),
+      ),
+    ).isEqualTo(
+      TypeNameDeclared(
+        serviceName = "wasi:clocks/wall-clock",
+        typeName = "datetime",
+      ),
+    )
+
+    collectIssues {
+      assertThat(
+        irMapper.getType(
+          serviceName = "wasi:clucks/wall-clock",
+          typeName = IoTypeName.Declared("datetime"),
+          location = Location("clock.wit", 5, 6),
+        ),
+      ).isEqualTo(null)
+
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find datetime in wasi:clucks/wall-clock, no package found by that name",
+          Location("clock.wit", 5, 6),
+        ),
+      )
+    }
+
+    collectIssues {
+      assertThat(
+        irMapper.getType(
+          serviceName = "wasi:CLOCKS/wall-clock",
+          typeName = IoTypeName.Declared("datetime"),
+          location = Location("clock.wit", 5, 6),
+        ),
+      ).isEqualTo(null)
+
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find datetime in wasi:CLOCKS/wall-clock, no package found by that name, maybe you meant wasi:clocks",
+          Location("clock.wit", 5, 6),
+        ),
+      )
+    }
+  }
+
+  @Test
+  fun `find local symbols with bad service references`(): Unit = collectNoIssuesOrThrow {
+    val clockLocation = Location("clock.wit")
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "wasi:clocks".toPackageName(),
+        files = listOf(
+          """
+          |package wasi:clocks;
+          |
+          |interface wall-clock {
+          |    record datetime {
+          |        seconds: u64,
+          |    }
+          |}
+          """.trimMargin().toWitFile(clockLocation),
+        ),
+      ),
+    )
+    val irMapper = IrMapper(ioPackages)
+
+    collectIssues {
+      assertThat(
+        irMapper.getType(
+          serviceName = "wasi:clocks/wall-cluck",
+          typeName = IoTypeName.Declared("datetime"),
+          location = Location("clock.wit", 5, 6),
+        ),
+      ).isEqualTo(null)
+
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find datetime in wasi:clocks/wall-cluck, no service found by that name",
+          Location("clock.wit", 5, 6),
+        ),
+      )
+    }
+
+    collectIssues {
+      assertThat(
+        irMapper.getType(
+          serviceName = "wasi:clocks/wall-CLOCK",
+          typeName = IoTypeName.Declared("datetime"),
+          location = Location("clock.wit", 5, 6),
+        ),
+      ).isEqualTo(null)
+
+      assertThat(issues).containsExactly(
+        Issue(
+          "unable to find datetime in wasi:clocks/wall-CLOCK, no service found by that name, maybe you meant wasi:clocks/wall-clock",
+          Location("clock.wit", 5, 6),
+        ),
+      )
+    }
+  }
+
+  @Test
+  fun `find symbols across packages with use`() = collectNoIssuesOrThrow {
     val stdioLocation = Location("stdio.wit")
     val streamsLocation = Location("streams.wit")
     val ioPackages = listOf(
@@ -127,7 +266,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `find symbols across inline packages with use`() = withIssueCollector {
+  fun `find symbols across inline packages with use`() = collectNoIssuesOrThrow {
     val stdioLocation = Location("stdio.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -170,7 +309,7 @@ class IrMapperTest {
 
 
   @Test
-  fun `find symbols across services with use`() = withIssueCollector {
+  fun `find symbols across services with use`() = collectNoIssuesOrThrow {
     val stdioLocation = Location("stdio.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -210,7 +349,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `imports across packages`() = withIssueCollector {
+  fun `imports across packages`() = collectNoIssuesOrThrow {
     val commandLocation = Location("command.wit")
     val importsLocation = Location("imports.wit")
     val worldLocation = Location("world.wit")
@@ -318,7 +457,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `imports across inline packages`() = withIssueCollector {
+  fun `imports across inline packages`() = collectNoIssuesOrThrow {
     val commandLocation = Location("command.wit")
     val importsLocation = Location("imports.wit")
     val ioPackages = listOf(
@@ -414,7 +553,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `inline interface is flattened`() = withIssueCollector {
+  fun `inline interface is flattened`() = collectNoIssuesOrThrow {
     val location = Location("world.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -471,7 +610,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `find symbols in same package with use`() = withIssueCollector {
+  fun `find symbols in same package with use`() = collectNoIssuesOrThrow {
     val timezoneLocation = Location("timezone.wit")
     val wallClockLocation = Location("wall-clock.wit")
     val ioPackages = listOf(
@@ -515,7 +654,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `get world`() = withIssueCollector {
+  fun `get world`() = collectNoIssuesOrThrow {
     val worldLocation = Location("world.wit")
     val commandLocation = Location("command.wit")
     val wasiCli = IoToplevelWitPackage(
@@ -553,7 +692,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `interface function abi names`() = withIssueCollector {
+  fun `interface function abi names`() = collectNoIssuesOrThrow {
     val systemClockLocation = Location("system-clock.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -583,7 +722,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `resource function abi names`() = withIssueCollector {
+  fun `resource function abi names`() = collectNoIssuesOrThrow {
     val typesLocation = Location("types.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
@@ -636,7 +775,7 @@ class IrMapperTest {
   }
 
   @Test
-  fun `resolve all type codecs`() = withIssueCollector {
+  fun `resolve all type codecs`() = collectNoIssuesOrThrow {
     val typesLocation = Location("types.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(

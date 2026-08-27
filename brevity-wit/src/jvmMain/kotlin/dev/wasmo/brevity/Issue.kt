@@ -3,9 +3,10 @@ package dev.wasmo.brevity
 data class Issue(
   val description: String,
   val locations: List<Location>,
+  val locationStack: List<Location> = emptyList(),
 ) {
   constructor(
     description: String,
     location: Location,
-  ) : this(description, listOf(location))
+  ) : this(description, listOf(location), emptyList())
 }

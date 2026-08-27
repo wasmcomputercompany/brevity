@@ -19,6 +19,7 @@ import dev.wasmo.brevity.io.IoFunction
 import dev.wasmo.brevity.io.IoInclude
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoInterface
+import dev.wasmo.brevity.io.IoNamedDeclaration
 import dev.wasmo.brevity.io.IoParameter
 import dev.wasmo.brevity.io.IoRecord
 import dev.wasmo.brevity.io.IoResource
@@ -34,7 +35,7 @@ import dev.wasmo.brevity.io.IoWitPackage
 import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.UsePath
 import dev.wasmo.brevity.io.validation.IoSymbolTable
-import dev.wasmo.brevity.io.validation.buildSymbolTable
+import dev.wasmo.brevity.pushIssueLocation
 
 class IrMapper(
   private val packages: List<IoToplevelWitPackage>,
@@ -84,7 +85,7 @@ class IrMapper(
   }
 
   context(builder: PackageBuilder, issueCollector: IssueCollector)
-  private fun IoInterface.interfaceToIr(packageName: PackageName) {
+  private fun IoInterface.interfaceToIr(packageName: PackageName) = pushIssueLocation(location) {
     val serviceName = ServiceName(packageName, name)
     context(Context(serviceName)) {
       builder.services += IrInterface(
@@ -230,7 +231,8 @@ class IrMapper(
   )
 
   context(context: Context, issueCollector: IssueCollector)
-  private fun IoResource.resourceToIr() = IrResource(
+  private fun IoResource.resourceToIr() = pushIssueLocation(this.location) {
+    IrResource(
     documentation = documentation,
     gate = gate,
     location = location,
@@ -244,6 +246,7 @@ class IrMapper(
       add(dropFunction())
     },
   )
+  }
 
   context(context: Context, issueCollector: IssueCollector)
   private fun IoTypeAlias.typeAliasToIr() = target.typeNameToIr(location)?.let { resolvedTarget ->
@@ -328,24 +331,49 @@ class IrMapper(
 
   context(context: Context, issueCollector: IssueCollector)
   internal fun IoTypeName.Declared.declaredTypeToIr(referenceSite: Location): TypeName? {
-    fun reportIssue() {
-      issueCollector.report(Issue(
-        "unable to find ${this@declaredTypeToIr} in ${context.serviceName}",
-        referenceSite,
-      ))
+    fun reportIssue(moreInfo: String?) {
+      val addendum = if (moreInfo != null) {
+        ", $moreInfo"
+      } else {
+        ""
+      }
+      issueCollector.report(
+        Issue(
+          "unable to find ${this@declaredTypeToIr} in ${context.serviceName}$addendum",
+          referenceSite,
+        ),
+      )
     }
-    val witPackage = ioSymbolTable[context.serviceName.packageName] ?: run {
-      reportIssue()
+
+    val serviceNamePackageName = context.serviceName.packageName
+    val witPackage = ioSymbolTable[serviceNamePackageName] ?: run {
+      val moreInfo = when (val otherPackageName =
+        ioSymbolTable.getCaseInsensitiveMatch(serviceNamePackageName)) {
+        null -> "no package found by that name"
+        else -> "no package found by that name, maybe you meant $otherPackageName"
+      }
+      reportIssue(moreInfo)
+      return null
+    }
+    val service = ioSymbolTable[context.serviceName]
+    if (service == null) {
+      val moreInfo =
+        when (val otherServiceName = ioSymbolTable.getCaseInsensitiveMatch(context.serviceName)) {
+          null -> "no service found by that name"
+          else -> "no service found by that name, maybe you meant $otherServiceName"
+        }
+      reportIssue(moreInfo)
       return null
     }
     val declarations = sequence {
-      ioSymbolTable[context.serviceName]?.let { service ->
-        when (service) {
-          is IoInterface -> yieldAll(service.items)
-          is IoWorld -> yieldAll(service.items)
-        }
+      when (service) {
+        is IoInterface -> yieldAll(service.items)
+        is IoWorld -> yieldAll(service.items)
       }
     }
+
+    var caseInsensitiveMatch: IoNamedDeclaration? = null
+    val normalizedName = name.normalized()
 
     for (declaration in declarations) {
       when (declaration) {
@@ -356,22 +384,28 @@ class IrMapper(
               serviceName = ServiceName(witPackage.packageName, context.serviceName.name),
               name = declaration.name,
             )
+          } else if (declaration.name.normalized() == normalizedName) {
+            caseInsensitiveMatch = declaration
           }
         }
 
         is IoUse -> {
           // Matched a 'use' statement that refers to another symbol.
-          val itemMatch = declaration.items.firstOrNull { it.matches(this) }
+          val itemMatch = declaration.items.firstOrNull { it.name == name }
           if (itemMatch != null) {
             val useContext = Context(
               ServiceName(
-                packageName = declaration.path.packageName ?: context.serviceName.packageName,
+                packageName = declaration.path.packageName ?: serviceNamePackageName,
                 name = declaration.path.name,
               ),
             )
             context(useContext) {
               return itemMatch.type.declaredTypeToIr(itemMatch.location)
             }
+          } else {
+            caseInsensitiveMatch =
+              declaration.items.firstOrNull { it.name.normalized() == normalizedName }
+                ?: caseInsensitiveMatch
           }
         }
 
@@ -379,17 +413,23 @@ class IrMapper(
       }
     }
 
-    reportIssue()
+    reportIssue(
+      if (caseInsensitiveMatch != null) {
+        "maybe you meant ${caseInsensitiveMatch.name} at ${caseInsensitiveMatch.location}"
+      } else {
+        null
+      },
+    )
 
     return null
   }
 
   /** Collect includes recursively. */
   context(builder: PackageBuilder, issueCollector: IssueCollector)
-  private fun IoWorld.worldToIr(packageName: PackageName) {
+  private fun IoWorld.worldToIr(packageName: PackageName) = pushIssueLocation(location) {
     val seed = IncludedWorld(
       packageName = packageName,
-      world = this,
+      world = this@worldToIr,
     )
 
     val set = LinkedHashSet<IncludedWorld>()
@@ -518,8 +558,6 @@ class IrMapper(
     override fun toString() = context.toString()
   }
 }
-
-private fun IoUse.Item.matches(typeName: IoTypeName.Declared): Boolean = name == typeName.name
 
 private val IoWitPackage.items: List<IoWitFile.Item>
   get() = when (this) {

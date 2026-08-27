@@ -7,7 +7,7 @@ import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
-import dev.wasmo.brevity.withIssueCollector
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import okio.FileSystem
 import okio.Path
 
@@ -33,7 +33,7 @@ class GenerateKotlinCommand(
     .multiple()
     .help("the world name like 'command', 'wasi:cli/command', or 'wasi:cli/command@0.3.0'")
 
-  override fun run() = withIssueCollector {
+  override fun run() = collectNoIssuesOrThrow {
     val commonMainDir = outputKotlinCommonMain.toFile()
     commonMainDir.deleteRecursively()
     commonMainDir.mkdirs()
@@ -55,7 +55,7 @@ class GenerateKotlinCommand(
           else -> it.filterNamedWorlds(world)
         }
       },
-    ) ?: return@withIssueCollector
+    ) ?: return@collectNoIssuesOrThrow
 
     for (fileSpec in generator.api.generate()) {
       fileSpec.writeTo(commonMainDir)

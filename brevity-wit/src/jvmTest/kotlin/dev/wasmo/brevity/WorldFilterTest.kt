@@ -6,7 +6,6 @@ import assertk.assertions.hasMessage
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IrMapper
 import dev.wasmo.brevity.io.toWitFile
-import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.ir.IrWorld
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
@@ -35,7 +34,7 @@ class WorldFilterTest {
   )
 
   @Test
-  fun filterSuccess() = withIssueCollector {
+  fun filterSuccess() = collectNoIssuesOrThrow {
     val irPackages = IrMapper(ioPackages).map()
     val commandWorld = irPackages.single().services.single {
       (it as? IrWorld)?.serviceName?.name?.name == "command"
@@ -50,7 +49,7 @@ class WorldFilterTest {
   }
 
   @Test
-  fun filterDoesntMatch() = withIssueCollector {
+  fun filterDoesntMatch() = collectNoIssuesOrThrow {
     val irPackages = IrMapper(ioPackages).map()
 
     val e = assertFailsWith<IllegalArgumentException> {
