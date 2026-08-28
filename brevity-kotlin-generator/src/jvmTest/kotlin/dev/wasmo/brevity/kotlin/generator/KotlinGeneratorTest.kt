@@ -135,6 +135,7 @@ class KotlinGeneratorTest {
       import kotlin.wasm.unsafe.ComponentModelInternalApi
       import kotlin.wasm.unsafe.Pointer
       import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
+      import kotlin.wasm.unsafe.freeAllComponentModelReallocAllocatedMemory
 
       private lateinit var guest_: Time.Guest
 
@@ -168,8 +169,10 @@ class KotlinGeneratorTest {
           val stringByteCount = (elementAddress + 4).loadInt()
           Pointer(stringAddress.toUInt()).loadString(stringByteCount)
         }
+        val args = list
+        freeAllComponentModelReallocAllocatedMemory()
         val result = guest_.run(
-          args = list,
+          args = args,
         )
         return result
       }
@@ -1156,6 +1159,7 @@ class KotlinGeneratorTest {
 
       @WasmExport("wasi:clocks/wall-clock@0.2.12#[method]pollable.ready")
       private fun wallClock_pollable_ready_export(self: Int): Int {
+        freeAllComponentModelReallocAllocatedMemory()
         val result = liftFlat_WallClock_Pollable_guest(
           GuestBridge,
           self,
@@ -1166,6 +1170,7 @@ class KotlinGeneratorTest {
 
       @WasmExport("wasi:clocks/wall-clock@0.2.12#[resource-drop]pollable")
       private fun wallClock_pollable_close_export(self: Int) {
+        freeAllComponentModelReallocAllocatedMemory()
         liftFlat_WallClock_Pollable_guest(
           GuestBridge,
           self,

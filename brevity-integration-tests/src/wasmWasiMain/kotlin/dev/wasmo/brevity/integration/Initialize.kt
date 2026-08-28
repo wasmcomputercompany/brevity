@@ -40,5 +40,9 @@ val actuallyInitialize = run {
     override fun sum(a: Long, b: Long): Long {
       return a + b
     }
+
+    override fun inlineConcat(a: String, b: String): String {
+      return a + b
+    }
   }
 }
