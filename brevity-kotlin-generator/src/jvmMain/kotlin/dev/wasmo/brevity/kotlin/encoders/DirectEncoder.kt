@@ -92,6 +92,9 @@ object ShortEncoder : DirectEncoder(
   override fun valueToCoreType(value: CodeBlock) =
     CodeBlock.of("%L.toInt()", value)
 
+  override fun valueToIntegerType(value: CodeBlock): CodeBlock =
+    CodeBlock.of("%L.toShort()", value)
+
   override fun coreTypeToValue(coreType: CodeBlock) =
     CodeBlock.of("%L.toShort()", coreType)
 }
