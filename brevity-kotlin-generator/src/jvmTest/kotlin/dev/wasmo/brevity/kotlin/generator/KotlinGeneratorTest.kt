@@ -69,7 +69,12 @@ class KotlinGeneratorTest {
 
         world time {
             import wall-clock;
-            export run: func(args: list<string>) -> s32;
+
+            /// Execute the command and return an exit code.
+            export run: func(
+                /// command-line arguments.
+                args: list<string>
+            ) -> s32;
         }
         """.trimIndent(),
     )
@@ -92,6 +97,11 @@ class KotlinGeneratorTest {
 
       public object Time {
         public interface Guest {
+          /**
+           * Execute the command and return an exit code.
+           *
+           * @param args command-line arguments.
+           */
           public fun run(args: List<String>): Int
         }
 
