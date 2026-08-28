@@ -76,6 +76,22 @@ class RunKotlinWasmTest {
     assertThat(result).isEqualTo("Hello, World!")
   }
 
+  @Test
+  fun `call inline concatenate`() = runTest {
+    val world = WasmoTesting.World { }
+    val wasiP1 = FakeWasi()
+    WasmInstance(
+      path = kotlinWasmPath,
+      worlds = listOf(
+        Wasi.World({ wasiP1 }),
+        Imports.World { RealWasiP2Host() },
+        world,
+      ),
+    )
+    assertThat(world.guest.inlineConcat("Hello, ", "World!"))
+      .isEqualTo("Hello, World!")
+  }
+
   private fun String.asStringArgument() = object : Types.StringArgument {
     override fun get() = this@asStringArgument
   }

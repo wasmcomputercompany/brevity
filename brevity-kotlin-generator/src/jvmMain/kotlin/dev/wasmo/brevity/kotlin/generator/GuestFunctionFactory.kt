@@ -108,6 +108,7 @@ internal class GuestFunctionFactory(
               coreResult.parameter != null -> coreResult.encoder.load(
                 CodeBlock.of("%N", coreResult.parameter.name),
               )
+
               else -> coreResult.encoder.liftFlat(
                 values = listOf(CodeBlock.of("%N", coreResult.name)),
               )
@@ -170,26 +171,37 @@ internal class GuestFunctionFactory(
             is Receiver.Global -> receiver.codeBlock
           }
 
-          val liftedParameterValues = mutableListOf<CodeBlock>()
-          for (coreParameter in coreParameters) {
+          for ((index, coreParameter) in coreParameters.withIndex()) {
             addParameters(coreParameter.specs)
-            liftedParameterValues += coreParameter.encoder.liftFlat(
+            val liftedParameterExpression = coreParameter.encoder.liftFlat(
               values = coreParameter.names.map { CodeBlock.of("%N", it) },
             )
+            codeBuilder.addStatement(
+              "val %N = %L",
+              nameAllocator[value.parameters[index].name],
+              liftedParameterExpression,
+            )
           }
+
+          codeBuilder.addStatement(
+            "%M()",
+            Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
+          )
 
           if (coreResult != null) {
             codeBuilder.add("val %N = ", coreResult.name)
           }
           codeBuilder.add("%L.%N(⇥\n", liftedReceiver, value.kotlinName)
-          for ((index, parameter) in value.parameters.withIndex()) {
+          for (parameter in value.parameters) {
             codeBuilder.add(
               "%N = %L,\n",
               nameAllocator[parameter.name],
-              liftedParameterValues[index],
+              nameAllocator[parameter.name],
             )
           }
           codeBuilder.add("⇤)\n")
+
+          codeBuilder.permitAllocationsNow()
 
           if (coreResult != null) {
             when (coreResult.encoder.coreTypes.size) {

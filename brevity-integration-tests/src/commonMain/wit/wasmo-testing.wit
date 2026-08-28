@@ -25,4 +25,5 @@ world wasmo-testing {
   export streams;
   export sum: func(a: s64, b: s64) -> s64;
   export concat: func(a: string-argument, b: string-argument, callback: string-result);
+  export inline-concat: func(a: string, b: string) -> string;
 }
