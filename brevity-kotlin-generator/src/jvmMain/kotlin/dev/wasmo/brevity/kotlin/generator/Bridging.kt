@@ -71,28 +71,12 @@ val CoreType.kotlinCoreType: KtTypeName
 val TypeName.Declared.handleName: ClassName
   get() = ClassName(kotlinApi.packageName, "${kotlinApi.simpleName}Handle")
 
-private val specialCases = mapOf(
-  TypeName.List(TypeName.S8) to Symbols.Okio.ByteString,
-  TypeName.List(TypeName.S16) to Symbols.Kotlin.ShortArray,
-  TypeName.List(TypeName.S32) to Symbols.Kotlin.IntArray,
-  TypeName.List(TypeName.S64) to Symbols.Kotlin.LongAray,
-  TypeName.List(TypeName.U8) to Symbols.Okio.ByteString,
-  TypeName.List(TypeName.U16) to Symbols.Kotlin.UShortArray,
-  TypeName.List(TypeName.U32) to Symbols.Kotlin.UIntArray,
-  TypeName.List(TypeName.U64) to Symbols.Kotlin.ULongAray,
-  TypeName.List(TypeName.F32) to Symbols.Kotlin.FloatArray,
-  TypeName.List(TypeName.F64) to Symbols.Kotlin.DoubleArray,
-)
-
 val TypeName.Declared.kotlinApi: ClassName
   get() = serviceName.kotlinApi.nestedClass(name.upperCamelCase)
 
 /** Map WIT types to Kotlin types. */
 val TypeName.kotlinApi: KtTypeName
   get() {
-    val specialCase = specialCases[this]
-    if (specialCase != null) return specialCase
-
     return when (this) {
       TypeName.Bool -> Symbols.Kotlin.Boolean
       TypeName.S8 -> Symbols.Kotlin.Byte
@@ -112,7 +96,20 @@ val TypeName.kotlinApi: KtTypeName
         type?.kotlinApi ?: STAR,
       )
 
-      is TypeName.List -> LIST.parameterizedBy(type.kotlinApi)
+      is TypeName.List -> when (this.type) {
+        TypeName.S8 -> Symbols.Okio.ByteString
+        TypeName.S16 -> Symbols.Kotlin.ShortArray
+        TypeName.S32 -> Symbols.Kotlin.IntArray
+        TypeName.S64 -> Symbols.Kotlin.LongAray
+        TypeName.U8 -> Symbols.Okio.ByteString
+        TypeName.U16 -> Symbols.Kotlin.UShortArray
+        TypeName.U32 -> Symbols.Kotlin.UIntArray
+        TypeName.U64 -> Symbols.Kotlin.ULongAray
+        TypeName.F32 -> Symbols.Kotlin.FloatArray
+        TypeName.F64 -> Symbols.Kotlin.DoubleArray
+        else -> LIST.parameterizedBy(type.kotlinApi)
+      }
+
       is TypeName.Map -> Symbols.KotlinCollections.Map.parameterizedBy(
         key.kotlinApi,
         value.kotlinApi,
