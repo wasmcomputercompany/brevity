@@ -14,6 +14,7 @@ kotlin {
     commonMain {
       dependencies {
         api(libs.kotlinx.coroutines.core)
+        api(libs.okio)
         api(projects.brevity)
       }
     }

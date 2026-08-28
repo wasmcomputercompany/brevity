@@ -7,21 +7,31 @@ object Symbols {
   object Kotlin {
     val Boolean = ClassName("kotlin", "Boolean")
     val Byte = ClassName("kotlin", "Byte")
+    val ByteArray = ClassName("kotlin", "ByteArray")
     val Double = ClassName("kotlin", "Double")
+    val DoubleArray = ClassName("kotlin", "DoubleArray")
     val EncodeToByteArray = MemberName("kotlin.text", "encodeToByteArray")
     val ExperimentalUnsignedTypes = ClassName("kotlin", "ExperimentalUnsignedTypes")
     val Float = ClassName("kotlin", "Float")
+    val FloatArray = ClassName("kotlin", "FloatArray")
     val Int = ClassName("kotlin", "Int")
+    val IntArray = ClassName("kotlin", "IntArray")
     val Long = ClassName("kotlin", "Long")
+    val LongAray = ClassName("kotlin", "LongAray")
     val OptIn = ClassName("kotlin", "OptIn")
     val Pair = ClassName("kotlin", "Pair")
     val Short = ClassName("kotlin", "Short")
+    val ShortArray = ClassName("kotlin", "ShortArray")
     val String = ClassName("kotlin", "String")
     val Triple = ClassName("kotlin", "Triple")
     val UByte = ClassName("kotlin", "UByte")
+    val UByteArray = ClassName("kotlin", "UByteArray")
     val UInt = ClassName("kotlin", "UInt")
+    val UIntArray = ClassName("kotlin", "UIntArray")
     val ULong = ClassName("kotlin", "ULong")
+    val ULongAray = ClassName("kotlin", "ULongAray")
     val UShort = ClassName("kotlin", "UShort")
+    val UShortArray = ClassName("kotlin", "UShortArray")
   }
 
   object KotlinCollections {
@@ -56,6 +66,11 @@ object Symbols {
     val Store = ClassName("com.dylibso.chicory.runtime", "Store")
     val ValType = ClassName("com.dylibso.chicory.wasm.types", "ValType")
     val WasmFunctionHandle = ClassName("com.dylibso.chicory.runtime", "WasmFunctionHandle")
+  }
+
+  object Okio {
+    val ByteString = ClassName("okio", "ByteString")
+    val ByteStringToByteString = MemberName(ByteString.nestedClass("Companion"), "toByteString")
   }
 
   object Brevity {
