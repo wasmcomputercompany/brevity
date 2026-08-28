@@ -2,6 +2,7 @@ package dev.wasmo.brevity.ir
 
 import assertk.assertThat
 import assertk.assertions.containsExactly
+import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
 import dev.wasmo.brevity.FunctionNameConstructor
@@ -452,6 +453,75 @@ class IrMapperTest {
             ),
           ),
         ),
+      ),
+    )
+  }
+
+  @Test
+  fun `imports failure scenarios`() {
+    val commandLocation = Location("command.wit")
+    val worldLocation = Location("world.wit")
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "wasi:cli@0.3.0".toPackageName(),
+        files = listOf(
+          """
+          |package wasi:cli@0.3.0;
+          |
+          |world command {
+          |  import wasi:clocks/clocks-world@0.3.0;      // world, not interface
+          |  import wasi:clocks/monotonic-CLOCK@0.3.0;   // casing issue in service name
+          |  import wasi:clocks/polytonic-clock@0.3.0;   // no such service
+          |  import wasi:CLOCKS/polytonic-clock@0.3.0;   // casing issue, but also no such service
+          |  import wasi:clucks/monotonic-cluck@0.3.0;   // complete whiff
+          |}
+          """.trimMargin().toWitFile(commandLocation),
+        ),
+      ),
+      IoToplevelWitPackage(
+        packageName = "wasi:clocks@0.3.0".toPackageName(),
+        files = listOf(
+          """
+          |package wasi:clocks@0.3.0;
+          |
+          |world clocks-world {
+          |}
+          |
+          |interface monotonic-clock {
+          |  now: func() -> s64;
+          |}
+          """.trimMargin().toWitFile(worldLocation),
+        ),
+      ),
+    )
+    val irMapper = IrMapper(ioPackages)
+    var (_, issues) = collectIssues { irMapper.map() }
+
+    assertThat(issues).containsExactlyInAnyOrder(
+      Issue(
+        "unable to find external interface wasi:clocks/clocks-world@0.3.0, I found it but it's a world, not an interface",
+        commandLocation.at(4, 3),
+        commandLocation.at(3, 1),
+      ),
+      Issue(
+        "unable to find external interface wasi:clocks/monotonic-CLOCK@0.3.0, maybe you meant wasi:clocks/monotonic-clock@0.3.0",
+        commandLocation.at(5, 3),
+        commandLocation.at(3, 1),
+      ),
+      Issue(
+        "unable to find external interface wasi:clocks/polytonic-clock@0.3.0, no such service in wasi:clocks@0.3.0",
+        commandLocation.at(6, 3),
+        commandLocation.at(3, 1),
+      ),
+      Issue(
+        "unable to find external interface wasi:CLOCKS/polytonic-clock@0.3.0, maybe you meant wasi:clocks@0.3.0 but there is no such service there either",
+        commandLocation.at(7, 3),
+        commandLocation.at(3, 1),
+      ),
+      Issue(
+        "unable to find external interface wasi:clucks/monotonic-cluck@0.3.0, no such package",
+        commandLocation.at(8, 3),
+        commandLocation.at(3, 1),
       ),
     )
   }

@@ -481,7 +481,34 @@ class IrMapper(
   private fun IoWorld.Api.worldApiToIr(): IrWorld.Api? {
     return when (this) {
       is IoExternalApi -> externalUsePathToIr()
-        .takeIf { getInterfaceOrNull(it.serviceName.usePath)?.declaresApis() ?: false }
+        .takeIf {
+          val service = ioSymbolTable[it.serviceName]
+          fun reportIssue(moreInfo: String) {
+            issueCollector.report(
+              Issue(
+                "unable to find external interface ${it.serviceName}, $moreInfo",
+                it.location,
+              ),
+            )
+          }
+
+          if (service as? IoInterface != null) {
+            service.declaresApis()
+          } else {
+            val caseInsensitiveServiceMatch = ioSymbolTable.getCaseInsensitiveMatch(it.serviceName)
+            val packageMatch = ioSymbolTable[it.serviceName.packageName]
+            val caseInsensitivePackageMatch = ioSymbolTable.getCaseInsensitiveMatch(it.serviceName.packageName)
+            when {
+              service is IoWorld -> reportIssue("I found it but it's a world, not an interface")
+              caseInsensitiveServiceMatch != null -> reportIssue("maybe you meant $caseInsensitiveServiceMatch")
+              packageMatch != null -> reportIssue("no such service in ${packageMatch.packageName}")
+              caseInsensitivePackageMatch != null -> reportIssue("maybe you meant $caseInsensitivePackageMatch but there is no such service there either")
+              else -> reportIssue("no such package")
+            }
+
+            false
+          }
+        }
 
       is IoFunction -> functionToIr(worldFunction = true)
       is IoInterface -> {
@@ -532,13 +559,6 @@ class IrMapper(
     val witPackage = ioSymbolTable[path.packageName] ?: return null
     return witPackage.items
       .filterIsInstance<IoWorld>()
-      .singleOrNull { it.name == path.name }
-  }
-
-  internal fun getInterfaceOrNull(path: UsePath): IoInterface? {
-    val witPackage = ioSymbolTable[path.packageName] ?: return null
-    return witPackage.items
-      .filterIsInstance<IoInterface>()
       .singleOrNull { it.name == path.name }
   }
 

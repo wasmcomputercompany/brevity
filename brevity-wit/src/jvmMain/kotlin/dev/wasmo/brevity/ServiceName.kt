@@ -11,9 +11,6 @@ data class ServiceName(
 ) {
   fun normalized() = ServiceName(packageName.normalized(), name.normalized())
 
-  val usePath: UsePath
-    get() = UsePath(packageName, name)
-
   override fun toString() = buildString {
     for (namespace in packageName.namespaces) {
       append(namespace)
