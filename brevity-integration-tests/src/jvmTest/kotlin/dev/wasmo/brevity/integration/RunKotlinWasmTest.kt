@@ -2,8 +2,8 @@ package dev.wasmo.brevity.integration
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import brevity.wasi.p2.RealWasiP2Host
 import dev.wasmo.brevity.WasmInstance
+import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 import okio.Path.Companion.toPath

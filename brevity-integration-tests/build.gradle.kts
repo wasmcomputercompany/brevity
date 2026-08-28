@@ -19,8 +19,10 @@ kotlin {
     commonMain {
       dependencies {
         implementation(projects.brevity)
-        implementation(projects.brevityWasiP1)
-        implementation(projects.brevityWasiP2)
+        implementation(projects.wasi.brevityWasi)
+        implementation(projects.wasi.brevityWasiP1)
+        implementation(projects.wasi.brevityWasiP2)
+        implementation(projects.wasi.brevityWasiP3)
       }
     }
     jvmMain {
