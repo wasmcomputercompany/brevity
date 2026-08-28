@@ -19,10 +19,6 @@ kotlin {
     commonMain {
       dependencies {
         implementation(projects.brevity)
-        implementation(projects.wasi.brevityWasi)
-        implementation(projects.wasi.brevityWasiP1)
-        implementation(projects.wasi.brevityWasiP2)
-        implementation(projects.wasi.brevityWasiP3)
       }
     }
     jvmMain {
@@ -30,16 +26,21 @@ kotlin {
         implementation(libs.chicory.runtime)
         implementation(libs.chicory.wabt)
         implementation(libs.kotlinpoet)
+        implementation(libs.kotlinx.coroutines.core)
         implementation(libs.okhttp)
         implementation(libs.okio)
-        implementation(projects.brevityWit)
         implementation(projects.brevityKotlinGenerator)
+        implementation(projects.brevityWit)
       }
     }
     jvmTest {
       dependencies {
         implementation(libs.burst.coroutines)
         implementation(libs.okio.fakefilesystem)
+        implementation(projects.wasi.brevityWasi)
+        implementation(projects.wasi.brevityWasiP1)
+        implementation(projects.wasi.brevityWasiP2)
+        implementation(projects.wasi.brevityWasiP3)
       }
     }
   }
