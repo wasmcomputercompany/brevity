@@ -9,6 +9,7 @@ import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrVariant
+import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 
@@ -77,6 +78,13 @@ class EncoderFactory(
             elementEncoder = get(typeName.type),
           )
 
+          typeName.type == TypeName.S8 || typeName.type == TypeName.U8 -> ByteStringEncoder(
+            DynamicListEncoder(
+              elementEncoder = ByteEncoder,
+              listType = Symbols.Kotlin.ByteArray,
+            )
+          )
+
           else -> DynamicListEncoder(
             elementEncoder = get(typeName.type),
             listType = typeName.kotlinApi,
@@ -90,8 +98,9 @@ class EncoderFactory(
         instanceNameHint = when (val element = typeName.type) {
           is TypeName.Declared -> element.name.lowerCamelCase
           else -> "optional"
-        }
+        },
       )
+
       is TypeName.Result -> ResultEncoder(
         ok = typeName.ok?.let { it.kotlinApi to get(it) },
         error = typeName.error?.let { it.kotlinApi to get(it) },

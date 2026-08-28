@@ -4,7 +4,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 
-class ResourceEncoder(
+internal class ResourceEncoder(
   private val type: TypeName.Declared,
 ) : Encoder() {
   override val coreTypes = listOf(CoreType.I32)

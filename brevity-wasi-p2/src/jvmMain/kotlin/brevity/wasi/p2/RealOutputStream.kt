@@ -5,6 +5,7 @@ package brevity.wasi.p2
 import dev.wasmo.brevity.Result
 import java.io.IOException
 import java.io.OutputStream
+import okio.ByteString
 import wit.wasi.io.v0_2_0.Error
 import wit.wasi.io.v0_2_0.Poll
 import wit.wasi.io.v0_2_0.Streams
@@ -16,16 +17,16 @@ class RealOutputStream(
     return Result.Ok(1024UL * 1024UL)
   }
 
-  override fun write(contents: UByteArray): Result<*, Streams.StreamError> {
+  override fun write(contents: ByteString): Result<*, Streams.StreamError> {
     try {
-      delegate.write(contents.asByteArray())
+      delegate.write(contents.toByteArray())
       return Result.Ok(Unit)
     } catch (e: IOException) {
       return e.asStreamErrorResult()
     }
   }
 
-  override fun blockingWriteAndFlush(contents: UByteArray): Result<*, Streams.StreamError> {
+  override fun blockingWriteAndFlush(contents: ByteString): Result<*, Streams.StreamError> {
     TODO("Not yet implemented")
   }
 

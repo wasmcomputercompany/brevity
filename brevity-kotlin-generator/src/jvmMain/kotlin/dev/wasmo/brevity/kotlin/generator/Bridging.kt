@@ -72,16 +72,16 @@ val TypeName.Declared.handleName: ClassName
   get() = ClassName(kotlinApi.packageName, "${kotlinApi.simpleName}Handle")
 
 private val specialCases = mapOf(
-  TypeName.List(TypeName.S8) to ClassName("kotlin", "ByteArray"),
-  TypeName.List(TypeName.S16) to ClassName("kotlin", "ShortArray"),
-  TypeName.List(TypeName.S32) to ClassName("kotlin", "IntArray"),
-  TypeName.List(TypeName.S64) to ClassName("kotlin", "LongAray"),
-  TypeName.List(TypeName.U8) to ClassName("kotlin", "UByteArray"),
-  TypeName.List(TypeName.U16) to ClassName("kotlin", "UShortArray"),
-  TypeName.List(TypeName.U32) to ClassName("kotlin", "UIntArray"),
-  TypeName.List(TypeName.U64) to ClassName("kotlin", "ULongAray"),
-  TypeName.List(TypeName.F32) to ClassName("kotlin", "FloatArray"),
-  TypeName.List(TypeName.F64) to ClassName("kotlin", "DoubleArray"),
+  TypeName.List(TypeName.S8) to Symbols.Okio.ByteString,
+  TypeName.List(TypeName.S16) to Symbols.Kotlin.ShortArray,
+  TypeName.List(TypeName.S32) to Symbols.Kotlin.IntArray,
+  TypeName.List(TypeName.S64) to Symbols.Kotlin.LongAray,
+  TypeName.List(TypeName.U8) to Symbols.Okio.ByteString,
+  TypeName.List(TypeName.U16) to Symbols.Kotlin.UShortArray,
+  TypeName.List(TypeName.U32) to Symbols.Kotlin.UIntArray,
+  TypeName.List(TypeName.U64) to Symbols.Kotlin.ULongAray,
+  TypeName.List(TypeName.F32) to Symbols.Kotlin.FloatArray,
+  TypeName.List(TypeName.F64) to Symbols.Kotlin.DoubleArray,
 )
 
 val TypeName.Declared.kotlinApi: ClassName
