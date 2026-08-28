@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper
 import org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 @Suppress("unused") // Used reflectively.
 class BrevityBuildPlugin : Plugin<Project> {
@@ -56,6 +57,12 @@ internal class RealBrevityBuildExtension(
     wasm: Boolean,
   ) {
     project.plugins.withType<KotlinMultiplatformPluginWrapper> {
+      project.tasks.withType<KotlinCompile> {
+        compilerOptions {
+          optIn.add("kotlin.ExperimentalUnsignedTypes")
+        }
+      }
+
       val kotlin = project.extensions.getByName("kotlin") as KotlinMultiplatformExtension
       kotlin.apply {
         kotlin.sourceSets.commonTest {

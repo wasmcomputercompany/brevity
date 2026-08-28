@@ -27,13 +27,13 @@ class HostKotlinTarget(
       |
       |import assertk.assertThat
       |import assertk.assertions.isEqualTo
-      |import brevity.wasi.p2.RealWasiP2Host
       |import dev.wasmo.brevity.WasmInstance
+      |import dev.wasmo.brevity.wasi.p1.RealWasiP1Host
+      |import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
       |import okio.Path.Companion.toPath
       |import wit.brevity.testing.BrevityTest
       |import wit.brevity.testing.World
       |import wit.wasi.cli.v0_2_0.World
-      |import wit.wasi.v0_1.SystemWasiP1
       |import wit.wasi.v0_1.World
       |
       |fun main(vararg args: String) {
@@ -41,7 +41,7 @@ class HostKotlinTarget(
       |  WasmInstance(
       |    path = args[0].toPath(),
       |    worlds = listOf(
-      |      wit.wasi.v0_1.Wasi.World({ SystemWasiP1 }),
+      |      wit.wasi.v0_1.Wasi.World({ RealWasiP1Host() }),
       |      wit.wasi.cli.v0_2_0.Imports.World({ RealWasiP2Host() }),
       |      world,
       |    ),
