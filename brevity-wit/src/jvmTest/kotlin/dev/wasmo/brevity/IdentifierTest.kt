@@ -27,8 +27,8 @@ class IdentifierTest {
     "A11-4CR0NYMS".assertIsWellFormed()
     // Sections with different casings are fine, too
     "m1x3d-4CR0NYMS".assertIsWellFormed()
-    // Prefix with % sign as a keyword disambiguator
-    "%abd".assertIsWellFormed()
+    // Prefix with % sign as a keyword disambiguator - % gets dropped
+    assertThat(Identifier("%abd")).isEqualTo(WitIdentifier("abd"))
 
     // No empties
     "".assertIsMalformed()

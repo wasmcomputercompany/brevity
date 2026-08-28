@@ -47,8 +47,8 @@ private val identifierRegex = Regex("^%?([a-z][a-z0-9]*|[A-Z][A-Z0-9]*)(-[a-z0-9
  */
 fun Identifier(name: String): Identifier {
   return if (identifierRegex.matches(name)) {
-    WitIdentifier(name)
+    WitIdentifier(name.removePrefix("%"))
   } else {
-    MalformedIdentifier(name)
+    MalformedIdentifier(name.removePrefix("%"))
   }
 }
