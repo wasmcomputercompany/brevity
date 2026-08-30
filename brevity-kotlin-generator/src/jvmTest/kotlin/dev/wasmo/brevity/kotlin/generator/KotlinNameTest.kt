@@ -23,4 +23,12 @@ class KotlinNameTest {
     assertThat((value + Identifier("wall-clock")).name)
       .isEqualTo(ClassName("wit.wasi.clocks.v0_2_12", "WallClock"))
   }
+
+  @Test
+  fun `package name mapping with dashes`() {
+    val value = "wasi:grandfather-clocks".toPackageName().toKotlin()
+    assertThat(value.name).isEqualTo("wit.wasi.grandfatherclocks")
+    assertThat((value + Identifier("wall-clock")).name)
+      .isEqualTo(ClassName("wit.wasi.grandfatherclocks", "WallClock"))
+  }
 }

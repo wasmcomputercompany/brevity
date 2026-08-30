@@ -27,8 +27,8 @@ sealed interface KotlinName {
 fun PackageName.toKotlin(): KotlinName.Package {
   val segments = buildList {
     add(kotlinPackagePrefix)
-    addAll(namespaces.map { it.name.toPackageSegment() })
-    addAll(names.map { it.name.toPackageSegment() })
+    addAll(namespaces.map { it.packageCase })
+    addAll(names.map { it.packageCase })
     version?.let {
       add("v${it.version.toPackageSegment()}")
     }
