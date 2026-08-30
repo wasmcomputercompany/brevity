@@ -18,9 +18,8 @@ internal class ApiFunctionFactory(
 
   fun api() = FunSpec.builder(value.kotlinName)
     .addModifiers(KModifier.ABSTRACT)
-    .addKdoc(
-      "%L",
-      buildString {
+    .apply {
+      val kdoc = buildString {
         val functionDocumentation = value.documentation
         if (functionDocumentation != null) {
           append(functionDocumentation.content.trimIndent())
@@ -35,8 +34,10 @@ internal class ApiFunctionFactory(
           append("\n\n")
         }
       }.trim()
-    )
-    .apply {
+      if (kdoc.isNotEmpty()) {
+        addKdoc("%L", kdoc)
+      }
+
       for (parameter in value.parameters) {
         addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
       }
