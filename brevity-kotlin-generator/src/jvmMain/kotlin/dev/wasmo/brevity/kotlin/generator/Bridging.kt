@@ -100,11 +100,11 @@ val TypeName.kotlinApi: KtTypeName
         TypeName.S8 -> Symbols.Okio.ByteString
         TypeName.S16 -> Symbols.Kotlin.ShortArray
         TypeName.S32 -> Symbols.Kotlin.IntArray
-        TypeName.S64 -> Symbols.Kotlin.LongAray
+        TypeName.S64 -> Symbols.Kotlin.LongArray
         TypeName.U8 -> Symbols.Okio.ByteString
         TypeName.U16 -> Symbols.Kotlin.UShortArray
         TypeName.U32 -> Symbols.Kotlin.UIntArray
-        TypeName.U64 -> Symbols.Kotlin.ULongAray
+        TypeName.U64 -> Symbols.Kotlin.ULongArray
         TypeName.F32 -> Symbols.Kotlin.FloatArray
         TypeName.F64 -> Symbols.Kotlin.DoubleArray
         else -> LIST.parameterizedBy(type.kotlinApi)

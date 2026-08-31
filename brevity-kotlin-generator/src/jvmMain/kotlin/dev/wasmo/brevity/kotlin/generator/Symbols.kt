@@ -17,7 +17,7 @@ object Symbols {
     val Int = ClassName("kotlin", "Int")
     val IntArray = ClassName("kotlin", "IntArray")
     val Long = ClassName("kotlin", "Long")
-    val LongAray = ClassName("kotlin", "LongAray")
+    val LongArray = ClassName("kotlin", "LongArray")
     val OptIn = ClassName("kotlin", "OptIn")
     val Pair = ClassName("kotlin", "Pair")
     val Short = ClassName("kotlin", "Short")
@@ -29,7 +29,7 @@ object Symbols {
     val UInt = ClassName("kotlin", "UInt")
     val UIntArray = ClassName("kotlin", "UIntArray")
     val ULong = ClassName("kotlin", "ULong")
-    val ULongAray = ClassName("kotlin", "ULongAray")
+    val ULongArray = ClassName("kotlin", "ULongArray")
     val UShort = ClassName("kotlin", "UShort")
     val UShortArray = ClassName("kotlin", "UShortArray")
   }
