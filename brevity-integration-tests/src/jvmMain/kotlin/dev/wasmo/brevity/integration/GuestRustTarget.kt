@@ -62,37 +62,23 @@ class GuestRustTarget(
               """.trimMargin(),
             )
           }
-          writeUtf8(
-            """
-            |    panic!("unexpected value")
-            |  }
-            |
-            """.trimMargin(),
-          )
         } else {
-          writeUtf8(
-            """
-            |    match v {
-            |
-            """.trimMargin(),
-          )
           for ((index, value) in type.values.withIndex()) {
             writeUtf8(
               """
-              |      ${value.rust} => $index,
+              |    if v == ${value.rust} { return $index }
               |
               """.trimMargin(),
             )
           }
-          writeUtf8(
-            """
-            |      _ => panic!("unexpected value")
-            |    }
+        }
+        writeUtf8(
+          """
+            |    panic!("unexpected value")
             |  }
             |
             """.trimMargin(),
-          )
-        }
+        )
       }
 
       writeUtf8(
