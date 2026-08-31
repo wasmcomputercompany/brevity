@@ -29,7 +29,7 @@ class IssueCollector private constructor(
   }
 
   internal fun pushIssueLocation(location: Location)
-    = IssueCollector(_issues, locationStack + location)
+    = IssueCollector(_issues, listOf(location).plus(locationStack))
 }
 
 context(issueCollector: IssueCollector)
