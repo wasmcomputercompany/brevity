@@ -57,50 +57,40 @@ class GuestKotlinTarget(
         if (type.compareAsString) {
           writeUtf8(
             """
-            |    return when (v.toString()) {
+            |    val v_str = v.toString()
             |
             """.trimMargin(),
           )
           for ((index, value) in type.values.withIndex()) {
             writeUtf8(
               """
-              |      (${value.kotlin}).toString() -> $index
+              |    if (v_str == (${value.kotlin}).toString()) { return $index }
               |
               """.trimMargin(),
             )
           }
-          writeUtf8(
-            """
-            |      else -> -1
-            |    }
-            |
-            """.trimMargin(),
-          )
         } else {
-          writeUtf8(
-            """
-            |    return when (v) {
-            |
-            """.trimMargin(),
-          )
           for ((index, value) in type.values.withIndex()) {
-            writeUtf8(
-              """
-              |      ${value.kotlin} -> $index
-              |
-              """.trimMargin(),
-            )
+            if (type.kotlinEqualityMethod == null) {
+              writeUtf8(
+                """
+                |    if (v == ${value.kotlin}) { return $index }
+                |
+                """.trimMargin(),
+              )
+            } else {
+              writeUtf8(
+                """
+                |    if (v.${type.kotlinEqualityMethod}(${value.kotlin})) { return $index }
+                |
+                """.trimMargin(),
+              )
+            }
           }
-          writeUtf8(
-            """
-            |      else -> -1
-            |    }
-            |
-            """.trimMargin(),
-          )
         }
         writeUtf8(
           """
+          |    return -1
           |  }
           |
           """.trimMargin(),

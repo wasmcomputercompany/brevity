@@ -8,11 +8,14 @@ import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 /**
  * @param compareAsString true for types like Float that don't implement equals symmetrically. (For
  *   example, Float.NaN is not reflective.)
+ * @param equalityMethod is the kotlin method on the type that will do the appropriate deep
+ *   comparison. (For example, contentEquals for arrays)
  */
 data class SampleType(
   val id: Identifier,
   val mustAllocate: Boolean = false,
   val compareAsString: Boolean = false,
+  val kotlinEqualityMethod: String? = null,
   val witType: String,
   val kotlinType: String,
   val rustType: String,
