@@ -10,9 +10,9 @@ import kotlin.test.fail
 import okio.FileSystem
 import okio.Path.Companion.toPath
 
-class ReadWasiMainTest {
+class ReadWasiP3Test {
   private val fileSystem = FileSystem.SYSTEM
-  private val wasiMainProposals = "../submodules/wasi-main/proposals".toPath()
+  private val wasiMainProposals = "../submodules/wasi-p3/proposals".toPath()
 
   @Test
   fun `parse all files`() {

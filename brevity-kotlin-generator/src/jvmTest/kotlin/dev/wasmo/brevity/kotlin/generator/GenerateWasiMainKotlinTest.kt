@@ -10,7 +10,7 @@ import okio.Path.Companion.toPath
 /** This dumps a `.kt` file for all the WASI proposals, for manual inspection. */
 class GenerateWasiMainKotlinTest {
   private val fileSystem = FileSystem.SYSTEM
-  private val wasiMainProposals = "../submodules/wasi-main/proposals".toPath()
+  private val wasiMainProposals = "../submodules/wasi-p3/proposals".toPath()
 
   @Test
   fun generate() {
@@ -27,7 +27,7 @@ class GenerateWasiMainKotlinTest {
       WitBridgeGenerator.precompile(
         fileSystem = fileSystem,
         packageDirectories = directories,
-        irFilter = { it.filterNamedWorlds(listOf("wasi:http/service@0.3.0")) },
+        irFilter = { it.filterNamedWorlds(listOf("wasi:http/service@0.3.1")) },
       )
     }!!
 
