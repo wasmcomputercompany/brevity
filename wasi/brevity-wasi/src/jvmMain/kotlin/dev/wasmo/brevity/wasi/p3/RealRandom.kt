@@ -6,9 +6,9 @@ import kotlin.random.asKotlinRandom
 import kotlin.random.nextULong
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
-import wit.wasi.random.v0_3_0.Insecure
-import wit.wasi.random.v0_3_0.InsecureSeed
-import wit.wasi.random.v0_3_0.Random as WasiRandom
+import wit.wasi.random.v0_3_1.Insecure
+import wit.wasi.random.v0_3_1.InsecureSeed
+import wit.wasi.random.v0_3_1.Random as WasiRandom
 
 class RealRandom : WasiRandom {
   val secureRandom = SecureRandom().asKotlinRandom()
