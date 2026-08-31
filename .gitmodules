@@ -2,7 +2,6 @@
 	path = submodules/wasi-p2
 	url = https://github.com/WebAssembly/WASI.git
 	branch = wasi-0.2
-[submodule "wasi-main"]
-	path = submodules/wasi-main
+[submodule "submodules/wasi-p3"]
+	path = submodules/wasi-p3
 	url = https://github.com/WebAssembly/WASI.git
-	branch = main
