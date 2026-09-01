@@ -22,6 +22,16 @@ class WitBridgeGenerator private constructor(
   val api: ApiGenerator,
   val roleTracker: RoleTracker,
 ) {
+  fun generate(): ProjectSpec {
+    val specs = buildList {
+      addAll(host.generate())
+      addAll(guest.generate())
+      addAll(api.generate())
+    }
+
+    return ProjectSpec(specs)
+  }
+
   interface Validation {
     context(issueCollector: IssueCollector)
     fun validate(declarationIndex: DeclarationIndex)

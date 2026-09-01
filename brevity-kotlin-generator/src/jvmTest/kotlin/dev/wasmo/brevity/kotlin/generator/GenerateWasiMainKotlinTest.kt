@@ -1,8 +1,7 @@
 package dev.wasmo.brevity.kotlin.generator
 
-import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.collectNoIssuesOrThrow
-import java.io.File
+import dev.wasmo.brevity.filterNamedWorlds
 import kotlin.test.Test
 import okio.FileSystem
 import okio.Path.Companion.toPath
@@ -31,17 +30,15 @@ class GenerateWasiMainKotlinTest {
       )
     }!!
 
-    val directory = File("build/GenerateWasiMainKotlinTest")
-    directory.mkdirs()
+    val directory = "build/GenerateWasiMainKotlinTest".toPath()
+    fileSystem.createDirectories(directory)
 
-    for (fileSpec in generator.api.generate()) {
-      fileSpec.writeTo(directory)
-    }
-    for (fileSpec in generator.guest.generate()) {
-      fileSpec.writeTo(directory)
-    }
-    for (fileSpec in generator.host.generate()) {
-      fileSpec.writeTo(directory)
-    }
+    val projectSpec = generator.generate()
+    projectSpec.writeTo(
+      fileSystem = fileSystem,
+      commonMain = directory,
+      wasmWasiMain = directory,
+      jvmMain = directory,
+    )
   }
 }

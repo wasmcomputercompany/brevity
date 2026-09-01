@@ -1,7 +1,6 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
@@ -19,6 +18,12 @@ import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.GuestFunctionFactory.Receiver
 
+private val guestOptIns = setOf(
+  Symbols.KotlinWasm.ComponentModelInternalApi,
+  Symbols.KotlinWasm.ExperimentalWasmInterop,
+  Symbols.KotlinWasm.UnsafeWasmMemoryApi,
+)
+
 class GuestGenerator(
   private val encoderFactory: EncoderFactory,
   private val declarationIndex: DeclarationIndex,
@@ -26,49 +31,51 @@ class GuestGenerator(
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
 ) {
-  fun generate(): List<FileSpec> {
-    val types = packages.flatMap { it.services }
-      .flatMap { it.types }
-      .mapNotNull { type ->
+  fun generate(): List<QualifiedSpec> {
+    val result = mutableListOf<QualifiedSpec>()
+
+    for (service in packages.flatMap { it.services }) {
+      for (type in service.types) {
         val typeName = type.type
         val className = typeName.kotlinApi
         // TODO: this is hacked because we don't also prune unreachable callsites.
         val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
         val fileName = className.simpleNames.joinToString(separator = "") + "Guest"
-        FileSpec.builder(className.packageName, fileName)
-          .addBrevityComment(type)
-          .addAnnotation(optInToExperimentalWasm)
-          .apply {
-            addTypeFunctions(type, roles)
-            for (encoder in declaredTypeEncodersGenerator.generate(type, roles)) {
-              addFunction(encoder)
-            }
+
+        result.collect(
+          sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
+          locations = setOf(type.location),
+          optIns = guestOptIns,
+          packageName = className.packageName,
+          fileName = fileName,
+        ) {
+          addTypeFunctions(type, roles)
+          for (encoder in declaredTypeEncodersGenerator.generate(type, roles)) {
+            addFunction(encoder)
           }
-          .build()
-          .takeIf { it.members.isNotEmpty() }
+        }
       }
 
-    val services = packages.flatMap { it.services }
-      .mapNotNull { service ->
-        val className = service.serviceName.kotlinApi
-        FileSpec.builder(className.peerClass("${className.simpleName}Guest"))
-          .addBrevityComment(service)
-          .addAnnotation(optInToExperimentalWasm)
-          .apply {
-            generateService(service)
-            if (service is IrWorld) {
-              retainWasmExportsFunction(service)
-              addExternalFunctions(service)
-            }
-          }
-          .build()
-          .takeIf { it.members.isNotEmpty() }
+      val className = service.serviceName.kotlinApi
+      result.collect(
+        packageName = className.packageName,
+        locations = setOf(service.location),
+        optIns = guestOptIns,
+        fileName = "${className.simpleName}Guest",
+        sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
+      ) {
+        generateService(service)
+        if (service is IrWorld) {
+          retainWasmExportsFunction(service)
+          addExternalFunctions(service)
+        }
       }
+    }
 
-    return types + services
+    return result
   }
 
-  private fun FileSpec.Builder.generateService(value: IrWitPackage.Service) {
+  private fun QualifiedSpecCollector.generateService(value: IrWitPackage.Service) {
     if (value is IrWorld) {
       val guestApis = value.guestApis
       if (guestApis != null) {
@@ -101,7 +108,7 @@ class GuestGenerator(
     }
   }
 
-  private fun FileSpec.Builder.addTypeFunctions(
+  private fun QualifiedSpecCollector.addTypeFunctions(
     typeDeclaration: IrTypeDeclaration,
     entry: RoleTracker.Entry,
   ) {
@@ -114,7 +121,7 @@ class GuestGenerator(
     }
   }
 
-  private fun FileSpec.Builder.addResourceFunctions(
+  private fun QualifiedSpecCollector.addResourceFunctions(
     value: IrResource,
     host: Boolean,
     guest: Boolean,
@@ -154,7 +161,7 @@ class GuestGenerator(
         addFunction(GuestFunctionFactory(encoderFactory, receiver, function).wasmImport())
       }
 
-      addType(handleBuilder.build())
+      addType(value.type.handleName, handleBuilder.build())
     }
   }
 
@@ -162,7 +169,7 @@ class GuestGenerator(
    * Generate top-level `@WasmExport`-annotated functions for all exported functions in [value],
    * and functions recursively held by [value].
    */
-  private fun FileSpec.Builder.addExternalFunctions(value: IrWorld) {
+  private fun QualifiedSpecCollector.addExternalFunctions(value: IrWorld) {
     for (factory in exportedGuestFunctionFactories(value)) {
       addFunction(factory.wasmExport())
     }
@@ -197,7 +204,7 @@ class GuestGenerator(
     }
   }
 
-  private fun FileSpec.Builder.retainWasmExportsFunction(value: IrWorld) {
+  private fun QualifiedSpecCollector.retainWasmExportsFunction(value: IrWorld) {
     addFunction(
       FunSpec.builder(value.retainWasmExportsFunctionName)
         .addModifiers(KModifier.PRIVATE)

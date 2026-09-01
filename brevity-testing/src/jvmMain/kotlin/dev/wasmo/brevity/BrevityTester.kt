@@ -1,6 +1,7 @@
 package dev.wasmo.brevity
 
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
+import dev.wasmo.brevity.kotlin.generator.QualifiedSpec.SourceSet
 import okio.Path
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
@@ -10,20 +11,22 @@ class BrevityTester(
 ) {
   val roleTracker = generator.roleTracker
 
+  val projectSpec = generator.generate()
+
   private val apiFiles = buildMap {
-    for (fileSpec in generator.api.generate()) {
+    for (fileSpec in projectSpec.fileSpecs(SourceSet.CommonMain)) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }
   }.toSortedMap()
 
   private val guestFiles = buildMap {
-    for (fileSpec in generator.guest.generate()) {
+    for (fileSpec in projectSpec.fileSpecs(SourceSet.WasmWasiMain)) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }
   }.toSortedMap()
 
   private val hostFiles = buildMap {
-    for (fileSpec in generator.host.generate()) {
+    for (fileSpec in projectSpec.fileSpecs(SourceSet.JvmMain)) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
     }
   }.toSortedMap()
@@ -38,9 +41,9 @@ class BrevityTester(
 
   companion object {
     operator fun invoke(vararg files: Pair<Path, String>): BrevityTester {
-       val packageDirectories = mutableSetOf<Path>()
+      val packageDirectories = mutableSetOf<Path>()
 
-       val fileSystem = FakeFileSystem()
+      val fileSystem = FakeFileSystem()
         .apply {
           for ((path, content) in files) {
             packageDirectories += path.parent!!
