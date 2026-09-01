@@ -8,6 +8,7 @@ import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.WitException
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
@@ -16,7 +17,7 @@ class WitFileReaderTest {
   private val location = Location("file.wit")
 
   @Test
-  fun packageOnly() {
+  fun packageOnly() = collectNoIssuesOrThrow {
     val wit = """
       |package wasi:clocks@0.2.9;
       """.trimMargin().toWitFile(location)
@@ -31,10 +32,12 @@ class WitFileReaderTest {
   @Test
   fun `multiple packages`() {
     val e = assertFailsWith<WitException> {
-      """
-      |package wasi:clocks@0.2.9;
-      |package wasi:clocks;
-      """.trimMargin().toWitFile(location)
+      collectNoIssuesOrThrow {
+        """
+        |package wasi:clocks@0.2.9;
+        |package wasi:clocks;
+        """.trimMargin().toWitFile(location)
+      }
     }
     assertThat(e.issue.description).isEqualTo("unexpected package identifier")
   }
@@ -42,16 +45,18 @@ class WitFileReaderTest {
   @Test
   fun `package after another declaration`() {
     val e = assertFailsWith<WitException> {
-      """
-      |interface foo {}
-      |package wasi:clocks;
-      """.trimMargin().toWitFile(location)
+      collectNoIssuesOrThrow {
+        """
+        |interface foo {}
+        |package wasi:clocks;
+        """.trimMargin().toWitFile(location)
+      }
     }
     assertThat(e.issue.description).isEqualTo("unexpected package identifier")
   }
 
   @Test
-  fun `readGate success`() {
+  fun `readGate success`() = collectNoIssuesOrThrow {
     val wit = """
       |@since(version = 0.2.0)
       |@deprecated(version = 0.2.2)
@@ -69,7 +74,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `readGate unstable only`() {
+  fun `readGate unstable only`() = collectNoIssuesOrThrow {
     val wit = """
       |@unstable(feature = fancier-foo)
       |interface foo {}
@@ -79,7 +84,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `readGate since only`() {
+  fun `readGate since only`() = collectNoIssuesOrThrow {
     val wit = """
       |@since(version = 0.2.0)
       |interface foo {}
@@ -89,7 +94,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `readGate deprecated only`() {
+  fun `readGate deprecated only`() = collectNoIssuesOrThrow {
     val wit = """
       |@deprecated(version = 0.2.2)
       |interface foo {}
@@ -101,10 +106,12 @@ class WitFileReaderTest {
   @Test
   fun `readGate unexpected field`() {
     val e = assertFailsWith<WitException> {
-      WitFileReader(
-        location,
-        "@unstable(version = 0.2.2)",
-      ).readGateOrNull()
+      collectNoIssuesOrThrow {
+        WitFileReader(
+          location,
+          "@unstable(version = 0.2.2)",
+        ).readGateOrNull()
+      }
     }
     assertThat(e.issue.description).isEqualTo("unexpected field: unstable.version")
   }
@@ -112,10 +119,12 @@ class WitFileReaderTest {
   @Test
   fun `readGate repeated unstable`() {
     val e = assertFailsWith<WitException> {
-      WitFileReader(
-        location,
-        "@unstable(feature = fancier-foo) @unstable(feature = faster-foo)",
-      ).readGateOrNull()
+      collectNoIssuesOrThrow {
+        WitFileReader(
+          location,
+          "@unstable(feature = fancier-foo) @unstable(feature = faster-foo)",
+        ).readGateOrNull()
+      }
     }
     assertThat(e.issue.description).isEqualTo("unexpected field: unstable.feature")
   }
@@ -123,10 +132,12 @@ class WitFileReaderTest {
   @Test
   fun `readGate repeated since`() {
     val e = assertFailsWith<WitException> {
-      WitFileReader(
-        location,
-        "@since(version = 0.2.0) @since(version = 0.3.0)",
-      ).readGateOrNull()
+      collectNoIssuesOrThrow {
+        WitFileReader(
+          location,
+          "@since(version = 0.2.0) @since(version = 0.3.0)",
+        ).readGateOrNull()
+      }
     }
     assertThat(e.issue.description).isEqualTo("unexpected field: since.version")
   }
@@ -134,16 +145,18 @@ class WitFileReaderTest {
   @Test
   fun `readGate repeated deprecated`() {
     val e = assertFailsWith<WitException> {
-      WitFileReader(
-        location,
-        "@deprecated(version = 0.2.0) @deprecated(version = 0.3.0)",
-      ).readGateOrNull()
+      collectNoIssuesOrThrow {
+        WitFileReader(
+          location,
+          "@deprecated(version = 0.2.0) @deprecated(version = 0.3.0)",
+        ).readGateOrNull()
+      }
     }
     assertThat(e.issue.description).isEqualTo("unexpected field: deprecated.version")
   }
 
   @Test
-  fun `readGate absent`() {
+  fun `readGate absent`() = collectNoIssuesOrThrow {
     assertThat(
       WitFileReader(
         location,
@@ -153,7 +166,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `readInterface success`() {
+  fun `readInterface success`() = collectNoIssuesOrThrow {
     val wit = """
       |interface foo {}
       """.trimMargin().toWitFile(location)
@@ -171,7 +184,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `readInterface with documentation and gates`() {
+  fun `readInterface with documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |/// this is the foo interface
       |@deprecated(version = 0.2.2)
@@ -197,7 +210,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `readInterface with functions`() {
+  fun `readInterface with functions`() = collectNoIssuesOrThrow {
     val wit = """
       |interface foo {
       |  print: func(message: string, repeat: option<u32>) -> result<_, errno>;
@@ -244,7 +257,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `read sample interface`() {
+  fun `read sample interface`() = collectNoIssuesOrThrow {
     val wit = """
       |package wasi:clocks@0.2.9;
       |
@@ -302,7 +315,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `interface documentation and gates`() {
+  fun `interface documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |/// tick tock
       |/// wall clock
@@ -329,7 +342,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `record documentation and gates`() {
+  fun `record documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |interface wall-clock {
       |  /// spacetime
@@ -382,7 +395,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `function documentation and gates`() {
+  fun `function documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |interface wall-clock {
       |  /// sample the clock
@@ -424,7 +437,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `function parameters trailing commas`() {
+  fun `function parameters trailing commas`() = collectNoIssuesOrThrow {
     val wit = """
       |interface monotonic-clock {
       |  subscribe-instant: func(
@@ -460,7 +473,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `resource documentation and gates`() {
+  fun `resource documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |interface db {
       |  /// big boi
@@ -569,7 +582,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `empty resource`() {
+  fun `empty resource`() = collectNoIssuesOrThrow {
     val wit = """
       |interface db {
       |  resource blob;
@@ -595,7 +608,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `variant documentation and gates`() {
+  fun `variant documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |interface db {
       |  /// whats included
@@ -656,7 +669,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `flags documentation and gates`() {
+  fun `flags documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |interface db {
       |  /// comic character
@@ -716,7 +729,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `enum documentation and gates`() {
+  fun `enum documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |interface db {
       |  /// Roy G.
@@ -776,7 +789,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `type alias documentation and gates`() {
+  fun `type alias documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |interface db {
       |  /// So Awesome.
@@ -823,7 +836,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `use documentation and gates`() {
+  fun `use documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |interface db {
       |  /// Four values.
@@ -884,7 +897,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `world documentation and gates`() {
+  fun `world documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |/// a printer-scanner-fax thingy
       |@since(version = 1.0)
@@ -907,7 +920,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `import export use path documentation and gates`() {
+  fun `import export use path documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  /// The component needs an `error-reporter`
@@ -948,7 +961,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `import plain named use path documentation and gates`() {
+  fun `import plain named use path documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  /// This store is aliased as 'primary'
@@ -979,7 +992,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `export plain named use path documentation and gates`() {
+  fun `export plain named use path documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  /// This store is aliased as 'secondary'
@@ -1010,7 +1023,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `import inline interface documentation and gates`() {
+  fun `import inline interface documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  /// This interface is inline
@@ -1059,7 +1072,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `export inline interface documentation and gates`() {
+  fun `export inline interface documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  /// We can export an inline interface
@@ -1108,7 +1121,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `import inline function documentation and gates`() {
+  fun `import inline function documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  /// This function is inline
@@ -1145,7 +1158,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `export inline function documentation and gates`() {
+  fun `export inline function documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  /// This exported function is inline
@@ -1182,7 +1195,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `import plain named simple use path`() {
+  fun `import plain named simple use path`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  import two: store;
@@ -1209,7 +1222,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `export plain named simple use path`() {
+  fun `export plain named simple use path`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  export two: store;
@@ -1236,7 +1249,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `world include documentation and gates`() {
+  fun `world include documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  /// This include is pretty basic.
@@ -1267,7 +1280,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `world include with items`() {
+  fun `world include with items`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  include wasi:io/my-world-1 with {
@@ -1310,7 +1323,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `inline package documentation and gates`() {
+  fun `inline package documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |/// This package is pasted from somewhere else.
       |@since(version = 1.0)
@@ -1344,7 +1357,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `top level use documentation and gates`() {
+  fun `top level use documentation and gates`() = collectNoIssuesOrThrow {
     val wit = """
       |/// Use the Wasi HTTP types.
       |@since(version = 1.0)
@@ -1376,7 +1389,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `top level use in nested package`() {
+  fun `top level use in nested package`() = collectNoIssuesOrThrow {
     val wit = """
       |package local:a {
       |  /// Use the Wasi HTTP types.
@@ -1406,7 +1419,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `world in nested package`() {
+  fun `world in nested package`() = collectNoIssuesOrThrow {
     val wit = """
       |package local:a {
       |  /// a printer-scanner-fax thingy
@@ -1437,7 +1450,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `record in world`() {
+  fun `record in world`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  record datetime {
@@ -1478,7 +1491,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `enum in world`() {
+  fun `enum in world`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  enum color {
@@ -1522,7 +1535,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `flags in world`() {
+  fun `flags in world`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  flags properties {
@@ -1566,7 +1579,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `resource in world`() {
+  fun `resource in world`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  resource blob {
@@ -1620,7 +1633,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `type alias in world`() {
+  fun `type alias in world`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  type my-awesome-u32 = u32;
@@ -1647,7 +1660,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `use in world`() {
+  fun `use in world`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  use an-interface.{a, list, of, names};
@@ -1679,7 +1692,7 @@ class WitFileReaderTest {
   }
 
   @Test
-  fun `variant in world`() {
+  fun `variant in world`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
       |  variant filter {

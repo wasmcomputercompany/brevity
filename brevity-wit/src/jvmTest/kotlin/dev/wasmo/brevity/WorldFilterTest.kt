@@ -13,25 +13,27 @@ import kotlin.test.assertFailsWith
 class WorldFilterTest {
   private val commandLocation = Location("command.wit")
   private val importsLocation = Location("imports.wit")
-  private val ioPackages = listOf(
-    IoToplevelWitPackage(
-      packageName = "wasi:cli@0.3.0".toPackageName(),
-      files = listOf(
-        """
+  private val ioPackages = collectNoIssuesOrThrow {
+    listOf(
+      IoToplevelWitPackage(
+        packageName = "wasi:cli@0.3.0".toPackageName(),
+        files = listOf(
+          """
         |package wasi:cli@0.3.0;
         |
         |world command {
         |}
         """.trimMargin().toWitFile(commandLocation),
-        """
+          """
         |package wasi:cli@0.3.0;
         |
         |world imports {
         |}
         """.trimMargin().toWitFile(importsLocation),
+        ),
       ),
-    ),
-  )
+    )
+  }
 
   @Test
   fun filterSuccess() = collectNoIssuesOrThrow {
@@ -55,7 +57,8 @@ class WorldFilterTest {
     val e = assertFailsWith<IllegalArgumentException> {
       irPackages.filterNamedWorlds(listOf("wasi:command"))
     }
-    assertThat(e).hasMessage("""
+    assertThat(e).hasMessage(
+      """
       |unexpected world name:
       |  wasi:command
       |not in acceptable set:
@@ -65,6 +68,7 @@ class WorldFilterTest {
       |  wasi:cli/command@0.3.0
       |  wasi:cli/imports
       |  wasi:cli/imports@0.3.0
-      """.trimMargin())
+      """.trimMargin(),
+    )
   }
 }

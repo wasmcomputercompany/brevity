@@ -4,11 +4,14 @@ package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Issue
+import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
 import dev.wasmo.brevity.WitException
+import dev.wasmo.brevity.WitIdentifier
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
@@ -89,6 +92,7 @@ class WitSyntaxReader(
     documentation.appendRange(chars, startIndex, endIndex)
   }
 
+  context(issueCollector: IssueCollector)
   fun readIdentifier(): Identifier {
     checkWit(!exhausted) {
       "expected an identifier"
@@ -104,10 +108,21 @@ class WitSyntaxReader(
       "expected an identifier"
     }
 
+    val resultLocation = location
+
     val result = String(chars, pos, end - pos)
     pos = end
 
-    return Identifier(result)
+    return Identifier(result).also {
+      if (it !is WitIdentifier) {
+        issueCollector.report(
+          Issue(
+            "malformed identifier: $result",
+            resultLocation,
+          )
+        )
+      }
+    }
   }
 
   fun readSemVer(): SemVer {
@@ -145,6 +160,7 @@ class WitSyntaxReader(
     return result
   }
 
+  context(issueCollector: IssueCollector)
   fun readAnnotationOrNull(): Identifier? {
     if (peek() != '@') return null
     pos++ // Consume '@'.
@@ -236,6 +252,7 @@ class WitSyntaxReader(
    *          | 'stream'
    * ```
    */
+  context(issueCollector: IssueCollector)
   fun readTypeName(): IoTypeName {
     return when (val identifier = readIdentifier()) {
       Keywords.tuple -> IoTypeName.Tuple(readTypeList("tuple", min = 1, max = Int.MAX_VALUE))
@@ -307,6 +324,7 @@ class WitSyntaxReader(
     }
   }
 
+  context(issueCollector: IssueCollector)
   private fun readTypeList(
     name: String,
     min: Int,
@@ -334,6 +352,7 @@ class WitSyntaxReader(
    * package-decl        ::= 'package' ( id ':' )+ id ( '/' id )* ('@' valid-semver)?
    * ```
    */
+  context(issueCollector: IssueCollector)
   fun readPackageName(): PackageName {
     val namespaces = mutableListOf<Identifier>()
     val names = mutableListOf<Identifier>()
@@ -377,6 +396,7 @@ class WitSyntaxReader(
    *            | ( id ':' )+ id ( '/' id )+ ('@' valid-semver)?
    * ```
    */
+  context(issueCollector: IssueCollector)
   fun readUsePath(): UsePath {
     val namespaces = mutableListOf<Identifier>()
     val packageNames = mutableListOf<Identifier>()

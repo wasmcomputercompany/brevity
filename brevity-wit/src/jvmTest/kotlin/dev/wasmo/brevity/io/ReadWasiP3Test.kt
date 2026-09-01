@@ -25,7 +25,7 @@ class ReadWasiP3Test {
       }
 
       try {
-        witContent.toWitFile(Location(path))
+        collectNoIssuesOrThrow { witContent.toWitFile(Location(path))  }
       } catch (e: WitException) {
         fail("decoding $path failed at ${e.issue.locations.first()}: ${e.issue.description}")
       }
