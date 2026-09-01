@@ -2,7 +2,7 @@ package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 

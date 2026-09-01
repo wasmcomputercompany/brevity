@@ -2,7 +2,8 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 
 /**
@@ -14,7 +15,7 @@ class DynamicListEncoder(
 ) : Encoder() {
   override val coreTypes = listOf(CoreType.Pointer, CoreType.Pointer)
 
-  override val nameHints: List<Identifier>
+  override val nameHints: List<IoIdentifier>
     get() = listOf(Identifier("address"), Identifier("size"))
 
   override val byteCount: Int

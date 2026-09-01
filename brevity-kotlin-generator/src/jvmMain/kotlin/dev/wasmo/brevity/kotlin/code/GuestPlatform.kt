@@ -2,7 +2,8 @@ package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.generator.Symbols
@@ -11,7 +12,7 @@ import dev.wasmo.brevity.kotlin.generator.kotlinApi
 import dev.wasmo.brevity.kotlin.generator.plus
 
 object GuestPlatform : Platform {
-  override val identifier: Identifier
+  override val identifier: IoIdentifier
     get() = Identifier("guest")
 
   override val addressType: KtTypeName

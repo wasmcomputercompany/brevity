@@ -1,15 +1,15 @@
 package dev.wasmo.brevity.kotlin.generator
 
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.WitIdentifier
 
 /**
- * Returns the `packagecase` [Identifier.name].
+ * Returns the `packagecase` [IoIdentifier.name].
  */
-val Identifier.packageCase: String
+val IoIdentifier.packageCase: String
   get() = toPackageCase()
 
-private fun Identifier.toPackageCase(): String = if (this !is WitIdentifier) {
+private fun IoIdentifier.toPackageCase(): String = if (this !is Identifier) {
   error("Generating code for malformed identifier ${this.name}")
 } else {
   return buildString {

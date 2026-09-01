@@ -1,13 +1,11 @@
 package dev.wasmo.brevity
 
-import dev.wasmo.brevity.io.UsePath
-
 /**
  * The name of an interface or a world.
  */
 data class ServiceName(
-  val packageName: PackageName,
-  val name: Identifier,
+    val packageName: PackageName,
+    val name: IoIdentifier,
 ) {
   fun normalized() = ServiceName(packageName.normalized(), name.normalized())
 

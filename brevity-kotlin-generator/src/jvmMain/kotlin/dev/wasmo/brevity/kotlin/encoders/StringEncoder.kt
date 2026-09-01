@@ -1,7 +1,8 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 
 /** Stores a string as an address pointer and a byte count. */
@@ -9,7 +10,7 @@ object StringEncoder : Encoder() {
   override val coreTypes: List<CoreType>
     get() = listOf(CoreType.Pointer, CoreType.I32)
 
-  override val nameHints: List<Identifier>
+  override val nameHints: List<IoIdentifier>
     get() = listOf(Identifier("pointer"), Identifier("byte-count"))
 
   override val byteCount: Int

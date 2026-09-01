@@ -1,6 +1,6 @@
 package dev.wasmo.brevity.io
 
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.ServiceName
@@ -10,15 +10,15 @@ import dev.wasmo.brevity.ServiceName
  * puts the version at the end of the entire string.
  */
 data class UsePath(
-  val packageName: PackageName?,
-  val name: Identifier,
+    val packageName: PackageName?,
+    val name: IoIdentifier,
 ) {
   companion object {
     operator fun invoke(
-      namespaces: List<Identifier> = listOf(),
-      packageNames: List<Identifier> = listOf(),
-      name: Identifier,
-      version: SemVer? = null,
+        namespaces: List<IoIdentifier> = listOf(),
+        packageNames: List<IoIdentifier> = listOf(),
+        name: IoIdentifier,
+        version: SemVer? = null,
     ) = UsePath(
       PackageName(
         namespaces = namespaces,
@@ -28,7 +28,7 @@ data class UsePath(
       name,
     )
 
-    operator fun invoke(name: Identifier) = UsePath(null, name)
+    operator fun invoke(name: IoIdentifier) = UsePath(null, name)
   }
 
   override fun toString(): String {

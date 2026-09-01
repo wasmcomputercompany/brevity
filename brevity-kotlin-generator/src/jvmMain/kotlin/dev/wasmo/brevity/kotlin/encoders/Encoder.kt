@@ -1,7 +1,7 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 
 abstract class Encoder {
@@ -9,7 +9,7 @@ abstract class Encoder {
   abstract val byteCount: Int
   abstract val alignment: Int
 
-  open val nameHints: List<Identifier>?
+  open val nameHints: List<IoIdentifier>?
     get() = null
 
   /** Loads a value from memory at [baseAddress] + [offset]. */

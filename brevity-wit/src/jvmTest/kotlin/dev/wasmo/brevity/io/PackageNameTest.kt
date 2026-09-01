@@ -3,6 +3,7 @@ package dev.wasmo.brevity.io
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.PackageName
 import kotlin.test.Test
 

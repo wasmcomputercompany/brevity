@@ -1,6 +1,6 @@
 package dev.wasmo.brevity.integration
 
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import dev.wasmo.brevity.kotlin.generator.lowerSnakeCase
 import dev.wasmo.brevity.kotlin.generator.upperCamelCase
@@ -12,14 +12,14 @@ import dev.wasmo.brevity.kotlin.generator.upperCamelCase
  *   comparison. (For example, contentEquals for arrays)
  */
 data class SampleType(
-  val id: Identifier,
-  val mustAllocate: Boolean = false,
-  val compareAsString: Boolean = false,
-  val kotlinEqualityMethod: String? = null,
-  val witType: String,
-  val kotlinType: String,
-  val rustType: String,
-  val values: List<SampleValue>,
+    val id: IoIdentifier,
+    val mustAllocate: Boolean = false,
+    val compareAsString: Boolean = false,
+    val kotlinEqualityMethod: String? = null,
+    val witType: String,
+    val kotlinType: String,
+    val rustType: String,
+    val values: List<SampleValue>,
 ) {
   val idUpperCamel: String
     get() = id.upperCamelCase

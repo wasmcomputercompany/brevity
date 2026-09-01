@@ -2,7 +2,8 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterSpec
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
@@ -11,7 +12,7 @@ class CoreValueFactory(
   val encoderFactory: EncoderFactory,
   val nameAllocator: NameAllocator,
 ) {
-  fun parameter(name: Identifier, typeName: TypeName): CoreParameter {
+  fun parameter(name: IoIdentifier, typeName: TypeName): CoreParameter {
     val encoder = encoderFactory.get(typeName)
     val nameHints = encoder.nameHints
 

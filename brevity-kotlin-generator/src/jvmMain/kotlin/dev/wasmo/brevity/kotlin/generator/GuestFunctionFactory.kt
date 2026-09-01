@@ -10,7 +10,8 @@ import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.joinToCode
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
@@ -272,7 +273,7 @@ internal class GuestFunctionFactory(
     data class Id(
       val type: TypeName,
     ) : Receiver {
-      val name: Identifier
+      val name: IoIdentifier
         get() = Identifier("self")
     }
   }

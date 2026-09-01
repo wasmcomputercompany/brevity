@@ -2,7 +2,7 @@ package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
@@ -12,7 +12,7 @@ import dev.wasmo.brevity.kotlin.encoders.integerType
  * Abstracts over the differences in Wasm APIs like Kotlin/Wasm and Chicory.
  */
 interface Platform {
-  val identifier: Identifier
+  val identifier: IoIdentifier
 
   val addressType: KtTypeName
 

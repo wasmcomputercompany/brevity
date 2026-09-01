@@ -1,21 +1,21 @@
 package dev.wasmo.brevity.kotlin.generator
 
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.WitIdentifier
 
 /**
- * Returns the `kabob-case` [Identifier.name] as `lowerCamelCase`.
+ * Returns the `kabob-case` [IoIdentifier.name] as `lowerCamelCase`.
  */
-val Identifier.lowerCamelCase: String
+val IoIdentifier.lowerCamelCase: String
   get() = toCamelCase(false)
 
 /**
- * Returns the `kabob-case` [Identifier.name] as `UpperCamelCase`.
+ * Returns the `kabob-case` [IoIdentifier.name] as `UpperCamelCase`.
  */
-val Identifier.upperCamelCase: String
+val IoIdentifier.upperCamelCase: String
   get() = toCamelCase(true)
 
-private fun Identifier.toCamelCase(upperCamel: Boolean): String = if (this !is WitIdentifier) {
+private fun IoIdentifier.toCamelCase(upperCamel: Boolean): String = if (this !is Identifier) {
   error("Generating code for malformed identifier ${this.name}")
 } else {
   return buildString {

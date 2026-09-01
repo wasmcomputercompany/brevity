@@ -3,6 +3,7 @@ package dev.wasmo.brevity.io.validation
 import assertk.assertThat
 import assertk.assertions.containsExactlyInAnyOrder
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
