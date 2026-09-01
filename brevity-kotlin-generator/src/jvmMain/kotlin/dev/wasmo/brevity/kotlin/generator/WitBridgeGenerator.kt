@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.generator
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.RoleTracker
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.io.validation.buildSymbolTable
 import dev.wasmo.brevity.ir.IrMapper
@@ -38,7 +39,7 @@ class WitBridgeGenerator private constructor(
       irFilter: (List<IrWitPackage>) -> List<IrWitPackage> = { it },
       validations: List<Validation> = listOf(RecursionValidator()),
     ): WitBridgeGenerator? = with(issueCollector) {
-      val packageReader = IoWitPackageReader(fileSystem)
+      val packageReader = collectNoIssuesOrThrow { IoWitPackageReader(fileSystem) }
 
       val ioToplevelPackages = packageDirectories.map { directory ->
         packageReader.read(directory)
