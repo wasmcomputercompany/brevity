@@ -7,8 +7,8 @@ import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 import okio.Path.Companion.toPath
-import wit.wasi.cli.v0_2_0.Imports
-import wit.wasi.cli.v0_2_0.World
+import wit.wasi.cli.v0_2_12.Imports
+import wit.wasi.cli.v0_2_12.World
 import wit.wasi.v0_1.Wasi
 import wit.wasi.v0_1.World
 import wit.wasmo.testing.Types

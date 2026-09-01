@@ -1,26 +1,28 @@
 package dev.wasmo.brevity.wasi.p2
 
-import wit.wasi.cli.v0_2_0.Environment
-import wit.wasi.cli.v0_2_0.Exit
-import wit.wasi.cli.v0_2_0.Imports
-import wit.wasi.cli.v0_2_0.Stderr
-import wit.wasi.cli.v0_2_0.Stdin
-import wit.wasi.cli.v0_2_0.Stdout
-import wit.wasi.cli.v0_2_0.TerminalStderr
-import wit.wasi.cli.v0_2_0.TerminalStdin
-import wit.wasi.cli.v0_2_0.TerminalStdout
-import wit.wasi.clocks.v0_2_0.MonotonicClock
-import wit.wasi.clocks.v0_2_0.WallClock
-import wit.wasi.filesystem.v0_2_0.Preopens
-import wit.wasi.filesystem.v0_2_0.Types
-import wit.wasi.io.v0_2_0.Poll
-import wit.wasi.random.v0_2_0.Insecure
-import wit.wasi.random.v0_2_0.InsecureSeed
-import wit.wasi.random.v0_2_0.Random
-import wit.wasi.sockets.v0_2_0.InstanceNetwork
-import wit.wasi.sockets.v0_2_0.IpNameLookup
-import wit.wasi.sockets.v0_2_0.TcpCreateSocket
-import wit.wasi.sockets.v0_2_0.UdpCreateSocket
+import wit.wasi.cli.v0_2_12.Environment
+import wit.wasi.cli.v0_2_12.Exit
+import wit.wasi.cli.v0_2_12.Imports
+import wit.wasi.cli.v0_2_12.Stderr
+import wit.wasi.cli.v0_2_12.Stdin
+import wit.wasi.cli.v0_2_12.Stdout
+import wit.wasi.cli.v0_2_12.TerminalStderr
+import wit.wasi.cli.v0_2_12.TerminalStdin
+import wit.wasi.cli.v0_2_12.TerminalStdout
+import wit.wasi.clocks.v0_2_12.MonotonicClock
+import wit.wasi.clocks.v0_2_12.Timezone
+import wit.wasi.clocks.v0_2_12.WallClock
+import wit.wasi.filesystem.v0_2_12.Preopens
+import wit.wasi.filesystem.v0_2_12.Types
+import wit.wasi.io.v0_2_12.Poll
+import wit.wasi.random.v0_2_12.Insecure
+import wit.wasi.random.v0_2_12.InsecureSeed
+import wit.wasi.random.v0_2_12.Random
+import wit.wasi.sockets.v0_2_12.InstanceNetwork
+import wit.wasi.sockets.v0_2_12.IpNameLookup
+import wit.wasi.sockets.v0_2_12.Network
+import wit.wasi.sockets.v0_2_12.TcpCreateSocket
+import wit.wasi.sockets.v0_2_12.UdpCreateSocket
 
 /**
  * Implement WASI Preview 2.
@@ -49,11 +51,15 @@ class RealWasiP2Host : Imports.Host {
     get() = TODO("Not yet implemented")
   override val wallClock: WallClock
     get() = TODO("Not yet implemented")
+  override val timezone: Timezone
+    get() = TODO("Not yet implemented")
   override val types: Types
     get() = TODO("Not yet implemented")
   override val preopens: Preopens
     get() = TODO("Not yet implemented")
   override val instanceNetwork: InstanceNetwork
+    get() = TODO("Not yet implemented")
+  override val network: Network
     get() = TODO("Not yet implemented")
   override val udpCreateSocket: UdpCreateSocket
     get() = TODO("Not yet implemented")

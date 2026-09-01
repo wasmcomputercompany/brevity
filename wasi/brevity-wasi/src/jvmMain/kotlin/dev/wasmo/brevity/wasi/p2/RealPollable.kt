@@ -1,6 +1,6 @@
 package dev.wasmo.brevity.wasi.p2
 
-import wit.wasi.io.v0_2_0.Poll
+import wit.wasi.io.v0_2_12.Poll
 
 class RealPollable : Poll.Pollable {
   override fun ready(): Boolean {

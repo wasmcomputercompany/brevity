@@ -4,9 +4,9 @@ import dev.wasmo.brevity.Result
 import java.io.IOException
 import java.io.OutputStream
 import okio.ByteString
-import wit.wasi.io.v0_2_0.Error
-import wit.wasi.io.v0_2_0.Poll
-import wit.wasi.io.v0_2_0.Streams
+import wit.wasi.io.v0_2_12.Error
+import wit.wasi.io.v0_2_12.Poll
+import wit.wasi.io.v0_2_12.Streams
 
 class RealOutputStream(
   val delegate: OutputStream,

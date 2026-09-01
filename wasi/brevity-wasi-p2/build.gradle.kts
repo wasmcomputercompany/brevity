@@ -26,13 +26,13 @@ brevity {
     worlds.add("wasi:cli/imports")
     worlds.add("wasi:http/proxy")
     inputWitPackageDirectories.from(
-      File(project.rootDir, "submodules/wasi-p2/preview2/cli"),
-      File(project.rootDir, "submodules/wasi-p2/preview2/clocks"),
-      File(project.rootDir, "submodules/wasi-p2/preview2/filesystem"),
-      File(project.rootDir, "submodules/wasi-p2/preview2/http"),
-      File(project.rootDir, "submodules/wasi-p2/preview2/io"),
-      File(project.rootDir, "submodules/wasi-p2/preview2/random"),
-      File(project.rootDir, "submodules/wasi-p2/preview2/sockets"),
+      File(project.rootDir, "submodules/wasi-p2/proposals/cli/wit"),
+      File(project.rootDir, "submodules/wasi-p2/proposals/clocks/wit"),
+      File(project.rootDir, "submodules/wasi-p2/proposals/filesystem/wit"),
+      File(project.rootDir, "submodules/wasi-p2/proposals/http/wit"),
+      File(project.rootDir, "submodules/wasi-p2/proposals/io/wit"),
+      File(project.rootDir, "submodules/wasi-p2/proposals/random/wit"),
+      File(project.rootDir, "submodules/wasi-p2/proposals/sockets/wit"),
     )
   }
 }
