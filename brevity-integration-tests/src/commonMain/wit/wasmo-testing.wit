@@ -26,4 +26,5 @@ world wasmo-testing {
   export sum: func(a: s64, b: s64) -> s64;
   export concat: func(a: string-argument, b: string-argument, callback: string-result);
   export inline-concat: func(a: string, b: string) -> string;
+  export parallel-sleep: func(coroutine-count: u32, duration: u64);
 }

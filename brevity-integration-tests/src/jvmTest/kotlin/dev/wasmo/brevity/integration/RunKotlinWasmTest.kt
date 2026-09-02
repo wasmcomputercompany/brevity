@@ -1,10 +1,13 @@
 package dev.wasmo.brevity.integration
 
 import assertk.assertThat
+import assertk.assertions.isBetween
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.WasmInstance
 import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
 import kotlin.test.Test
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.measureTime
 import kotlinx.coroutines.test.runTest
 import okio.Path.Companion.toPath
 import wit.wasi.cli.v0_2_0.Imports
@@ -131,5 +134,24 @@ class RunKotlinWasmTest {
     world.guest.streams.printError(name)
 
     assertThat(wasiP1.stderr.readUtf8()).isEqualTo("Exception: boom, Jesse!\n\n")
+  }
+
+  @Test
+  fun `parallel sleep`() = runTest {
+    val world = WasmoTesting.World { }
+    val wasiP1 = FakeWasi()
+    WasmInstance(
+      path = kotlinWasmPath,
+      worlds = listOf(
+        Wasi.World({ wasiP1 }),
+        Imports.World { RealWasiP2Host() },
+        world,
+      ),
+    )
+
+    val elapsed = measureTime {
+      world.guest.parallelSleep(30U, 100UL)
+    }
+    assertThat(elapsed).isBetween(100.milliseconds, 1_000.milliseconds)
   }
 }

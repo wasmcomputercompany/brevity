@@ -13,6 +13,9 @@ object Wasi {
   interface Guest
 
   interface Host {
+    /** Returns the time in nanoseconds. */
+    fun getTime(clockId: ClockId): Long
     fun write(fd: Int, buffer: Buffer): Errno
+    fun poll(subscriptions: List<Subscription>): List<Event>
   }
 }
