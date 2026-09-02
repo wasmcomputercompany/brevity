@@ -22,34 +22,34 @@ class DeclaredTypeEncodersGenerator(
   private val encoderFactory: EncoderFactory,
   private val platform: Platform,
 ) {
+  context(collector: QualifiedSpecCollector)
   fun generate(
     type: IrTypeDeclaration,
     roles: RoleTracker.Entry,
-  ): List<FunSpec> {
+  ) {
     val isHost = platform == HostPlatform
     val isGuest = platform == GuestPlatform
-    return generate(
+    generate(
       type = type,
       encode = isHost && roles.host || isGuest && roles.guest,
       decode = isHost && roles.guest || isGuest && roles.host,
     )
   }
 
+  context(collector: QualifiedSpecCollector)
   fun generate(
     type: IrTypeDeclaration,
     encode: Boolean,
     decode: Boolean,
-  ): List<FunSpec> {
+  ) {
     val encoder = encoderFactory.getImplementationEncoder(type)
-    return buildList {
-      if (encode) {
-        add(DeclaredTypeStoreGenerator(type, encoder, platform).generate())
-        add(DeclaredTypeLowerFlatGenerator(type, encoder, platform).generate())
-      }
-      if (decode) {
-        add(DeclaredTypeLoadGenerator(type, encoder, platform).generate())
-        add(DeclaredTypeLiftFlatGenerator(type, encoder, platform).generate())
-      }
+    if (encode) {
+      collector += DeclaredTypeStoreGenerator(type, encoder, platform).generate()
+      collector += DeclaredTypeLowerFlatGenerator(type, encoder, platform).generate()
+    }
+    if (decode) {
+      collector += DeclaredTypeLoadGenerator(type, encoder, platform).generate()
+      collector += DeclaredTypeLiftFlatGenerator(type, encoder, platform).generate()
     }
   }
 }

@@ -66,9 +66,9 @@ sealed interface QualifiedSpec {
 }
 
 interface QualifiedSpecCollector {
-  fun addFunction(function: FunSpec)
+  operator fun plusAssign(function: FunSpec)
 
-  fun addProperty(property: PropertySpec)
+  operator fun plusAssign(property: PropertySpec)
 
   /** Adds [type] with the fully-qualified name [className]. */
   fun addType(className: ClassName, type: TypeSpec)
@@ -80,12 +80,12 @@ fun MutableList<QualifiedSpec>.collect(
   optIns: Set<ClassName> = setOf(),
   packageName: String,
   fileName: String,
-  block: QualifiedSpecCollector.() -> Unit,
+  block: context(QualifiedSpecCollector) () -> Unit,
 ) {
   val parentFile = QualifiedSpec.Parent.File(sourceSet, packageName, fileName)
 
   val collector = object : QualifiedSpecCollector {
-    override fun addFunction(function: FunSpec) {
+    override fun plusAssign(function: FunSpec) {
       this@collect += QualifiedSpec.Function(
         parent = parentFile,
         locations = locations,
@@ -94,7 +94,7 @@ fun MutableList<QualifiedSpec>.collect(
       )
     }
 
-    override fun addProperty(property: PropertySpec) {
+    override fun plusAssign(property: PropertySpec) {
       this@collect += QualifiedSpec.Property(
         parent = parentFile,
         locations = locations,
@@ -117,5 +117,7 @@ fun MutableList<QualifiedSpec>.collect(
     }
   }
 
-  collector.block()
+  context(collector) {
+    block()
+  }
 }

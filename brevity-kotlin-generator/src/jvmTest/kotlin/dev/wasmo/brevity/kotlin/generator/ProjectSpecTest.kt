@@ -30,20 +30,19 @@ class ProjectSpecTest {
       packageName = resort.packageName,
       fileName = "Island",
     ) {
-      addType(
+      contextOf<QualifiedSpecCollector>().addType(
         className = resort,
         type = TypeSpec.classBuilder(resort).build(),
       )
-      addType(
+      contextOf<QualifiedSpecCollector>().addType(
         className = spa,
         type = TypeSpec.classBuilder(spa).build(),
       )
-      addFunction(FunSpec.builder("snorkel").build())
-      addProperty(
+      contextOf<QualifiedSpecCollector>() += FunSpec.builder("snorkel").build()
+      contextOf<QualifiedSpecCollector>() +=
         PropertySpec.builder("Aulani", resort, KModifier.LATEINIT)
           .mutable(true)
-          .build(),
-      )
+          .build()
     }
 
     val project = ProjectSpec(list)
