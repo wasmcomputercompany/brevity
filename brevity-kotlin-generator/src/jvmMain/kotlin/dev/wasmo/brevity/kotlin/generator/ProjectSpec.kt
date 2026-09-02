@@ -30,34 +30,37 @@ data class ProjectSpec(
     var maxDepth = 1
     for (spec in sourceSetSpecs) {
       if (spec is QualifiedSpec.Type) {
-        typeEntries[spec.className] = Entry(spec.type.toBuilder())
+        typeEntries[spec.className] = Entry(spec.type.toBuilder()).apply {
+          paths += spec.locations.map { it.path }
+          optIns += spec.optIns
+        }
         maxDepth = maxOf(spec.className.simpleNames.size, maxDepth)
       }
     }
 
-    // From deepest to shallowest, add specs to their parent type.
-    for (depth in maxDepth - 1 downTo 1) {
-      for (spec in sourceSetSpecs) {
-        val parentType = spec.parent as? QualifiedSpec.Parent.Type ?: continue
-        if (depth != parentType.className.simpleNames.size) continue
-
-        val entry = typeEntries[parentType.className]
-          ?: error("parent symbol ${parentType.className} not declared")
-
-        entry.add(spec, typeEntries)
-      }
-    }
-
-    // Now add top-level specs to their parent file.
     val fileEntries = mutableMapOf<QualifiedSpec.Parent.File, Entry<FileSpec.Builder>>()
-    for (spec in sourceSetSpecs) {
-      val parentFile = spec.parent as? QualifiedSpec.Parent.File ?: continue
 
-      val entry = fileEntries.getOrPut(parentFile) {
-        Entry(FileSpec.builder(parentFile.packageName, parentFile.fileName))
+    // From deepest to shallowest, add specs to their parent entry.
+    val deepestToShallowest = sourceSetSpecs
+      .sortedBy {
+        val parent = it.parent as? QualifiedSpec.Parent.Type ?: return@sortedBy 0
+        -parent.className.simpleNames.size
+      }
+    for (spec in deepestToShallowest) {
+      val parentEntry = when (val parent = spec.parent) {
+        is QualifiedSpec.Parent.Type -> {
+          typeEntries[parent.className]
+            ?: error("parent symbol ${parent.className} not declared")
+        }
+
+        is QualifiedSpec.Parent.File -> {
+          fileEntries.getOrPut(parent) {
+            Entry(FileSpec.builder(parent.packageName, parent.fileName))
+          }
+        }
       }
 
-      entry.add(spec, typeEntries)
+      parentEntry.add(spec, typeEntries)
     }
 
     return fileEntries.values.map { entry ->
@@ -76,15 +79,22 @@ data class ProjectSpec(
       spec: QualifiedSpec,
       typeEntries: Map<ClassName, Entry<TypeSpec.Builder>>,
     ) {
-      paths += spec.locations.map { it.path }
-      optIns += spec.optIns
-
       when (spec) {
-        is QualifiedSpec.Function -> builder.addFunction(spec.function)
-        is QualifiedSpec.Property -> builder.addProperty(spec.property)
+        is QualifiedSpec.Function -> {
+          paths += spec.locations.map { it.path }
+          optIns += spec.optIns
+          builder.addFunction(spec.function)
+        }
+        is QualifiedSpec.Property -> {
+          paths += spec.locations.map { it.path }
+          optIns += spec.optIns
+          builder.addProperty(spec.property)
+        }
         is QualifiedSpec.Type -> {
-          val typeSpec = typeEntries[spec.className]!!.builder.build()
-          builder.addType(typeSpec)
+          val entry = typeEntries[spec.className]!!
+          paths += entry.paths
+          optIns += entry.optIns
+          builder.addType(entry.builder.build())
         }
       }
     }
