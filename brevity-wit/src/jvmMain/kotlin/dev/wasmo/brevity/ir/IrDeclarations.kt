@@ -3,7 +3,7 @@ package dev.wasmo.brevity.ir
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Gate
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
@@ -29,7 +29,7 @@ sealed interface IrDeclaration {
 
 sealed interface IrTypeDeclaration : IrDeclaration, IrInterface.Item, IrWorld.Item {
   val type: TypeName.Declared
-  val name: Identifier
+  val name: IoIdentifier
     get() = type.name
 }
 
@@ -88,7 +88,7 @@ data class IrField(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  val name: Identifier,
+  val name: IoIdentifier,
   val type: TypeName,
 ) : IrDeclaration
 
@@ -122,14 +122,14 @@ data class IrCase(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  val name: Identifier,
+  val name: IoIdentifier,
   val type: TypeName? = null,
 ) : IrDeclaration
 
 data class IrParameter(
   val documentation: Documentation? = null,
   val location: Location,
-  val name: Identifier,
+  val name: IoIdentifier,
   val type: TypeName,
 )
 
@@ -145,7 +145,7 @@ data class IrFlag(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  val name: Identifier,
+  val name: IoIdentifier,
 ) : IrDeclaration
 
 data class IrTypeAlias(
@@ -160,6 +160,6 @@ data class IrExternalApi(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  val plainName: Identifier? = null,
+  val plainName: IoIdentifier? = null,
   val serviceName: ServiceName,
 ) : IrWorld.Api

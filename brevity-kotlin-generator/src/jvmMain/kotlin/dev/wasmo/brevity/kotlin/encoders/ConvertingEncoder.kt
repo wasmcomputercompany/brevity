@@ -1,7 +1,7 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 
 /**
@@ -16,7 +16,7 @@ abstract class ConvertingEncoder(
     get() = delegate.byteCount
   override val alignment: Int
     get() = delegate.alignment
-  override val nameHints: List<Identifier>?
+  override val nameHints: List<IoIdentifier>?
     get() = delegate.nameHints
 
   abstract fun encode(codeBlock: CodeBlock): CodeBlock

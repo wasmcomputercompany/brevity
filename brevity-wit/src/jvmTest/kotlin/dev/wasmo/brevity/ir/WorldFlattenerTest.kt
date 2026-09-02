@@ -4,9 +4,10 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.FunctionNameMethod
 import dev.wasmo.brevity.FunctionNameResourceDrop
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.io.IoExternalApi
 import dev.wasmo.brevity.io.IoFunction
 import dev.wasmo.brevity.io.IoInclude
@@ -17,7 +18,6 @@ import dev.wasmo.brevity.io.IoWorld
 import dev.wasmo.brevity.io.IrMapper
 import dev.wasmo.brevity.io.toWitFile
 import dev.wasmo.brevity.toPackageName
-import dev.wasmo.brevity.collectNoIssuesOrThrow
 import kotlin.test.Test
 
 class WorldFlattenerTest {

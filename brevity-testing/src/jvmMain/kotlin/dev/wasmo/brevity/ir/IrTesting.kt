@@ -4,7 +4,7 @@ import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.FunctionNameWorld
 import dev.wasmo.brevity.Gate
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName

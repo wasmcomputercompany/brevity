@@ -1,9 +1,9 @@
 package dev.wasmo.brevity
 
-sealed interface Identifier {
+sealed interface IoIdentifier {
   val name: String
 
-  fun normalized(): Identifier
+  fun normalized(): IoIdentifier
 }
 
 /**
@@ -20,15 +20,15 @@ sealed interface Identifier {
 @JvmInline
 private value class MalformedIdentifier(
   override val name: String,
-): Identifier {
-  override fun normalized(): Identifier = MalformedIdentifier(name.lowercase())
+): IoIdentifier {
+  override fun normalized(): IoIdentifier = MalformedIdentifier(name.lowercase())
 }
 
 @JvmInline
-value class WitIdentifier internal constructor(
+value class Identifier private constructor(
   override val name: String,
-): Identifier {
-  override fun normalized(): Identifier = WitIdentifier(name.lowercase())
+): IoIdentifier {
+  override fun normalized(): IoIdentifier = Identifier(name.lowercase())
 
   override fun toString() = name
   /**
@@ -37,18 +37,21 @@ value class WitIdentifier internal constructor(
    * Each component is guaranteed non-empty.
    */
   fun components() = name.split("-")
+
+  companion object {
+    /**
+     * Parse [name] into an instance of [Identifier]. Valid WIT identifiers will be instances of
+     * [Identifier].
+     */
+    fun Identifier(name: String): IoIdentifier {
+      return if (identifierRegex.matches(name)) {
+        dev.wasmo.brevity.Identifier(name.removePrefix("%"))
+      } else {
+        MalformedIdentifier(name.removePrefix("%"))
+      }
+    }
+  }
 }
 
 private val identifierRegex = Regex("^%?([a-z][a-z0-9]*|[A-Z][A-Z0-9]*)(-[a-z0-9]+|-[A-Z0-9]+)*$")
 
-/**
- * Parse [name] into an instance of [Identifier]. Valid WIT identifiers will be instances of
- * [WitIdentifier].
- */
-fun Identifier(name: String): Identifier {
-  return if (identifierRegex.matches(name)) {
-    WitIdentifier(name.removePrefix("%"))
-  } else {
-    MalformedIdentifier(name.removePrefix("%"))
-  }
-}

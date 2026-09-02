@@ -2,7 +2,7 @@ package dev.wasmo.brevity.ir
 
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
@@ -145,7 +145,7 @@ class IrMapper(
   context(context: Context, issueCollector: IssueCollector)
   private fun IoFunction.functionToIr(
     worldFunction: Boolean = false,
-    resourceName: Identifier? = null,
+    resourceName: IoIdentifier? = null,
   ) = IrFunction(
     documentation = documentation,
     gate = gate,

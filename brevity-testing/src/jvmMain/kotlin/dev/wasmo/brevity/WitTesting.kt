@@ -2,10 +2,11 @@
 
 package dev.wasmo.brevity
 
+import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.io.WitSyntaxReader
 import dev.wasmo.brevity.io.toServiceName
 
-fun String.toIdentifier(): Identifier = collectNoIssuesOrThrow {
+fun String.toIdentifier(): IoIdentifier = collectNoIssuesOrThrow {
   val reader = WitSyntaxReader(Location("file.wit"), this@toIdentifier)
   reader.readIdentifier().also {
     check(reader.exhausted)

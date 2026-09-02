@@ -4,6 +4,8 @@ package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
@@ -11,7 +13,6 @@ import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
 import dev.wasmo.brevity.WitException
-import dev.wasmo.brevity.WitIdentifier
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
@@ -93,7 +94,7 @@ class WitSyntaxReader(
   }
 
   context(issueCollector: IssueCollector)
-  fun readIdentifier(): Identifier {
+  fun readIdentifier(): IoIdentifier {
     checkWit(!exhausted) {
       "expected an identifier"
     }
@@ -114,7 +115,7 @@ class WitSyntaxReader(
     pos = end
 
     return Identifier(result).also {
-      if (it !is WitIdentifier) {
+      if (it !is Identifier) {
         issueCollector.report(
           Issue(
             "malformed identifier: $result",
@@ -161,7 +162,7 @@ class WitSyntaxReader(
   }
 
   context(issueCollector: IssueCollector)
-  fun readAnnotationOrNull(): Identifier? {
+  fun readAnnotationOrNull(): IoIdentifier? {
     if (peek() != '@') return null
     pos++ // Consume '@'.
 
@@ -354,8 +355,8 @@ class WitSyntaxReader(
    */
   context(issueCollector: IssueCollector)
   fun readPackageName(): PackageName {
-    val namespaces = mutableListOf<Identifier>()
-    val names = mutableListOf<Identifier>()
+    val namespaces = mutableListOf<IoIdentifier>()
+    val names = mutableListOf<IoIdentifier>()
 
     var identifier = readIdentifier()
     while (peek() == ':') {
@@ -398,8 +399,8 @@ class WitSyntaxReader(
    */
   context(issueCollector: IssueCollector)
   fun readUsePath(): UsePath {
-    val namespaces = mutableListOf<Identifier>()
-    val packageNames = mutableListOf<Identifier>()
+    val namespaces = mutableListOf<IoIdentifier>()
+    val packageNames = mutableListOf<IoIdentifier>()
 
     var identifier = readIdentifier()
     while (peek() == ':') {

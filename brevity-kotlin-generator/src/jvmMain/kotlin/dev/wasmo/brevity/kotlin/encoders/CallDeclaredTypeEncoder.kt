@@ -1,7 +1,7 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.generator.DeclaredTypeLiftFlatGenerator
@@ -18,7 +18,7 @@ class CallDeclaredTypeEncoder(
   override val coreTypes: List<CoreType>
     get() = typeEncoder.coreTypes
 
-  override val nameHints: List<Identifier>?
+  override val nameHints: List<IoIdentifier>?
     get() = typeEncoder.nameHints
 
   override val byteCount: Int

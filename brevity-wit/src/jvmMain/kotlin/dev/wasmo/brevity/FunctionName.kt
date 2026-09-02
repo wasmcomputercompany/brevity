@@ -16,8 +16,8 @@ sealed class FunctionName {
   }
 
   data class ResourceDrop(
-    val serviceName: ServiceName,
-    val resourceName: Identifier,
+      val serviceName: ServiceName,
+      val resourceName: IoIdentifier,
   ) : FunctionName() {
     override val moduleName: String
       get() = serviceName.toString()
@@ -29,8 +29,8 @@ sealed class FunctionName {
   }
 
   data class Constructor(
-    val serviceName: ServiceName,
-    val name: Identifier,
+      val serviceName: ServiceName,
+      val name: IoIdentifier,
   ) : FunctionName() {
     override val moduleName: String
       get() = serviceName.toString()
@@ -42,9 +42,9 @@ sealed class FunctionName {
   }
 
   data class Method(
-    val serviceName: ServiceName,
-    val name: Identifier,
-    val resourceName: Identifier,
+      val serviceName: ServiceName,
+      val name: IoIdentifier,
+      val resourceName: IoIdentifier,
   ) : FunctionName() {
     override val moduleName: String
       get() = serviceName.toString()
@@ -56,9 +56,9 @@ sealed class FunctionName {
   }
 
   data class Static(
-    val serviceName: ServiceName,
-    val name: Identifier,
-    val resourceName: Identifier,
+      val serviceName: ServiceName,
+      val name: IoIdentifier,
+      val resourceName: IoIdentifier,
   ) : FunctionName() {
     override val moduleName: String
       get() = serviceName.toString()
@@ -70,7 +70,7 @@ sealed class FunctionName {
   }
 
   data class World(
-    val name: Identifier,
+      val name: IoIdentifier,
   ) : FunctionName() {
     override val moduleName: String?
       get() = null
@@ -82,8 +82,8 @@ sealed class FunctionName {
   }
 
   data class Interface(
-    val serviceName: ServiceName,
-    val name: Identifier,
+      val serviceName: ServiceName,
+      val name: IoIdentifier,
   ) : FunctionName() {
     override val moduleName: String
       get() = serviceName.toString()

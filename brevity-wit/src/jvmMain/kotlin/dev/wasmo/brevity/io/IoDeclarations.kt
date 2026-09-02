@@ -2,7 +2,7 @@ package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
-import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 
@@ -42,11 +42,11 @@ sealed interface IoDeclaration : IoElement {
  * Common interface for anything that has an identifier that functions as a legible name.
  */
 sealed interface IoNamedDeclaration : IoDeclaration {
-  val name: Identifier
+  val name: IoIdentifier
 }
 
 sealed interface IoService: IoDeclaration {
-  val name: Identifier
+  val name: IoIdentifier
 }
 
 sealed interface IoWitPackage {
@@ -87,126 +87,126 @@ data class IoInlinePackage(
  *  * [IoFunction]
  */
 data class IoInterface(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val items: List<Item>,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val items: List<Item>,
 ) : IoDeclaration, IoService, IoWorld.Api, IoWitFile.Item {
   sealed interface Item : IoDeclaration
 }
 
 data class IoWorld(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val items: List<Item>,
-  val imports: List<Api>,
-  val exports: List<Api>,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val items: List<Item>,
+    val imports: List<Api>,
+    val exports: List<Api>,
 ) : IoDeclaration, IoService, IoWitFile.Item {
   sealed interface Api : IoDeclaration
   sealed interface Item : IoDeclaration
 }
 
 data class IoResource(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val functions: List<IoFunction>,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val functions: List<IoFunction>,
 ) : IoTypeDeclaration
 
 data class IoRecord(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val fields: List<IoField>,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val fields: List<IoField>,
 ) : IoTypeDeclaration
 
 data class IoField(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val type: IoTypeName,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val type: IoTypeName,
 ) : IoNamedDeclaration
 
 data class IoFunction(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val async: Boolean = false,
-  val static: Boolean = false,
-  val constructor: Boolean = false,
-  val parameters: List<IoParameter>,
-  val returnType: IoTypeName? = null,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val async: Boolean = false,
+    val static: Boolean = false,
+    val constructor: Boolean = false,
+    val parameters: List<IoParameter>,
+    val returnType: IoTypeName? = null,
 ) : IoNamedDeclaration, IoWorld.Api, IoInterface.Item
 
 data class IoVariant(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val cases: List<IoCase>,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val cases: List<IoCase>,
 ) : IoTypeDeclaration
 
 data class IoEnum(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val cases: List<IoCase>,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val cases: List<IoCase>,
 ) : IoTypeDeclaration
 
 data class IoCase(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val type: IoTypeName? = null,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val type: IoTypeName? = null,
 ) : IoNamedDeclaration
 
 data class IoParameter(
-  override val documentation: Documentation? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val type: IoTypeName,
+    override val documentation: Documentation? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val type: IoTypeName,
 ) : IoNamedDeclaration {
   override val gate: Gate? = null
 }
 
 data class IoFlags(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val flags: List<IoFlag>,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val flags: List<IoFlag>,
 ) : IoTypeDeclaration
 
 data class IoFlag(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
 ) : IoNamedDeclaration
 
 data class IoTypeAlias(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val name: Identifier,
-  val target: IoTypeName,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val name: IoIdentifier,
+    val target: IoTypeName,
 ) : IoTypeDeclaration
 
 data class IoTopLevelUse(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  val path: UsePath,
-  val alias: Identifier? = null,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    val path: UsePath,
+    val alias: IoIdentifier? = null,
 ) : IoDeclaration, IoWitFile.Item
 
 /**
@@ -228,23 +228,23 @@ data class IoUse(
 ) : IoDeclaration, IoInterface.Item, IoWorld.Item {
 
   data class Item(
-    override val documentation: Documentation? = null,
-    override val gate: Gate? = null,
-    override val location: Location,
-    val type: IoTypeName.Declared,
-    val alias: Identifier? = null,
+      override val documentation: Documentation? = null,
+      override val gate: Gate? = null,
+      override val location: Location,
+      val type: IoTypeName.Declared,
+      val alias: IoIdentifier? = null,
   ) : IoNamedDeclaration {
-    override val name: Identifier
+    override val name: IoIdentifier
       get() = alias ?: type.name
   }
 }
 
 data class IoExternalApi(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  val plainName: Identifier? = null,
-  val path: UsePath,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    val plainName: IoIdentifier? = null,
+    val path: UsePath,
 ) : IoDeclaration, IoWorld.Api
 
 /**
@@ -263,10 +263,10 @@ data class IoInclude(
   val items: List<Item>,
 ) : IoDeclaration, IoWorld.Item {
   data class Item(
-    override val documentation: Documentation? = null,
-    override val gate: Gate? = null,
-    override val location: Location,
-    override val name: Identifier,
-    val type: IoTypeName.Declared,
+      override val documentation: Documentation? = null,
+      override val gate: Gate? = null,
+      override val location: Location,
+      override val name: IoIdentifier,
+      val type: IoTypeName.Declared,
   ) : IoNamedDeclaration
 }

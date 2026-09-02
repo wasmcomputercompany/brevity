@@ -9,6 +9,8 @@ import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
@@ -323,7 +325,7 @@ class WitSyntaxReaderTest {
   fun `readIdentifier scenarios`() {
     val baseLocation = location.at(1, 1)
 
-    fun String.parseIdentifier(): Pair<Identifier, List<Issue>> {
+    fun String.parseIdentifier(): Pair<IoIdentifier, List<Issue>> {
       return collectIssues {
         WitSyntaxReader(baseLocation, this@parseIdentifier).readIdentifier()
       }

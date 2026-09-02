@@ -11,9 +11,9 @@ package dev.wasmo.brevity
  * ```
  */
 data class Gate(
-  val unstable: Identifier? = null,
-  val since: SemVer? = null,
-  val deprecated: SemVer? = null,
+    val unstable: IoIdentifier? = null,
+    val since: SemVer? = null,
+    val deprecated: SemVer? = null,
 ) {
   init {
     require(unstable != null || since != null || deprecated != null)

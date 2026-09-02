@@ -1,8 +1,8 @@
 package dev.wasmo.brevity
 
 data class PackageName(
-  val namespaces: List<Identifier>,
-  val names: List<Identifier>,
+  val namespaces: List<IoIdentifier>,
+  val names: List<IoIdentifier>,
   val version: SemVer? = null,
 ) : Comparable<PackageName> {
   init {

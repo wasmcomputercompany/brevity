@@ -1,6 +1,8 @@
 package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.IoIdentifier
 
 sealed class IoTypeName {
   data object Bool : IoTypeName()
@@ -19,7 +21,7 @@ sealed class IoTypeName {
 
   /** Identifies a [IoTypeDeclaration]. */
   data class Declared(
-    val name: Identifier,
+      val name: IoIdentifier,
   ) : IoTypeName() {
     override fun toString() = name.toString()
 
