@@ -67,9 +67,4 @@ allprojects {
       version = "26.1.0"
     }
   }
-
-  val buildDirectory = project.findProperty("brevity.build.directory")
-  if (buildDirectory != null) {
-    layout.buildDirectory.set(File(rootDir, "${buildDirectory}/${project.name}"))
-  }
 }

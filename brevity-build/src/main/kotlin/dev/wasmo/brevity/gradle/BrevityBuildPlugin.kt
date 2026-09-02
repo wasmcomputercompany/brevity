@@ -8,6 +8,7 @@ import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import com.vanniktech.maven.publish.MavenPublishBasePlugin
 import com.vanniktech.maven.publish.SourcesJar
+import java.io.File
 import org.gradle.accessors.dm.LibrariesForLibs
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -22,6 +23,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 @Suppress("unused") // Used reflectively.
 class BrevityBuildPlugin : Plugin<Project> {
   override fun apply(project: Project) {
+    val buildDirectory = project.findProperty("brevity.build.directory")
+    if (buildDirectory != null) {
+      project.layout.buildDirectory.set(File(project.rootDir, "${buildDirectory}/${project.name}"))
+    }
+
     val libs = project.extensions.getByName("libs") as LibrariesForLibs
 
     project.extensions.add(
