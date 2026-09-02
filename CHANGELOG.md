@@ -1,6 +1,16 @@
 Change Log
 ==========
 
+## Version 0.3.0
+
+_2026-09-02_
+
+ * New: Promote type declarations inside of `types` interfaces to the top-level.
+ * Fix: Better detection and reporting of malformed identifiers.
+ * Fix: Ignore preceding `%` signs on identifiers.
+ * Fix: Don't put underscores in package names.
+
+
 ## Version 0.2.0
 
 _2026-08-28_
