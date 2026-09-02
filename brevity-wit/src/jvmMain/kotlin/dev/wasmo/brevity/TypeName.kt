@@ -20,7 +20,7 @@ sealed class TypeName {
 
   /** Identifies a [dev.wasmo.brevity.ir.IrTypeDeclaration]. */
   data class Declared(
-      val serviceName: ServiceName,
+      val serviceName: IoServiceName,
       val name: IoIdentifier,
   ) : TypeName() {
     override fun toString() = "$serviceName.{$name}"

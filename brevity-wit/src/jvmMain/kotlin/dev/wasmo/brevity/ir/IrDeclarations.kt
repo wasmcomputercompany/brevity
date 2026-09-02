@@ -5,17 +5,17 @@ import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.PackageName
-import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.IoPackageName
+import dev.wasmo.brevity.IoServiceName
 import dev.wasmo.brevity.TypeName
 
 data class IrWitPackage(
   val packageDocumentation: Documentation? = null,
-  val packageName: PackageName,
+  val packageName: IoPackageName,
   val services: List<Service> = listOf(),
 ) {
   sealed interface Service : IrDeclaration {
-    val serviceName: ServiceName
+    val serviceName: IoServiceName
     val types: List<IrTypeDeclaration>
     val hasInstanceMembers: Boolean
   }
@@ -37,7 +37,7 @@ data class IrInterface(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  override val serviceName: ServiceName,
+  override val serviceName: IoServiceName,
   val items: List<Item>,
 ) : IrWitPackage.Service {
   override val types: List<IrTypeDeclaration>
@@ -56,7 +56,7 @@ data class IrWorld(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  override val serviceName: ServiceName,
+  override val serviceName: IoServiceName,
   override val types: List<IrTypeDeclaration>,
   val imports: List<Api>,
   val exports: List<Api>,
@@ -161,5 +161,5 @@ data class IrExternalApi(
   override val gate: Gate? = null,
   override val location: Location,
   val plainName: IoIdentifier? = null,
-  val serviceName: ServiceName,
+  val serviceName: IoServiceName,
 ) : IrWorld.Api

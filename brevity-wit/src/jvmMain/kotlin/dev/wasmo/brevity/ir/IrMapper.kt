@@ -6,8 +6,8 @@ import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.PackageName
-import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.IoPackageName
+import dev.wasmo.brevity.IoServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.IoCase
 import dev.wasmo.brevity.io.IoEnum
@@ -41,7 +41,7 @@ class IrMapper(
   private val packages: List<IoToplevelWitPackage>,
   private val ioSymbolTable: IoSymbolTable,
 ) {
-  private val irPackages = mutableMapOf<PackageName, PackageBuilder>()
+  private val irPackages = mutableMapOf<IoPackageName, PackageBuilder>()
 
   internal class PackageBuilder {
     val documentation = mutableListOf<Documentation>()
@@ -85,8 +85,8 @@ class IrMapper(
   }
 
   context(builder: PackageBuilder, issueCollector: IssueCollector)
-  private fun IoInterface.interfaceToIr(packageName: PackageName) = pushIssueLocation(location) {
-    val serviceName = ServiceName(packageName, name)
+  private fun IoInterface.interfaceToIr(packageName: IoPackageName) = pushIssueLocation(location) {
+    val serviceName = IoServiceName(packageName, name)
     context(Context(serviceName)) {
       builder.services += IrInterface(
         documentation = documentation,
@@ -281,7 +281,7 @@ class IrMapper(
   }
 
   context(context: Context)
-  private fun UsePath.usePathToIr() = ServiceName(
+  private fun UsePath.usePathToIr() = IoServiceName(
     packageName = packageName ?: context.serviceName.packageName,
     name = name,
   )
@@ -381,7 +381,7 @@ class IrMapper(
           // Direct match.
           if (declaration.name == name) {
             return TypeName.Declared(
-              serviceName = ServiceName(witPackage.packageName, context.serviceName.name),
+              serviceName = IoServiceName(witPackage.packageName, context.serviceName.name),
               name = declaration.name,
             )
           } else if (declaration.name.normalized() == normalizedName) {
@@ -394,7 +394,7 @@ class IrMapper(
           val itemMatch = declaration.items.firstOrNull { it.name == name }
           if (itemMatch != null) {
             val useContext = Context(
-              ServiceName(
+              IoServiceName(
                 packageName = declaration.path.packageName ?: serviceNamePackageName,
                 name = declaration.path.name,
               ),
@@ -426,7 +426,7 @@ class IrMapper(
 
   /** Collect includes recursively. */
   context(builder: PackageBuilder, issueCollector: IssueCollector)
-  private fun IoWorld.worldToIr(packageName: PackageName) = pushIssueLocation(location) {
+  private fun IoWorld.worldToIr(packageName: IoPackageName) = pushIssueLocation(location) {
     val seed = IncludedWorld(
       packageName = packageName,
       world = this@worldToIr,
@@ -439,7 +439,7 @@ class IrMapper(
       documentation = documentation,
       gate = gate,
       location = location,
-      serviceName = ServiceName(packageName, name),
+      serviceName = IoServiceName(packageName, name),
       types = set.flatMap { included ->
         context(included.context) {
           included.world.items.mapNotNull { it.worldItemToIrTypeDeclarationOrNull() }
@@ -517,7 +517,7 @@ class IrMapper(
         IrExternalApi(
           location = location,
           plainName = name,
-          serviceName = ServiceName(context.serviceName.packageName, name),
+          serviceName = IoServiceName(context.serviceName.packageName, name),
         )
       }
     }
@@ -563,17 +563,17 @@ class IrMapper(
   }
 
   internal class Context(
-    val serviceName: ServiceName,
+    val serviceName: IoServiceName,
   ) {
     override fun toString() = serviceName.toString()
   }
 
   private data class IncludedWorld(
-    val packageName: PackageName,
+    val packageName: IoPackageName,
     val world: IoWorld,
   ) {
     val context: Context
-      get() = Context(ServiceName(packageName, world.name))
+      get() = Context(IoServiceName(packageName, world.name))
 
     override fun toString() = context.toString()
   }

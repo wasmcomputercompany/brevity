@@ -10,7 +10,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.FunctionName
-import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.IoServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.ir.IrExternalApi
@@ -50,10 +50,10 @@ val IrFunction.kotlinName: String
 val IrExternalApi.instanceName: String
   get() = (plainName ?: serviceName.name).lowerCamelCase
 
-val ServiceName.kotlinApi: ClassName
+val IoServiceName.kotlinApi: ClassName
   get() = (packageName.toKotlin() + name).name
 
-val ServiceName.bridgeType: ClassName
+val IoServiceName.bridgeType: ClassName
   get() = ClassName(
     kotlinApi.packageName,
     "Bridge${name.upperCamelCase}",

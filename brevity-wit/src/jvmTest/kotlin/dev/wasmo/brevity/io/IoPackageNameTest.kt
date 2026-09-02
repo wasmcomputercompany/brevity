@@ -2,16 +2,15 @@ package dev.wasmo.brevity.io
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Identifier.Companion.Identifier
-import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.IoPackageName
 import kotlin.test.Test
 
-class PackageNameTest {
+class IoPackageNameTest {
   @Test
   fun `PackageName toString`() {
     assertThat(
-      PackageName(
+      IoPackageName(
         namespaces = listOf(Identifier("abc"), Identifier("def"), Identifier("ghi")),
         names = listOf(Identifier("jkl"), Identifier("mno"), Identifier("pqr")),
       ).toString()

@@ -4,15 +4,15 @@ import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.IoPackageName
 
 /**
  * A collection of `.wit` files from a single file system directory.
  */
 data class IoToplevelWitPackage(
-  override val documentation: Documentation? = null,
-  override val packageName: PackageName,
-  val files: List<IoWitFile>,
+    override val documentation: Documentation? = null,
+    override val packageName: IoPackageName,
+    val files: List<IoWitFile>,
 ) : IoWitPackage
 
 data class IoWitFile(
@@ -29,8 +29,8 @@ sealed interface IoElement {
 }
 
 data class IoPackageNameElement(
-  val packageName: PackageName,
-  override val location: Location,
+    val packageName: IoPackageName,
+    override val location: Location,
 ) : IoElement
 
 sealed interface IoDeclaration : IoElement {
@@ -51,7 +51,7 @@ sealed interface IoService: IoDeclaration {
 
 sealed interface IoWitPackage {
   val documentation: Documentation?
-  val packageName: PackageName
+  val packageName: IoPackageName
 }
 
 sealed interface IoTypeDeclaration : IoNamedDeclaration, IoInterface.Item, IoWorld.Item
@@ -66,11 +66,11 @@ sealed interface IoTypeDeclaration : IoNamedDeclaration, IoInterface.Item, IoWor
  * ```
  */
 data class IoInlinePackage(
-  override val documentation: Documentation? = null,
-  override val gate: Gate? = null,
-  override val location: Location,
-  override val packageName: PackageName,
-  val declarations: List<IoWitFile.Item>,
+    override val documentation: Documentation? = null,
+    override val gate: Gate? = null,
+    override val location: Location,
+    override val packageName: IoPackageName,
+    val declarations: List<IoWitFile.Item>,
 ) : IoDeclaration, IoWitFile.Item, IoWitPackage
 
 /**

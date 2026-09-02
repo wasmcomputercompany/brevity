@@ -13,7 +13,7 @@ fun String.toIdentifier(): IoIdentifier = collectNoIssuesOrThrow {
   }
 }
 
-fun String.toPackageName(): PackageName = collectNoIssuesOrThrow {
+fun String.toPackageName(): IoPackageName = collectNoIssuesOrThrow {
   val reader = WitSyntaxReader(Location("file.wit"), this@toPackageName)
   reader.readPackageName().also {
     check(reader.exhausted)
@@ -90,7 +90,7 @@ fun Gate(
 fun ServiceName(
   packageName: String,
   name: String,
-) = ServiceName(
+) = IoServiceName(
   packageName = packageName.toPackageName(),
   name = Identifier(name),
 )

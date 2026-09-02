@@ -9,7 +9,7 @@ import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.IoPackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
 import dev.wasmo.brevity.WitException
@@ -354,7 +354,7 @@ class WitSyntaxReader(
    * ```
    */
   context(issueCollector: IssueCollector)
-  fun readPackageName(): PackageName {
+  fun readPackageName(): IoPackageName {
     val namespaces = mutableListOf<IoIdentifier>()
     val names = mutableListOf<IoIdentifier>()
 
@@ -383,7 +383,7 @@ class WitSyntaxReader(
       else -> null
     }
 
-    return PackageName(
+    return IoPackageName(
       namespaces = namespaces,
       names = names,
       version = version,

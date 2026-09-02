@@ -2,7 +2,7 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.IoIdentifier
-import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.IoPackageName
 
 /** Maps type names in WIT to type names in Kotlin. */
 sealed interface KotlinName {
@@ -24,7 +24,7 @@ sealed interface KotlinName {
   }
 }
 
-fun PackageName.toKotlin(): KotlinName.Package {
+fun IoPackageName.toKotlin(): KotlinName.Package {
   val segments = buildList {
     add(kotlinPackagePrefix)
     addAll(namespaces.map { it.packageCase })

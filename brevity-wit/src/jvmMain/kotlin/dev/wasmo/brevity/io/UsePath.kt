@@ -1,17 +1,17 @@
 package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.IoIdentifier
-import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.IoPackageName
 import dev.wasmo.brevity.SemVer
-import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.IoServiceName
 
 /**
  * This is a package name plus an interface name, or just an interface name. The encoded form always
  * puts the version at the end of the entire string.
  */
 data class UsePath(
-    val packageName: PackageName?,
-    val name: IoIdentifier,
+  val packageName: IoPackageName?,
+  val name: IoIdentifier,
 ) {
   companion object {
     operator fun invoke(
@@ -20,7 +20,7 @@ data class UsePath(
         name: IoIdentifier,
         version: SemVer? = null,
     ) = UsePath(
-      PackageName(
+      IoPackageName(
         namespaces = namespaces,
         names = packageNames,
         version = version,
@@ -33,7 +33,7 @@ data class UsePath(
 
   override fun toString(): String {
     return when {
-      packageName != null -> ServiceName(packageName, name).toString()
+      packageName != null -> IoServiceName(packageName, name).toString()
       else -> name.name
     }
   }

@@ -8,12 +8,11 @@ import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import dev.wasmo.brevity.Documentation
-import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.IoPackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
 import dev.wasmo.brevity.WitException
@@ -405,13 +404,13 @@ class WitSyntaxReaderTest {
   @Test
   fun `readPackageName success`() {
     assertThat("local:demo".toPackageName()).isEqualTo(
-      PackageName(
+      IoPackageName(
         namespaces = listOf(Identifier("local")),
         names = listOf(Identifier("demo")),
       ),
     )
     assertThat("examples:fgates-deprecation@0.2.0".toPackageName()).isEqualTo(
-      PackageName(
+      IoPackageName(
         namespaces = listOf(Identifier("examples")),
         names = listOf(Identifier("fgates-deprecation")),
         version = SemVer("0.2.0"),
@@ -422,7 +421,7 @@ class WitSyntaxReaderTest {
   @Test
   fun `readPackageName multiple namespaces and multiple names`() {
     assertThat("abc:def:ghi:jkl/mno/pqr".toPackageName()).isEqualTo(
-      PackageName(
+      IoPackageName(
         namespaces = listOf(Identifier("abc"), Identifier("def"), Identifier("ghi")),
         names = listOf(Identifier("jkl"), Identifier("mno"), Identifier("pqr")),
       ),
