@@ -12,6 +12,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okio.Buffer
+import okio.ByteString
 import okio.FileSystem
 import okio.Path
 import okio.Path.Companion.toPath
@@ -49,11 +50,15 @@ class BrevityExecutionTester(
     clean()
 
     coroutineScope {
-      val kotlinToolchain = launch {
+      val kotlinProject = launch {
         launch { generateKotlinProject() }
         launch { generateApiKotlinModule() }
         launch { generateGuestAppKotlinModule() }
         launch { generateHostAppKotlinModule() }
+      }
+
+      val kotlinExecutable = async {
+        copyKotlinToolchain()
       }
 
       val wit = launch {
@@ -70,8 +75,8 @@ class BrevityExecutionTester(
       val hostKtJar = async {
         brevityKt.join()
         hostKt.join()
-        kotlinToolchain.join()
-        compileKotlinHost()
+        kotlinProject.join()
+        compileKotlinHost(kotlinExecutable.await())
         "build/tasks/_host_executableJarJvm/host-jvm-executable.jar"
       }
 
@@ -85,8 +90,8 @@ class BrevityExecutionTester(
 
         brevityKt.join()
         guestKt.join()
-        kotlinToolchain.join()
-        compileKotlinGuest()
+        kotlinProject.join()
+        compileKotlinGuest(kotlinExecutable.await())
         "build/artifacts/CompiledWebArtifact/guestwasmWasidebug/kotlin-output/guest.wasm"
       }
 
@@ -179,6 +184,22 @@ class BrevityExecutionTester(
           """.trimMargin(),
         )
       }
+    }
+  }
+
+  /** Returns the `kotlin` executable in the current directory. */
+  suspend fun copyKotlinToolchain(): Path {
+    return executeIo("copyKotlinToolchain") {
+      val (stdout, _) = executeCommand(
+        "whichKotlin",
+        layout.path,
+        "which",
+        "kotlin",
+      )
+      val pathToKotlin = stdout.utf8().trim().toPath()
+      val result = layout.path / pathToKotlin.name
+      fileSystem.copy(pathToKotlin, result)
+      result.relativeTo(layout.path)
     }
   }
 
@@ -310,22 +331,22 @@ class BrevityExecutionTester(
     }
   }
 
-  suspend fun compileKotlinGuest() {
+  suspend fun compileKotlinGuest(kotlinToolchain: Path) {
     executeCommand(
       "compileKotlinGuest",
       layout.path,
-      "kotlin",
+      kotlinToolchain.toString(),
       "build",
       "--module",
       "guest",
     )
   }
 
-  suspend fun compileKotlinHost() {
+  suspend fun compileKotlinHost(kotlinToolchain: Path) {
     executeCommand(
       "compileKotlinHost",
       layout.path,
-      "kotlin",
+      kotlinToolchain.toString(),
       "package",
       "--module",
       "host",
@@ -391,12 +412,13 @@ class BrevityExecutionTester(
     }
   }
 
-  suspend fun executeCommand(
+  /** Returns the process stdout and stderr. */
+  private suspend fun executeCommand(
     name: String,
     directory: Path,
     vararg command: String,
-  ) {
-    executeIo(name) {
+  ): ProcessOutput {
+    return executeIo(name) {
       val process = ProcessBuilder()
         .directory(directory.toFile())
         .command(*command)
@@ -431,6 +453,16 @@ class BrevityExecutionTester(
           """.trimMargin(),
         )
       }
+
+      ProcessOutput(
+        stdout = stdout.await().readByteString(),
+        stderr = stderr.await().readByteString(),
+      )
     }
   }
+
+  private data class ProcessOutput(
+    val stdout: ByteString,
+    val stderr: ByteString,
+  )
 }
