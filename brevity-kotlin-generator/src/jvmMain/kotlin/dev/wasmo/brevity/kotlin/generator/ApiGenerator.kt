@@ -2,7 +2,6 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.BOOLEAN
 import com.squareup.kotlinpoet.Documentable
-import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
@@ -25,21 +24,22 @@ import dev.wasmo.brevity.ir.IrWorld
 class ApiGenerator(
   private val packages: List<IrWitPackage>,
 ) {
-  fun generate(): List<FileSpec> {
-    return packages.flatMap { it.services }
-      .mapNotNull { service ->
-        val className = service.serviceName.kotlinApi
-        FileSpec.builder(className)
-          .addBrevityComment(service)
-          .apply {
-            val typeSpec = serviceToApi(service)
-            if (typeSpec != null) {
-              addType(typeSpec)
-            }
-          }
-          .build()
-          .takeIf { it.members.isNotEmpty() }
+  fun generate(): List<QualifiedSpec> {
+    val result = mutableListOf<QualifiedSpec>()
+
+    for (service in packages.flatMap { it.services }) {
+      val serviceName = service.serviceName.kotlinApi
+      result.collect(
+        sourceSet = QualifiedSpec.SourceSet.CommonMain,
+        locations = setOf(service.location),
+        packageName = serviceName.packageName,
+        fileName = serviceName.simpleName,
+      ) {
+        generateApi(service)
       }
+    }
+
+    return result
   }
 
   private fun <T : Documentable.Builder<*>> T.setDeclaration(
@@ -183,8 +183,8 @@ class ApiGenerator(
     }
     .build()
 
-  private fun serviceToApi(value: IrWitPackage.Service): TypeSpec? {
-    if (!value.hasInstanceMembers && value.types.isEmpty()) return null
+  private fun QualifiedSpecCollector.generateApi(value: IrWitPackage.Service) {
+    if (!value.hasInstanceMembers && value.types.isEmpty()) return
 
     val typeName = value.serviceName.kotlinApi
 
@@ -229,7 +229,7 @@ class ApiGenerator(
       }
     }
 
-    return builder.build()
+    addType(typeName, builder.build())
   }
 
   private fun externalApisToApi(value: ExternalApis): TypeSpec {

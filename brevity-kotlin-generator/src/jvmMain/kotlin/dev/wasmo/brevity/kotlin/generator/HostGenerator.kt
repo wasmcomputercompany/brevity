@@ -2,7 +2,6 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LambdaTypeName
@@ -29,55 +28,50 @@ class HostGenerator(
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
 ) {
-  fun generate(): List<FileSpec> {
-    val types = packages.flatMap { it.services }
-      .flatMap { it.types }
-      .mapNotNull { type ->
+  fun generate(): List<QualifiedSpec> {
+    val result = mutableListOf<QualifiedSpec>()
+
+    for (service in packages.flatMap { it.services }) {
+      for (type in service.types) {
         val typeName = type.type
         val className = typeName.kotlinApi
         // TODO: this is hacked because we don't also prune unreachable callsites.
         val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
-        val fileName = className.simpleNames.joinToString(separator = "") + "Host"
-        FileSpec.builder(className.packageName, fileName)
-          .addBrevityComment(type)
-          .apply {
-            for (encoder in declaredTypeEncodersGenerator.generate(type, roles)) {
-              addFunction(encoder)
-            }
+
+        result.collect(
+          sourceSet = QualifiedSpec.SourceSet.JvmMain,
+          locations = setOf(type.location),
+          packageName = className.packageName,
+          fileName = className.simpleNames.joinToString(separator = "") + "Host",
+        ) {
+          for (encoder in declaredTypeEncodersGenerator.generate(type, roles)) {
+            addFunction(encoder)
           }
-          .build()
-          .takeIf { it.members.isNotEmpty() }
+        }
       }
 
-    val services = packages.flatMap { it.services }
-      .mapNotNull { service ->
-        val className = service.serviceName.kotlinApi
-        FileSpec.builder(className.peerClass("${className.simpleName}Host"))
-          .addBrevityComment(service)
-          .apply {
-            if (service is IrWorld) {
-              val worldFactoryFunction = worldFactoryFunction(service)
-              if (worldFactoryFunction != null) {
-                addFunction(worldFactoryFunction)
-              }
-            }
+      val className = service.serviceName.kotlinApi
+      result.collect(
+        packageName = className.packageName,
+        locations = setOf(service.location),
+        fileName = "${className.simpleName}Host",
+        sourceSet = QualifiedSpec.SourceSet.JvmMain,
+      ) {
+        if (service is IrWorld) {
+          generateWorldFactoryFunction(service)
+        }
 
-            val typeSpec = serviceToHost(service)
-            if (typeSpec != null) {
-              addType(typeSpec)
-            }
-          }
-          .build()
-          .takeIf { it.members.isNotEmpty() }
+        generateBridge(service)
       }
+    }
 
-    return types + services
+    return result
   }
 
-  private fun worldFactoryFunction(value: IrWorld): FunSpec? {
+  private fun QualifiedSpecCollector.generateWorldFactoryFunction(value: IrWorld) {
     val guestApis = value.guestApis
     val hostApis = value.hostApis
-    if (guestApis == null && hostApis == null) return null
+    if (guestApis == null && hostApis == null) return
 
     // The implemented World interface uses the interface types; everything else uses the
     // implementation types.
@@ -94,7 +88,7 @@ class HostGenerator(
       ),
     ).build()
 
-    return FunSpec.builder("World")
+    val function = FunSpec.builder("World")
       .receiver(value.serviceName.kotlinApi)
       .addParameter(hostFactory)
       .returns(worldType)
@@ -118,10 +112,11 @@ class HostGenerator(
         )
       }
       .build()
+    addFunction(function)
   }
 
-  private fun serviceToHost(value: IrWitPackage.Service): TypeSpec? {
-    if (!value.hasInstanceMembers) return null
+  private fun QualifiedSpecCollector.generateBridge(value: IrWitPackage.Service) {
+    if (!value.hasInstanceMembers) return
 
     val builder = TypeSpec.classBuilder(value.serviceName.bridgeType)
       .addModifiers(KModifier.INTERNAL)
@@ -242,7 +237,7 @@ class HostGenerator(
 
     builder.primaryConstructor(constructor.build())
 
-    return builder.build()
+    addType(value.serviceName.bridgeType, builder.build())
   }
 
   private fun TypeSpec.Builder.addExternalApis(externalApis: ExternalApis) {

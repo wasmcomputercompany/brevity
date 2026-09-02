@@ -20,13 +20,3 @@ internal val FunctionName.wasmExportAnnotation: AnnotationSpec
   get() = AnnotationSpec.builder(Symbols.KotlinWasm.WasmExport)
     .addMember("%S", toString())
     .build()
-
-val optInToExperimentalWasm: AnnotationSpec
-  get() = AnnotationSpec.builder(Symbols.Kotlin.OptIn)
-    .addMember(
-      "%T::class, %T::class, %T::class",
-      Symbols.KotlinWasm.ComponentModelInternalApi,
-      Symbols.KotlinWasm.ExperimentalWasmInterop,
-      Symbols.KotlinWasm.UnsafeWasmMemoryApi,
-    )
-    .build()

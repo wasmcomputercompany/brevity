@@ -5,9 +5,9 @@ import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
+import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
-import dev.wasmo.brevity.collectNoIssuesOrThrow
 import okio.FileSystem
 import okio.Path
 
@@ -57,14 +57,12 @@ class GenerateKotlinCommand(
       },
     ) ?: return@collectNoIssuesOrThrow
 
-    for (fileSpec in generator.api.generate()) {
-      fileSpec.writeTo(commonMainDir)
-    }
-    for (fileSpec in generator.guest.generate()) {
-      fileSpec.writeTo(wasmWasiMainDir)
-    }
-    for (fileSpec in generator.host.generate()) {
-      fileSpec.writeTo(jvmMainDir)
-    }
+    val projectSpec = generator.generate()
+    projectSpec.writeTo(
+      fileSystem = fileSystem,
+      commonMain = outputKotlinCommonMain,
+      wasmWasiMain = outputKotlinWasmWasiMain,
+      jvmMain = outputKotlinJvmMain,
+    )
   }
 }
