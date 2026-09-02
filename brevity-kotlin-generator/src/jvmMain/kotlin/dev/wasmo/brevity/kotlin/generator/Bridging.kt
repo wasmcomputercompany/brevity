@@ -71,8 +71,22 @@ val CoreType.kotlinCoreType: KtTypeName
 val TypeName.Declared.handleName: ClassName
   get() = ClassName(kotlinApi.packageName, "${kotlinApi.simpleName}Handle")
 
+/**
+ * A declared type is nested in its enclosing world or interface.
+ *
+ * Special cases:
+ *
+ *  * If the declared type's enclosing service is named 'types', the declared type is promoted to
+ *    the enclosing package.
+ */
 val TypeName.Declared.kotlinApi: ClassName
-  get() = serviceName.kotlinApi.nestedClass(name.upperCamelCase)
+  get() {
+      val packageName = serviceName.packageName.toKotlin()
+      return when {
+        serviceName.name.name == "types" -> (packageName + name).name
+        else -> (packageName + serviceName.name + name).name
+      }
+    }
 
 /** Map WIT types to Kotlin types. */
 val TypeName.kotlinApi: KtTypeName

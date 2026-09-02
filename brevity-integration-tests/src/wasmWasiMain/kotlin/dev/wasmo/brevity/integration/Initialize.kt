@@ -2,7 +2,8 @@ package dev.wasmo.brevity.integration
 
 import wit.wasmo.testing.Calculator
 import wit.wasmo.testing.Streams
-import wit.wasmo.testing.Types
+import wit.wasmo.testing.StringArgument
+import wit.wasmo.testing.StringResult
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.guest
 
@@ -15,9 +16,9 @@ import wit.wasmo.testing.guest
 val actuallyInitialize = run {
   WasmoTesting.guest = object : WasmoTesting.Guest {
     override fun concat(
-      a: Types.StringArgument,
-      b: Types.StringArgument,
-      callback: Types.StringResult,
+      a: StringArgument,
+      b: StringArgument,
+      callback: StringResult,
     ) {
       callback.put(a.get() + b.get())
     }
@@ -27,11 +28,11 @@ val actuallyInitialize = run {
     }
 
     override val streams = object : Streams {
-      override fun printGreeting(name: Types.StringArgument) {
+      override fun printGreeting(name: StringArgument) {
         println("Hello, ${name.get()}")
       }
 
-      override fun printError(name: Types.StringArgument) {
+      override fun printError(name: StringArgument) {
         val exception = Exception("boom, ${name.get()}!")
         exception.printStackTrace()
       }

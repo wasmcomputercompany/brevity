@@ -11,7 +11,8 @@ import wit.wasi.cli.v0_2_0.Imports
 import wit.wasi.cli.v0_2_0.World
 import wit.wasi.v0_1.Wasi
 import wit.wasi.v0_1.World
-import wit.wasmo.testing.Types
+import wit.wasmo.testing.StringArgument
+import wit.wasmo.testing.StringResult
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.World
 
@@ -66,7 +67,7 @@ class RunKotlinWasmTest {
     val b = "World!".asStringArgument()
 
     var result: String? = null
-    val callback = object : Types.StringResult {
+    val callback = object : StringResult {
       override fun put(value_: String) {
         result = value_
       }
@@ -92,7 +93,7 @@ class RunKotlinWasmTest {
       .isEqualTo("Hello, World!")
   }
 
-  private fun String.asStringArgument() = object : Types.StringArgument {
+  private fun String.asStringArgument() = object : StringArgument {
     override fun get() = this@asStringArgument
   }
 
