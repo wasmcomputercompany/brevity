@@ -49,10 +49,8 @@ class GuestGenerator(
           packageName = className.packageName,
           fileName = fileName,
         ) {
-          addTypeFunctions(type, roles)
-          for (encoder in declaredTypeEncodersGenerator.generate(type, roles)) {
-            addFunction(encoder)
-          }
+          generateTypeFunctions(type, roles)
+          declaredTypeEncodersGenerator.generate(type, roles)
         }
       }
 
@@ -75,45 +73,43 @@ class GuestGenerator(
     return result
   }
 
-  private fun QualifiedSpecCollector.generateService(value: IrWitPackage.Service) {
+  context(collector: QualifiedSpecCollector)
+  private fun generateService(value: IrWitPackage.Service) {
     if (value is IrWorld) {
       val guestApis = value.guestApis
       if (guestApis != null) {
-        addProperty(
-          PropertySpec.builder("${guestApis.instanceName}_", guestApis.type)
-            .addModifiers(KModifier.PRIVATE, KModifier.LATEINIT)
-            .mutable(true)
-            .build(),
-        )
-        addProperty(
-          PropertySpec.builder(guestApis.instanceName, guestApis.type)
-            .receiver(value.serviceName.kotlinApi)
-            .mutable(true)
-            .getter(
-              FunSpec.getterBuilder()
-                .addCode("return %N", "${guestApis.instanceName}_")
-                .build(),
-            )
-            .setter(
-              FunSpec.setterBuilder()
-                .addParameter("value", guestApis.type)
-                .addStatement("%M()", Symbols.Brevity.RetainWasmExportsForGuestBridge)
-                .addStatement("%N()", value.retainWasmExportsFunctionName)
-                .addCode("%N = %N", "${guestApis.instanceName}_", "value")
-                .build(),
-            )
-            .build(),
-        )
+        collector += PropertySpec.builder("${guestApis.instanceName}_", guestApis.type)
+          .addModifiers(KModifier.PRIVATE, KModifier.LATEINIT)
+          .mutable(true)
+          .build()
+        collector += PropertySpec.builder(guestApis.instanceName, guestApis.type)
+          .receiver(value.serviceName.kotlinApi)
+          .mutable(true)
+          .getter(
+            FunSpec.getterBuilder()
+              .addCode("return %N", "${guestApis.instanceName}_")
+              .build(),
+          )
+          .setter(
+            FunSpec.setterBuilder()
+              .addParameter("value", guestApis.type)
+              .addStatement("%M()", Symbols.Brevity.RetainWasmExportsForGuestBridge)
+              .addStatement("%N()", value.retainWasmExportsFunctionName)
+              .addCode("%N = %N", "${guestApis.instanceName}_", "value")
+              .build(),
+          )
+          .build()
       }
     }
   }
 
-  private fun QualifiedSpecCollector.addTypeFunctions(
+  context(collector: QualifiedSpecCollector)
+  private fun generateTypeFunctions(
     typeDeclaration: IrTypeDeclaration,
     entry: RoleTracker.Entry,
   ) {
     if (typeDeclaration is IrResource) {
-      addResourceFunctions(
+      generateResourceFunctions(
         value = typeDeclaration,
         host = entry.host,
         guest = entry.guest,
@@ -121,7 +117,8 @@ class GuestGenerator(
     }
   }
 
-  private fun QualifiedSpecCollector.addResourceFunctions(
+  context(collector: QualifiedSpecCollector)
+  private fun generateResourceFunctions(
     value: IrResource,
     host: Boolean,
     guest: Boolean,
@@ -133,7 +130,7 @@ class GuestGenerator(
     if (guest) {
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
-        addFunction(GuestFunctionFactory(encoderFactory, receiver, function).wasmExport())
+        collector += GuestFunctionFactory(encoderFactory, receiver, function).wasmExport()
       }
     }
 
@@ -158,10 +155,10 @@ class GuestGenerator(
         handleBuilder.addFunction(
           GuestFunctionFactory(encoderFactory, receiver, function).callHost(),
         )
-        addFunction(GuestFunctionFactory(encoderFactory, receiver, function).wasmImport())
+        collector += GuestFunctionFactory(encoderFactory, receiver, function).wasmImport()
       }
 
-      addType(value.type.handleName, handleBuilder.build())
+      collector.addType(value.type.handleName, handleBuilder.build())
     }
   }
 
@@ -169,9 +166,10 @@ class GuestGenerator(
    * Generate top-level `@WasmExport`-annotated functions for all exported functions in [value],
    * and functions recursively held by [value].
    */
-  private fun QualifiedSpecCollector.addExternalFunctions(value: IrWorld) {
+  context(collector: QualifiedSpecCollector)
+  private fun addExternalFunctions(value: IrWorld) {
     for (factory in exportedGuestFunctionFactories(value)) {
-      addFunction(factory.wasmExport())
+      collector += factory.wasmExport()
     }
   }
 
@@ -204,26 +202,25 @@ class GuestGenerator(
     }
   }
 
-  private fun QualifiedSpecCollector.retainWasmExportsFunction(value: IrWorld) {
-    addFunction(
-      FunSpec.builder(value.retainWasmExportsFunctionName)
-        .addModifiers(KModifier.PRIVATE)
-        .addKdoc(
-          """
-          |This function does nothing. But by calling it the compiler retains exported symbols that
-          |would otherwise be eliminated as unused.
-          |
-          |https://youtrack.jetbrains.com/issue/KT-88068/
-          """.trimMargin(),
-        )
-        .addStatement("// Equivalent to 'if (true) return', but immune to dead code elimination.")
-        .addStatement("if (%S.hashCode() == 0) return", "")
-        .apply {
-          for (factory in exportedGuestFunctionFactories(value)) {
-            addStatement("%L", factory.callWasmExportFunctionWithPlaceholders())
-          }
+  context(collector: QualifiedSpecCollector)
+  private fun retainWasmExportsFunction(value: IrWorld) {
+    collector += FunSpec.builder(value.retainWasmExportsFunctionName)
+      .addModifiers(KModifier.PRIVATE)
+      .addKdoc(
+        """
+        |This function does nothing. But by calling it the compiler retains exported symbols that
+        |would otherwise be eliminated as unused.
+        |
+        |https://youtrack.jetbrains.com/issue/KT-88068/
+        """.trimMargin(),
+      )
+      .addStatement("// Equivalent to 'if (true) return', but immune to dead code elimination.")
+      .addStatement("if (%S.hashCode() == 0) return", "")
+      .apply {
+        for (factory in exportedGuestFunctionFactories(value)) {
+          addStatement("%L", factory.callWasmExportFunctionWithPlaceholders())
         }
-        .build(),
-    )
+      }
+      .build()
   }
 }

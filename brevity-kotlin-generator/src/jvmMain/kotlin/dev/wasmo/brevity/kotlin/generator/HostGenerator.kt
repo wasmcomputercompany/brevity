@@ -44,9 +44,7 @@ class HostGenerator(
           packageName = className.packageName,
           fileName = className.simpleNames.joinToString(separator = "") + "Host",
         ) {
-          for (encoder in declaredTypeEncodersGenerator.generate(type, roles)) {
-            addFunction(encoder)
-          }
+          declaredTypeEncodersGenerator.generate(type, roles)
         }
       }
 
@@ -68,7 +66,8 @@ class HostGenerator(
     return result
   }
 
-  private fun QualifiedSpecCollector.generateWorldFactoryFunction(value: IrWorld) {
+  context(collector: QualifiedSpecCollector)
+  private fun generateWorldFactoryFunction(value: IrWorld) {
     val guestApis = value.guestApis
     val hostApis = value.hostApis
     if (guestApis == null && hostApis == null) return
@@ -88,7 +87,7 @@ class HostGenerator(
       ),
     ).build()
 
-    val function = FunSpec.builder("World")
+    collector += FunSpec.builder("World")
       .receiver(value.serviceName.kotlinApi)
       .addParameter(hostFactory)
       .returns(worldType)
@@ -112,10 +111,10 @@ class HostGenerator(
         )
       }
       .build()
-    addFunction(function)
   }
 
-  private fun QualifiedSpecCollector.generateBridge(value: IrWitPackage.Service) {
+  context(collector: QualifiedSpecCollector)
+  private fun generateBridge(value: IrWitPackage.Service) {
     if (!value.hasInstanceMembers) return
 
     val builder = TypeSpec.classBuilder(value.serviceName.bridgeType)
@@ -211,11 +210,11 @@ class HostGenerator(
         )
 
         if (guestApis != null) {
-          builder.addExternalApis(guestApis)
+          generateExternalApis(guestApis)
         }
 
         if (hostApis != null) {
-          builder.addExternalApis(hostApis)
+          generateExternalApis(hostApis)
         }
       }
 
@@ -237,12 +236,14 @@ class HostGenerator(
 
     builder.primaryConstructor(constructor.build())
 
-    addType(value.serviceName.bridgeType, builder.build())
+    collector.addType(value.serviceName.bridgeType, builder.build())
   }
 
-  private fun TypeSpec.Builder.addExternalApis(externalApis: ExternalApis) {
-    addType(
-      TypeSpec.classBuilder(externalApis.bridgeType)
+  context(collector: QualifiedSpecCollector)
+  private fun generateExternalApis(externalApis: ExternalApis) {
+    collector.addType(
+      className = externalApis.bridgeType,
+      type = TypeSpec.classBuilder(externalApis.bridgeType)
         .addModifiers(KModifier.INTERNAL)
         .addSuperinterface(externalApis.type)
         .primaryConstructor(
