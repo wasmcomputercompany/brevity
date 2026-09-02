@@ -23,22 +23,22 @@ sealed interface QualifiedSpec {
 
   data class Function(
     override val parent: Parent,
-    override val locations: Set<Location>,
-    override val optIns: Set<ClassName>,
+    override val locations: Set<Location> = setOf(),
+    override val optIns: Set<ClassName> = setOf(),
     val function: FunSpec,
   ) : QualifiedSpec
 
   data class Property(
     override val parent: Parent,
-    override val locations: Set<Location>,
-    override val optIns: Set<ClassName>,
+    override val locations: Set<Location> = setOf(),
+    override val optIns: Set<ClassName> = setOf(),
     val property: PropertySpec,
   ) : QualifiedSpec
 
   data class Type(
     override val parent: Parent,
-    override val locations: Set<Location>,
-    override val optIns: Set<ClassName>,
+    override val locations: Set<Location> = setOf(),
+    override val optIns: Set<ClassName> = setOf(),
     val className: ClassName,
     val type: TypeSpec,
   ) : QualifiedSpec
