@@ -4,18 +4,19 @@ import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.IoIdentifier
-import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.IoPackageName
 import dev.wasmo.brevity.IoServiceName
+import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 
 data class IrWitPackage(
   val packageDocumentation: Documentation? = null,
-  val packageName: IoPackageName,
+  val packageName: PackageName,
   val services: List<Service> = listOf(),
 ) {
   sealed interface Service : IrDeclaration {
-    val serviceName: IoServiceName
+    val serviceName: ServiceName
     val types: List<IrTypeDeclaration>
     val hasInstanceMembers: Boolean
   }
@@ -37,7 +38,7 @@ data class IrInterface(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  override val serviceName: IoServiceName,
+  override val serviceName: ServiceName,
   val items: List<Item>,
 ) : IrWitPackage.Service {
   override val types: List<IrTypeDeclaration>
@@ -56,7 +57,7 @@ data class IrWorld(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  override val serviceName: IoServiceName,
+  override val serviceName: ServiceName,
   override val types: List<IrTypeDeclaration>,
   val imports: List<Api>,
   val exports: List<Api>,

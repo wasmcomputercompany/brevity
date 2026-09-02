@@ -400,7 +400,7 @@ class IrMapperTest {
 
     assertThat(irPackages).containsExactly(
       IrWitPackage(
-        packageName = "wasi:cli@0.3.0".toPackageName(),
+        packageName = "wasi:cli@0.3.0".toPackageName().constrain(),
         services = listOf(
           IrWorld(
             location = commandLocation.at(3, 1),
@@ -425,7 +425,7 @@ class IrMapperTest {
         ),
       ),
       IrWitPackage(
-        packageName = "wasi:clocks@0.3.0".toPackageName(),
+        packageName = "wasi:clocks@0.3.0".toPackageName().constrain(),
         services = listOf(
           IrWorld(
             location = worldLocation.at(3, 1),
@@ -464,7 +464,7 @@ class IrMapperTest {
     val ioPackages = collectNoIssuesOrThrow {
       listOf(
         IoToplevelWitPackage(
-          packageName = "wasi:cli@0.3.0".toPackageName(),
+          packageName = "wasi:cli@0.3.0".toPackageName().constrain(),
           files = listOf(
             """
           |package wasi:cli@0.3.0;
@@ -480,7 +480,7 @@ class IrMapperTest {
           ),
         ),
         IoToplevelWitPackage(
-          packageName = "wasi:clocks@0.3.0".toPackageName(),
+          packageName = "wasi:clocks@0.3.0".toPackageName().constrain(),
           files = listOf(
             """
           |package wasi:clocks@0.3.0;
@@ -534,7 +534,7 @@ class IrMapperTest {
     val importsLocation = Location("imports.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
-        packageName = "wasi:cli@0.3.0".toPackageName(),
+        packageName = "wasi:cli@0.3.0".toPackageName().constrain(),
         files = listOf(
           """
           |package wasi:cli@0.3.0;
@@ -567,7 +567,7 @@ class IrMapperTest {
 
     assertThat(irPackages).containsExactly(
       IrWitPackage(
-        packageName = "wasi:cli@0.3.0".toPackageName(),
+        packageName = "wasi:cli@0.3.0".toPackageName().constrain(),
         services = listOf(
           IrWorld(
             location = commandLocation.at(3, 1),
@@ -592,7 +592,7 @@ class IrMapperTest {
         ),
       ),
       IrWitPackage(
-        packageName = "wasi:clocks@0.3.0".toPackageName(),
+        packageName = "wasi:clocks@0.3.0".toPackageName().constrain(),
         services = listOf(
           IrWorld(
             location = importsLocation.at(8, 3),
@@ -629,7 +629,7 @@ class IrMapperTest {
     val location = Location("world.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
-        packageName = "local:demo".toPackageName(),
+        packageName = "local:demo".toPackageName().constrain(),
         files = listOf(
           """
           |package local:demo;
@@ -648,7 +648,7 @@ class IrMapperTest {
 
     assertThat(irPackages).containsExactly(
       IrWitPackage(
-        packageName = "local:demo".toPackageName(),
+        packageName = "local:demo".toPackageName().constrain(),
         services = listOf(
           IrInterface(
             location = location.at(4, 5),
@@ -687,7 +687,7 @@ class IrMapperTest {
     val wallClockLocation = Location("wall-clock.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
-        packageName = "wasi:clocks@0.2.12".toPackageName(),
+        packageName = "wasi:clocks@0.2.12".toPackageName().constrain(),
         files = listOf(
           """
           |interface timezone {
@@ -730,7 +730,7 @@ class IrMapperTest {
     val worldLocation = Location("world.wit")
     val commandLocation = Location("command.wit")
     val wasiCli = IoToplevelWitPackage(
-      packageName = "wasi:cli@0.2.12".toPackageName(),
+      packageName = "wasi:cli@0.2.12".toPackageName().constrain(),
       files = listOf(
         """
         |package wasi:cli@0.2.12;
@@ -741,7 +741,7 @@ class IrMapperTest {
       ),
     )
     val wasiIo = IoToplevelWitPackage(
-      packageName = "wasi:io@0.2.12".toPackageName(),
+      packageName = "wasi:io@0.2.12".toPackageName().constrain(),
       files = listOf(
         """
         |package wasi:io@0.2.12;
@@ -768,7 +768,7 @@ class IrMapperTest {
     val systemClockLocation = Location("system-clock.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
-        packageName = "wasi:clocks@0.3.0".toPackageName(),
+        packageName = "wasi:clocks@0.3.0".toPackageName().constrain(),
         files = listOf(
           """
           |package wasi:clocks@0.3.0;
@@ -798,7 +798,7 @@ class IrMapperTest {
     val typesLocation = Location("types.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
-        packageName = "wasi:http@0.3.0".toPackageName(),
+        packageName = "wasi:http@0.3.0".toPackageName().constrain(),
         files = listOf(
           """
           |package wasi:http@0.3.0;
@@ -851,7 +851,7 @@ class IrMapperTest {
     val typesLocation = Location("types.wit")
     val ioPackages = listOf(
       IoToplevelWitPackage(
-        packageName = "test:types".toPackageName(),
+        packageName = "test:types".toPackageName().constrain(),
         files = listOf(
           """
           |package test:types;
@@ -889,7 +889,7 @@ class IrMapperTest {
     val serviceName = "test:types/all-types"
     assertThat(packages).containsExactly(
       IrWitPackage(
-        packageName = "test:types".toPackageName(),
+        packageName = "test:types".toPackageName().constrain(),
         services = listOf(
           IrWorld(
             serviceName = "test:types/all-types",
@@ -1021,7 +1021,7 @@ class IrMapperTest {
     typeName: IoTypeName,
     location: Location = Location("file.wit"),
   ): TypeName? {
-    context(IrMapper.Context(serviceName.toServiceName())) {
+    context(IrMapper.Context(serviceName.toServiceName().constrain())) {
       return typeName.typeNameToIr(location)
     }
   }

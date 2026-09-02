@@ -170,7 +170,7 @@ class WorldFlattenerTest {
 
     assertThat(mapped.single { it.packageName == "test:exported".toPackageName() }).isEqualTo(
       IrWitPackage(
-        packageName = "test:exported".toPackageName(),
+        packageName = "test:exported".toPackageName().constrain(),
         services = listOf(
           IrWorld(
             location = exportedLocation.at(3, 1),

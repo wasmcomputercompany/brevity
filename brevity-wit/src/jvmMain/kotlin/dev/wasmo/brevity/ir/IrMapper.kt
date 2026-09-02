@@ -8,6 +8,8 @@ import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.IoPackageName
 import dev.wasmo.brevity.IoServiceName
+import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.IoCase
 import dev.wasmo.brevity.io.IoEnum
@@ -41,7 +43,7 @@ class IrMapper(
   private val packages: List<IoToplevelWitPackage>,
   private val ioSymbolTable: IoSymbolTable,
 ) {
-  private val irPackages = mutableMapOf<IoPackageName, PackageBuilder>()
+  private val irPackages = mutableMapOf<PackageName, PackageBuilder>()
 
   internal class PackageBuilder {
     val documentation = mutableListOf<Documentation>()
@@ -70,13 +72,13 @@ class IrMapper(
 
   context(issueCollector: IssueCollector)
   private fun addPackage(ioPackage: IoWitPackage) {
-    val builder = irPackages.getOrPut(ioPackage.packageName) { PackageBuilder() }
+    val builder = irPackages.getOrPut(ioPackage.packageName.constrain()) { PackageBuilder() }
 
     context(builder) {
       for (item in ioPackage.items) {
         when (item) {
-          is IoInterface -> item.interfaceToIr(ioPackage.packageName)
-          is IoWorld -> item.worldToIr(ioPackage.packageName)
+          is IoInterface -> item.interfaceToIr(ioPackage.packageName.constrain())
+          is IoWorld -> item.worldToIr(ioPackage.packageName.constrain())
           is IoTopLevelUse -> {}
           is IoInlinePackage -> addPackage(item)
         }
@@ -85,8 +87,8 @@ class IrMapper(
   }
 
   context(builder: PackageBuilder, issueCollector: IssueCollector)
-  private fun IoInterface.interfaceToIr(packageName: IoPackageName) = pushIssueLocation(location) {
-    val serviceName = IoServiceName(packageName, name)
+  private fun IoInterface.interfaceToIr(packageName: PackageName) = pushIssueLocation(location) {
+    val serviceName = ServiceName(packageName, name)
     context(Context(serviceName)) {
       builder.services += IrInterface(
         documentation = documentation,
@@ -281,8 +283,8 @@ class IrMapper(
   }
 
   context(context: Context)
-  private fun UsePath.usePathToIr() = IoServiceName(
-    packageName = packageName ?: context.serviceName.packageName,
+  private fun UsePath.usePathToIr() = ServiceName(
+    packageName = packageName?.constrain() ?: context.serviceName.packageName,
     name = name,
   )
 
@@ -381,7 +383,7 @@ class IrMapper(
           // Direct match.
           if (declaration.name == name) {
             return TypeName.Declared(
-              serviceName = IoServiceName(witPackage.packageName, context.serviceName.name),
+              serviceName = ServiceName(witPackage.packageName.constrain(), context.serviceName.name),
               name = declaration.name,
             )
           } else if (declaration.name.normalized() == normalizedName) {
@@ -394,8 +396,8 @@ class IrMapper(
           val itemMatch = declaration.items.firstOrNull { it.name == name }
           if (itemMatch != null) {
             val useContext = Context(
-              IoServiceName(
-                packageName = declaration.path.packageName ?: serviceNamePackageName,
+              ServiceName(
+                packageName = declaration.path.packageName?.constrain() ?: serviceNamePackageName,
                 name = declaration.path.name,
               ),
             )
@@ -426,7 +428,7 @@ class IrMapper(
 
   /** Collect includes recursively. */
   context(builder: PackageBuilder, issueCollector: IssueCollector)
-  private fun IoWorld.worldToIr(packageName: IoPackageName) = pushIssueLocation(location) {
+  private fun IoWorld.worldToIr(packageName: PackageName) = pushIssueLocation(location) {
     val seed = IncludedWorld(
       packageName = packageName,
       world = this@worldToIr,
@@ -439,7 +441,7 @@ class IrMapper(
       documentation = documentation,
       gate = gate,
       location = location,
-      serviceName = IoServiceName(packageName, name),
+      serviceName = ServiceName(packageName, name),
       types = set.flatMap { included ->
         context(included.context) {
           included.world.items.mapNotNull { it.worldItemToIrTypeDeclarationOrNull() }
@@ -517,7 +519,7 @@ class IrMapper(
         IrExternalApi(
           location = location,
           plainName = name,
-          serviceName = IoServiceName(context.serviceName.packageName, name),
+          serviceName = ServiceName(context.serviceName.packageName, name),
         )
       }
     }
@@ -530,7 +532,7 @@ class IrMapper(
     if (!set.add(this)) return // Duplicate.
 
     for (include in world.items.filterIsInstance<IoInclude>()) {
-      val packageName = include.path.packageName ?: packageName
+      val packageName = include.path.packageName?.constrain() ?: packageName
       val lookupPath = include.path.copy(
         packageName = packageName,
       )
@@ -563,17 +565,17 @@ class IrMapper(
   }
 
   internal class Context(
-    val serviceName: IoServiceName,
+    val serviceName: ServiceName,
   ) {
     override fun toString() = serviceName.toString()
   }
 
   private data class IncludedWorld(
-    val packageName: IoPackageName,
+    val packageName: PackageName,
     val world: IoWorld,
   ) {
     val context: Context
-      get() = Context(IoServiceName(packageName, world.name))
+      get() = Context(ServiceName(packageName, world.name))
 
     override fun toString() = context.toString()
   }
