@@ -1,7 +1,5 @@
 package dev.wasmo.brevity
 
-import dev.wasmo.brevity.io.UsePath
-
 /**
  * The name of an interface or a world.
  */

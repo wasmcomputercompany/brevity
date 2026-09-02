@@ -5,7 +5,7 @@ Brevity
 >  –– Polonius in Shakespeare’s Hamlet
 
 This is a Kotlin implementation of a WIT processor. It compiles WIT specifications into Kotlin
-interfaces, as well as host and guest bridging code for the WASM runtime.
+interfaces, as well as host and guest bridging code for the Wasm runtime.
 
 See the [Explainer], [Overview] and [Spec].
 
@@ -29,8 +29,22 @@ This project contains documentation and specifications copyrighted by the
   * **brevity-wasi-p2**: Compiles the [WASI 0.2.0 tag] (Preview 2) to Kotlin.
   * **brevity-wasi-p3**: Compiles the [WASI main branch] (Preview 3) to Kotlin.
 
-Models
-------
+Features
+--------
+
+Brevity generates nice Kotlin APIs from `.wit` source files. It supports Kotlin as the host
+(Kotlin/JVM) and the guest (Kotlin/Wasm).
+
+Brevity generates APIs using `okio.ByteString` for `list<s8>` and `list<u8>` inputs.
+
+Brevity flattens nested `types` interfaces. This yields simpler generated code, particularly for
+WASI which uses `types` convention extensively.
+
+
+Implementation
+--------------
+
+### Models
 
 We have several different representations of the `.wit` code, that fit together in a pipeline.
 
