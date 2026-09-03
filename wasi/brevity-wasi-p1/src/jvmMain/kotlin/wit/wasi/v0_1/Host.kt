@@ -47,7 +47,16 @@ internal class BridgeWasi(
           listOf(ValType.I32),
         ),
         WasmFunctionHandle { instance, args ->
-          error("unexpected call")
+          val size = pollOneoff(
+            instance = instance,
+            inPointer = args[0].toInt(),
+            outPointer = args[1].toInt(),
+            nSubscriptions = args[2].toInt(),
+          )
+          val returnPointer = args[3].toInt()
+          val memory = instance.memory()
+          memory.writeI32(returnPointer, size)
+          longArrayOf(Errno.success.ordinal.toLong())
         },
       ),
     )
@@ -60,7 +69,12 @@ internal class BridgeWasi(
           listOf(ValType.I32),
         ),
         WasmFunctionHandle { instance, args ->
-          error("unexpected call")
+          val clockId = ClockId.entries[args[0].toInt()]
+          val time = host.getTime(clockId)
+          val returnPointer = args[2].toInt()
+          val memory = instance.memory()
+          memory.writeLong(returnPointer, time)
+          longArrayOf(Errno.success.ordinal.toLong())
         },
       ),
     )
@@ -138,6 +152,59 @@ internal class BridgeWasi(
     return errno.ordinal
   }
 
-  internal class BridgeGuest() : Wasi.Guest {
+  private fun pollOneoff(
+    instance: Instance,
+    inPointer: Int,
+    outPointer: Int,
+    nSubscriptions: Int,
+  ): Int {
+    val memory = instance.memory()
+
+    val subscriptions = List(nSubscriptions) { index ->
+      val address = inPointer + 48 * index
+      val userData = memory.readLong(address).toULong()
+
+      when (memory.read(address + 8).toInt()) {
+        0 -> Subscription.Clock(
+          userdata = userData,
+          clockId = ClockId.entries[memory.readInt(address + 16)],
+          timeout = memory.readLong(address + 24).toULong(),
+          precision = memory.readLong(address + 32).toULong(),
+          absTime = (memory.readShort(address + 40).toInt() and 0x1) == 0x1,
+        )
+
+        1 -> Subscription.Read(
+          userdata = userData,
+        )
+
+        2 -> Subscription.Write(
+          userdata = userData,
+        )
+
+        else -> error("unexpected subscription")
+      }
+    }
+
+    val events = host.poll(subscriptions)
+
+    for ((i, event) in events.withIndex()) {
+      val address = outPointer + i * 32
+      memory.writeLong(address, event.userdata.toLong())
+      memory.writeShort(address + 8, event.errno.ordinal.toShort())
+      memory.writeByte(
+        address + 10,
+        when (event.subscription) {
+          is Subscription.Clock -> 0
+          is Subscription.Read -> 1
+          is Subscription.Write -> 2
+        }.toByte(),
+      )
+      memory.writeLong(address + 16, event.nbytes.toLong())
+      memory.writeShort(address + 24, event.flags.toShort())
+    }
+
+    return events.size
   }
+
+  internal class BridgeGuest : Wasi.Guest
 }

@@ -1,5 +1,10 @@
 package dev.wasmo.brevity.integration
 
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.time.Duration.Companion.milliseconds
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import wit.wasmo.testing.Calculator
 import wit.wasmo.testing.Streams
 import wit.wasmo.testing.StringArgument
@@ -44,6 +49,17 @@ val actuallyInitialize = run {
 
     override fun inlineConcat(a: String, b: String): String {
       return a + b
+    }
+
+    override fun parallelSleep(coroutineCount: UInt, duration: ULong) {
+      val coroutineScope = CoroutineScope(EmptyCoroutineContext)
+      coroutineScope.launch {
+        for (i in 0U until coroutineCount) {
+          launch {
+            delay(duration.toLong().milliseconds)
+          }
+        }
+      }
     }
   }
 }
