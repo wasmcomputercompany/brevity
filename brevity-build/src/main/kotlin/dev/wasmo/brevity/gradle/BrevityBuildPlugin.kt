@@ -15,6 +15,7 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper
 import org.jetbrains.kotlin.gradle.plugin.KotlinPluginWrapper
@@ -91,7 +92,11 @@ internal class RealBrevityBuildExtension(
         }
 
         if (jvm) {
-          jvm()
+          jvm {
+            compilerOptions {
+              jvmTarget.set(JvmTarget.JVM_17)
+            }
+          }
           kotlin.sourceSets.jvmTest {
             dependencies {
               implementation(libs.kotlin.test.junit)
