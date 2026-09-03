@@ -4,6 +4,8 @@ sealed interface IoIdentifier {
   val name: String
 
   fun normalized(): IoIdentifier
+  fun constrain(): Identifier
+    = (this as? Identifier) ?: error("Type narrowing to Identifier failed")
 }
 
 /**

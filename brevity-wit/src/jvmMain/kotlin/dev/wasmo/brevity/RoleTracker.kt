@@ -25,12 +25,12 @@ import dev.wasmo.brevity.ir.IrWorld
  *    produces the behavior we want. We need something more sophisticated here!
  */
 class RoleTracker(
-  val types: Map<TypeName.Declared, Entry>,
-  val interfaces: Map<ServiceName, Entry>,
+    val types: Map<TypeName.Declared, Entry>,
+    val interfaces: Map<IoServiceName, Entry>,
 ) {
   operator fun get(typeName: TypeName.Declared): Entry? = types[typeName]
 
-  operator fun get(typeName: ServiceName): Entry? = interfaces[typeName]
+  operator fun get(typeName: IoServiceName): Entry? = interfaces[typeName]
 
   data class Entry(
     /** True if values of this type are imported to the guest. */
@@ -95,10 +95,10 @@ internal class TypeTraverser(
   val allTypes = mutableSetOf<TypeName.Declared>()
 
   /** Interfaces exported by the guest. */
-  val guestInterfaces = mutableSetOf<ServiceName>()
+  val guestInterfaces = mutableSetOf<IoServiceName>()
 
   /** Interfaces imported to the guest. */
-  val hostInterfaces = mutableSetOf<ServiceName>()
+  val hostInterfaces = mutableSetOf<IoServiceName>()
 
   /** Graph traversal queues. */
   private val guestQueue = ArrayDeque<IrTypeDeclaration>()
@@ -146,13 +146,13 @@ internal class TypeTraverser(
   }
 
   inner class Collector(
-    private val valueQueue: ArrayDeque<IrTypeDeclaration>,
-    private val valueTypes: MutableSet<TypeName.Declared>,
-    private val peerValueQueue: ArrayDeque<IrTypeDeclaration>,
-    private val peerValueTypes: MutableSet<TypeName.Declared>,
-    private val resourcesQueue: ArrayDeque<IrTypeDeclaration>,
-    private val resourcesTypes: MutableSet<TypeName.Declared>,
-    private val services: MutableSet<ServiceName>,
+      private val valueQueue: ArrayDeque<IrTypeDeclaration>,
+      private val valueTypes: MutableSet<TypeName.Declared>,
+      private val peerValueQueue: ArrayDeque<IrTypeDeclaration>,
+      private val peerValueTypes: MutableSet<TypeName.Declared>,
+      private val resourcesQueue: ArrayDeque<IrTypeDeclaration>,
+      private val resourcesTypes: MutableSet<TypeName.Declared>,
+      private val services: MutableSet<IoServiceName>,
   ) {
     /**
      * When collecting parameter types, we flip the guest/host role because parameter values are

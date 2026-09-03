@@ -4,7 +4,7 @@ import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.IoPackageName
 
 fun IoCase(
   documentation: String? = null,
@@ -250,7 +250,7 @@ fun IoVariant(
 
 fun IoWitFile(
   packageDocumentation: Documentation? = null,
-  packageName: PackageName,
+  packageName: IoPackageName,
   items: List<IoWitFile.Item> = listOf(),
   location: Location,
 ): IoWitFile = IoWitFile(

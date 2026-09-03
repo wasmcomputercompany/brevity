@@ -16,7 +16,7 @@ sealed class FunctionName {
   }
 
   data class ResourceDrop(
-      val serviceName: ServiceName,
+      val serviceName: IoServiceName,
       val resourceName: IoIdentifier,
   ) : FunctionName() {
     override val moduleName: String
@@ -29,7 +29,7 @@ sealed class FunctionName {
   }
 
   data class Constructor(
-      val serviceName: ServiceName,
+      val serviceName: IoServiceName,
       val name: IoIdentifier,
   ) : FunctionName() {
     override val moduleName: String
@@ -42,7 +42,7 @@ sealed class FunctionName {
   }
 
   data class Method(
-      val serviceName: ServiceName,
+      val serviceName: IoServiceName,
       val name: IoIdentifier,
       val resourceName: IoIdentifier,
   ) : FunctionName() {
@@ -56,7 +56,7 @@ sealed class FunctionName {
   }
 
   data class Static(
-      val serviceName: ServiceName,
+      val serviceName: IoServiceName,
       val name: IoIdentifier,
       val resourceName: IoIdentifier,
   ) : FunctionName() {
@@ -82,7 +82,7 @@ sealed class FunctionName {
   }
 
   data class Interface(
-      val serviceName: ServiceName,
+      val serviceName: IoServiceName,
       val name: IoIdentifier,
   ) : FunctionName() {
     override val moduleName: String

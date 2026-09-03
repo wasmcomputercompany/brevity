@@ -14,15 +14,15 @@ class RecursionValidatorTest {
   @Test
   fun happyPath() {
     val recursive = IrVariant(
-      serviceName = "wit:cli/console", name = "recursiveType", cases = emptyList(),
+      serviceName = "wit:cli/console", name = "recursive-type", cases = emptyList(),
       location = Location("file.wit".toPath(), 1, 2),
     )
     val mutuallyRecursive1 = IrVariant(
-      serviceName = "wit:cli/console", name = "mutuallyRecursive1", cases = emptyList(),
+      serviceName = "wit:cli/console", name = "mutually-recursive-1", cases = emptyList(),
       location = Location("file.wit".toPath(), 3, 4),
     )
     val mutuallyRecursive2 = IrVariant(
-      serviceName = "wit:cli/console", name = "mutuallyRecursive2", cases = emptyList(),
+      serviceName = "wit:cli/console", name = "mutually-recursive-2", cases = emptyList(),
       location = Location("file.wit".toPath(), 5, 6),
     )
 

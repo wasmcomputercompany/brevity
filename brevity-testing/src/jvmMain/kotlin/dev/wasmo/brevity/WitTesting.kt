@@ -6,19 +6,21 @@ import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.io.WitSyntaxReader
 import dev.wasmo.brevity.io.toServiceName
 
-fun String.toIdentifier(): IoIdentifier = collectNoIssuesOrThrow {
+fun String.toIdentifier(): Identifier = collectNoIssuesOrThrow {
   val reader = WitSyntaxReader(Location("file.wit"), this@toIdentifier)
   reader.readIdentifier().also {
     check(reader.exhausted)
   }
-}
+// Safe to cast, since we know that no issues were thrown
+} as Identifier
 
 fun String.toPackageName(): PackageName = collectNoIssuesOrThrow {
   val reader = WitSyntaxReader(Location("file.wit"), this@toPackageName)
   reader.readPackageName().also {
     check(reader.exhausted)
   }
-}
+// Safe to cast, since we know that no issues were thrown
+}.constrain()
 
 fun String.toSemVer(): SemVer {
   val reader = WitSyntaxReader(Location("file.wit"), this)
@@ -93,4 +95,4 @@ fun ServiceName(
 ) = ServiceName(
   packageName = packageName.toPackageName(),
   name = Identifier(name),
-)
+).constrain()
