@@ -26,7 +26,7 @@ class HostKotlinTarget(
       |package dev.wasmo.brevity.integration
       |
       |import assertk.assertThat
-      |import assertk.assertions.isEqualTo
+      |import assertk.assertions.*
       |import dev.wasmo.brevity.WasmInstance
       |import dev.wasmo.brevity.wasi.p1.RealWasiP1Host
       |import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
@@ -92,6 +92,8 @@ class HostKotlinTarget(
     writeUtf8(
       """
       |}
+      |
+      |fun assertk.Assert<BooleanArray>.isEqualTo(expected: BooleanArray) = transform { it.toList() }.isEqualTo(expected.toList())
       |
       """.trimMargin(),
     )
