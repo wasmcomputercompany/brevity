@@ -8,11 +8,11 @@ import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import dev.wasmo.brevity.Documentation
-import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.IoPackageName
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi

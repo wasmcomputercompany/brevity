@@ -5,7 +5,6 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
-import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.WitException

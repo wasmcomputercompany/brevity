@@ -21,7 +21,7 @@ import dev.wasmo.brevity.io.toServiceName
 import dev.wasmo.brevity.toPackageName
 import org.junit.Test
 
-class ValidateUniqueServiceNamesTest {
+class ValidateUniqueIoServiceNamesTest {
   @Test
   fun producesServiceNameMapWhenSuccessful() {
     val cliLocation = Location("")

@@ -1,8 +1,8 @@
 package dev.wasmo.brevity.io.validation
 
 import dev.wasmo.brevity.IssueCollector
-import dev.wasmo.brevity.PackageName
-import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.IoPackageName
+import dev.wasmo.brevity.IoServiceName
 import dev.wasmo.brevity.io.IoService
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWitPackage
@@ -11,8 +11,8 @@ import dev.wasmo.brevity.io.IoWitPackage
  * A set of toplevel wit packages, validated and with validation prerequisite lookup information
  */
 class IoSymbolTable(
-  private val packageNameMap: Map<PackageName, IoWitPackage>,
-  private val serviceNameMap: Map<ServiceName, IoService>,
+  private val packageNameMap: Map<IoPackageName, IoWitPackage>,
+  private val serviceNameMap: Map<IoServiceName, IoService>,
 ) {
   private val packageNameCaseInsensitiveMatchMap by lazy {
     packageNameMap.map { (packageName, _) -> packageName.normalized() to packageName }.toMap()
@@ -21,14 +21,14 @@ class IoSymbolTable(
     serviceNameMap.map { (serviceName, _) -> serviceName.normalized() to serviceName }.toMap()
   }
 
-  operator fun get(packageName: PackageName?): IoWitPackage? = packageNameMap[packageName]
+  operator fun get(packageName: IoPackageName?): IoWitPackage? = packageNameMap[packageName]
 
-  operator fun get(serviceName: ServiceName?): IoService? = serviceNameMap[serviceName]
+  operator fun get(serviceName: IoServiceName?): IoService? = serviceNameMap[serviceName]
 
-  fun getCaseInsensitiveMatch(packageName: PackageName?): PackageName?
+  fun getCaseInsensitiveMatch(packageName: IoPackageName?): IoPackageName?
     = packageNameCaseInsensitiveMatchMap[packageName?.normalized()]
 
-  fun getCaseInsensitiveMatch(serviceName: ServiceName?): ServiceName?
+  fun getCaseInsensitiveMatch(serviceName: IoServiceName?): IoServiceName?
     = serviceNameCaseInsensitiveMatchMap[serviceName?.normalized()]
 }
 

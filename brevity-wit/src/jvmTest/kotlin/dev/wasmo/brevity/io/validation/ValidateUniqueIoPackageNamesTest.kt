@@ -15,7 +15,7 @@ import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.toPackageName
 import org.junit.Test
 
-class ValidateUniquePackageNamesTest {
+class ValidateUniqueIoPackageNamesTest {
   @Test
   fun producesPackageNameMapWhenSuccessful() {
     val cliLocation = Location("")

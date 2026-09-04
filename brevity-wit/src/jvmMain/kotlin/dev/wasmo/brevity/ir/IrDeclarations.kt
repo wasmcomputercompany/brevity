@@ -3,7 +3,9 @@ package dev.wasmo.brevity.ir
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Gate
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.IoIdentifier
+import dev.wasmo.brevity.IoServiceName
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
@@ -160,6 +162,6 @@ data class IrExternalApi(
   override val documentation: Documentation? = null,
   override val gate: Gate? = null,
   override val location: Location,
-  val plainName: IoIdentifier? = null,
+  val plainName: Identifier? = null,
   val serviceName: ServiceName,
 ) : IrWorld.Api

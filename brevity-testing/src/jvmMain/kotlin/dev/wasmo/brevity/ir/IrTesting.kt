@@ -29,7 +29,7 @@ fun TypeNameDeclared(
   typeName: String,
 ) = TypeName.Declared(
   serviceName = serviceName.toServiceName(),
-  name = Identifier(typeName),
+  name = Identifier(typeName).constrain(),
 )
 
 fun IrEnum(
@@ -58,7 +58,7 @@ fun IrExternalApi(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   location = location,
-  plainName = plainName?.let { Identifier(it) },
+  plainName = plainName?.let { Identifier(it).constrain() },
   serviceName = ServiceName(packageName, serviceName),
 )
 
@@ -132,7 +132,7 @@ fun IrInterface(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   location = location,
-  serviceName = serviceName.toServiceName(),
+  serviceName = serviceName.toServiceName().constrain(),
   items = items,
 )
 
@@ -223,7 +223,7 @@ fun IrWorld(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   location = location,
-  serviceName = serviceName.toServiceName(),
+  serviceName = serviceName.toServiceName().constrain(),
   types = types,
   imports = imports,
   exports = exports,

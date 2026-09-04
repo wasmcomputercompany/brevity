@@ -42,10 +42,10 @@ class SuccessorsTest {
     )
 
     assertSuccessors(
-      type = IrTypeAlias(serviceName = "wit:cli/console", name = "typeAlias",
-        target = TypeNameDeclared("wit:cli/console", "someOtherType"),
+      type = IrTypeAlias(serviceName = "wit:cli/console", name = "type-alias",
+        target = TypeNameDeclared("wit:cli/console", "some-other-type"),
       ),
-      expectedSuccessors = listOf(TypeNameDeclared("wit:cli/console", "someOtherType"))
+      expectedSuccessors = listOf(TypeNameDeclared("wit:cli/console", "some-other-type"))
     )
 
     assertSuccessors(
