@@ -1,6 +1,5 @@
 package dev.wasmo.brevity.integration
 
-import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Identifier.Companion.Identifier
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
@@ -352,14 +351,15 @@ class BridgeEveryTypeTest {
       types = listOf(
         SampleType(
           id = Identifier("list-bool"),
+          kotlinEqualityMethod = "contentEquals",
           witType = "list<bool>",
-          kotlinType = "List<Boolean>", // TODO: This should probably be BooleanArray
+          kotlinType = "BooleanArray",
           rustType = "Vec<bool>",
           values = listOf(
-            SampleValue(kotlin = "listOf<Boolean>()", rust = "vec![]"),
-            SampleValue(kotlin = "listOf(false)", rust = "vec![false]"),
-            SampleValue(kotlin = "listOf(true)", rust = "vec![true]"),
-            SampleValue(kotlin = "listOf(true, false, true)", rust = "vec![true, false, true]"),
+            SampleValue(kotlin = "booleanArrayOf()", rust = "vec![]"),
+            SampleValue(kotlin = "booleanArrayOf(false)", rust = "vec![false]"),
+            SampleValue(kotlin = "booleanArrayOf(true)", rust = "vec![true]"),
+            SampleValue(kotlin = "booleanArrayOf(true, false, true)", rust = "vec![true, false, true]"),
           ),
         ),
         SampleType(
@@ -522,7 +522,7 @@ class BridgeEveryTypeTest {
         SampleType(
           id = Identifier("list-char"),
           witType = "list<char>",
-          kotlinType = "List<Int>", // TODO: This seems wrong?
+          kotlinType = "List<Int>", // In Java/Kotlin char is an u16. In wit it's a u32.
           rustType = "Vec<char>",
           values = listOf(
             SampleValue(kotlin = "listOf<Int>()", rust = "vec![]"),
@@ -551,7 +551,27 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "listOf(true, true)", rust = "[true, true]"),
             SampleValue(kotlin = "listOf(true, false)", rust = "[true, false]"),
           ),
-        ), // TODO: More Sample types
+        ),
+        SampleType(
+          id = Identifier("sized-list-s8"),
+          witType = "list<s8, 2>",
+          kotlinType = "List<Byte>",
+          rustType = "[i8; 2]",
+          values = listOf(
+            SampleValue(kotlin = "listOf(0.toByte(), 5.toByte())", rust = "[0, 5]"),
+            SampleValue(kotlin = "listOf(kotlin.Byte.MIN_VALUE, kotlin.Byte.MAX_VALUE)", rust = "[-128, 127]"),
+          ),
+        ),
+        SampleType(
+          id = Identifier("sized-list-s16"),
+          witType = "list<s16, 2>",
+          kotlinType = "List<Short>",
+          rustType = "[i16; 2]",
+          values = listOf(
+            SampleValue(kotlin = "listOf(0.toShort(), 5.toShort())", rust = "[0, 5]"),
+            SampleValue(kotlin = "listOf(kotlin.Short.MIN_VALUE, kotlin.Short.MAX_VALUE)", rust = "[-32768, 32767]"),
+          ),
+        ), // TODO: More Sample types, all the types and a large sized list of int.
       ),
     )
 

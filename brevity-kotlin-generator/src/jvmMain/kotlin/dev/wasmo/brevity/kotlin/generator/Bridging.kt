@@ -111,6 +111,7 @@ val TypeName.kotlinApi: KtTypeName
       )
 
       is TypeName.List -> when (this.type) {
+        TypeName.Bool -> Symbols.Kotlin.BooleanArray
         TypeName.S8 -> Symbols.Okio.ByteString
         TypeName.S16 -> Symbols.Kotlin.ShortArray
         TypeName.S32 -> Symbols.Kotlin.IntArray
@@ -122,7 +123,7 @@ val TypeName.kotlinApi: KtTypeName
         TypeName.F32 -> Symbols.Kotlin.FloatArray
         TypeName.F64 -> Symbols.Kotlin.DoubleArray
         else -> LIST.parameterizedBy(type.kotlinApi)
-      }
+      }.takeUnless { this.size != null } ?: LIST.parameterizedBy(type.kotlinApi)
 
       is TypeName.Map -> Symbols.KotlinCollections.Map.parameterizedBy(
         key.kotlinApi,

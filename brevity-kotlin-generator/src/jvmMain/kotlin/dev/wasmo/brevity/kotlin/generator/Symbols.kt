@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.MemberName
 object Symbols {
   object Kotlin {
     val Boolean = ClassName("kotlin", "Boolean")
+    val BooleanArray = ClassName("kotlin", "BooleanArray")
     val Byte = ClassName("kotlin", "Byte")
     val ByteArray = ClassName("kotlin", "ByteArray")
     val Double = ClassName("kotlin", "Double")
