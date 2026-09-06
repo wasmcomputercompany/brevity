@@ -23,7 +23,11 @@ sealed class TypeName {
       val serviceName: ServiceName,
       val name: Identifier,
   ) : TypeName() {
-    override fun toString() = "$serviceName.{$name}"
+    override fun toString() = nameToString(
+      packageName = serviceName.packageName,
+      serviceName = serviceName.name,
+      typeName = name,
+    )
   }
 
   data class Tuple(

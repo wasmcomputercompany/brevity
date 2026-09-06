@@ -19,7 +19,7 @@ sealed interface IoServiceName : Comparable<IoServiceName> {
 fun ServiceName(
   packageName: PackageName,
   name: Identifier,
-  ): ServiceName = WitServiceName(packageName, name)
+): ServiceName = WitServiceName(packageName, name)
 
 fun ServiceName(
   packageName: IoPackageName,
@@ -47,8 +47,11 @@ sealed interface ServiceName : IoServiceName {
 private data class WitServiceName(
   override val packageName: PackageName,
   override val name: Identifier,
-): ServiceName {
-  override fun toString() = renderString()
+) : ServiceName {
+  override fun toString() = nameToString(
+    packageName = packageName,
+    serviceName = name,
+  )
 
   override fun equals(other: Any?): Boolean {
     return toString() == other.toString()
@@ -66,9 +69,9 @@ private data class WitServiceName(
  * identifiers.
  */
 private data class MalformedServiceName(
-    override val packageName: IoPackageName,
-    override val name: IoIdentifier,
-): IoServiceName {
+  override val packageName: IoPackageName,
+  override val name: IoIdentifier,
+) : IoServiceName {
   override fun equals(other: Any?): Boolean {
     return toString() == other.toString()
   }
@@ -77,21 +80,8 @@ private data class MalformedServiceName(
     return toString().hashCode()
   }
 
-  override fun toString() = renderString()
-}
-
-private fun IoServiceName.renderString(): String = buildString {
-  for (namespace in packageName.namespaces) {
-    append(namespace)
-    append(':')
-  }
-  for (packageName in packageName.names) {
-    append(packageName)
-    append('/')
-  }
-  append(name)
-  if (packageName.version != null) {
-    append('@')
-    append(packageName.version)
-  }
+  override fun toString() = nameToString(
+    packageName = packageName,
+    serviceName = name,
+  )
 }
