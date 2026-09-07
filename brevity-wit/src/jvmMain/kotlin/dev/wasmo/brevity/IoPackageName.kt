@@ -63,8 +63,8 @@ private data class WitPackageName(
   override val namespaces: List<Identifier>,
   override val names: List<Identifier>,
   override val version: SemVer? = null,
-): PackageName {
-  override fun toString() = toStringImpl()
+) : PackageName {
+  override fun toString() = nameToString(this)
 
   override fun equals(other: Any?): Boolean = equalsImpl(other)
 
@@ -77,7 +77,7 @@ private data class MalformedPackageName(
   override val names: List<IoIdentifier>,
   override val version: SemVer? = null,
 ) : IoPackageName {
-  override fun toString() = toStringImpl()
+  override fun toString() = nameToString(this)
 
   override fun equals(other: Any?): Boolean = equalsImpl(other)
 
@@ -90,18 +90,3 @@ private fun IoPackageName.equalsImpl(other: Any?): Boolean = other is IoPackageN
   namespaces == other.namespaces &&
   names == other.names &&
   version == other.version
-
-private fun IoPackageName.toStringImpl(): String = buildString {
-  for (name in namespaces) {
-    append(name)
-    append(':')
-  }
-  for ((index, name) in names.withIndex()) {
-    if (index > 0) append('/')
-    append(name)
-  }
-  version?.let {
-    append("@")
-    append(it.version)
-  }
-}
