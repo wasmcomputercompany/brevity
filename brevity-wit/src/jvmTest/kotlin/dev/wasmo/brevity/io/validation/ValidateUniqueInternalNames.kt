@@ -7,6 +7,7 @@ import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.io.IoCase
 import dev.wasmo.brevity.io.IoDeclaration
 import dev.wasmo.brevity.io.IoField
@@ -305,12 +306,11 @@ class ValidateUniqueInternalNames {
       ),
     )
 
-    val issueCollector = IssueCollector()
-
-    with(issueCollector) {
+    val (_, issues) = collectIssues {
       validateUniqueServiceNames(listOf(cliPackage))
     }
 
-    assertThat(issueCollector.issues).containsExactlyInAnyOrder(*expected)
+
+    assertThat(issues).containsExactlyInAnyOrder(*expected)
   }
 }
