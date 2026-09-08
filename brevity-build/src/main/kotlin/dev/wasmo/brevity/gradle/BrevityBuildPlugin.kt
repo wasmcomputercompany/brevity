@@ -94,7 +94,7 @@ internal class RealBrevityBuildExtension(
         if (jvm) {
           jvm {
             compilerOptions {
-              jvmTarget.set(JvmTarget.JVM_17)
+              jvmTarget.set(JvmTarget.JVM_25)
             }
           }
           kotlin.sourceSets.jvmTest {
