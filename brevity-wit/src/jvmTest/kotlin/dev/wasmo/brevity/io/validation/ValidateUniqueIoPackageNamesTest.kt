@@ -9,6 +9,7 @@ import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.io.IoInlinePackage
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoWitFile
@@ -48,8 +49,7 @@ class ValidateUniqueIoPackageNamesTest {
     )
     val packages = listOf(cliPackage, otherPackage)
 
-    val issueCollector = IssueCollector()
-    val map = with(issueCollector) { validateUniquePackageNames(packages) }
+    val (map, issues) = collectIssues { validateUniquePackageNames(packages) }
 
     assertThat(map).isNotNull()
 
@@ -59,7 +59,7 @@ class ValidateUniqueIoPackageNamesTest {
       "wasi:other".toPackageName() to otherPackage,
     )
 
-    assertThat(issueCollector.issues).isEmpty()
+    assertThat(issues).isEmpty()
   }
 
   @Test
@@ -97,12 +97,11 @@ class ValidateUniqueIoPackageNamesTest {
         ),
       ),
     )
-    val issueCollector = IssueCollector()
 
-    val result = with(issueCollector) { validateUniquePackageNames(listOf(cliPackage, otherPackage)) }
+    val (result, issues) = collectIssues { validateUniquePackageNames(listOf(cliPackage, otherPackage)) }
     assertThat(result).isNull()
 
-    assertThat(issueCollector.issues.single().locations).containsExactlyInAnyOrder(
+    assertThat(issues.single().locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
       cliLocation,
       cliExtraLocation,
@@ -145,11 +144,10 @@ class ValidateUniqueIoPackageNamesTest {
         ),
       ),
     )
-    val issueCollector = IssueCollector()
-    val result = with(issueCollector) { validateUniquePackageNames(listOf(cliPackage, otherPackage)) }
+    val (result, issues) = collectIssues { validateUniquePackageNames(listOf(cliPackage, otherPackage)) }
     assertThat(result).isNull()
 
-    val (firstIssue, secondIssue) = issueCollector.issues
+    val (firstIssue, secondIssue) = issues
 
     assertThat(firstIssue.locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
@@ -196,12 +194,11 @@ class ValidateUniqueIoPackageNamesTest {
         ),
       ),
     )
-    val issueCollector = IssueCollector()
 
-    val result = with(issueCollector) { validateUniquePackageNames(listOf(cliPackage, otherPackage)) }
+    val (result, issues) = collectIssues { validateUniquePackageNames(listOf(cliPackage, otherPackage)) }
     assertThat(result).isNull()
 
-    assertThat(issueCollector.issues.single().locations).containsExactlyInAnyOrder(
+    assertThat(issues.single().locations).containsExactlyInAnyOrder(
       otherLocation.at(1, 2),
       cliLocation,
       cliExtraLocation,
