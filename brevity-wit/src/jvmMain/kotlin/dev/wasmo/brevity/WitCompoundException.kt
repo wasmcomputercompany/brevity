@@ -1,7 +1,7 @@
 package dev.wasmo.brevity
 
 class WitCompoundException(
-  val witExceptions: List<Exception>,
+  val witExceptions: List<WitException>,
 ) : IllegalStateException(
   buildString {
     appendLine("Multiple issues found:")
