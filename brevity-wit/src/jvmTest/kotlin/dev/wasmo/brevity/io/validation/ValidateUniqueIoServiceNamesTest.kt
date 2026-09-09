@@ -10,6 +10,7 @@ import assertk.assertions.isNull
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.io.IoFlag
 import dev.wasmo.brevity.io.IoFlags
 import dev.wasmo.brevity.io.IoInlinePackage
@@ -67,9 +68,8 @@ class ValidateUniqueIoServiceNamesTest {
       ),
     )
     val packages = listOf(cliPackage, otherPackage)
-    val issueCollector = IssueCollector()
 
-    val map = with(issueCollector) { validateUniqueServiceNames(packages) }
+    val (map, issues) = collectIssues { validateUniqueServiceNames(packages) }
     assertThat(map).isNotNull()
 
     assertThat(map!!).containsOnly(
@@ -78,7 +78,7 @@ class ValidateUniqueIoServiceNamesTest {
       "wasi:other/clocks".toServiceName() to otherWorld,
     )
 
-    assertThat(issueCollector.issues).isEmpty()
+    assertThat(issues).isEmpty()
   }
 
   @Test
@@ -136,12 +136,11 @@ class ValidateUniqueIoServiceNamesTest {
       ),
     )
     val packages = listOf(cliPackage, otherPackage)
-    val issueCollector = IssueCollector()
 
-    val result = with(issueCollector) { validateUniqueServiceNames(packages) }
+    val (result, issues) = collectIssues { validateUniqueServiceNames(packages) }
     assertThat(result).isNull()
 
-    assertThat(issueCollector.issues.single()).isEqualTo(
+    assertThat(issues.single()).isEqualTo(
       Issue(
         "Duplicate definitions of wasi:cli/monotonic-clock",
         listOf(
@@ -213,12 +212,11 @@ class ValidateUniqueIoServiceNamesTest {
       ),
     )
     val packages = listOf(cliPackage, otherPackage)
-    val issueCollector = IssueCollector()
 
-    val result = with(issueCollector) { validateUniqueServiceNames(packages) }
+    val (result, issues) = collectIssues { validateUniqueServiceNames(packages) }
     assertThat(result).isNull()
 
-    val (firstIssue, secondIssue) = issueCollector.issues
+    val (firstIssue, secondIssue) = issues
 
     assertThat(firstIssue.locations).containsExactlyInAnyOrder(
       Location("first.wit", 1, 2),
@@ -265,13 +263,11 @@ class ValidateUniqueIoServiceNamesTest {
       ),
     )
 
-    val issueCollector = IssueCollector()
-
-    val results = with(issueCollector) {
-      validateUniqueServiceNames(listOf(cliPackage))
+    val (results, issues) = collectIssues {
+    validateUniqueServiceNames(listOf(cliPackage))
     }
 
-    assertThat(issueCollector.issues).containsOnly(
+    assertThat(issues).containsOnly(
       Issue(
         "Flags are limited to no more than 32 flags; $flagCount flags defined",
         cliLocation.at(1, 2),
@@ -340,12 +336,11 @@ class ValidateUniqueIoServiceNamesTest {
       ),
     )
     val packages = listOf(cliPackage, otherPackage)
-    val issueCollector = IssueCollector()
 
-    val result = with(issueCollector) { validateUniqueServiceNames(packages) }
+    val (result, issues) = collectIssues { validateUniqueServiceNames(packages) }
     assertThat(result).isNull()
 
-    assertThat(issueCollector.issues.single()).isEqualTo(
+    assertThat(issues.single()).isEqualTo(
       Issue(
         "Duplicate definitions of wasi:cli/monotonic-clock",
         listOf(

@@ -6,12 +6,10 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
-class IssueCollector private constructor(
-  issues: MutableList<Issue>,
-  val locationStack: List<Location>,
+class IssueCollector internal constructor(
+  issues: MutableList<Issue> = mutableListOf(),
+  val locationStack: List<Location> = emptyList(),
 ) {
-  constructor() : this(issues = mutableListOf(), locationStack = emptyList())
-
   private val _issues = issues
   val issues: List<Issue> = _issues
 
