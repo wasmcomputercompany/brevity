@@ -2,7 +2,7 @@ package dev.wasmo.brevity.io
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.ServiceName
@@ -16,12 +16,12 @@ class TypeNameTest {
       TypeName.Declared(
         serviceName = ServiceName(
           PackageName(
-            namespaces = listOf(Identifier("abc").constrain()),
-            names = listOf(Identifier("def").constrain()),
+            namespaces = listOf(Identifier("abc")),
+            names = listOf(Identifier("def")),
           ),
-          name = Identifier("ghi").constrain(),
+          name = Identifier("ghi"),
         ),
-        name = Identifier("jkl").constrain(),
+        name = Identifier("jkl"),
       ).toString(),
     ).isEqualTo("abc:def/ghi.jkl")
 
@@ -29,13 +29,13 @@ class TypeNameTest {
       TypeName.Declared(
         serviceName = ServiceName(
           PackageName(
-            namespaces = listOf(Identifier("abc").constrain()),
-            names = listOf(Identifier("def").constrain()),
+            namespaces = listOf(Identifier("abc")),
+            names = listOf(Identifier("def")),
             version = SemVer("1.2.3"),
           ),
-          name = Identifier("ghi").constrain(),
+          name = Identifier("ghi"),
         ),
-        name = Identifier("jkl").constrain(),
+        name = Identifier("jkl"),
       ).toString(),
     ).isEqualTo("abc:def/ghi.jkl@1.2.3")
   }

@@ -4,7 +4,7 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.FunctionNameMethod
 import dev.wasmo.brevity.FunctionNameResourceDrop
-import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.collectNoIssuesOrThrow

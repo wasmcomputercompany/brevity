@@ -3,7 +3,6 @@
 package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.IoServiceName
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.WitCoreInternalApi
 import dev.wasmo.brevity.collectNoIssuesOrThrow
@@ -25,5 +24,5 @@ fun String.toUsePath(): UsePath = collectNoIssuesOrThrow {
 fun String.toServiceName(): ServiceName {
   val usePath = toUsePath()
   val packageName = usePath.packageName ?: error("expected a fully-qualified service name")
-  return ServiceName(packageName, usePath.name).constrain()
+  return ServiceName(packageName, usePath.name)
 }

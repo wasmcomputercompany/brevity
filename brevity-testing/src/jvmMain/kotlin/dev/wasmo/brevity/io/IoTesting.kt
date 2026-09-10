@@ -2,9 +2,9 @@ package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
-import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.IoPackageName
+import dev.wasmo.brevity.PackageName
 
 fun IoCase(
   documentation: String? = null,
@@ -19,6 +19,10 @@ fun IoCase(
   name = Identifier(name),
   type = type,
 )
+
+fun IoTypeNameDeclared(
+  name: String,
+) = IoTypeName.Declared(Identifier(name))
 
 fun IoEnum(
   documentation: String? = null,
@@ -134,7 +138,7 @@ fun IoIncludeItem(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   location = location,
-  type = IoTypeName.Declared(type),
+  type = IoTypeNameDeclared(type),
   name = Identifier(alias),
 )
 
@@ -230,7 +234,7 @@ fun IoUseItem(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   location = location,
-  type = IoTypeName.Declared(type),
+  type = IoTypeNameDeclared(type),
   alias = alias?.let { Identifier(it) },
 )
 
@@ -250,7 +254,7 @@ fun IoVariant(
 
 fun IoWitFile(
   packageDocumentation: Documentation? = null,
-  packageName: IoPackageName,
+  packageName: PackageName,
   items: List<IoWitFile.Item> = listOf(),
   location: Location,
 ): IoWitFile = IoWitFile(

@@ -1,8 +1,6 @@
 package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Identifier.Companion.Identifier
-import dev.wasmo.brevity.IoIdentifier
 
 sealed class IoTypeName {
   data object Bool : IoTypeName()
@@ -21,13 +19,9 @@ sealed class IoTypeName {
 
   /** Identifies a [IoTypeDeclaration]. */
   data class Declared(
-      val name: IoIdentifier,
+    val name: Identifier,
   ) : IoTypeName() {
     override fun toString() = name.toString()
-
-    companion object {
-      operator fun invoke(name: kotlin.String) = Declared(Identifier(name))
-    }
   }
 
   data class Tuple(

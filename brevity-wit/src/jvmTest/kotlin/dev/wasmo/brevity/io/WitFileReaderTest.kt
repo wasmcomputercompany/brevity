@@ -5,7 +5,7 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
-import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.WitException
 import dev.wasmo.brevity.collectNoIssuesOrThrow
@@ -240,7 +240,7 @@ class WitFileReaderTest {
                   ),
                 ),
                 returnType = IoTypeName.Result(
-                  error = IoTypeName.Declared("errno"),
+                  error = IoTypeNameDeclared("errno"),
                 ),
               ),
               IoFunction(
@@ -299,12 +299,12 @@ class WitFileReaderTest {
               IoFunction(
                 location = location.at(9, 3),
                 name = "now",
-                returnType = IoTypeName.Declared("datetime"),
+                returnType = IoTypeNameDeclared("datetime"),
               ),
               IoFunction(
                 location = location.at(11, 3),
                 name = "resolution",
-                returnType = IoTypeName.Declared("datetime"),
+                returnType = IoTypeNameDeclared("datetime"),
               ),
             ),
           ),
@@ -426,7 +426,7 @@ class WitFileReaderTest {
                     type = IoTypeName.Bool,
                   ),
                 ),
-                returnType = IoTypeName.Declared("datetime"),
+                returnType = IoTypeNameDeclared("datetime"),
               ),
             ),
           ),
@@ -459,10 +459,10 @@ class WitFileReaderTest {
                   IoParameter(
                     location = location.at(3, 5),
                     name = "when",
-                    type = IoTypeName.Declared("instant"),
+                    type = IoTypeNameDeclared("instant"),
                   ),
                 ),
-                returnType = IoTypeName.Declared("pollable"),
+                returnType = IoTypeNameDeclared("pollable"),
               ),
             ),
           ),
@@ -561,15 +561,15 @@ class WitFileReaderTest {
                       IoParameter(
                         location = location.at(19, 24),
                         name = "lhs",
-                        type = IoTypeName.Borrow(IoTypeName.Declared("blob")),
+                        type = IoTypeName.Borrow(IoTypeNameDeclared("blob")),
                       ),
                       IoParameter(
                         location = location.at(19, 43),
                         name = "rhs",
-                        type = IoTypeName.Borrow(IoTypeName.Declared("blob")),
+                        type = IoTypeName.Borrow(IoTypeNameDeclared("blob")),
                       ),
                     ),
-                    returnType = IoTypeName.Declared("blob"),
+                    returnType = IoTypeNameDeclared("blob"),
                   ),
                 ),
               ),

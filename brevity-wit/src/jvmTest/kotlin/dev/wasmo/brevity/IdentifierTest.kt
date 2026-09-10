@@ -2,8 +2,9 @@ package dev.wasmo.brevity
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import assertk.assertions.isNotInstanceOf
-import dev.wasmo.brevity.Identifier.Companion.Identifier
+import assertk.assertions.isNotNull
+import assertk.assertions.isNull
+import dev.wasmo.brevity.Identifier.Companion.toIdentifierOrNull
 import org.junit.Test
 
 class IdentifierTest {
@@ -29,7 +30,7 @@ class IdentifierTest {
     // Sections with different casings are fine, too
     "m1x3d-4CR0NYMS".assertIsWellFormed()
     // Prefix with % sign as a keyword disambiguator - % gets dropped
-    assertThat(Identifier("%abd")).isEqualTo(Identifier("abd"))
+    assertThat("%abd".toIdentifierOrNull()).isEqualTo(Identifier("abd"))
 
     // No empties
     "".assertIsMalformed()
@@ -80,10 +81,10 @@ class IdentifierTest {
   }
 
   fun String.assertIsMalformed() {
-    assertThat(Identifier(this)).isNotInstanceOf<Identifier>()
+    assertThat(toIdentifierOrNull()).isNull()
   }
 
   fun String.assertIsWellFormed() {
-    assertThat(Identifier(this)).isEqualTo(Identifier(this))
+    assertThat(toIdentifierOrNull()).isNotNull()
   }
 }

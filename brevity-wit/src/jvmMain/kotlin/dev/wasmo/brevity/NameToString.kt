@@ -6,9 +6,9 @@ package dev.wasmo.brevity
  * This can be used for packages, services, and types. All of these share common syntax.
  */
 internal fun nameToString(
-  packageName: IoPackageName,
-  serviceName: IoIdentifier? = null,
-  typeName: IoIdentifier? = null,
+  packageName: PackageName,
+  serviceName: Identifier? = null,
+  typeName: Identifier? = null,
 ): String {
   require(typeName == null || serviceName != null) {
     "cannot have a type name without a service name"

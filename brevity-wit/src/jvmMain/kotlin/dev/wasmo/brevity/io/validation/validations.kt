@@ -2,8 +2,7 @@ package dev.wasmo.brevity.io.validation
 
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
-import dev.wasmo.brevity.IoPackageName
-import dev.wasmo.brevity.IoServiceName
+import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.io.IoCase
 import dev.wasmo.brevity.io.IoDeclaration
@@ -32,10 +31,10 @@ import dev.wasmo.brevity.io.IoWorld
 context(issueCollector: IssueCollector)
 fun validateUniquePackageNames(
   toplevelPackages: List<IoToplevelWitPackage>,
-): Map<IoPackageName, IoWitPackage>? {
-  val witPackageMap = mutableMapOf<IoPackageName, MutableList<IoWitPackage>>()
+): Map<PackageName, IoWitPackage>? {
+  val witPackageMap = mutableMapOf<PackageName, MutableList<IoWitPackage>>()
 
-  fun addPackage(packageName: IoPackageName, witPackage: IoWitPackage) {
+  fun addPackage(packageName: PackageName, witPackage: IoWitPackage) {
     witPackageMap.getOrPut(packageName.normalized()) { mutableListOf() }.add(witPackage)
   }
   for (topLevelPackage in toplevelPackages) {
@@ -50,8 +49,8 @@ fun validateUniquePackageNames(
       }
     }
   }
-  val collisions = mutableMapOf<IoPackageName, List<IoWitPackage>>()
-  val output = mutableMapOf<IoPackageName, IoWitPackage>()
+  val collisions = mutableMapOf<PackageName, List<IoWitPackage>>()
+  val output = mutableMapOf<PackageName, IoWitPackage>()
 
   for ((packageName, witPackages) in witPackageMap) {
     when (witPackages.size) {
@@ -88,10 +87,10 @@ fun validateUniquePackageNames(
 
 context(issueCollector: IssueCollector)
 fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>):
-  Map<IoServiceName, IoService>? {
-  val services = mutableMapOf<IoServiceName, MutableList<IoService>>()
+  Map<ServiceName, IoService>? {
+  val services = mutableMapOf<ServiceName, MutableList<IoService>>()
 
-  fun addService(serviceName: IoServiceName, service: IoService) {
+  fun addService(serviceName: ServiceName, service: IoService) {
     validateUniqueInternalNames(service)
     when (service) {
       is IoInterface -> service.items
@@ -117,7 +116,7 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>):
     }
   }
   val serviceNameCollisions = mutableListOf<Issue>()
-  val output = mutableMapOf<IoServiceName, IoService>()
+  val output = mutableMapOf<ServiceName, IoService>()
 
   for ((serviceName, serviceList) in services) {
     when (serviceList.size) {
@@ -142,7 +141,7 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>):
 
 private fun processInlinePackage(
   pkg: IoInlinePackage,
-  addService: (IoServiceName, IoService) -> Unit,
+  addService: (ServiceName, IoService) -> Unit,
 ) {
   for (decl in pkg.declarations) {
     when (decl) {
