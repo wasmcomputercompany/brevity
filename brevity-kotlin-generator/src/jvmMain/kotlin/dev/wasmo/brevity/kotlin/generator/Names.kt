@@ -1,8 +1,7 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import dev.wasmo.brevity.FunctionName
-import dev.wasmo.brevity.Identifier.Companion.Identifier
-import dev.wasmo.brevity.IoIdentifier
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.ir.IrWorld
 
 val FunctionName.importFunctionName: String
@@ -14,7 +13,7 @@ val FunctionName.exportFunctionName: String
 val IrWorld.retainWasmExportsFunctionName: String
   get() = "retainWasmExportsFor${serviceName.name.upperCamelCase}"
 
-private fun FunctionName.toExternalName(suffix: IoIdentifier): String {
+private fun FunctionName.toExternalName(suffix: Identifier): String {
   val segments = when (this) {
     is FunctionName.Constructor -> listOf(serviceName.name, name, suffix)
     is FunctionName.Interface -> listOf(serviceName.name, name, suffix)

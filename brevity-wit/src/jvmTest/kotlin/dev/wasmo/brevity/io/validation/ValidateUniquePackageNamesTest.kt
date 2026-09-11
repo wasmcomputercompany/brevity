@@ -7,7 +7,6 @@ import assertk.assertions.isEmpty
 import assertk.assertions.isInstanceOf
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
-import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.io.IoInlinePackage
@@ -16,7 +15,7 @@ import dev.wasmo.brevity.io.IoWitFile
 import dev.wasmo.brevity.toPackageName
 import org.junit.Test
 
-class ValidateUniqueIoPackageNamesTest {
+class ValidateUniquePackageNamesTest {
   @Test
   fun producesPackageNameMapWhenSuccessful() {
     val cliLocation = Location("")

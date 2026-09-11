@@ -54,7 +54,7 @@ fun worldNames(irWorld: IrWorld): Set<String> {
   )
 }
 
-private fun IoServiceName.stripVersion() = ServiceName(
+private fun ServiceName.stripVersion() = ServiceName(
   name = name,
   packageName = PackageName(
     packageName.namespaces,

@@ -6,8 +6,7 @@ import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.buildCodeBlock
-import dev.wasmo.brevity.Identifier.Companion.Identifier
-import dev.wasmo.brevity.IoIdentifier
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
@@ -56,10 +55,10 @@ class DeclaredTypeEncodersGenerator(
 }
 
 abstract class DeclaredTypeEncoderGenerator(
-    protected val type: IrTypeDeclaration,
-    protected val encoder: Encoder,
-    protected val platform: Platform,
-    encodeAction: IoIdentifier,
+  protected val type: IrTypeDeclaration,
+  protected val encoder: Encoder,
+  protected val platform: Platform,
+  encodeAction: Identifier,
 ) {
   val className = type.type.kotlinApi
   val memberName = MemberName(

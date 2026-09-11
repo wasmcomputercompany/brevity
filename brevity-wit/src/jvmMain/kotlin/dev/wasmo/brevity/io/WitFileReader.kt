@@ -5,8 +5,6 @@ package dev.wasmo.brevity.io
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Identifier.Companion.Identifier
-import dev.wasmo.brevity.IoIdentifier
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.SemVer
@@ -617,7 +615,7 @@ internal class WitFileReader(
     documentation: Documentation?,
     gate: Gate?,
     location: Location,
-    identifier: IoIdentifier,
+    identifier: Identifier,
   ): IoFunction {
     var async = false
     var static = false
@@ -671,7 +669,7 @@ internal class WitFileReader(
     documentation: Documentation?,
     gate: Gate?,
     location: Location,
-    identifier: IoIdentifier,
+    identifier: Identifier,
   ): IoFunction {
     source.skipWhitespace()
     source.readLiteral(':')
@@ -821,7 +819,7 @@ internal class WitFileReader(
     documentation: Documentation?,
     gate: Gate?,
     location: Location,
-    identifier: IoIdentifier,
+    identifier: Identifier,
   ): IoWorld.Api {
     return source.select(
       {
@@ -931,7 +929,7 @@ internal class WitFileReader(
    */
   context(issueCollector: IssueCollector)
   internal fun readGateOrNull(): Gate? {
-    var unstableFeature: IoIdentifier? = null
+    var unstableFeature: Identifier? = null
     var sinceVersion: SemVer? = null
     var deprecatedVersion: SemVer? = null
 

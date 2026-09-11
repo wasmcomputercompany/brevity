@@ -3,9 +3,7 @@ package dev.wasmo.brevity.io.validation
 import assertk.assertThat
 import assertk.assertions.containsExactlyInAnyOrder
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.Issue
-import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.io.IoCase
@@ -22,6 +20,7 @@ import dev.wasmo.brevity.io.IoResource
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoTypeAlias
 import dev.wasmo.brevity.io.IoTypeName
+import dev.wasmo.brevity.io.IoTypeNameDeclared
 import dev.wasmo.brevity.io.IoUse
 import dev.wasmo.brevity.io.IoVariant
 import dev.wasmo.brevity.io.IoWitFile
@@ -87,12 +86,12 @@ class ValidateUniqueInternalNames {
         items = listOf(
           IoInclude.Item(
             location = cliLocation.at(2, 1),
-            type = IoTypeName.Declared("included-type1"),
+            type = IoTypeNameDeclared("included-type1"),
             name = Identifier("included-alias"),
           ),
           IoInclude.Item(
             location = cliLocation.at(3, 1),
-            type = IoTypeName.Declared("included-type1"),
+            type = IoTypeNameDeclared("included-type1"),
             name = Identifier("included-ALIAS"),
           ),
         ),
@@ -109,7 +108,7 @@ class ValidateUniqueInternalNames {
     assertItemProducesIssues(
       IoInterface(
         location = cliLocation.at(1, 2),
-        name = "myInterface",
+        name = "my-interface",
         items = listOf(
           IoResource(
             location = cliLocation.at(2, 1),
@@ -212,19 +211,19 @@ class ValidateUniqueInternalNames {
         items = listOf(
           IoUse.Item(
             location = cliLocation.at(2, 1),
-            type = IoTypeName.Declared("use-type"),
+            type = IoTypeNameDeclared("use-type"),
           ),
           IoUse.Item(
             location = cliLocation.at(3, 1),
-            type = IoTypeName.Declared("USE-type"),
+            type = IoTypeNameDeclared("USE-type"),
           ),
           IoUse.Item(
             location = cliLocation.at(4, 1),
-            type = IoTypeName.Declared("aliased-type"),
+            type = IoTypeNameDeclared("aliased-type"),
           ),
           IoUse.Item(
             location = cliLocation.at(5, 1),
-            type = IoTypeName.Declared("USE-type-2"),
+            type = IoTypeNameDeclared("USE-type-2"),
             alias = Identifier("ALIASED-type"),
           ),
         ),
@@ -248,7 +247,7 @@ class ValidateUniqueInternalNames {
     assertItemProducesIssues(
       IoWorld(
         location = cliLocation.at(1, 2),
-        name = "myInterface",
+        name = "my-interface",
         items = listOf(
           IoResource(
             location = cliLocation.at(2, 1),

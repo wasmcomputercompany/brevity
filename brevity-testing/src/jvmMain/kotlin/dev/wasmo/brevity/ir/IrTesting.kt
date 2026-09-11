@@ -4,7 +4,7 @@ import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.FunctionNameWorld
 import dev.wasmo.brevity.Gate
-import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
@@ -29,7 +29,7 @@ fun TypeNameDeclared(
   typeName: String,
 ) = TypeName.Declared(
   serviceName = serviceName.toServiceName(),
-  name = Identifier(typeName).constrain(),
+  name = Identifier(typeName),
 )
 
 fun IrEnum(
@@ -58,7 +58,7 @@ fun IrExternalApi(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   location = location,
-  plainName = plainName?.let { Identifier(it).constrain() },
+  plainName = plainName?.let { Identifier(it) },
   serviceName = ServiceName(packageName, serviceName),
 )
 
@@ -132,7 +132,7 @@ fun IrInterface(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   location = location,
-  serviceName = serviceName.toServiceName().constrain(),
+  serviceName = serviceName.toServiceName(),
   items = items,
 )
 
@@ -223,7 +223,7 @@ fun IrWorld(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
   location = location,
-  serviceName = serviceName.toServiceName().constrain(),
+  serviceName = serviceName.toServiceName(),
   types = types,
   imports = imports,
   exports = exports,

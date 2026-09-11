@@ -18,10 +18,11 @@ class IssueCollector internal constructor(
   }
 
   fun throwIfNotEmpty() {
+    // Note that this clears the current issues list to avoid double-reporting if this exception
+    // is later caught and rethrown.
     if (issues.isNotEmpty()) {
-      throw WitCompoundException(
-        issues.map { WitException(it) },
-      )
+      throw WitCompoundException(issues.map { WitException(it) })
+        .also { _issues.clear() }
     }
   }
 

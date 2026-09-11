@@ -4,12 +4,10 @@ package dev.wasmo.brevity.io
 
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Identifier.Companion.Identifier
-import dev.wasmo.brevity.IoIdentifier
+import dev.wasmo.brevity.Identifier.Companion.toIdentifierOrNull
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.IoPackageName
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
@@ -94,8 +92,13 @@ class WitSyntaxReader(
     documentation.appendRange(chars, startIndex, endIndex)
   }
 
+  /**
+   * Reads a well-formed identifier and returns it. If the input file contains an identifier that
+   * is not well-formed (such as 'incomingHandler' that mixes case in a single segment), this
+   * function reports and error and returns a placeholder.
+   */
   context(issueCollector: IssueCollector)
-  fun readIdentifier(): IoIdentifier {
+  fun readIdentifier(): Identifier {
     checkWit(!exhausted) {
       "expected an identifier"
     }
@@ -115,16 +118,16 @@ class WitSyntaxReader(
     val result = String(chars, pos, end - pos)
     pos = end
 
-    return Identifier(result).also {
-      if (it !is Identifier) {
+    return result.toIdentifierOrNull()
+      ?: run {
         issueCollector.report(
           Issue(
             "malformed identifier: $result",
             resultLocation,
-          )
+          ),
         )
+        Identifier("PLACEHOLDER")
       }
-    }
   }
 
   fun readSemVer(): SemVer {
@@ -163,7 +166,7 @@ class WitSyntaxReader(
   }
 
   context(issueCollector: IssueCollector)
-  fun readAnnotationOrNull(): IoIdentifier? {
+  fun readAnnotationOrNull(): Identifier? {
     if (peek() != '@') return null
     pos++ // Consume '@'.
 
@@ -355,9 +358,9 @@ class WitSyntaxReader(
    * ```
    */
   context(issueCollector: IssueCollector)
-  fun readPackageName(): IoPackageName {
-    val namespaces = mutableListOf<IoIdentifier>()
-    val names = mutableListOf<IoIdentifier>()
+  fun readPackageName(): PackageName {
+    val namespaces = mutableListOf<Identifier>()
+    val names = mutableListOf<Identifier>()
 
     var identifier = readIdentifier()
     while (peek() == ':') {
@@ -400,8 +403,8 @@ class WitSyntaxReader(
    */
   context(issueCollector: IssueCollector)
   fun readUsePath(): UsePath {
-    val namespaces = mutableListOf<IoIdentifier>()
-    val packageNames = mutableListOf<IoIdentifier>()
+    val namespaces = mutableListOf<Identifier>()
+    val packageNames = mutableListOf<Identifier>()
 
     var identifier = readIdentifier()
     while (peek() == ':') {
@@ -604,17 +607,5 @@ internal val Char.isSemverCharacter: Boolean
 internal val Char.isDigit: Boolean
   get() = when (this) {
     in '0'..'9' -> true
-    else -> false
-  }
-
-internal val Char.isLowerCase: Boolean
-  get() = when (this) {
-    in 'a'..'z' -> true
-    else -> false
-  }
-
-internal val Char.isUpperCase: Boolean
-  get() = when (this) {
-    in 'A'..'Z' -> true
     else -> false
   }

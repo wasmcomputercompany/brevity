@@ -1,25 +1,25 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
-import dev.wasmo.brevity.IoIdentifier
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.PackageName
 
 /** Maps type names in WIT to type names in Kotlin. */
 sealed interface KotlinName {
   /** Appends [identifier] to the end of this name. */
-  operator fun plus(identifier: IoIdentifier): Class
+  operator fun plus(identifier: Identifier): Class
 
   class Package(
     val name: String,
   ) : KotlinName {
-    override fun plus(identifier: IoIdentifier) =
+    override fun plus(identifier: Identifier) =
       Class(ClassName(name, identifier.upperCamelCase))
   }
 
   class Class(
     val name: ClassName,
   ) : KotlinName {
-    override fun plus(identifier: IoIdentifier) =
+    override fun plus(identifier: Identifier) =
       Class(name.nestedClass(identifier.upperCamelCase))
   }
 }

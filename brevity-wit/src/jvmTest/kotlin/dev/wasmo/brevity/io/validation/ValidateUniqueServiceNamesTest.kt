@@ -8,7 +8,6 @@ import assertk.assertions.isEqualTo
 import assertk.assertions.isNotNull
 import assertk.assertions.isNull
 import dev.wasmo.brevity.Issue
-import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.io.IoFlag
@@ -22,7 +21,7 @@ import dev.wasmo.brevity.io.toServiceName
 import dev.wasmo.brevity.toPackageName
 import org.junit.Test
 
-class ValidateUniqueIoServiceNamesTest {
+class ValidateUniqueServiceNamesTest {
   @Test
   fun producesServiceNameMapWhenSuccessful() {
     val cliLocation = Location("")
@@ -243,7 +242,7 @@ class ValidateUniqueIoServiceNamesTest {
             repeat(flagCount) { index ->
               val flag = IoFlag(
                 location = cliLocation.at(1, 2 + index),
-                name = "$index Street",
+                name = "street$index",
               )
 
               add(flag)

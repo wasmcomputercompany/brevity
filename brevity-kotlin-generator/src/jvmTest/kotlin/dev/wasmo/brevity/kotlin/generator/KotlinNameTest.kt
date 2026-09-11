@@ -4,7 +4,6 @@ import assertk.assertThat
 import assertk.assertions.isEqualTo
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Identifier.Companion.Identifier
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
 

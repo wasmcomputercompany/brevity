@@ -8,11 +8,9 @@ import assertk.assertions.isFalse
 import assertk.assertions.isNull
 import assertk.assertions.isTrue
 import dev.wasmo.brevity.Documentation
-import dev.wasmo.brevity.Identifier.Companion.Identifier
-import dev.wasmo.brevity.IoIdentifier
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.IoPackageName
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
@@ -325,7 +323,7 @@ class WitSyntaxReaderTest {
   fun `readIdentifier scenarios`() {
     val baseLocation = location.at(1, 1)
 
-    fun String.parseIdentifier(): Pair<IoIdentifier, List<Issue>> {
+    fun String.parseIdentifier(): Pair<Identifier, List<Issue>> {
       return collectIssues {
         WitSyntaxReader(baseLocation, this@parseIdentifier).readIdentifier()
       }
@@ -343,11 +341,11 @@ class WitSyntaxReaderTest {
     assertThat("def-ghi-xyz ".parseIdentifier()).isEqualTo(Identifier("def-ghi-xyz") to noIssues)
     assertThat("DEF-GHI-XYZ ".parseIdentifier()).isEqualTo(Identifier("DEF-GHI-XYZ") to noIssues)
     assertThat("abc1234-ABC1234 ".parseIdentifier()).isEqualTo(Identifier("abc1234-ABC1234") to noIssues)
-    assertThat("%a".parseIdentifier()).isEqualTo(Identifier("%a") to noIssues)
-    assertThat("%abc".parseIdentifier()).isEqualTo(Identifier("%abc") to noIssues)
-    assertThat("%abc%d".parseIdentifier()).isEqualTo(Identifier("%abc") to noIssues)
+    assertThat("%a".parseIdentifier()).isEqualTo(Identifier("a") to noIssues)
+    assertThat("%abc".parseIdentifier()).isEqualTo(Identifier("abc") to noIssues)
+    assertThat("%abc%d".parseIdentifier()).isEqualTo(Identifier("abc") to noIssues)
     assertThat("-abc-d".parseIdentifier()).isEqualTo(
-      Identifier("-abc-d") to listOf(
+      Identifier("PLACEHOLDER") to listOf(
         Issue("malformed identifier: -abc-d", baseLocation),
       ),
     )
@@ -564,7 +562,7 @@ class WitSyntaxReaderTest {
     assertThat("stream<string>".toIoTypeName())
       .isEqualTo(IoTypeName.Stream(IoTypeName.String))
     assertThat("foo".toIoTypeName())
-      .isEqualTo(IoTypeName.Declared("foo"))
+      .isEqualTo(IoTypeNameDeclared("foo"))
   }
 
   @Test

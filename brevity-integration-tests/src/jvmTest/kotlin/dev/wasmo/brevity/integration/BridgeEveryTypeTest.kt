@@ -1,6 +1,6 @@
 package dev.wasmo.brevity.integration
 
-import dev.wasmo.brevity.Identifier.Companion.Identifier
+import dev.wasmo.brevity.Identifier
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 

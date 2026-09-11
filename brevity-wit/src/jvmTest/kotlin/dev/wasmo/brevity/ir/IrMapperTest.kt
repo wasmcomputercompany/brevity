@@ -19,6 +19,7 @@ import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.io.IoToplevelWitPackage
 import dev.wasmo.brevity.io.IoTypeName
+import dev.wasmo.brevity.io.IoTypeNameDeclared
 import dev.wasmo.brevity.io.IrMapper
 import dev.wasmo.brevity.io.toServiceName
 import dev.wasmo.brevity.io.toUsePath
@@ -51,7 +52,7 @@ class IrMapperTest {
     assertThat(
       irMapper.getType(
         serviceName = "wasi:clocks/wall-clock",
-        typeName = IoTypeName.Declared("datetime"),
+        typeName = IoTypeNameDeclared("datetime"),
       ),
     ).isEqualTo(
       TypeNameDeclared(
@@ -64,7 +65,7 @@ class IrMapperTest {
       assertThat(
         irMapper.getType(
           serviceName = "wasi:clocks/wall-clock",
-          typeName = IoTypeName.Declared("instant"),
+          typeName = IoTypeNameDeclared("instant"),
           location = Location("clock.wit", 5, 6),
         ),
       ).isEqualTo(null)
@@ -80,7 +81,7 @@ class IrMapperTest {
       assertThat(
         irMapper.getType(
           serviceName = "wasi:clocks/wall-clock",
-          typeName = IoTypeName.Declared("DATETIME"),
+          typeName = IoTypeNameDeclared("DATETIME"),
           location = Location("clock.wit", 5, 6),
         ),
       ).isEqualTo(null)
@@ -118,7 +119,7 @@ class IrMapperTest {
     assertThat(
       irMapper.getType(
         serviceName = "wasi:clocks/wall-clock",
-        typeName = IoTypeName.Declared("datetime"),
+        typeName = IoTypeNameDeclared("datetime"),
       ),
     ).isEqualTo(
       TypeNameDeclared(
@@ -131,7 +132,7 @@ class IrMapperTest {
       assertThat(
         irMapper.getType(
           serviceName = "wasi:clucks/wall-clock",
-          typeName = IoTypeName.Declared("datetime"),
+          typeName = IoTypeNameDeclared("datetime"),
           location = Location("clock.wit", 5, 6),
         ),
       ).isEqualTo(null)
@@ -148,7 +149,7 @@ class IrMapperTest {
       assertThat(
         irMapper.getType(
           serviceName = "wasi:CLOCKS/wall-clock",
-          typeName = IoTypeName.Declared("datetime"),
+          typeName = IoTypeNameDeclared("datetime"),
           location = Location("clock.wit", 5, 6),
         ),
       ).isEqualTo(null)
@@ -187,7 +188,7 @@ class IrMapperTest {
       assertThat(
         irMapper.getType(
           serviceName = "wasi:clocks/wall-cluck",
-          typeName = IoTypeName.Declared("datetime"),
+          typeName = IoTypeNameDeclared("datetime"),
           location = Location("clock.wit", 5, 6),
         ),
       ).isEqualTo(null)
@@ -204,7 +205,7 @@ class IrMapperTest {
       assertThat(
         irMapper.getType(
           serviceName = "wasi:clocks/wall-CLOCK",
-          typeName = IoTypeName.Declared("datetime"),
+          typeName = IoTypeNameDeclared("datetime"),
           location = Location("clock.wit", 5, 6),
         ),
       ).isEqualTo(null)
@@ -256,7 +257,7 @@ class IrMapperTest {
     assertThat(
       irMapper.getType(
         serviceName = "wasi:cli/stdin",
-        typeName = IoTypeName.Declared("input-stream"),
+        typeName = IoTypeNameDeclared("input-stream"),
       ),
     ).isEqualTo(
       TypeNameDeclared(
@@ -298,7 +299,7 @@ class IrMapperTest {
     assertThat(
       irMapper.getType(
         serviceName = "wasi:cli/stdin",
-        typeName = IoTypeName.Declared("input-stream"),
+        typeName = IoTypeNameDeclared("input-stream"),
       ),
     ).isEqualTo(
       TypeNameDeclared(
@@ -339,7 +340,7 @@ class IrMapperTest {
     assertThat(
       irMapper.getType(
         serviceName = "wasi:cli/stdin",
-        typeName = IoTypeName.Declared("input-stream"),
+        typeName = IoTypeNameDeclared("input-stream"),
       ),
     ).isEqualTo(
       TypeNameDeclared(
@@ -715,7 +716,7 @@ class IrMapperTest {
     assertThat(
       irMapper.getType(
         serviceName = "wasi:clocks/timezone@0.2.12",
-        typeName = IoTypeName.Declared("datetime"),
+        typeName = IoTypeNameDeclared("datetime"),
       ),
     ).isEqualTo(
       TypeNameDeclared(
