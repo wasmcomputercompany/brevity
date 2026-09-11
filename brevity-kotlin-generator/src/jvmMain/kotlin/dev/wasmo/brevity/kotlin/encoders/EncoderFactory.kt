@@ -117,7 +117,26 @@ class EncoderFactory(
         cases = type.cases,
       )
 
-      is IrFlags -> FallbackEncoder(type.type, CoreType.I32)
+      is IrFlags -> {
+        when {
+          type.flags.size < 8 -> FlagsEncoder(
+            kotlinType = type.type.kotlinApi,
+            flags = type.flags,
+            packedFlagEncoder = ByteEncoder,
+          )
+          type.flags.size < 16 -> FlagsEncoder(
+            kotlinType = type.type.kotlinApi,
+            flags = type.flags,
+            packedFlagEncoder = ShortEncoder,
+          )
+          type.flags.size < 32 -> FlagsEncoder(
+            kotlinType = type.type.kotlinApi,
+            flags = type.flags,
+            packedFlagEncoder = IntEncoder,
+          )
+          else -> FallbackEncoder(type.type, CoreType.I32)
+        }
+      }
       is IrRecord -> RecordEncoder(
         kotlinType = type.type.kotlinApi,
         instanceNameHint = type.name.lowerCamelCase,
