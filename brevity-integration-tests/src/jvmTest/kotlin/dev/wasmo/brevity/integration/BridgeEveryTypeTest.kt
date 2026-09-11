@@ -726,4 +726,29 @@ class BridgeEveryTypeTest {
 
     test.execute()
   }
+
+  @Test
+  fun flags() = runTest {
+    val test = BrevityExecutionTester(
+      name = "flags",
+      rawWit = List(32) { story -> """
+        |  flags elevator-${story + 1}-story {
+        |    ${List(story + 1) { "floor-${it + 1}-chosen" }.joinToString(separator = ",")}
+        |  }
+        |""".trimMargin()}.joinToString(separator = "\n"),
+      types = listOf(
+        SampleType(
+          id = Identifier("elevator-1-story"),
+          witType = "elevator-1-story",
+          kotlinType = "BrevityTest.Elevator1Story",
+          rustType = "bindings::Elevator1Story",
+          values = listOf(
+            SampleValue(kotlin = "BrevityTest.Elevator1Story(true)", rust = "bindings::Elevator1Story::FLOOR_1_CHOSEN"),
+          ),
+        ),
+      ),
+    )
+
+    test.execute()
+  }
 }
