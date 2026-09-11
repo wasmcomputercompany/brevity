@@ -757,11 +757,19 @@ class BridgeEveryTypeTest {
               SampleValue(
                 kotlin = "BrevityTest.Elevator${i}Story(${List(i) {"true"}.joinToString(separator = ",") })",
                 rust = List(i) { floor -> "bindings::Elevator${i}Story::FLOOR_${floor + 1}_CHOSEN" }.joinToString(separator = " | "),
-                ),
+                ),// All `true`
+              SampleValue(
+                kotlin = "BrevityTest.Elevator${i}Story(${List(i) {if (it % 2 == 1) "true" else "false"}.joinToString(separator = ",") })",
+                rust = List(i / 2) { floor -> "bindings::Elevator${i}Story::FLOOR_${(floor + 1) * 2}_CHOSEN" }.joinToString(separator = " | "),
+              ),// Even floors
+              SampleValue(
+                kotlin = "BrevityTest.Elevator${i}Story(${List(i) {if (it % 2 == 0) "true" else "false"}.joinToString(separator = ",") })",
+                rust = List((i + 1) / 2) { floor -> "bindings::Elevator${i}Story::FLOOR_${((floor + 1) * 2) - 1}_CHOSEN" }.joinToString(separator = " | "),
+              ),// Odd floors
               SampleValue(
                 kotlin = "BrevityTest.Elevator${i}Story(${List(i) {"false"}.joinToString(separator = ",") })",
                 rust = "bindings::Elevator${i}Story::empty()",
-                ),
+                ),// All `false`
             )
           ))
         }
