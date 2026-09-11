@@ -736,17 +736,36 @@ class BridgeEveryTypeTest {
         |    ${List(story + 1) { "floor-${it + 1}-chosen" }.joinToString(separator = ",")}
         |  }
         |""".trimMargin()}.joinToString(separator = "\n"),
-      types = listOf(
-        SampleType(
+      types = buildList {
+        add(SampleType(
           id = Identifier("elevator-1-story"),
           witType = "elevator-1-story",
           kotlinType = "BrevityTest.Elevator1Story",
           rustType = "bindings::Elevator1Story",
           values = listOf(
             SampleValue(kotlin = "BrevityTest.Elevator1Story(true)", rust = "bindings::Elevator1Story::FLOOR_1_CHOSEN"),
+            SampleValue(kotlin = "BrevityTest.Elevator1Story(false)", rust = "bindings::Elevator1Story::empty()"),
           ),
-        ),
-      ),
+        ))
+        for (i in 2..32) {
+          add(SampleType(
+            id = Identifier("elevator-$i-story"),
+            witType = "elevator-$i-story",
+            kotlinType = "BrevityTest.Elevator${i}Story",
+            rustType = "bindings::Elevator${i}Story",
+            values = listOf(
+              SampleValue(
+                kotlin = "BrevityTest.Elevator${i}Story(${List(i) {"true"}.joinToString(separator = ",") })",
+                rust = List(i) { floor -> "bindings::Elevator${i}Story::FLOOR_${floor + 1}_CHOSEN" }.joinToString(separator = " | "),
+                ),
+              SampleValue(
+                kotlin = "BrevityTest.Elevator${i}Story(${List(i) {"false"}.joinToString(separator = ",") })",
+                rust = "bindings::Elevator${i}Story::empty()",
+                ),
+            )
+          ))
+        }
+      }
     )
 
     test.execute()
