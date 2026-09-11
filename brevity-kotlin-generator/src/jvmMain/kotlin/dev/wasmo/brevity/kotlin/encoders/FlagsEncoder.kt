@@ -8,6 +8,9 @@ import dev.wasmo.brevity.ir.IrFlag
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.generator.kotlinName
 
+/**
+ * Flags are implemented as packed integer values. This encoder packs and unpacks values.
+ */
 class FlagsEncoder(
   private val kotlinType: ClassName,
   private val flags: List<IrFlag>,
@@ -23,15 +26,7 @@ class FlagsEncoder(
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
-  ) = buildCodeBlock {
-    val packedFlagsName = codeBuilder.newName("packedFlags")
-
-    add("%L.toInt().let { %N -> %T(⇥\n", packedFlagEncoder.load(baseAddress, offset), packedFlagsName, kotlinType)
-    for ((i, flag) in flags.withIndex()) {
-      add("%N = %N and (1 shl $i) != 0,\n", flag.kotlinName, packedFlagsName )
-    }
-    add("⇤)}\n")
-  }
+  ) = packedValueToInstance(packedFlagEncoder.load(baseAddress, offset))
 
   context(codeBuilder: CodeBuilder)
   override fun store(
@@ -43,9 +38,8 @@ class FlagsEncoder(
 
     codeBuilder.addStatement(
       "val %N = %L", packedFlagsName,
-      flags.mapIndexed { i, flag ->
-        CodeBlock.of("(if (%L.%N) 1 shl $i else 0)", value, flag.kotlinName)
-      }.joinToCode(" or \n"))
+      instanceToPackedValue(value)
+    )
 
     packedFlagEncoder.store(
       baseAddress = baseAddress,
@@ -56,27 +50,29 @@ class FlagsEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun liftFlat(transformer: Transformer) {
-    transformer.put(
-      buildCodeBlock {
-        val packedFlagsName = codeBuilder.newName("packedFlags")
-
-        add("%L.toInt().let { %N -> %T(⇥\n", transformer.take(), packedFlagsName, kotlinType)
-        for ((i, flag) in flags.withIndex()) {
-          add("%N = %N and (1 shl $i) != 0,\n", flag.kotlinName, packedFlagsName )
-        }
-        add("⇤)}\n")
-      },
-    )
+    transformer.put(packedValueToInstance(transformer.take()))
   }
 
   context(codeBuilder: CodeBuilder)
   override fun lowerFlat(transformer: Transformer) {
-    val valueName = transformer.take()
-    // TODO: Determine if this needs to be in a local val.
-    transformer.put(
-      flags.mapIndexed { i, flag ->
-        CodeBlock.of("(if (%L.%N) 1 shl $i else 0)", valueName, flag.kotlinName)
-      }.joinToCode(" or \n"))
+    transformer.put(instanceToPackedValue(transformer.take()))
   }
+
+  context(codeBuilder: CodeBuilder)
+  private fun packedValueToInstance(packedValue: CodeBlock): CodeBlock {
+    return buildCodeBlock {
+      val packedFlagsName = codeBuilder.newName("packedFlags")
+
+      add("%L.toInt().let { %N -> %T(⇥\n", packedValue, packedFlagsName, kotlinType)
+      for ((i, flag) in flags.withIndex()) {
+        add("%N = %N and ${1 shl i} != 0,\n", flag.kotlinName, packedFlagsName)
+      }
+      add("⇤)}\n")
+    }
+  }
+
+  private fun instanceToPackedValue(valueName: CodeBlock): CodeBlock = flags.mapIndexed { i, flag ->
+    CodeBlock.of("(if (%L.%N) ${1 shl i} else 0)", valueName, flag.kotlinName)
+  }.joinToCode(" or \n")
 
 }
