@@ -726,4 +726,56 @@ class BridgeEveryTypeTest {
 
     test.execute()
   }
+
+  @Test
+  fun flags() = runTest {
+    val test = BrevityExecutionTester(
+      name = "flags",
+      rawWit = List(32) { story -> """
+        |  flags elevator-${story + 1}-story {
+        |    ${List(story + 1) { "floor-${it + 1}-chosen" }.joinToString(separator = ",")}
+        |  }
+        |""".trimMargin()}.joinToString(separator = "\n"),
+      types = buildList {
+        add(SampleType(
+          id = Identifier("elevator-1-story"),
+          witType = "elevator-1-story",
+          kotlinType = "BrevityTest.Elevator1Story",
+          rustType = "bindings::Elevator1Story",
+          values = listOf(
+            SampleValue(kotlin = "BrevityTest.Elevator1Story(true)", rust = "bindings::Elevator1Story::FLOOR_1_CHOSEN"),
+            SampleValue(kotlin = "BrevityTest.Elevator1Story(false)", rust = "bindings::Elevator1Story::empty()"),
+          ),
+        ))
+        for (i in 2..32) {
+          add(SampleType(
+            id = Identifier("elevator-$i-story"),
+            witType = "elevator-$i-story",
+            kotlinType = "BrevityTest.Elevator${i}Story",
+            rustType = "bindings::Elevator${i}Story",
+            values = listOf(
+              SampleValue(
+                kotlin = "BrevityTest.Elevator${i}Story(${List(i) {"true"}.joinToString(separator = ",") })",
+                rust = List(i) { floor -> "bindings::Elevator${i}Story::FLOOR_${floor + 1}_CHOSEN" }.joinToString(separator = " | "),
+                ),// All `true`
+              SampleValue(
+                kotlin = "BrevityTest.Elevator${i}Story(${List(i) {if (it % 2 == 1) "true" else "false"}.joinToString(separator = ",") })",
+                rust = List(i / 2) { floor -> "bindings::Elevator${i}Story::FLOOR_${(floor + 1) * 2}_CHOSEN" }.joinToString(separator = " | "),
+              ),// Even floors
+              SampleValue(
+                kotlin = "BrevityTest.Elevator${i}Story(${List(i) {if (it % 2 == 0) "true" else "false"}.joinToString(separator = ",") })",
+                rust = List((i + 1) / 2) { floor -> "bindings::Elevator${i}Story::FLOOR_${((floor + 1) * 2) - 1}_CHOSEN" }.joinToString(separator = " | "),
+              ),// Odd floors
+              SampleValue(
+                kotlin = "BrevityTest.Elevator${i}Story(${List(i) {"false"}.joinToString(separator = ",") })",
+                rust = "bindings::Elevator${i}Story::empty()",
+                ),// All `false`
+            )
+          ))
+        }
+      }
+    )
+
+    test.execute()
+  }
 }
