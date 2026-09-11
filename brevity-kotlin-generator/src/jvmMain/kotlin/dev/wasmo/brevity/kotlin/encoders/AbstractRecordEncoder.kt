@@ -70,10 +70,10 @@ abstract class AbstractRecordEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun lowerFlat(transformer: Transformer) {
-    val tuple = codeBuilder.newName("tuple")
-    codeBuilder.addStatement("val %N = %L", tuple, transformer.take())
+    val nameHint = codeBuilder.newName(instanceNameHint)
+    codeBuilder.addStatement("val %N = %L", nameHint, transformer.take())
 
-    val fieldValues = instanceToFieldValues(CodeBlock.of("%N", tuple))
+    val fieldValues = instanceToFieldValues(CodeBlock.of("%N", nameHint))
     for ((i, fieldEncoder) in fieldEncoders.withIndex()) {
       for (coreType in fieldEncoder.lowerFlat(fieldValues[i])) {
         transformer.put(coreType)
