@@ -71,8 +71,17 @@ class FlagsEncoder(
     }
   }
 
-  private fun instanceToPackedValue(valueName: CodeBlock): CodeBlock = flags.mapIndexed { i, flag ->
-    CodeBlock.of("(if (%L.%N) ${1 shl i} else 0)", valueName, flag.kotlinName)
-  }.joinToCode(" or \n")
+  context(codeBuilder: CodeBuilder)
+  private fun instanceToPackedValue(valueExpression: CodeBlock): CodeBlock {
+    val flagsName = codeBuilder.newName("flags")
+
+    return listOf(
+      CodeBlock.of("%L.let { %N ->⇥", valueExpression, flagsName),
+      flags.mapIndexed { i, flag ->
+        CodeBlock.of("(if (%L.%N) ${1 shl i} else 0)", flagsName, flag.kotlinName)
+      }.joinToCode(" or \n"),
+      CodeBlock.of("⇤}")
+    ).joinToCode("\n")
+  }
 
 }

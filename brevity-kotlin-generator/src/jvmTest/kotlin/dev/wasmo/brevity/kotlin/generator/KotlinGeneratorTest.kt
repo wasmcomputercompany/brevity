@@ -1093,11 +1093,15 @@ class KotlinGeneratorTest {
         address: Pointer,
         value_: PathFlags,
       ) {
-        val packedFlags = (if (value_.symlinkFollow) 1 else 0)
+        val packedFlags = value_.let { flags ->
+              (if (flags.symlinkFollow) 1 else 0)
+            }
         (address).storeByte(packedFlags.toByte())
       }
 
-      public fun lowerFlat_Types_PathFlags_guest(bridge: GuestBridge, value_: PathFlags): Int = (if (value_.symlinkFollow) 1 else 0)
+      public fun lowerFlat_Types_PathFlags_guest(bridge: GuestBridge, value_: PathFlags): Int = value_.let { flags ->
+        (if (flags.symlinkFollow) 1 else 0)
+      }
 
       public fun load_Types_PathFlags_guest(bridge: GuestBridge, address: Pointer): PathFlags = (address).loadByte().toByte().toInt().let { packedFlags -> PathFlags(
         symlinkFollow = packedFlags and 1 != 0,
@@ -1129,11 +1133,15 @@ class KotlinGeneratorTest {
         address: Int,
         value_: PathFlags,
       ) {
-        val packedFlags = (if (value_.symlinkFollow) 1 else 0)
+        val packedFlags = value_.let { flags ->
+              (if (flags.symlinkFollow) 1 else 0)
+            }
         bridge.memory.writeByte(address, packedFlags.toByte())
       }
 
-      public fun lowerFlat_Types_PathFlags_host(bridge: HostBridge, value_: PathFlags): Int = (if (value_.symlinkFollow) 1 else 0)
+      public fun lowerFlat_Types_PathFlags_host(bridge: HostBridge, value_: PathFlags): Int = value_.let { flags ->
+        (if (flags.symlinkFollow) 1 else 0)
+      }
 
       public fun load_Types_PathFlags_host(bridge: HostBridge, address: Int): PathFlags = bridge.memory.read(address).toByte().toInt().let { packedFlags -> PathFlags(
         symlinkFollow = packedFlags and 1 != 0,
