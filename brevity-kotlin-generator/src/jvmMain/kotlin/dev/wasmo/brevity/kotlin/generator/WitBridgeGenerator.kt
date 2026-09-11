@@ -55,6 +55,10 @@ class WitBridgeGenerator private constructor(
         packageReader.read(directory)
       }
 
+      // Abort if any errors were reported during parsing. We must not proceed to linking as the
+      // top-level symbols may contain placeholders.
+      throwIfNotEmpty()
+
       val symbolTable = ioToplevelPackages.buildSymbolTable()
         ?: return null
 
