@@ -119,17 +119,17 @@ class EncoderFactory(
 
       is IrFlags -> {
         when {
-          type.flags.size < 8 -> FlagsEncoder(
+          type.flags.size <= 8 -> FlagsEncoder(
             kotlinType = type.type.kotlinApi,
             flags = type.flags,
             packedFlagEncoder = ByteEncoder,
           )
-          type.flags.size < 16 -> FlagsEncoder(
+          type.flags.size <= 16 -> FlagsEncoder(
             kotlinType = type.type.kotlinApi,
             flags = type.flags,
             packedFlagEncoder = ShortEncoder,
           )
-          type.flags.size < 32 -> FlagsEncoder(
+          type.flags.size <= 32 -> FlagsEncoder(
             kotlinType = type.type.kotlinApi,
             flags = type.flags,
             packedFlagEncoder = IntEncoder,
