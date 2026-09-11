@@ -561,9 +561,9 @@ class KotlinGeneratorTest {
         value_: Datetime,
         callBuilder: CallBuilder,
       ) {
-        val tuple = value_
-        callBuilder.put(tuple.seconds.toLong())
-        callBuilder.put(tuple.nanoseconds.toInt())
+        val datetime = value_
+        callBuilder.put(datetime.seconds.toLong())
+        callBuilder.put(datetime.nanoseconds.toInt())
       }
 
       public fun load_Types_Datetime_guest(bridge: GuestBridge, address: Pointer): Datetime = Datetime(
@@ -611,9 +611,9 @@ class KotlinGeneratorTest {
         value_: Datetime,
         callBuilder: CallBuilder,
       ) {
-        val tuple = value_
-        callBuilder.put(tuple.seconds.toLong())
-        callBuilder.put(tuple.nanoseconds.toInt())
+        val datetime = value_
+        callBuilder.put(datetime.seconds.toLong())
+        callBuilder.put(datetime.nanoseconds.toInt())
       }
 
       public fun load_Types_Datetime_host(bridge: HostBridge, address: Int): Datetime = Datetime(
@@ -1093,14 +1093,21 @@ class KotlinGeneratorTest {
         address: Pointer,
         value_: PathFlags,
       ) {
-        // TODO: store wit.wasi.clocks.v0_2_12.PathFlags
+        val packedFlags = (if (value_.symlinkFollow) 1 else 0)
+        (address).storeByte(packedFlags.toByte())
       }
 
-      public fun lowerFlat_Types_PathFlags_guest(bridge: GuestBridge, value_: PathFlags): Int = TODO("lower wit.wasi.clocks.v0_2_12.PathFlags")
+      public fun lowerFlat_Types_PathFlags_guest(bridge: GuestBridge, value_: PathFlags): Int = (if (value_.symlinkFollow) 1 else 0)
 
-      public fun load_Types_PathFlags_guest(bridge: GuestBridge, address: Pointer): PathFlags = TODO("load wit.wasi.clocks.v0_2_12.PathFlags")
+      public fun load_Types_PathFlags_guest(bridge: GuestBridge, address: Pointer): PathFlags = (address).loadByte().toByte().toInt().let { packedFlags -> PathFlags(
+        symlinkFollow = packedFlags and 1 != 0,
+      )}
 
-      public fun liftFlat_Types_PathFlags_guest(bridge: GuestBridge, value_: Int): PathFlags = TODO("lift wit.wasi.clocks.v0_2_12.PathFlags")
+
+      public fun liftFlat_Types_PathFlags_guest(bridge: GuestBridge, value_: Int): PathFlags = value_.toInt().let { packedFlags -> PathFlags(
+        symlinkFollow = packedFlags and 1 != 0,
+      )}
+
 
       """.trimIndent(),
     )
@@ -1122,14 +1129,21 @@ class KotlinGeneratorTest {
         address: Int,
         value_: PathFlags,
       ) {
-        // TODO: store wit.wasi.clocks.v0_2_12.PathFlags
+        val packedFlags = (if (value_.symlinkFollow) 1 else 0)
+        bridge.memory.writeByte(address, packedFlags.toByte())
       }
 
-      public fun lowerFlat_Types_PathFlags_host(bridge: HostBridge, value_: PathFlags): Int = TODO("lower wit.wasi.clocks.v0_2_12.PathFlags")
+      public fun lowerFlat_Types_PathFlags_host(bridge: HostBridge, value_: PathFlags): Int = (if (value_.symlinkFollow) 1 else 0)
 
-      public fun load_Types_PathFlags_host(bridge: HostBridge, address: Int): PathFlags = TODO("load wit.wasi.clocks.v0_2_12.PathFlags")
+      public fun load_Types_PathFlags_host(bridge: HostBridge, address: Int): PathFlags = bridge.memory.read(address).toByte().toInt().let { packedFlags -> PathFlags(
+        symlinkFollow = packedFlags and 1 != 0,
+      )}
 
-      public fun liftFlat_Types_PathFlags_host(bridge: HostBridge, value_: Int): PathFlags = TODO("lift wit.wasi.clocks.v0_2_12.PathFlags")
+
+      public fun liftFlat_Types_PathFlags_host(bridge: HostBridge, value_: Int): PathFlags = value_.toInt().let { packedFlags -> PathFlags(
+        symlinkFollow = packedFlags and 1 != 0,
+      )}
+
 
       """.trimIndent(),
     )
