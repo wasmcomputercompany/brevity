@@ -34,7 +34,7 @@ internal class HostFunctionFactory(
     encoderFactory = encoderFactory,
     nameAllocator = nameAllocator,
   )
-  private val coreParameters = value.parameters.map { coreValueFactory.parameter(it.name, it.type) }
+  private val parameterListEncoder = coreValueFactory.parameters(value.parameters)
   private val coreResult = value.returnType?.let { coreValueFactory.result(it) }
 
   private val codeBuilder = CodeBuilder(
@@ -51,15 +51,42 @@ internal class HostFunctionFactory(
       .addModifiers(KModifier.OVERRIDE)
       .apply {
         context(codeBuilder) {
-          val longParameters = mutableListOf<CodeBlock>()
-          for ((p, parameter) in value.parameters.withIndex()) {
-            val coreParameter = coreParameters[p]
+          val parameterValues = mutableListOf<CodeBlock>()
+          for (parameter in value.parameters) {
             addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
-            val loweredParameters = coreParameter.encoder.lowerFlat(
-              value = CodeBlock.of("%N", nameAllocator[parameter.name]),
-            )
-            for ((v, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
-              longParameters += coreTypeToLong(loweredParameters[v], coreType)
+            parameterValues += CodeBlock.of("%N", nameAllocator[parameter.name])
+          }
+
+          val longParameters = mutableListOf<CodeBlock>()
+          when (parameterListEncoder) {
+            is ParameterListEncoder.Flattened -> {
+              for (p in value.parameters.indices) {
+                val coreParameter = parameterListEncoder.coreParameters[p]
+                val loweredParameters = coreParameter.encoder.lowerFlat(parameterValues[p])
+                for ((v, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
+                  longParameters += coreTypeToLong(loweredParameters[v], coreType)
+                }
+              }
+            }
+
+            is ParameterListEncoder.Stored -> {
+              codeBuilder.addStatement(
+                "val %N = %L",
+                parameterListEncoder.addressSpec.name,
+                codeBuilder.allocate("%L", parameterListEncoder.byteCount),
+              )
+              val addressParameterValue = CodeBlock.of(
+                "%N",
+                parameterListEncoder.addressSpec.name,
+              )
+              parameterListEncoder.storeAll(
+                baseAddress = addressParameterValue,
+                fieldValues = parameterValues,
+              )
+              longParameters += coreTypeToLong(
+                codeBuilder.platform.lowerAddress(addressParameterValue),
+                CoreType.Pointer,
+              )
             }
           }
 
@@ -107,8 +134,16 @@ internal class HostFunctionFactory(
         if (receiver is Receiver.Id) {
           add(CoreType.I32)
         }
-        for (coreParameter in coreParameters) {
-          addAll(coreParameter.encoder.coreTypes)
+        when (parameterListEncoder) {
+          is ParameterListEncoder.Flattened -> {
+            for (coreParameter in parameterListEncoder.coreParameters) {
+              addAll(coreParameter.encoder.coreTypes)
+            }
+          }
+
+          is ParameterListEncoder.Stored -> {
+            add(CoreType.Pointer)
+          }
         }
         if (coreResult?.parameter != null) {
           add(CoreType.I32)
@@ -116,17 +151,26 @@ internal class HostFunctionFactory(
       }
 
       var argIndex = 0
-      val liftedParameterValues = mutableListOf<CodeBlock>()
       val receiverValue = when (receiver) {
         is Receiver.Id -> receiver.codeBlock(longToCoreType("args", argIndex++, CoreType.I32))
         is Receiver.Instance -> receiver.codeBlock
       }
-      for (coreParameter in coreParameters) {
-        liftedParameterValues += coreParameter.encoder.liftFlat(
-          values = coreParameter.encoder.coreTypes.map { coreType ->
+      val liftedParameterValues = when (parameterListEncoder) {
+        is ParameterListEncoder.Flattened -> {
+          parameterListEncoder.coreParameters.map { coreParameter ->
+            coreParameter.encoder.liftFlat(
+              values = coreParameter.encoder.coreTypes.map { coreType ->
                 longToCoreType("args", argIndex++, coreType)
-          },
-        )
+              },
+            )
+          }
+        }
+
+        is ParameterListEncoder.Stored -> {
+          parameterListEncoder.loadAll(
+            baseAddress = longToCoreType("args", argIndex++, CoreType.Pointer),
+          )
+        }
       }
 
       val self = nameAllocator.newName("self")
@@ -154,7 +198,7 @@ internal class HostFunctionFactory(
             )
             coreResult.encoder.store(
               baseAddress = CodeBlock.of("%N", coreResult.parameter.name),
-              value = CodeBlock.of("%N", coreResult.name)
+              value = CodeBlock.of("%N", coreResult.name),
             )
             returnValType = null
             codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
