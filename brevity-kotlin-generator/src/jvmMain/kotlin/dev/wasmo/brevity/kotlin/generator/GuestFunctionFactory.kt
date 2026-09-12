@@ -48,7 +48,7 @@ internal class GuestFunctionFactory(
     receiver is Receiver.Id -> coreValueFactory.parameter(receiver.name, receiver.type)
     else -> null
   }
-  private val coreParameters = value.parameters.map { coreValueFactory.parameter(it.name, it.type) }
+  private val parameterListEncoder = coreValueFactory.parameters(value.parameters)
   private val coreResult = value.returnType?.let { coreValueFactory.result(it) }
 
   private val codeBuilder = CodeBuilder(
@@ -65,14 +65,39 @@ internal class GuestFunctionFactory(
       .addModifiers(KModifier.OVERRIDE)
       .apply {
         context(codeBuilder) {
+          val parameterValues = mutableListOf<CodeBlock>()
+          for (parameter in value.parameters) {
+            addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
+            parameterValues += CodeBlock.of("%N", nameAllocator[parameter.name])
+          }
+
           val loweredParameters = mutableListOf<CodeBlock>()
           loweredParameters += CodeBlock.of("this.%L", "id")
+          when (parameterListEncoder) {
+            is ParameterListEncoder.Flattened -> {
+              loweredParameters += value.parameters.indices.flatMap { index ->
+                parameterListEncoder.coreParameters[index].encoder.lowerFlat(
+                  value = parameterValues[index],
+                )
+              }
+            }
 
-          for ((index, parameter) in value.parameters.withIndex()) {
-            addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
-            loweredParameters += coreParameters[index].encoder.lowerFlat(
-              value = CodeBlock.of("%N", nameAllocator[parameter.name]),
-            )
+            is ParameterListEncoder.Stored -> {
+              codeBuilder.addStatement(
+                "val %N = %L",
+                parameterListEncoder.addressSpec.name,
+                codeBuilder.allocate("%L", parameterListEncoder.byteCount),
+              )
+              val addressParameterValue = CodeBlock.of(
+                "%N",
+                parameterListEncoder.addressSpec.name,
+              )
+              parameterListEncoder.storeAll(
+                baseAddress = addressParameterValue,
+                fieldValues = parameterValues,
+              )
+              loweredParameters += codeBuilder.platform.lowerAddress(addressParameterValue)
+            }
           }
 
           if (coreResult != null) {
@@ -136,8 +161,16 @@ internal class GuestFunctionFactory(
         if (coreReceiver != null) {
           addParameters(coreReceiver.specs)
         }
-        for (coreParameter in coreParameters) {
-          addParameters(coreParameter.specs)
+        when (parameterListEncoder) {
+          is ParameterListEncoder.Flattened -> {
+            for (coreParameter in parameterListEncoder.coreParameters) {
+              addParameters(coreParameter.specs)
+            }
+          }
+
+          is ParameterListEncoder.Stored -> {
+            addParameter(parameterListEncoder.addressSpec)
+          }
         }
         if (coreResult?.parameter != null) {
           addParameter(coreResult.parameter)
@@ -171,16 +204,40 @@ internal class GuestFunctionFactory(
             is Receiver.Global -> receiver.codeBlock
           }
 
-          for ((index, coreParameter) in coreParameters.withIndex()) {
-            addParameters(coreParameter.specs)
-            val liftedParameterExpression = coreParameter.encoder.liftFlat(
-              values = coreParameter.names.map { CodeBlock.of("%N", it) },
-            )
-            codeBuilder.addStatement(
-              "val %N = %L",
-              nameAllocator[value.parameters[index].name],
-              liftedParameterExpression,
-            )
+          when (parameterListEncoder) {
+            is ParameterListEncoder.Flattened -> {
+              for ((index, coreParameter) in parameterListEncoder.coreParameters.withIndex()) {
+                addParameters(coreParameter.specs)
+                val liftedParameterExpression = coreParameter.encoder.liftFlat(
+                  values = coreParameter.names.map { CodeBlock.of("%N", it) },
+                )
+                codeBuilder.addStatement(
+                  "val %N = %L",
+                  nameAllocator[value.parameters[index].name],
+                  liftedParameterExpression,
+                )
+              }
+            }
+
+            is ParameterListEncoder.Stored -> {
+              addParameter(parameterListEncoder.addressSpec)
+              val addressExpression = CodeBlock.of("%L", parameterListEncoder.addressSpec.name)
+              addStatement(
+                "val %L = %L",
+                parameterListEncoder.addressSpec.name,
+                codeBuilder.platform.liftAddress(addressExpression),
+              )
+              val loadedParameterExpression = parameterListEncoder.loadAll(
+                baseAddress = addressExpression,
+              )
+              for ((index, parameter) in value.parameters.withIndex()) {
+                codeBuilder.addStatement(
+                  "val %N = %L",
+                  nameAllocator[parameter.name],
+                  loadedParameterExpression[index],
+                )
+              }
+            }
           }
 
           codeBuilder.addStatement(
@@ -243,8 +300,16 @@ internal class GuestFunctionFactory(
       if (coreReceiver != null) {
         addAll(coreReceiver.specs)
       }
-      for (parameter in coreParameters) {
-        addAll(parameter.specs)
+      when (parameterListEncoder) {
+        is ParameterListEncoder.Flattened -> {
+          for (parameter in parameterListEncoder.coreParameters) {
+            addAll(parameter.specs)
+          }
+        }
+
+        is ParameterListEncoder.Stored -> {
+          add(parameterListEncoder.addressSpec)
+        }
       }
     }
 
