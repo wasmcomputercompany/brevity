@@ -47,83 +47,116 @@ class GuestKotlinTarget(
       """.trimMargin(),
     )
     for (type in types) {
-      if (!type.mustAllocate) {
-        writeUtf8(
-          """
-          |  override fun passAsParameter${type.idUpperCamel}(v: ${type.kotlinType}): Int {
-          |
-          """.trimMargin(),
-        )
-        if (type.compareAsString) {
-          writeUtf8(
-            """
-            |    val v_str = v.toString()
-            |
-            """.trimMargin(),
-          )
-          for ((index, value) in type.values.withIndex()) {
-            writeUtf8(
-              """
-              |    if (v_str == (${value.kotlin}).toString()) { return $index }
-              |
-              """.trimMargin(),
-            )
-          }
-        } else {
-          for ((index, value) in type.values.withIndex()) {
-            if (type.kotlinEqualityMethod == null) {
-              writeUtf8(
-                """
-                |    if (v == ${value.kotlin}) { return $index }
-                |
-                """.trimMargin(),
-              )
-            } else {
-              writeUtf8(
-                """
-                |    if (v.${type.kotlinEqualityMethod}(${value.kotlin})) { return $index }
-                |
-                """.trimMargin(),
-              )
-            }
-          }
-        }
-        writeUtf8(
-          """
-          |    return -1
-          |  }
-          |
-          """.trimMargin(),
-        )
-      }
+      passAsParameter(
+        type = type,
+      )
+      passAsParameter(
+        type = type,
+        padding = 16,
+      )
+      passAsReturnValue(type)
+    }
+    writeUtf8(
+      """
+      |}
+      |
+      """.trimMargin(),
+    )
+  }
 
+  private fun BufferedSink.passAsParameter(
+    type: SampleType,
+    padding: Int = 0,
+  ) {
+    val paddingSuffix = when {
+      padding > 0 -> "P$padding"
+      else -> ""
+    }
+    writeUtf8(
+      """
+      |  override fun passAsParameter${type.idUpperCamel}$paddingSuffix(
+      |
+      """.trimMargin(),
+    )
+    for (i in 0 until padding) {
       writeUtf8(
         """
-        |  override fun passAsReturnValue${type.idUpperCamel}(index: Int): ${type.kotlinType} {
-        |    return when (index) {
-        |
-        """.trimMargin(),
-      )
-      for ((index, value) in type.values.withIndex()) {
-        writeUtf8(
-          """
-          |      $index -> ${value.kotlin}
-          |
-          """.trimMargin(),
-        )
-      }
-      writeUtf8(
-        $$"""
-        |      else -> error("unexpected index: $index")
-        |    }
-        |  }
+        |    p$i: Int,
         |
         """.trimMargin(),
       )
     }
     writeUtf8(
       """
-      |}
+      |    v: ${type.kotlinType},
+      |  ): Int {
+      |
+      """.trimMargin(),
+    )
+    if (type.compareAsString) {
+      writeUtf8(
+        """
+        |    val v_str = v.toString()
+        |
+        """.trimMargin(),
+      )
+      for ((index, value) in type.values.withIndex()) {
+        writeUtf8(
+          """
+          |    if (v_str == (${value.kotlin}).toString()) { return $index }
+          |
+          """.trimMargin(),
+        )
+      }
+    } else {
+      for ((index, value) in type.values.withIndex()) {
+        if (type.kotlinEqualityMethod == null) {
+          writeUtf8(
+            """
+            |    if (v == ${value.kotlin}) { return $index }
+            |
+            """.trimMargin(),
+          )
+        } else {
+          writeUtf8(
+            """
+            |    if (v.${type.kotlinEqualityMethod}(${value.kotlin})) { return $index }
+            |
+            """.trimMargin(),
+          )
+        }
+      }
+    }
+    writeUtf8(
+      """
+      |    return -1
+      |  }
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.passAsReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |  override fun passAsReturnValue${type.idUpperCamel}(index: Int): ${type.kotlinType} {
+      |    return when (index) {
+      |
+      """.trimMargin(),
+    )
+    for ((index, value) in type.values.withIndex()) {
+      writeUtf8(
+        """
+        |      $index -> ${value.kotlin}
+        |
+        """.trimMargin(),
+      )
+    }
+    writeUtf8(
+      $$"""
+      |      else -> error("unexpected index: $index")
+      |    }
+      |  }
       |
       """.trimMargin(),
     )
