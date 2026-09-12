@@ -14,7 +14,8 @@ class HostKotlinTarget(
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("HostKotlinTarget")) {
-      val path = layout.hostSrc / "dev/wasmo/brevity/integration/Host${name.replaceFirstChar { it.uppercase() }}Main.kt"
+      val path =
+        layout.hostSrc / "dev/wasmo/brevity/integration/Host${name.replaceFirstChar { it.uppercase() }}Main.kt"
       fileSystem.createDirectories(path.parent!!)
       fileSystem.write(path) { writeKotlin() }
     }
@@ -53,41 +54,22 @@ class HostKotlinTarget(
     )
     for (type in types) {
       for ((index, value) in type.values.withIndex()) {
-        if (!type.mustAllocate) {
-          writeUtf8(
-            """
-            |  assertThat(
-            |    world.guest.passAsParameter${type.idUpperCamel}(${value.kotlin}),
-            |    "${type.id}.$index.parameter",
-            |  ).isEqualTo($index)
-            |
-            """.trimMargin(),
-          )
-        }
-
-        if (type.compareAsString) {
-          writeUtf8(
-            """
-          |  assertThat(
-          |    world.guest.passAsReturnValue${type.idUpperCamel}($index).toString(),
-          |    "${type.id}.$index.return",
-          |  ).isEqualTo((${value.kotlin}).toString())
-          |
-          |
-          """.trimMargin(),
-          )
-        } else {
-          writeUtf8(
-            """
-          |  assertThat(
-          |    world.guest.passAsReturnValue${type.idUpperCamel}($index),
-          |    "${type.id}.$index.return",
-          |  ).isEqualTo(${value.kotlin})
-          |
-          |
-          """.trimMargin(),
-          )
-        }
+        callPassAsParameter(
+          type = type,
+          value = value,
+          index = index,
+        )
+        callPassAsParameter(
+          type = type,
+          value = value,
+          index = index,
+          padding = 16,
+        )
+        callPassAsReturnValue(
+          type = type,
+          index = index,
+          value = value,
+        )
       }
     }
     writeUtf8(
@@ -98,5 +80,72 @@ class HostKotlinTarget(
       |
       """.trimMargin(),
     )
+  }
+
+  private fun BufferedSink.callPassAsParameter(
+    type: SampleType,
+    value: SampleValue,
+    index: Int,
+    padding: Int = 0,
+  ) {
+    val paddingSuffix = when {
+      padding > 0 -> "P$padding"
+      else -> ""
+    }
+
+    writeUtf8(
+      """
+      |  assertThat(
+      |    world.guest.passAsParameter${type.idUpperCamel}$paddingSuffix(
+      |
+      """.trimMargin(),
+    )
+    for (i in 0 until padding) {
+      writeUtf8(
+        """
+        |    p$i = 0,
+        |
+        """.trimMargin(),
+      )
+    }
+    writeUtf8(
+      """
+      |      v = ${value.kotlin},
+      |    ),
+      |    "${type.id}.$index.parameter.p$padding",
+      |  ).isEqualTo($index)
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.callPassAsReturnValue(
+    type: SampleType,
+    index: Int,
+    value: SampleValue,
+  ) {
+    if (type.compareAsString) {
+      writeUtf8(
+        """
+        |  assertThat(
+        |    world.guest.passAsReturnValue${type.idUpperCamel}($index).toString(),
+        |    "${type.id}.$index.return",
+        |  ).isEqualTo((${value.kotlin}).toString())
+        |
+        |
+        """.trimMargin(),
+      )
+    } else {
+      writeUtf8(
+        """
+        |  assertThat(
+        |    world.guest.passAsReturnValue${type.idUpperCamel}($index),
+        |    "${type.id}.$index.return",
+        |  ).isEqualTo(${value.kotlin})
+        |
+        |
+        """.trimMargin(),
+      )
+    }
   }
 }
