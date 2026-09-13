@@ -26,5 +26,6 @@ include(":wasi:brevity-wasi")
 include(":wasi:brevity-wasi-p1")
 include(":wasi:brevity-wasi-p2")
 include(":wasi:brevity-wasi-p3")
+include(":wasi:wit-dependencies")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
