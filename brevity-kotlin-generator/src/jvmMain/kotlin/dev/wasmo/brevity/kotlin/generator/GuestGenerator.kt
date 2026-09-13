@@ -15,6 +15,8 @@ import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
+import dev.wasmo.brevity.kotlin.KotlinMapper
+import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.GuestFunctionFactory.Receiver
 
@@ -25,6 +27,8 @@ private val guestOptIns = setOf(
 )
 
 class GuestGenerator(
+  private val kotlinMapper: KotlinMapper,
+  private val guestPlatform: GuestPlatform,
   private val encoderFactory: EncoderFactory,
   private val declarationIndex: DeclarationIndex,
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
@@ -37,7 +41,7 @@ class GuestGenerator(
     for (service in packages.flatMap { it.services }) {
       for (type in service.types) {
         val typeName = type.type
-        val className = typeName.kotlinApi
+        val className = kotlinMapper.get(typeName)
         // TODO: this is hacked because we don't also prune unreachable callsites.
         val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
         val fileName = className.simpleNames.joinToString(separator = "") + "Guest"
@@ -130,14 +134,14 @@ class GuestGenerator(
     if (guest) {
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
-        collector += GuestFunctionFactory(encoderFactory, receiver, function).wasmExport()
+        collector += guestFunctionFactory(receiver, function).wasmExport()
       }
     }
 
     if (host) {
-      val handleBuilder = TypeSpec.classBuilder(value.type.handleName)
+      val handleBuilder = TypeSpec.classBuilder(kotlinMapper.getHandleName(value.type))
         .addModifiers(KModifier.INTERNAL)
-        .addSuperinterface(value.type.kotlinApi)
+        .addSuperinterface(kotlinMapper.get(value.type))
         .primaryConstructor(
           FunSpec.constructorBuilder()
             .addParameter("id", INT)
@@ -152,13 +156,11 @@ class GuestGenerator(
 
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
-        handleBuilder.addFunction(
-          GuestFunctionFactory(encoderFactory, receiver, function).callHost(),
-        )
-        collector += GuestFunctionFactory(encoderFactory, receiver, function).wasmImport()
+        handleBuilder.addFunction(guestFunctionFactory(receiver, function).callHost())
+        collector += guestFunctionFactory(receiver, function).wasmImport()
       }
 
-      collector.addType(value.type.handleName, handleBuilder.build())
+      collector.addType(kotlinMapper.getHandleName(value.type), handleBuilder.build())
     }
   }
 
@@ -185,7 +187,7 @@ class GuestGenerator(
             val receiver = Receiver.Global(
               CodeBlock.of("%N_", guestApis.instanceName),
             )
-            add(GuestFunctionFactory(encoderFactory, receiver, item))
+            add(guestFunctionFactory(receiver, item))
           }
 
           is IrExternalApi -> {
@@ -194,7 +196,7 @@ class GuestGenerator(
               CodeBlock.of("%N_.%N", guestApis.instanceName, item.instanceName),
             )
             for (function in irInterface.functions) {
-              add(GuestFunctionFactory(encoderFactory, receiver, function))
+              add(guestFunctionFactory(receiver, function))
             }
           }
         }
@@ -223,4 +225,15 @@ class GuestGenerator(
       }
       .build()
   }
+
+  private fun guestFunctionFactory(
+    receiver: Receiver,
+    function: IrFunction,
+  ) = GuestFunctionFactory(
+    kotlinMapper = kotlinMapper,
+    guestPlatform = guestPlatform,
+    encoderFactory = encoderFactory,
+    receiver = receiver,
+    value = function,
+  )
 }

@@ -5,12 +5,14 @@ import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.generator.Symbols
-import dev.wasmo.brevity.kotlin.generator.kotlinApi
 import dev.wasmo.brevity.kotlin.generator.plus
 
-object HostPlatform : Platform {
+class HostPlatform(
+  private val kotlinMapper: KotlinMapper,
+) : Platform {
   override val identifier: Identifier
     get() = Identifier("host")
 
@@ -36,13 +38,18 @@ object HostPlatform : Platform {
       "%L.%M<%T>(%L)",
       codeBuilder.bridge,
       Symbols.Brevity.HostBridgeGet,
-      handleType.kotlinApi,
+      kotlinMapper.get(handleType),
       id,
     )
 
   context(codeBuilder: CodeBuilder)
   override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of("%L.toId<%T>(%L)", codeBuilder.bridge, handleType.kotlinApi, resource)
+    CodeBlock.of(
+      "%L.toId<%T>(%L)",
+      codeBuilder.bridge,
+      kotlinMapper.get(handleType),
+      resource,
+    )
 
   context(codeBuilder: CodeBuilder)
   override fun loadString(address: CodeBlock, byteCount: CodeBlock) =

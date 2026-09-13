@@ -19,9 +19,13 @@ import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
+import dev.wasmo.brevity.kotlin.KotlinMapper
+import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 
 class HostGenerator(
+  private val kotlinMapper: KotlinMapper,
+  private val hostPlatform: HostPlatform,
   private val encoderFactory: EncoderFactory,
   private val declarationIndex: DeclarationIndex,
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
@@ -34,7 +38,7 @@ class HostGenerator(
     for (service in packages.flatMap { it.services }) {
       for (type in service.types) {
         val typeName = type.type
-        val className = typeName.kotlinApi
+        val className = kotlinMapper.get(typeName)
         // TODO: this is hacked because we don't also prune unreachable callsites.
         val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
 
@@ -221,8 +225,7 @@ class HostGenerator(
       is IrInterface -> {
         for (item in value.functions) {
           builder.addFunction(
-            HostFunctionFactory
-              (encoderFactory, item, CodeBlock.of("%N", "bridge")).callGuest(),
+            hostFunctionFactory(item, CodeBlock.of("%N", "bridge")).callGuest(),
           )
           builder.addProperty(
             PropertySpec.builder(item.kotlinName, Symbols.ChicoryRuntime.ExportFunction)
@@ -282,7 +285,7 @@ class HostGenerator(
 
       is IrFunction -> {
         addFunction(
-          HostFunctionFactory(encoderFactory, item, CodeBlock.of("%N", "bridge")).callGuest(),
+          hostFunctionFactory(item, CodeBlock.of("%N", "bridge")).callGuest(),
         )
         addProperty(
           PropertySpec.builder(item.kotlinName, Symbols.ChicoryRuntime.ExportFunction)
@@ -338,13 +341,13 @@ class HostGenerator(
       is IrResource -> {
         val receiver = Receiver.Id(
           bridge = bridge,
-          type = typeDeclaration.type.kotlinApi,
+          type = kotlinMapper.get(typeDeclaration.type),
         )
 
         for (function in typeDeclaration.functions) {
           if (value.host) {
             addCode(
-              HostFunctionFactory(encoderFactory, function, bridge).declareHost(
+              hostFunctionFactory(function, bridge).declareHost(
                 store,
                 receiver,
               ),
@@ -367,7 +370,7 @@ class HostGenerator(
       when (item) {
         is IrFunction -> {
           addCode(
-            HostFunctionFactory(encoderFactory, item, bridge).declareHost(
+            hostFunctionFactory(item, bridge).declareHost(
               store = store,
               receiver = receiver,
             ),
@@ -378,7 +381,7 @@ class HostGenerator(
           val type = declarationIndex[item.serviceName] as IrInterface
           for (function in type.functions) {
             addCode(
-              HostFunctionFactory(encoderFactory, function, bridge).declareHost(
+              hostFunctionFactory(function, bridge).declareHost(
                 store = store,
                 receiver = Receiver.Instance(
                   CodeBlock.of("%L.%N", receiver.codeBlock, item.instanceName),
@@ -390,6 +393,17 @@ class HostGenerator(
       }
     }
   }
+
+  private fun hostFunctionFactory(
+    function: IrFunction,
+    bridge: CodeBlock,
+  ) = HostFunctionFactory(
+    kotlinMapper = kotlinMapper,
+    hostPlatform = hostPlatform,
+    encoderFactory = encoderFactory,
+    value = function,
+    bridge = bridge,
+  )
 
   internal sealed interface Receiver {
     data class Instance(
