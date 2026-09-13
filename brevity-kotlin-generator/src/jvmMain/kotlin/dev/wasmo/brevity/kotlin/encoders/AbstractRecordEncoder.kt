@@ -21,20 +21,26 @@ abstract class AbstractRecordEncoder(
     baseAddress: CodeBlock,
     offset: Int,
   ) = fieldValuesToInstance(
-    fieldValues = buildList {
-      var offset = offset
-      for (fieldEncoder in fieldEncoders) {
-        offset = offset.alignTo(fieldEncoder.alignment)
-        add(
-          fieldEncoder.load(
-            baseAddress = baseAddress,
-            offset = offset,
-          ),
-        )
-        offset += fieldEncoder.byteCount
-      }
-    },
+    fieldValues = loadAll(baseAddress, offset),
   )
+
+  context(codeBuilder: CodeBuilder)
+  fun loadAll(
+    baseAddress: CodeBlock,
+    offset: Int = 0,
+  ) = buildList {
+    var offset = offset
+    for (fieldEncoder in fieldEncoders) {
+      offset = offset.alignTo(fieldEncoder.alignment)
+      add(
+        fieldEncoder.load(
+          baseAddress = baseAddress,
+          offset = offset,
+        ),
+      )
+      offset += fieldEncoder.byteCount
+    }
+  }
 
   context(codeBuilder: CodeBuilder)
   override fun store(
@@ -42,7 +48,19 @@ abstract class AbstractRecordEncoder(
     offset: Int,
     value: CodeBlock,
   ) {
-    val fieldValues = instanceToFieldValues(value)
+    storeAll(
+      baseAddress = baseAddress,
+      offset = offset,
+      fieldValues = instanceToFieldValues(value),
+    )
+  }
+
+  context(codeBuilder: CodeBuilder)
+  fun storeAll(
+    baseAddress: CodeBlock,
+    offset: Int = 0,
+    fieldValues: List<CodeBlock>,
+  ) {
     var offset = offset
     for ((index, fieldEncoder) in fieldEncoders.withIndex()) {
       offset = offset.alignTo(fieldEncoder.alignment)

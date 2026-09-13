@@ -4,13 +4,33 @@ import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterSpec
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.ir.IrParameter
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.kotlin.encoders.MAX_FLAT_PARAMS
 
 class CoreValueFactory(
   val encoderFactory: EncoderFactory,
   val nameAllocator: NameAllocator,
 ) {
+  fun parameters(parameters: List<IrParameter>): ParameterListEncoder {
+    val coreParameters = parameters.map {
+      parameter(it.name, it.type)
+    }
+
+    if (coreParameters.sumOf { it.specs.size } <= MAX_FLAT_PARAMS) {
+      return ParameterListEncoder.Flattened(coreParameters)
+    }
+
+    return ParameterListEncoder.Stored(
+      addressSpec = ParameterSpec(
+        nameAllocator.newName("parameterAddress"),
+        CoreType.Pointer.kotlinCoreType,
+      ),
+      fieldEncoders = coreParameters.map { it.encoder },
+    )
+  }
+
   fun parameter(name: Identifier, typeName: TypeName): CoreParameter {
     val encoder = encoderFactory.get(typeName)
     val nameHints = encoder.nameHints

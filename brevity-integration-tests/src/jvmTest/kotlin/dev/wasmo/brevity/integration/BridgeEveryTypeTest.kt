@@ -535,7 +535,6 @@ class BridgeEveryTypeTest {
     test.execute()
   }
 
-
   @Test
   fun sizedLists() = runTest {
     val test = BrevityExecutionTester(
@@ -694,33 +693,15 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "listOf('a'.code, 'b'.code)", rust = "['a', 'b']"),
           ),
         ),
-//        SampleType( // TODO: The two large list tests don't work yet as they appear to be zeroed out in rust.
-//          id = Identifier("large-sized-list-s32"),
-//          witType = "list<s32, 100>",
-//          kotlinType = "List<Int>",
-//          rustType = "[i32; 100]",
-//          values = listOf(
-//            SampleValue(kotlin = "List(100) { i -> i }", rust = "(std::array::from_fn(|i| i as i32))"),
-//          ),
-//        ),
-//        SampleType(
-//          id = Identifier("extra-large-sized-list-s32"),
-//          witType = "list<s32, 1000>",
-//          kotlinType = "List<Int>",
-//          rustType = "[i32; 1000]",
-//          values = listOf(
-//            SampleValue(kotlin = "List(1000) { i -> i }", rust = "(std::array::from_fn(|i| i as i32))"),
-//          ),
-//        ),
-//        SampleType( // Bring this one back if/when this is allowed. Brevity chokes on this right now.
-//          id = Identifier("over-9000-sized-list-i32"),
-//          witType = "list<s32, 10000>",
-//          kotlinType = "List<Int>",
-//          rustType = "[i32; 10000]",
-//          values = listOf(
-//            SampleValue(kotlin = "List(10000) { i -> i }", rust = "(std::array::from_fn(|i| i as i32))"),
-//          ),
-//        ),
+        SampleType(
+          id = Identifier("large-sized-list-s32"),
+          witType = "list<s32, 18>",
+          kotlinType = "List<Int>",
+          rustType = "[i32; 18]",
+          values = listOf(
+            SampleValue(kotlin = "List(18) { i -> i }", rust = "(std::array::from_fn(|i| i as i32))"),
+          ),
+        ),
       ),
     )
 
