@@ -39,75 +39,109 @@ class GuestRustTarget(
       """.trimMargin(),
     )
     for (type in types) {
-      if (!type.mustAllocate) {
-        writeUtf8(
-          """
-          |  fn pass_as_parameter_${type.idLowerSnake}(v: ${type.rustType}) -> i32 {
-          |
-          """.trimMargin(),
-        )
-
-        if (type.compareAsString) {
-          writeUtf8(
-            """
-            |    let v_str = v.to_string();
-            |
-            """.trimMargin(),
-          )
-          for ((index, value) in type.values.withIndex()) {
-            writeUtf8(
-              """
-              |    if v_str == (${value.rust}).to_string() { return $index }
-              |
-              """.trimMargin(),
-            )
-          }
-        } else {
-          for ((index, value) in type.values.withIndex()) {
-            writeUtf8(
-              """
-              |    if v == ${value.rust} { return $index }
-              |
-              """.trimMargin(),
-            )
-          }
-        }
-        writeUtf8(
-          """
-            |    panic!("unexpected value")
-            |  }
-            |
-            """.trimMargin(),
-        )
-      }
-
-      writeUtf8(
-        """
-        |  fn pass_as_return_value_${type.idLowerSnake}(index: i32) -> ${type.rustType} {
-        |    match index {
-        |
-        """.trimMargin(),
+      passAsParameter(
+        type = type,
       )
-      for ((index, value) in type.values.withIndex()) {
-        writeUtf8(
-          """
-          |      $index => (${value.rust}).to_owned(),
-          |
-          """.trimMargin(),
-        )
-      }
+      passAsParameter(
+        type = type,
+        padding = 16,
+      )
+      passAsReturnValue(type)
+    }
+    writeUtf8(
+      """
+      |}
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.passAsParameter(
+    type: SampleType,
+    padding: Int = 0,
+  ) {
+    val paddingSuffix = when {
+      padding > 0 -> "_p$padding"
+      else -> ""
+    }
+
+    writeUtf8(
+      """
+      |  fn pass_as_parameter_${type.idLowerSnake}$paddingSuffix(
+      |
+      """.trimMargin(),
+    )
+    for (i in 0 until padding) {
       writeUtf8(
         """
-        |      _ => panic!("unexpected index {}", index)
-        |    }
-        |  }
+        |    p$i: i32,
         |
         """.trimMargin(),
       )
     }
     writeUtf8(
       """
-      |}
+      |    v: ${type.rustType}
+      |  ) -> i32 {
+      |
+      """.trimMargin(),
+    )
+
+    if (type.compareAsString) {
+      writeUtf8(
+        """
+        |    let v_str = v.to_string();
+        |
+        """.trimMargin(),
+      )
+      for ((index, value) in type.values.withIndex()) {
+        writeUtf8(
+          """
+          |    if v_str == (${value.rust}).to_string() { return $index }
+          |
+          """.trimMargin(),
+        )
+      }
+    } else {
+      for ((index, value) in type.values.withIndex()) {
+        writeUtf8(
+          """
+          |    if v == ${value.rust} { return $index }
+          |
+          """.trimMargin(),
+        )
+      }
+    }
+    writeUtf8(
+      """
+      |    panic!("unexpected value")
+      |  }
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.passAsReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |  fn pass_as_return_value_${type.idLowerSnake}(index: i32) -> ${type.rustType} {
+      |    match index {
+      |
+      """.trimMargin(),
+    )
+    for ((index, value) in type.values.withIndex()) {
+      writeUtf8(
+        """
+        |      $index => (${value.rust}).to_owned(),
+        |
+        """.trimMargin(),
+      )
+    }
+    writeUtf8(
+      """
+      |      _ => panic!("unexpected index {}", index)
+      |    }
+      |  }
+      |
       """.trimMargin(),
     )
   }

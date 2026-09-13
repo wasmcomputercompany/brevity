@@ -30,19 +30,15 @@ class WitTarget(
       """.trimMargin(),
     )
     for (type in types) {
-      if (!type.mustAllocate) {
-        writeUtf8(
-          """
-          |  export pass-as-parameter-${type.id}: func(v: ${type.witType}) -> s32;
-          |
-          """.trimMargin(),
-        )
-      }
-      writeUtf8(
-        """
-        |  export pass-as-return-value-${type.id}: func(index: s32) -> ${type.witType};
-        |
-        """.trimMargin(),
+      passAsParameter(
+        type = type,
+      )
+      passAsParameter(
+        type = type,
+        padding = 16,
+      )
+      passAsReturnValue(
+        type = type,
       )
     }
     writeUtf8(
@@ -50,6 +46,49 @@ class WitTarget(
       |$rawWit
       |
       |}
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.passAsParameter(
+    type: SampleType,
+    padding: Int = 0,
+  ) {
+    val paddingSuffix = when {
+      padding > 0 -> "-p$padding"
+      else -> ""
+    }
+
+    writeUtf8(
+      """
+      |  export pass-as-parameter-${type.id}$paddingSuffix: func(
+      |
+      """.trimMargin(),
+    )
+    for (i in 0 until padding) {
+      writeUtf8(
+        """
+        |    p$i: s32,
+        |
+        """.trimMargin(),
+      )
+    }
+    writeUtf8(
+      """
+      |    v: ${type.witType},
+      |  ) -> s32;
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.passAsReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |  export pass-as-return-value-${type.id}: func(
+      |    index: s32,
+      |  ) -> ${type.witType};
       |
       """.trimMargin(),
     )
