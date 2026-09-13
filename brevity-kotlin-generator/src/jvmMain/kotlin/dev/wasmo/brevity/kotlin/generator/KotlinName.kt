@@ -1,40 +1,21 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
-import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.ServiceName
 
-/** Maps type names in WIT to type names in Kotlin. */
-sealed interface KotlinName {
-  /** Appends [identifier] to the end of this name. */
-  operator fun plus(identifier: Identifier): Class
-
-  class Package(
-    val name: String,
-  ) : KotlinName {
-    override fun plus(identifier: Identifier) =
-      Class(ClassName(name, identifier.upperCamelCase))
-  }
-
-  class Class(
-    val name: ClassName,
-  ) : KotlinName {
-    override fun plus(identifier: Identifier) =
-      Class(name.nestedClass(identifier.upperCamelCase))
-  }
-}
-
-fun PackageName.toKotlin(): KotlinName.Package {
-  val segments = buildList {
-    add(kotlinPackagePrefix)
-    addAll(namespaces.map { it.packageCase })
-    addAll(names.map { it.packageCase })
-    version?.let {
-      add("v${it.version.toPackageSegment()}")
+val PackageName.kotlinApi: String
+  get() {
+    val segments = buildList {
+      add(kotlinPackagePrefix)
+      addAll(namespaces.map { it.packageCase })
+      addAll(names.map { it.packageCase })
+      version?.let {
+        add("v${it.version.toPackageSegment()}")
+      }
     }
+    return segments.joinToString(separator = ".")
   }
-  return KotlinName.Package(segments.joinToString(separator = "."))
-}
 
 private fun String.toPackageSegment(): String {
   return map { char ->
@@ -46,3 +27,6 @@ private fun String.toPackageSegment(): String {
     }
   }.toCharArray().concatToString()
 }
+
+val ServiceName.kotlinApi: ClassName
+  get() = ClassName(packageName.kotlinApi, name.upperCamelCase)

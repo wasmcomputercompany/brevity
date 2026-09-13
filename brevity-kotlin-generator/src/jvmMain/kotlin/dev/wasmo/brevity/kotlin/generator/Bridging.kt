@@ -50,9 +50,6 @@ val IrFunction.kotlinName: String
 val IrExternalApi.instanceName: String
   get() = (plainName ?: serviceName.name).lowerCamelCase
 
-val ServiceName.kotlinApi: ClassName
-  get() = (packageName.toKotlin() + name).name
-
 val ServiceName.bridgeType: ClassName
   get() = ClassName(
     kotlinApi.packageName,
@@ -80,13 +77,10 @@ val TypeName.Declared.handleName: ClassName
  *    the enclosing package.
  */
 val TypeName.Declared.kotlinApi: ClassName
-  get() {
-      val packageName = serviceName.packageName.toKotlin()
-      return when {
-        serviceName.name.name == "types" -> (packageName + name).name
-        else -> (packageName + serviceName.name + name).name
-      }
-    }
+  get() = when {
+    serviceName.name.name == "types" -> serviceName.kotlinApi.peerClass(name.upperCamelCase)
+    else -> serviceName.kotlinApi.nestedClass(name.upperCamelCase)
+  }
 
 /** Map WIT types to Kotlin types. */
 val TypeName.kotlinApi: KtTypeName
