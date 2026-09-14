@@ -5,6 +5,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Classpath
 import org.gradle.api.tasks.IgnoreEmptyDirectories
@@ -35,6 +36,13 @@ abstract class BrevityTask : DefaultTask() {
   /** World names like 'command', 'wasi:cli/command', or 'wasi:cli/command@0.3.0' */
   @get:Input
   abstract val worlds: ListProperty<String>
+
+  /**
+   * Maps WIT types to Kotlin types. The two type names must be fully-qualified like
+   * `wasi:clocks/types.duration@0.3.1` to `kotin.time.Duration`.
+   */
+  @get:Input
+  abstract val customTypeMappings: MapProperty<String, String>
 
   @get:OutputDirectory
   internal abstract val outputKotlinCommonMain: DirectoryProperty
@@ -70,6 +78,10 @@ abstract class BrevityTask : DefaultTask() {
         for (world in worlds.get()) {
           add("--world")
           add(world)
+        }
+        for ((key, value) in customTypeMappings.get()) {
+          add("--type")
+          add("$key=$value")
         }
       }
     }

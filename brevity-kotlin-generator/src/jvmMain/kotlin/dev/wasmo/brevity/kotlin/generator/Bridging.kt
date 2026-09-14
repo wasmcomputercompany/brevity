@@ -64,7 +64,7 @@ val CoreType.kotlinCoreType: KtTypeName
   }
 
 fun KotlinMapper.getHandleName(name: TypeName.Declared): ClassName {
-  val className = get(name)
+  val className = getAbiClassName(name)
   return ClassName(className.packageName, "${className.simpleName}Handle")
 }
 

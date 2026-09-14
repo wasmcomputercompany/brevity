@@ -48,7 +48,7 @@ class GuestPlatform(
     CodeBlock.of(
       "%L.toId<%T>(%L)",
       codeBuilder.bridge,
-      kotlinMapper.get(handleType),
+      kotlinMapper.getAbiClassName(handleType),
       resource,
     )
 

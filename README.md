@@ -40,6 +40,9 @@ Brevity generates APIs using `okio.ByteString` for `list<s8>` and `list<u8>` inp
 Brevity flattens nested `types` interfaces. This yields simpler generated code, particularly for
 WASI which uses `types` convention extensively.
 
+Brevity can map limited WIT types like `WallClock.Datetime` to preferred platform types like
+`kotlin.time.Instant`.
+
 
 Implementation
 --------------

@@ -1,27 +1,46 @@
 package dev.wasmo.brevity.kotlin
 
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LIST
+import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.MemberName.Companion.member
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName as KtTypeName
+import com.squareup.kotlinpoet.TypeSpec
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.generator.QualifiedSpec
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
+import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 
-class KotlinMapper {
+/**
+ * Maps WIT types to Kotlin types.
+ *
+ * This accepts custom mappings to override the default behavior.
+ */
+class KotlinMapper(
+  val customTypeMappings: Map<TypeName.Declared, KtTypeName> = mapOf(),
+) {
+  /** Returns the Kotlin type for [name], honoring any custom type mappings that exist. */
+  fun get(name: TypeName.Declared): KtTypeName {
+    val mapping = customTypeMappings[name]
+    if (mapping != null) return mapping
+
+    return getAbiClassName(name)
+  }
+
   /**
-   * A declared type is nested in its enclosing world or interface.
+   * Returns the generated ABI class for [name], which is nested in its enclosing world or
+   * interface.
    *
-   * Special cases:
-   *
-   *  * If the declared type's enclosing service is named 'types', the declared type is promoted to
-   *    the enclosing package.
+   * If the declared type's enclosing service is named 'types', the declared type is promoted to the
+   * enclosing package.
    */
-  fun get(
-    name: TypeName.Declared,
-  ): ClassName {
+  fun getAbiClassName(name: TypeName.Declared): ClassName {
     val serviceName = name.serviceName.kotlinApi
     return when {
       name.serviceName.name.name == "types" -> serviceName.peerClass(name.name.upperCamelCase)
@@ -31,6 +50,9 @@ class KotlinMapper {
 
   /** Map WIT types to Kotlin types. */
   fun get(name: TypeName): KtTypeName {
+    val mapping = customTypeMappings[name]
+    if (mapping != null) return mapping
+
     return when (name) {
       TypeName.Bool -> Symbols.Kotlin.Boolean
       TypeName.S8 -> Symbols.Kotlin.Byte
@@ -106,4 +128,60 @@ class KotlinMapper {
       }
     }
   }
+
+  /** Returns declarations of the `Adapter` interfaces that perform custom type mappings. */
+  fun adapterInterfaces(): List<QualifiedSpec> {
+    val result = mutableMapOf<ClassName, TypeSpec.Builder>()
+
+    for ((name, target) in customTypeMappings) {
+      val memberName = getAdapterMemberName(name)
+      val adaptersClassName = ClassName(memberName.packageName, "Adapters")
+
+      val typeSpecBuilder = result.getOrPut(adaptersClassName) {
+        TypeSpec.interfaceBuilder(adaptersClassName)
+          .addModifiers(KModifier.INTERNAL)
+          .addKdoc(
+            """
+            |Declare an object named `RealAdapters` in this module's commonMain.
+            |The object will be used by generated code to convert ABI types to
+            |API types.
+            |
+            |```
+            |package ${memberName.packageName}
+            |
+            |internal object RealAdapters : Adapters {
+            |  ...
+            |}
+            |```
+            """.trimMargin()
+          )
+      }
+
+      typeSpecBuilder.addProperty(
+        PropertySpec.builder(
+          memberName.simpleName,
+          Symbols.Brevity.WitAdapter.parameterizedBy(
+            getAbiClassName(name),
+            target,
+          )
+        ).build()
+      )
+    }
+
+    return result.map { (className, typeSpecBuilder) ->
+      QualifiedSpec.Type(
+        parent = QualifiedSpec.Parent.File(
+          sourceSet = QualifiedSpec.SourceSet.CommonMain,
+          packageName = className.packageName,
+          fileName = className.simpleName,
+        ),
+        className = className,
+        type = typeSpecBuilder.build()
+      )
+    }
+  }
+
+  fun getAdapterMemberName(name: TypeName.Declared): MemberName =
+    ClassName(getAbiClassName(name).packageName, "RealAdapters")
+      .member("${name.serviceName.name.lowerCamelCase}${name.name.upperCamelCase}")
 }

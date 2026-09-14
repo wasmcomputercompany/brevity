@@ -38,7 +38,7 @@ class HostGenerator(
     for (service in packages.flatMap { it.services }) {
       for (type in service.types) {
         val typeName = type.type
-        val className = kotlinMapper.get(typeName)
+        val className = kotlinMapper.getAbiClassName(typeName)
         // TODO: this is hacked because we don't also prune unreachable callsites.
         val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
 
@@ -341,7 +341,7 @@ class HostGenerator(
       is IrResource -> {
         val receiver = Receiver.Id(
           bridge = bridge,
-          type = kotlinMapper.get(typeDeclaration.type),
+          type = kotlinMapper.getAbiClassName(typeDeclaration.type),
         )
 
         for (function in typeDeclaration.functions) {

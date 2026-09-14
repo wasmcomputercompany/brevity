@@ -41,6 +41,8 @@ class ApiGenerator(
       }
     }
 
+    result += kotlinMapper.adapterInterfaces()
+
     return result
   }
 
@@ -55,7 +57,7 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateRecord(value: IrRecord) {
-    val className = kotlinMapper.get(value.type)
+    val className = kotlinMapper.getAbiClassName(value.type)
     collector.addType(
       className = className,
       type = TypeSpec.classBuilder(className)
@@ -87,7 +89,7 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateResource(value: IrResource) {
-    val className = kotlinMapper.get(value.type)
+    val className = kotlinMapper.getAbiClassName(value.type)
     collector.addType(
       className = className,
       type = TypeSpec.interfaceBuilder(className)
@@ -107,7 +109,7 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateVariant(value: IrVariant) {
-    val className = kotlinMapper.get(value.type)
+    val className = kotlinMapper.getAbiClassName(value.type)
     collector.addType(
       className,
       TypeSpec.interfaceBuilder(className)
@@ -152,7 +154,7 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateEnum(value: IrEnum) {
-    val className = kotlinMapper.get(value.type)
+    val className = kotlinMapper.getAbiClassName(value.type)
     collector.addType(
       className = className,
       type = TypeSpec.enumBuilder(className)
@@ -173,7 +175,7 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateTypeAlias(value: IrTypeAlias) {
-    val className = kotlinMapper.get(value.type)
+    val className = kotlinMapper.getAbiClassName(value.type)
     collector.addType(
       className = className,
       type = TypeSpec.classBuilder(className)
@@ -203,7 +205,7 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateFlags(value: IrFlags) {
-    val className = kotlinMapper.get(value.type)
+    val className = kotlinMapper.getAbiClassName(value.type)
     collector.addType(
       className = className,
       type = TypeSpec.classBuilder(className)
