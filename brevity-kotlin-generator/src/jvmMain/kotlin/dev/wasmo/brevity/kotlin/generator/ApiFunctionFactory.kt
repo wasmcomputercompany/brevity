@@ -5,8 +5,10 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.ir.IrFunction
+import dev.wasmo.brevity.kotlin.KotlinMapper
 
 internal class ApiFunctionFactory(
+  private val kotlinMapper: KotlinMapper,
   private val value: IrFunction,
 ) {
   private val nameAllocator = NameAllocator().apply {
@@ -39,10 +41,10 @@ internal class ApiFunctionFactory(
       }
 
       for (parameter in value.parameters) {
-        addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
+        addParameter(nameAllocator[parameter.name], kotlinMapper.get(parameter.type))
       }
 
-      returns(value.returnType?.kotlinApi ?: UNIT)
+      returns(value.returnType?.let { kotlinMapper.get(it) } ?: UNIT)
     }
     .build()
 }

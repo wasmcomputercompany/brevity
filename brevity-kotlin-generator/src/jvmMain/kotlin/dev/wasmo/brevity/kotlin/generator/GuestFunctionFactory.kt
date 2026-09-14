@@ -13,6 +13,7 @@ import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
+import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.encoders.CoreType
@@ -23,6 +24,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Creates bridge functions that run on the guest.
  */
 internal class GuestFunctionFactory(
+  private val kotlinMapper: KotlinMapper,
+  guestPlatform: GuestPlatform,
   private val encoderFactory: EncoderFactory,
   private val receiver: Receiver,
   private val value: IrFunction,
@@ -53,7 +56,7 @@ internal class GuestFunctionFactory(
 
   private val codeBuilder = CodeBuilder(
     bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-    platform = GuestPlatform,
+    platform = guestPlatform,
     nameAllocator = nameAllocator,
   )
 
@@ -67,7 +70,7 @@ internal class GuestFunctionFactory(
         context(codeBuilder) {
           val parameterValues = mutableListOf<CodeBlock>()
           for (parameter in value.parameters) {
-            addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
+            addParameter(nameAllocator[parameter.name], kotlinMapper.get(parameter.type))
             parameterValues += CodeBlock.of("%N", nameAllocator[parameter.name])
           }
 
@@ -128,7 +131,7 @@ internal class GuestFunctionFactory(
           codeBuilder.add("⇤)\n")
 
           if (coreResult != null) {
-            returns(coreResult.type.kotlinApi)
+            returns(kotlinMapper.get(coreResult.type))
             val returnValue = when {
               coreResult.parameter != null -> coreResult.encoder.load(
                 CodeBlock.of("%N", coreResult.parameter.name),

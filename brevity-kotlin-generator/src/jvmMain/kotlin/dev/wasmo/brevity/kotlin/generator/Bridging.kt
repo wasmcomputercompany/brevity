@@ -4,10 +4,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.DOUBLE
 import com.squareup.kotlinpoet.FLOAT
 import com.squareup.kotlinpoet.INT
-import com.squareup.kotlinpoet.LIST
 import com.squareup.kotlinpoet.LONG
-import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.ServiceName
@@ -18,6 +15,7 @@ import dev.wasmo.brevity.ir.IrField
 import dev.wasmo.brevity.ir.IrFlag
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrParameter
+import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 
 const val kotlinPackagePrefix: String = "wit"
@@ -65,88 +63,10 @@ val CoreType.kotlinCoreType: KtTypeName
     CoreType.Pointer -> INT
   }
 
-val TypeName.Declared.handleName: ClassName
-  get() = ClassName(kotlinApi.packageName, "${kotlinApi.simpleName}Handle")
-
-/**
- * A declared type is nested in its enclosing world or interface.
- *
- * Special cases:
- *
- *  * If the declared type's enclosing service is named 'types', the declared type is promoted to
- *    the enclosing package.
- */
-val TypeName.Declared.kotlinApi: ClassName
-  get() = when {
-    serviceName.name.name == "types" -> serviceName.kotlinApi.peerClass(name.upperCamelCase)
-    else -> serviceName.kotlinApi.nestedClass(name.upperCamelCase)
-  }
-
-/** Map WIT types to Kotlin types. */
-val TypeName.kotlinApi: KtTypeName
-  get() {
-    return when (this) {
-      TypeName.Bool -> Symbols.Kotlin.Boolean
-      TypeName.S8 -> Symbols.Kotlin.Byte
-      TypeName.S16 -> Symbols.Kotlin.Short
-      TypeName.S32 -> Symbols.Kotlin.Int
-      TypeName.S64 -> Symbols.Kotlin.Long
-      TypeName.U8 -> Symbols.Kotlin.UByte
-      TypeName.U16 -> Symbols.Kotlin.UShort
-      TypeName.U32 -> Symbols.Kotlin.UInt
-      TypeName.U64 -> Symbols.Kotlin.ULong
-      TypeName.F32 -> Symbols.Kotlin.Float
-      TypeName.F64 -> Symbols.Kotlin.Double
-      TypeName.Char -> Symbols.Kotlin.Int
-      TypeName.String -> Symbols.Kotlin.String
-      is TypeName.Borrow -> type.kotlinApi
-      is TypeName.Future -> Symbols.KotlinCoroutines.Deferred.parameterizedBy(
-        type?.kotlinApi ?: STAR,
-      )
-
-      is TypeName.List -> when (this.type) {
-        TypeName.Bool -> Symbols.Kotlin.BooleanArray
-        TypeName.S8 -> Symbols.Okio.ByteString
-        TypeName.S16 -> Symbols.Kotlin.ShortArray
-        TypeName.S32 -> Symbols.Kotlin.IntArray
-        TypeName.S64 -> Symbols.Kotlin.LongArray
-        TypeName.U8 -> Symbols.Okio.ByteString
-        TypeName.U16 -> Symbols.Kotlin.UShortArray
-        TypeName.U32 -> Symbols.Kotlin.UIntArray
-        TypeName.U64 -> Symbols.Kotlin.ULongArray
-        TypeName.F32 -> Symbols.Kotlin.FloatArray
-        TypeName.F64 -> Symbols.Kotlin.DoubleArray
-        else -> LIST.parameterizedBy(type.kotlinApi)
-      }.takeUnless { this.size != null } ?: LIST.parameterizedBy(type.kotlinApi)
-
-      is TypeName.Map -> Symbols.KotlinCollections.Map.parameterizedBy(
-        key.kotlinApi,
-        value.kotlinApi,
-      )
-
-      is TypeName.Option -> type.kotlinApi.copy(nullable = true)
-      is TypeName.Result -> Symbols.Brevity.Result.parameterizedBy(
-        ok?.kotlinApi ?: STAR,
-        error?.kotlinApi ?: STAR,
-      )
-
-      is TypeName.Declared -> kotlinApi
-
-      is TypeName.Stream -> Symbols.Brevity.Stream.parameterizedBy(
-        type?.kotlinApi ?: STAR,
-      )
-
-      is TypeName.Tuple -> when (types.size) {
-        2 -> Symbols.Kotlin.Pair.parameterizedBy(*types.map { it.kotlinApi }.toTypedArray())
-        3 -> Symbols.Kotlin.Triple.parameterizedBy(*types.map { it.kotlinApi }.toTypedArray())
-        4 -> Symbols.Brevity.Quad.parameterizedBy(*types.map { it.kotlinApi }.toTypedArray())
-        else -> {
-          val elementType = types.toSet().singleOrNull()?.kotlinApi ?: STAR
-          Symbols.KotlinCollections.List.parameterizedBy(elementType)
-        }
-      }
-    }
-  }
+fun KotlinMapper.getHandleName(name: TypeName.Declared): ClassName {
+  val className = get(name)
+  return ClassName(className.packageName, "${className.simpleName}Handle")
+}
 
 /** Returns true if we've done the work to implement this. */
 val IrFunction.isSupported: Boolean

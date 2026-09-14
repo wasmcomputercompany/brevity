@@ -4,13 +4,15 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.generator.Symbols
-import dev.wasmo.brevity.kotlin.generator.handleName
-import dev.wasmo.brevity.kotlin.generator.kotlinApi
+import dev.wasmo.brevity.kotlin.generator.getHandleName
 import dev.wasmo.brevity.kotlin.generator.plus
 
-object GuestPlatform : Platform {
+class GuestPlatform(
+  private val kotlinMapper: KotlinMapper,
+) : Platform {
   override val identifier: Identifier
     get() = Identifier("guest")
 
@@ -34,11 +36,21 @@ object GuestPlatform : Platform {
 
   context(codeBuilder: CodeBuilder)
   override fun liftResource(id: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of("%L.fromId(%L, ::%T)", codeBuilder.bridge, id, handleType.handleName)
+    CodeBlock.of(
+      "%L.fromId(%L, ::%T)",
+      codeBuilder.bridge,
+      id,
+      kotlinMapper.getHandleName(handleType),
+    )
 
   context(codeBuilder: CodeBuilder)
   override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of("%L.toId<%T>(%L)", codeBuilder.bridge, handleType.kotlinApi, resource)
+    CodeBlock.of(
+      "%L.toId<%T>(%L)",
+      codeBuilder.bridge,
+      kotlinMapper.get(handleType),
+      resource,
+    )
 
   context(codeBuilder: CodeBuilder)
   override fun loadString(address: CodeBlock, byteCount: CodeBlock): CodeBlock {

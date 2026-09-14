@@ -5,10 +5,13 @@ import assertk.assertions.isEqualTo
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.io.toServiceName
 import dev.wasmo.brevity.ir.TypeNameDeclared
+import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
 
 class KotlinNameTest {
+  private val kotlinMapper = KotlinMapper()
+
   @Test
   fun `package name mapping`() {
     val packageName = "wasi:clocks".toPackageName()
@@ -18,7 +21,7 @@ class KotlinNameTest {
       .isEqualTo("wit.wasi.clocks")
     assertThat(serviceName.kotlinApi)
       .isEqualTo(ClassName("wit.wasi.clocks", "WallClock"))
-    assertThat(typeName.kotlinApi)
+    assertThat(kotlinMapper.get(typeName))
       .isEqualTo(ClassName("wit.wasi.clocks", "WallClock", "Datetime"))
   }
 
@@ -31,7 +34,7 @@ class KotlinNameTest {
       .isEqualTo("wit.wasi.clocks.v0_2_12")
     assertThat(serviceName.kotlinApi)
       .isEqualTo(ClassName("wit.wasi.clocks.v0_2_12", "WallClock"))
-    assertThat(typeName.kotlinApi)
+    assertThat(kotlinMapper.get(typeName))
       .isEqualTo(ClassName("wit.wasi.clocks.v0_2_12", "WallClock", "Datetime"))
   }
 
@@ -44,7 +47,7 @@ class KotlinNameTest {
       .isEqualTo("wit.wasi.grandfatherclocks")
     assertThat(serviceName.kotlinApi)
       .isEqualTo(ClassName("wit.wasi.grandfatherclocks", "WallClock"))
-    assertThat(typeName.kotlinApi)
+    assertThat(kotlinMapper.get(typeName))
       .isEqualTo(ClassName("wit.wasi.grandfatherclocks", "WallClock", "Datetime"))
   }
 }

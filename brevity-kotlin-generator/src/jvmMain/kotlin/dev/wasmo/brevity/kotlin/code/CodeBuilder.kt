@@ -94,7 +94,7 @@ class CodeBuilder private constructor(
 
   fun build(): CodeBlock {
     val lastCode = when {
-      platform != GuestPlatform -> code.build()
+      platform !is GuestPlatform -> code.build()
 
       memoryAllocator.used -> buildCodeBlock {
         beginControlFlow(

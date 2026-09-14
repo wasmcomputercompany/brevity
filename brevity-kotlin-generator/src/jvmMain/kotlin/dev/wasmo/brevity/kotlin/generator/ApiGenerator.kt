@@ -20,8 +20,10 @@ import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
+import dev.wasmo.brevity.kotlin.KotlinMapper
 
 class ApiGenerator(
+  private val kotlinMapper: KotlinMapper,
   private val packages: List<IrWitPackage>,
 ) {
   fun generate(): List<QualifiedSpec> {
@@ -53,9 +55,10 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateRecord(value: IrRecord) {
+    val className = kotlinMapper.get(value.type)
     collector.addType(
-      className = value.type.kotlinApi,
-      type = TypeSpec.classBuilder(value.type.kotlinApi)
+      className = className,
+      type = TypeSpec.classBuilder(className)
         .addModifiers(KModifier.DATA)
         .setDeclaration(value)
         .apply {
@@ -63,12 +66,13 @@ class ApiGenerator(
 
           for (field in value.fields) {
             val name = field.kotlinName
-            val parameter = ParameterSpec.builder(name, field.type.kotlinApi)
+            val fieldType = kotlinMapper.get(field.type)
+            val parameter = ParameterSpec.builder(name, fieldType)
               .build()
             constructorBuilder.addParameter(parameter)
 
             addProperty(
-              PropertySpec.builder(name, field.type.kotlinApi)
+              PropertySpec.builder(name, fieldType)
                 .initializer("%N", parameter)
                 .setDeclaration(field)
                 .build(),
@@ -83,9 +87,10 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateResource(value: IrResource) {
+    val className = kotlinMapper.get(value.type)
     collector.addType(
-      className = value.type.kotlinApi,
-      type = TypeSpec.interfaceBuilder(value.type.kotlinApi)
+      className = className,
+      type = TypeSpec.interfaceBuilder(className)
         .setDeclaration(value)
         .addSuperinterface(Symbols.Brevity.Resource)
         .apply {
@@ -93,7 +98,7 @@ class ApiGenerator(
             if (!function.isSupported) continue
             // Don't override close(), it's inherited from the 'Resource' supertype.
             if (function.functionName is FunctionName.ResourceDrop) continue
-            addFunction(ApiFunctionFactory(function).api())
+            addFunction(ApiFunctionFactory(kotlinMapper, function).api())
           }
         }
         .build(),
@@ -102,26 +107,28 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateVariant(value: IrVariant) {
+    val className = kotlinMapper.get(value.type)
     collector.addType(
-      value.type.kotlinApi,
-      TypeSpec.interfaceBuilder(value.type.kotlinApi)
+      className,
+      TypeSpec.interfaceBuilder(className)
         .addModifiers(KModifier.SEALED)
         .setDeclaration(value)
         .apply {
           for (case in value.cases) {
             val type = case.type
             if (type != null) {
+              val caseType = kotlinMapper.get(type)
               addType(
                 TypeSpec.classBuilder(case.kotlinName)
                   .addModifiers(KModifier.DATA)
-                  .addSuperinterface(value.type.kotlinApi)
+                  .addSuperinterface(className)
                   .primaryConstructor(
                     FunSpec.constructorBuilder()
-                      .addParameter("value", type.kotlinApi)
+                      .addParameter("value", caseType)
                       .build(),
                   )
                   .addProperty(
-                    PropertySpec.builder("value", type.kotlinApi)
+                    PropertySpec.builder("value", caseType)
                       .initializer("%N", "value")
                       .build(),
                   )
@@ -132,7 +139,7 @@ class ApiGenerator(
               addType(
                 TypeSpec.objectBuilder(case.kotlinName)
                   .addModifiers(KModifier.DATA)
-                  .addSuperinterface(value.type.kotlinApi)
+                  .addSuperinterface(className)
                   .setDeclaration(case)
                   .build(),
               )
@@ -145,9 +152,10 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateEnum(value: IrEnum) {
+    val className = kotlinMapper.get(value.type)
     collector.addType(
-      className = value.type.kotlinApi,
-      type = TypeSpec.enumBuilder(value.type.kotlinApi)
+      className = className,
+      type = TypeSpec.enumBuilder(className)
         .setDeclaration(value)
         .apply {
           for (case in value.cases) {
@@ -165,14 +173,16 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateTypeAlias(value: IrTypeAlias) {
+    val className = kotlinMapper.get(value.type)
     collector.addType(
-      className = value.type.kotlinApi,
-      type = TypeSpec.classBuilder(value.type.kotlinApi)
+      className = className,
+      type = TypeSpec.classBuilder(className)
         .addModifiers(KModifier.VALUE)
         .addAnnotation(JvmInline::class)
         .setDeclaration(value)
         .apply {
-          val parameter = ParameterSpec.builder("value", value.target.kotlinApi)
+          val targetType = kotlinMapper.get(value.target)
+          val parameter = ParameterSpec.builder("value", targetType)
             .build()
 
           primaryConstructor(
@@ -182,7 +192,7 @@ class ApiGenerator(
           )
 
           addProperty(
-            PropertySpec.builder("value", value.target.kotlinApi)
+            PropertySpec.builder("value", targetType)
               .initializer("%N", parameter)
               .build(),
           )
@@ -193,9 +203,10 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateFlags(value: IrFlags) {
+    val className = kotlinMapper.get(value.type)
     collector.addType(
-      className = value.type.kotlinApi,
-      type = TypeSpec.classBuilder(value.type.kotlinApi)
+      className = className,
+      type = TypeSpec.classBuilder(className)
         .addModifiers(KModifier.DATA)
         .setDeclaration(value)
         .apply {
@@ -248,7 +259,7 @@ class ApiGenerator(
     when (value) {
       is IrInterface -> {
         for (function in value.functions) {
-          builder.addFunction(ApiFunctionFactory(function).api())
+          builder.addFunction(ApiFunctionFactory(kotlinMapper, function).api())
         }
       }
 
@@ -276,7 +287,7 @@ class ApiGenerator(
           for (item in value.items) {
             when (item) {
               is IrExternalApi -> addProperty(item.instanceName, item.serviceName.kotlinApi)
-              is IrFunction -> addFunction(ApiFunctionFactory(item).api())
+              is IrFunction -> addFunction(ApiFunctionFactory(kotlinMapper, item).api())
             }
           }
         }

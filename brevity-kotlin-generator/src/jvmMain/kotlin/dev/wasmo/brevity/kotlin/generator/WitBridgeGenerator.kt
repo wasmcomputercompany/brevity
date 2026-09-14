@@ -8,6 +8,7 @@ import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.io.validation.buildSymbolTable
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.ir.IrWitPackage
+import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
@@ -49,6 +50,10 @@ class WitBridgeGenerator private constructor(
       irFilter: (List<IrWitPackage>) -> List<IrWitPackage> = { it },
       validations: List<Validation> = listOf(RecursionValidator()),
     ): WitBridgeGenerator? = with(issueCollector) {
+      val kotlinMapper = KotlinMapper()
+      val guestPlatform = GuestPlatform(kotlinMapper)
+      val hostPlatform = HostPlatform(kotlinMapper)
+
       val packageReader = collectNoIssuesOrThrow { IoWitPackageReader(fileSystem) }
 
       val ioToplevelPackages = packageDirectories.map { directory ->
@@ -71,28 +76,45 @@ class WitBridgeGenerator private constructor(
 
       validations.forEach { it.validate(declarationIndex) }
 
-      val encoderFactory = EncoderFactory(declarationIndex)
+      val guestEncoderFactory = EncoderFactory(
+        kotlinMapper = kotlinMapper,
+        declarationIndex = declarationIndex,
+        platform = guestPlatform,
+      )
       val guestGenerator = GuestGenerator(
-        encoderFactory = encoderFactory,
+        kotlinMapper = kotlinMapper,
+        guestPlatform = guestPlatform,
+        encoderFactory = guestEncoderFactory,
         declarationIndex = declarationIndex,
         declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
-          encoderFactory,
-          GuestPlatform,
+          encoderFactory = guestEncoderFactory,
+          platform = guestPlatform,
         ),
         roleTracker = roleTracker,
         packages = irPackages,
+      )
+
+      val hostEncoderFactory = EncoderFactory(
+        kotlinMapper = kotlinMapper,
+        declarationIndex = declarationIndex,
+        platform = hostPlatform,
       )
       val hostGenerator = HostGenerator(
-        encoderFactory = encoderFactory,
+        kotlinMapper = kotlinMapper,
+        hostPlatform = hostPlatform,
+        encoderFactory = hostEncoderFactory,
         declarationIndex = declarationIndex,
         declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
-          encoderFactory,
-          HostPlatform,
+          encoderFactory = hostEncoderFactory,
+          platform = hostPlatform,
         ),
         roleTracker = roleTracker,
         packages = irPackages,
       )
-      val apiGenerator = ApiGenerator(irPackages)
+      val apiGenerator = ApiGenerator(
+        kotlinMapper = kotlinMapper,
+        packages = irPackages
+      )
 
       WitBridgeGenerator(
         guest = guestGenerator,

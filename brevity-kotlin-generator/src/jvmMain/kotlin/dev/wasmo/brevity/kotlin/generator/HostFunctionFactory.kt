@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.ir.IrFunction
+import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.CoreType
@@ -17,6 +18,8 @@ import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal class HostFunctionFactory(
+  private val kotlinMapper: KotlinMapper,
+  hostPlatform: HostPlatform,
   encoderFactory: EncoderFactory,
   private val value: IrFunction,
   private val bridge: CodeBlock,
@@ -39,7 +42,7 @@ internal class HostFunctionFactory(
 
   private val codeBuilder = CodeBuilder(
     bridge = bridge,
-    platform = HostPlatform,
+    platform = hostPlatform,
     nameAllocator = nameAllocator,
   )
 
@@ -53,7 +56,7 @@ internal class HostFunctionFactory(
         context(codeBuilder) {
           val parameterValues = mutableListOf<CodeBlock>()
           for (parameter in value.parameters) {
-            addParameter(nameAllocator[parameter.name], parameter.type.kotlinApi)
+            addParameter(nameAllocator[parameter.name], kotlinMapper.get(parameter.type))
             parameterValues += CodeBlock.of("%N", nameAllocator[parameter.name])
           }
 
@@ -100,7 +103,7 @@ internal class HostFunctionFactory(
           codeBuilder.add("⇤)\n")
 
           if (coreResult != null) {
-            returns(coreResult.type.kotlinApi)
+            returns(kotlinMapper.get(coreResult.type))
             val returnValue = when (coreResult.encoder.coreTypes.size) {
               1 -> coreResult.encoder.liftFlat(
                 values = listOf(

@@ -4,16 +4,13 @@ import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
-import dev.wasmo.brevity.kotlin.generator.DeclaredTypeLiftFlatGenerator
-import dev.wasmo.brevity.kotlin.generator.DeclaredTypeLoadGenerator
-import dev.wasmo.brevity.kotlin.generator.DeclaredTypeLowerFlatGenerator
-import dev.wasmo.brevity.kotlin.generator.DeclaredTypeStoreGenerator
 import dev.wasmo.brevity.kotlin.generator.plus
 
-/** An encoder that invokes a function like [DeclaredTypeLoadGenerator]. */
+/** An encoder that invokes a function like [EncoderFactory.Load]. */
 class CallDeclaredTypeEncoder(
-  val type: IrTypeDeclaration,
-  val typeEncoder: Encoder,
+  private val encoderFactory: EncoderFactory,
+  private val type: IrTypeDeclaration,
+  private val typeEncoder: Encoder,
 ) : Encoder() {
   override val coreTypes: List<CoreType>
     get() = typeEncoder.coreTypes
@@ -31,14 +28,7 @@ class CallDeclaredTypeEncoder(
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
-  ): CodeBlock {
-    val subject = DeclaredTypeLoadGenerator(
-      type = type,
-      encoder = typeEncoder,
-      platform = codeBuilder.platform,
-    )
-    return subject.call(baseAddress + offset)
-  }
+  ) = encoderFactory.load(type).call(baseAddress + offset)
 
   context(codeBuilder: CodeBuilder)
   override fun store(
@@ -46,31 +36,16 @@ class CallDeclaredTypeEncoder(
     offset: Int,
     value: CodeBlock,
   ) {
-    val subject = DeclaredTypeStoreGenerator(
-      type = type,
-      encoder = typeEncoder,
-      platform = codeBuilder.platform,
-    )
-    return subject.call(baseAddress + offset, value)
+    encoderFactory.store(type).call(baseAddress + offset, value)
   }
 
   context(codeBuilder: CodeBuilder)
   override fun liftFlat(transformer: Transformer) {
-    val subject = DeclaredTypeLiftFlatGenerator(
-      type = type,
-      encoder = typeEncoder,
-      platform = codeBuilder.platform,
-    )
-    return subject.call(transformer)
+    encoderFactory.liftFlat(type).call(transformer)
   }
 
   context(codeBuilder: CodeBuilder)
   override fun lowerFlat(transformer: Transformer) {
-    val subject = DeclaredTypeLowerFlatGenerator(
-      type = type,
-      encoder = typeEncoder,
-      platform = codeBuilder.platform,
-    )
-    return subject.call(transformer)
+    encoderFactory.lowerFlat(type).call(transformer)
   }
 }

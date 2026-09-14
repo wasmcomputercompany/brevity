@@ -2,11 +2,12 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
-import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
 /** Fake encoder for all the types we don't actually implement yet. */
 class FallbackEncoder(
+  private val kotlinMapper: KotlinMapper,
   private val type: TypeName,
   val coreType: CoreType,
 ) : Encoder() {
@@ -24,7 +25,7 @@ class FallbackEncoder(
     offset: Int,
   ) = CodeBlock.of(
     "TODO(%S)",
-    "load ${type.kotlinApi}",
+    "load ${kotlinMapper.get(type)}",
   )
 
   context(codeBuilder: CodeBuilder)
@@ -33,18 +34,18 @@ class FallbackEncoder(
     offset: Int,
     value: CodeBlock,
   ) {
-    codeBuilder.addStatement("// TODO: store ${type.kotlinApi}")
+    codeBuilder.addStatement("// TODO: store ${kotlinMapper.get(type)}")
   }
 
   context(codeBuilder: CodeBuilder)
   override fun liftFlat(transformer: Transformer) {
     transformer.take()
-    transformer.put("TODO(%S)", "lift ${type.kotlinApi}")
+    transformer.put("TODO(%S)", "lift ${kotlinMapper.get(type)}")
   }
 
   context(codeBuilder: CodeBuilder)
   override fun lowerFlat(transformer: Transformer) {
     transformer.take()
-    transformer.put("TODO(%S)", "lower ${type.kotlinApi}")
+    transformer.put("TODO(%S)", "lower ${kotlinMapper.get(type)}")
   }
 }
