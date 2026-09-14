@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.gradle
 
+import java.io.File
 import org.gradle.api.Action
 import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Plugin
@@ -45,6 +46,19 @@ internal class RealBrevityExtension(
       outputKotlinJvmMain.value(project.layout.buildDirectory.dir("brevity/jvmMain"))
       action.execute(this)
     }
+
+    val downloadOciDependenciesTask = project.tasks.register("downloadOciDependencies", DownloadOciDependenciesTask::class.java) {
+      witOutputDir.value(this.project.layout.buildDirectory.dir("brevity/wit/deps"))
+      for (packageName in brevityTask.get().inputWitPackageNames.get()) {
+        packageNames.add(packageName)
+        val outputFolder = File(witOutputDir.get().asFile, packageName.replace(":", "_"))
+
+        brevityTask.get().inputWitPackageDirectories.from(outputFolder)
+      }
+    }
+
+    brevityTask.get().dependsOn(downloadOciDependenciesTask)
+
 
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     project.plugins.withType<KotlinMultiplatformPluginWrapper> {

@@ -24,13 +24,13 @@ kotlin {
 brevity {
   generateKotlin {
     worlds.add("wasi:http/service@0.3.1")
-    inputWitPackageDirectories.from(
-      File(project.rootDir, "submodules/wasi-p3/proposals/cli/wit"),
-      File(project.rootDir, "submodules/wasi-p3/proposals/clocks/wit"),
-      File(project.rootDir, "submodules/wasi-p3/proposals/filesystem/wit"),
-      File(project.rootDir, "submodules/wasi-p3/proposals/http/wit"),
-      File(project.rootDir, "submodules/wasi-p3/proposals/random/wit"),
-      File(project.rootDir, "submodules/wasi-p3/proposals/sockets/wit"),
+    inputWitPackageNames.addAll(
+      "wasi:cli@0.3.1",
+      "wasi:clocks@0.3.1",
+      "wasi:filesystem@0.3.1",
+      "wasi:http@0.3.1",
+      "wasi:random@0.3.1",
+      "wasi:sockets@0.3.1",
     )
   }
 }
