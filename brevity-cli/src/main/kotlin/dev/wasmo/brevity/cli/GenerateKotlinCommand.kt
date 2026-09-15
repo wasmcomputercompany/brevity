@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.cli
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.options.associate
 import com.github.ajalt.clikt.parameters.options.help
 import com.github.ajalt.clikt.parameters.options.multiple
 import com.github.ajalt.clikt.parameters.options.option
@@ -32,6 +33,14 @@ class GenerateKotlinCommand(
   val world: List<String> by option("--world")
     .multiple()
     .help("the world name like 'command', 'wasi:cli/command', or 'wasi:cli/command@0.3.0'")
+  val customTypeMappings by option("--type")
+    .associate()
+    .help(
+      """
+      |Maps a WIT type to a Kotlin type. The two type names must be fully-qualified and separated
+      |by an equals sign, like 'wasi:clocks/types.duration@0.3.1=kotin.time.Duration'.
+      """.trimMargin(),
+    )
 
   override fun run() = collectNoIssuesOrThrow {
     val commonMainDir = outputKotlinCommonMain.toFile()
@@ -55,6 +64,7 @@ class GenerateKotlinCommand(
           else -> it.filterNamedWorlds(world)
         }
       },
+      customTypeMappings = customTypeMappings,
     ) ?: return@collectNoIssuesOrThrow
 
     val projectSpec = generator.generate()

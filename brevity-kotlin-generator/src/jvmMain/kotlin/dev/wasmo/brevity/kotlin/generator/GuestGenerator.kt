@@ -41,7 +41,7 @@ class GuestGenerator(
     for (service in packages.flatMap { it.services }) {
       for (type in service.types) {
         val typeName = type.type
-        val className = kotlinMapper.get(typeName)
+        val className = kotlinMapper.getAbiClassName(typeName)
         // TODO: this is hacked because we don't also prune unreachable callsites.
         val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
         val fileName = className.simpleNames.joinToString(separator = "") + "Guest"
@@ -141,7 +141,7 @@ class GuestGenerator(
     if (host) {
       val handleBuilder = TypeSpec.classBuilder(kotlinMapper.getHandleName(value.type))
         .addModifiers(KModifier.INTERNAL)
-        .addSuperinterface(kotlinMapper.get(value.type))
+        .addSuperinterface(kotlinMapper.getAbiClassName(value.type))
         .primaryConstructor(
           FunSpec.constructorBuilder()
             .addParameter("id", INT)

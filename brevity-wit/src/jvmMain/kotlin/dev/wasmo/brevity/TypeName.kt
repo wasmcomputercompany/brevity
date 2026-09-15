@@ -20,8 +20,8 @@ sealed class TypeName {
 
   /** Identifies a [dev.wasmo.brevity.ir.IrTypeDeclaration]. */
   data class Declared(
-      val serviceName: ServiceName,
-      val name: Identifier,
+    val serviceName: ServiceName,
+    val name: Identifier,
   ) : TypeName() {
     override fun toString() = nameToString(
       packageName = serviceName.packageName,

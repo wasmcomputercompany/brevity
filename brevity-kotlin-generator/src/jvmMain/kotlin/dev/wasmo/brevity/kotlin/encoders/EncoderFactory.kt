@@ -100,7 +100,7 @@ class EncoderFactory(
             DynamicListEncoder(
               elementEncoder = ByteEncoder,
               listType = Symbols.Kotlin.ByteArray,
-            )
+            ),
           )
 
           else -> DynamicListEncoder(
@@ -128,7 +128,7 @@ class EncoderFactory(
 
   /** Returns an encoder that is used to implement [CallDeclaredTypeEncoder]. */
   private fun getImplementationEncoder(type: IrTypeDeclaration): Encoder {
-    val kotlinType = kotlinMapper.get(type.type)
+    val kotlinType = kotlinMapper.getAbiClassName(type.type)
     return when (type) {
       is IrEnum -> EnumEncoder(
         kotlinType = kotlinType,
@@ -143,19 +143,23 @@ class EncoderFactory(
             flags = type.flags,
             packedFlagEncoder = ByteEncoder,
           )
+
           type.flags.size <= 16 -> FlagsEncoder(
             kotlinType = kotlinType,
             flags = type.flags,
             packedFlagEncoder = ShortEncoder,
           )
+
           type.flags.size <= 32 -> FlagsEncoder(
             kotlinType = kotlinType,
             flags = type.flags,
             packedFlagEncoder = IntEncoder,
           )
+
           else -> FallbackEncoder(kotlinMapper, type.type, CoreType.I32)
         }
       }
+
       is IrRecord -> RecordEncoder(
         kotlinType = kotlinType,
         instanceNameHint = type.name.lowerCamelCase,
@@ -194,7 +198,8 @@ class EncoderFactory(
     protected val encoder: Encoder,
     encodeAction: Identifier,
   ) {
-    val className = kotlinMapper.get(type.type)
+    val className = kotlinMapper.getAbiClassName(type.type)
+    val customType = kotlinMapper.customTypeMappings[type.type]
     val memberName = MemberName(
       className.packageName,
       buildString {
@@ -226,6 +231,40 @@ class EncoderFactory(
 
     context(codeBuilder: CodeBuilder)
     abstract fun generate(bridgeParameter: ParameterSpec): FunSpec
+
+    /** Returns a code block with [value] converted to its ABI type, if necessary. */
+    context(codeBuilder: CodeBuilder)
+    protected fun toWit(value: CodeBlock): CodeBlock {
+      return when {
+        customType != null -> {
+          CodeBlock.of("%L", codeBuilder.newName("witValue"))
+            .also {
+              codeBuilder.addStatement(
+                "val %L = %M.toWit(%L)",
+                it,
+                kotlinMapper.getAdapterMemberName(type.type),
+                value,
+              )
+            }
+        }
+
+        else -> value
+      }
+    }
+
+    /** Returns a code block with [value] converted from its ABI type, if necessary. */
+    context(codeBuilder: CodeBuilder)
+    protected fun fromWit(value: CodeBlock): CodeBlock {
+      return when {
+        customType != null -> CodeBlock.of(
+          "%M.fromWit(%L)",
+          kotlinMapper.getAdapterMemberName(type.type),
+          value,
+        )
+
+        else -> value
+      }
+    }
   }
 
   inner class Load(
@@ -240,12 +279,12 @@ class EncoderFactory(
       return FunSpec.builder(memberName)
         .addParameter(bridgeParameter)
         .addParameter(addressName, codeBuilder.platform.addressType)
-        .returns(className)
+        .returns(customType ?: className)
         .apply {
           context(codeBuilder) {
             codeBuilder.addStatement(
               "return %L",
-              encoder.load(CodeBlock.of("%N", addressName)),
+              fromWit(encoder.load(CodeBlock.of("%N", addressName))),
             )
           }
           addCode(codeBuilder.build())
@@ -277,12 +316,12 @@ class EncoderFactory(
       return FunSpec.builder(memberName)
         .addParameter(bridgeParameter)
         .addParameter(addressName, codeBuilder.platform.addressType)
-        .addParameter(valueName, className)
+        .addParameter(valueName, customType ?: className)
         .apply {
           context(codeBuilder) {
             encoder.store(
               baseAddress = CodeBlock.of("%L", addressName),
-              value = CodeBlock.of("%N", valueName),
+              value = CodeBlock.of("%L", toWit(CodeBlock.of("%N", valueName))),
             )
           }
           addCode(codeBuilder.build())
@@ -310,7 +349,7 @@ class EncoderFactory(
     override fun generate(bridgeParameter: ParameterSpec): FunSpec {
       return FunSpec.builder(memberName)
         .addParameter(bridgeParameter)
-        .returns(className)
+        .returns(customType ?: className)
         .apply {
           context(codeBuilder) {
             val coreValueNames = allocateNames("value", encoder.coreTypes.size)
@@ -319,7 +358,7 @@ class EncoderFactory(
             }
             codeBuilder.addStatement(
               "return %L",
-              encoder.liftFlat(coreValueNames.map { CodeBlock.of("%N", it) }),
+              fromWit(encoder.liftFlat(coreValueNames.map { CodeBlock.of("%N", it) })),
             )
           }
           addCode(codeBuilder.build())
@@ -353,13 +392,14 @@ class EncoderFactory(
       val valueName = codeBuilder.newName("value")
       return FunSpec.builder(memberName)
         .addParameter(bridgeParameter)
-        .addParameter(valueName, className)
+        .addParameter(valueName, customType ?: className)
         .apply {
           context(codeBuilder) {
+            val witValue = toWit(CodeBlock.of("%N", valueName))
             if (encoder.coreTypes.size > 1) {
               val callBuilderName = codeBuilder.newName("callBuilder")
               addParameter(callBuilderName, Symbols.Brevity.CallBuilder)
-              val codeBlocks = encoder.lowerFlat(CodeBlock.of("%N", valueName))
+              val codeBlocks = encoder.lowerFlat(witValue)
               for (coreValue in codeBlocks) {
                 codeBuilder.addStatement("%N.put(%L)", callBuilderName, coreValue)
               }
@@ -367,7 +407,7 @@ class EncoderFactory(
               returns(encoder.coreTypes.single().kotlinCoreType)
               codeBuilder.addStatement(
                 "return %L",
-                encoder.lowerFlat(CodeBlock.of("%N", valueName)).single(),
+                encoder.lowerFlat(witValue).single(),
               )
             }
           }

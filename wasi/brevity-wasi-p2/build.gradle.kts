@@ -25,6 +25,7 @@ brevity {
   generateKotlin {
     worlds.add("wasi:cli/imports")
     worlds.add("wasi:http/proxy")
+    customTypeMappings.put("wasi:clocks/wall-clock.datetime@0.2.0", "kotlin.time.Instant")
     inputWitPackageDirectories.from(
       File(project.rootDir, "submodules/wasi-p2/preview2/cli"),
       File(project.rootDir, "submodules/wasi-p2/preview2/clocks"),

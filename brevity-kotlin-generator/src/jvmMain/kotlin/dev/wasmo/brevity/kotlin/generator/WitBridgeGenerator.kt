@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.kotlin.generator
 
+import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.RoleTracker
@@ -49,10 +50,8 @@ class WitBridgeGenerator private constructor(
       packageDirectories: Collection<Path>,
       irFilter: (List<IrWitPackage>) -> List<IrWitPackage> = { it },
       validations: List<Validation> = listOf(RecursionValidator()),
+      customTypeMappings: Map<String, String> = mapOf(),
     ): WitBridgeGenerator? = with(issueCollector) {
-      val kotlinMapper = KotlinMapper()
-      val guestPlatform = GuestPlatform(kotlinMapper)
-      val hostPlatform = HostPlatform(kotlinMapper)
 
       val packageReader = collectNoIssuesOrThrow { IoWitPackageReader(fileSystem) }
 
@@ -73,6 +72,17 @@ class WitBridgeGenerator private constructor(
 
       val declarationIndex = DeclarationIndex(irPackages)
       val roleTracker = RoleTracker(declarationIndex, irPackages)
+
+      val kotlinMapper = KotlinMapper(
+        customTypeMappings = customTypeMappings.entries.associate { (key, value) ->
+          val typeName = declarationIndex.getDeclaredType(key)
+            ?: error("WIT type not found: '$key'")
+          val ktTypeName = ClassName.bestGuess(value)
+          typeName to ktTypeName
+        }
+      )
+      val guestPlatform = GuestPlatform(kotlinMapper)
+      val hostPlatform = HostPlatform(kotlinMapper)
 
       validations.forEach { it.validate(declarationIndex) }
 
@@ -113,7 +123,7 @@ class WitBridgeGenerator private constructor(
       )
       val apiGenerator = ApiGenerator(
         kotlinMapper = kotlinMapper,
-        packages = irPackages
+        packages = irPackages,
       )
 
       WitBridgeGenerator(

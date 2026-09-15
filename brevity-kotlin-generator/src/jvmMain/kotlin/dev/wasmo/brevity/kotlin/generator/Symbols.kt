@@ -93,6 +93,7 @@ object Symbols {
     )
     val StoreByteArray = MemberName("dev.wasmo.brevity", "storeByteArray")
     val Stream = ClassName("dev.wasmo.brevity", "Stream")
+    val WitAdapter = ClassName("dev.wasmo.brevity", "WitAdapter")
     val World = ClassName("dev.wasmo.brevity", "World")
   }
 }

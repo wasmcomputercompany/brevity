@@ -8,9 +8,16 @@ class DeclarationIndex(
   val types: Map<TypeName.Declared, IrTypeDeclaration>,
   private val services: Map<ServiceName, IrWitPackage.Service>,
 ) {
+  private val typeToStringToType by lazy {
+    types.keys.associateBy(TypeName.Declared::toString)
+  }
+
   operator fun get(typeName: TypeName): IrTypeDeclaration? = types[typeName]
 
   operator fun get(typeName: ServiceName): IrWitPackage.Service? = services[typeName]
+
+  /** Returns the type or null if it is not found. */
+  fun getDeclaredType(typeName: String): TypeName.Declared? = typeToStringToType[typeName]
 
   companion object {
     operator fun invoke(irPackages: List<IrWitPackage>) = DeclarationIndex(

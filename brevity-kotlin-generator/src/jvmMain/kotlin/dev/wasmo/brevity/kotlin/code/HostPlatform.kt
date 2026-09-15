@@ -38,7 +38,7 @@ class HostPlatform(
       "%L.%M<%T>(%L)",
       codeBuilder.bridge,
       Symbols.Brevity.HostBridgeGet,
-      kotlinMapper.get(handleType),
+      kotlinMapper.getAbiClassName(handleType),
       id,
     )
 
@@ -47,7 +47,7 @@ class HostPlatform(
     CodeBlock.of(
       "%L.toId<%T>(%L)",
       codeBuilder.bridge,
-      kotlinMapper.get(handleType),
+      kotlinMapper.getAbiClassName(handleType),
       resource,
     )
 
