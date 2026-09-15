@@ -12,7 +12,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
 
 @CacheableTask
-abstract class DownloadOciDependenciesTask : DefaultTask() {
+abstract class DownloadOciWitTask : DefaultTask() {
   init {
     group = "brevity"
     description = "download WIT files from OCI registry"

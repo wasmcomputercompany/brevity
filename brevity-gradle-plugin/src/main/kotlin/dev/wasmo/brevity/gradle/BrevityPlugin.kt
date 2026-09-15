@@ -1,11 +1,11 @@
 package dev.wasmo.brevity.gradle
 
-import java.io.File
 import org.gradle.api.Action
 import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.dependencies
+import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.KotlinMultiplatformExtension
@@ -25,6 +25,13 @@ class BrevityPlugin : Plugin<Project> {
 internal class RealBrevityExtension(
   val project: Project,
 ) : BrevityExtension {
+  override fun downloadOciWit(action: Action<DownloadOciWitTask>) {
+    project.tasks.register<DownloadOciWitTask>("brevityDownloadOciWit") {
+      witOutputDir.value(project.layout.buildDirectory.dir("brevity/oci-wit"))
+      action.execute(this)
+    }
+  }
+
   override fun generateKotlin(action: Action<BrevityTask>) {
     val cliConfiguration = try {
       project.configurations.create("cliConfiguration") {
@@ -39,39 +46,27 @@ internal class RealBrevityExtension(
       project.configurations.named("cliConfiguration")
     }
 
-    val brevityTask = project.tasks.register("brevity", BrevityTask::class.java) {
+    val task = project.tasks.register("brevityGenerateKotlin", BrevityTask::class.java) {
       classpath.setFrom(cliConfiguration)
       outputKotlinCommonMain.value(project.layout.buildDirectory.dir("brevity/commonMain"))
       outputKotlinWasmWasiMain.value(project.layout.buildDirectory.dir("brevity/wasmWasiMain"))
       outputKotlinJvmMain.value(project.layout.buildDirectory.dir("brevity/jvmMain"))
+      inputWitPackageDirectories.from(project.tasks.withType<DownloadOciWitTask>())
       action.execute(this)
     }
-
-    val downloadOciDependenciesTask = project.tasks.register("downloadOciDependencies", DownloadOciDependenciesTask::class.java) {
-      witOutputDir.value(this.project.layout.buildDirectory.dir("brevity/wit/deps"))
-      for (packageName in brevityTask.get().inputWitPackageNames.get()) {
-        packageNames.add(packageName)
-        val outputFolder = File(witOutputDir.get().asFile, packageName.replace(":", "_"))
-
-        brevityTask.get().inputWitPackageDirectories.from(outputFolder)
-      }
-    }
-
-    brevityTask.get().dependsOn(downloadOciDependenciesTask)
-
 
     @OptIn(ExperimentalKotlinGradlePluginApi::class)
     project.plugins.withType<KotlinMultiplatformPluginWrapper> {
       val kotlin = project.extensions.getByName("kotlin") as KotlinMultiplatformExtension
       kotlin.apply {
         sourceSets.commonMain {
-          generatedKotlin.srcDir(brevityTask.map { it.outputKotlinCommonMain })
+          generatedKotlin.srcDir(task.map { it.outputKotlinCommonMain })
         }
         sourceSets.wasmWasiMain {
-          generatedKotlin.srcDir(brevityTask.map { it.outputKotlinWasmWasiMain })
+          generatedKotlin.srcDir(task.map { it.outputKotlinWasmWasiMain })
         }
         sourceSets.jvmMain {
-          generatedKotlin.srcDir(brevityTask.map { it.outputKotlinJvmMain })
+          generatedKotlin.srcDir(task.map { it.outputKotlinJvmMain })
         }
       }
     }
