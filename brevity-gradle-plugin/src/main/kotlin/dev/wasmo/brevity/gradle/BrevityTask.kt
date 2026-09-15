@@ -20,28 +20,23 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
 
 @CacheableTask
-abstract class BrevityTask : DefaultTask() {
+internal abstract class BrevityTask : DefaultTask() {
   @get:Inject
   abstract val execOperations: ExecOperations
 
   @get:Classpath
   abstract val classpath: ConfigurableFileCollection
 
-  /** Each directory should contain a single .wit package. */
+  /** Each directory should contain a single .wit package, or a nested directories that do. */
   @get:InputFiles
   @get:SkipWhenEmpty
   @get:IgnoreEmptyDirectories
   @get:PathSensitive(PathSensitivity.RELATIVE)
   abstract val inputWitPackageDirectories: ConfigurableFileCollection
 
-  /** World names like 'command', 'wasi:cli/command', or 'wasi:cli/command@0.3.0' */
   @get:Input
   abstract val worlds: ListProperty<String>
 
-  /**
-   * Maps WIT types to Kotlin types. The two type names must be fully-qualified like
-   * `wasi:clocks/types.duration@0.3.1` to `kotin.time.Duration`.
-   */
   @get:Input
   abstract val customTypeMappings: MapProperty<String, String>
 

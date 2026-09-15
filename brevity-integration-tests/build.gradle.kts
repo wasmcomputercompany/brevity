@@ -48,12 +48,7 @@ kotlin {
 }
 
 brevity {
-  generateKotlin {
-    worlds.add("wasmo:testing/wasmo-testing")
-    inputWitPackageDirectories.from(
-      File(projectDir, "src/commonMain/wit"),
-    )
-  }
+  worlds.add("wasmo:testing/wasmo-testing")
 }
 
 val publishTestingArtifacts = tasks.register("publishToMavenLocal", Exec::class.java) {
@@ -67,7 +62,8 @@ val publishTestingArtifacts = tasks.register("publishToMavenLocal", Exec::class.
   )
 }
 
-val compileDevelopmentExecutableKotlinWasmWasi = tasks.named("compileDevelopmentExecutableKotlinWasmWasi")
+val compileDevelopmentExecutableKotlinWasmWasi =
+  tasks.named("compileDevelopmentExecutableKotlinWasmWasi")
 
 tasks.named("jvmTest") {
   // Required by RunKotlinWasmTest.
