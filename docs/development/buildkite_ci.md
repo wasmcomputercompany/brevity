@@ -23,7 +23,7 @@ CI needs `amd64` images even though MacBooks run `aarch64`.
 
 ```bash
 $ export DOCKER_DEFAULT_PLATFORM=linux/amd64
-$ cd ../../brevity-build/brevity-ci
+$ cd brevity-build/brevity-ci
 $ docker build -t wasmo/brevity-ci .
 $ docker push wasmo/brevity-ci
 ```
@@ -39,7 +39,6 @@ Local Execution
 Rebuild the container if necessary.
 
 ```bash
-$ cd ../..
 $ cd brevity-build/brevity-ci
 $ docker build -t wasmo/brevity-ci .
 $ docker push wasmo/brevity-ci
@@ -48,7 +47,6 @@ $ docker push wasmo/brevity-ci
 Next run the build:
 
 ```bash
-$ cd ../..
 $ docker run \
   --volume .:/workdir \
   --workdir /workdir \
