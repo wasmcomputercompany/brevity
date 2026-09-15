@@ -22,9 +22,8 @@ kotlin {
 }
 
 brevity {
-  generateKotlin {
-    worlds.add("wasi:http/service@0.3.1")
-    inputWitPackageNames.addAll(
+  downloadOciWit {
+    packageNames.addAll(
       "wasi:cli@0.3.1",
       "wasi:clocks@0.3.1",
       "wasi:filesystem@0.3.1",
@@ -32,5 +31,8 @@ brevity {
       "wasi:random@0.3.1",
       "wasi:sockets@0.3.1",
     )
+  }
+  generateKotlin {
+    worlds.add("wasi:http/service@0.3.1")
   }
 }

@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.gradle
 
+import java.io.File
 import javax.inject.Inject
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.ConfigurableFileCollection
@@ -44,10 +45,6 @@ abstract class BrevityTask : DefaultTask() {
   @get:Input
   abstract val customTypeMappings: MapProperty<String, String>
 
-  /** A set of wit package names, e.g. wasi:cli@5.0.3 */
-  @get:Input
-  abstract val inputWitPackageNames: ListProperty<String>
-
   @get:OutputDirectory
   internal abstract val outputKotlinCommonMain: DirectoryProperty
 
@@ -64,12 +61,16 @@ abstract class BrevityTask : DefaultTask() {
 
   @TaskAction
   fun execute() {
+    val witPackageDirectories = buildList {
+      collectWitDirectoriesRecursively(inputWitPackageDirectories.toList())
+    }
+
     execOperations.javaexec {
       classpath(this@BrevityTask.classpath)
       mainClass.set("dev.wasmo.brevity.cli.BrevityCommandKt")
       args = buildList {
         add("generate-kotlin")
-        for (file in inputWitPackageDirectories) {
+        for (file in witPackageDirectories) {
           add("--wit")
           add(file.path)
         }
@@ -87,6 +88,22 @@ abstract class BrevityTask : DefaultTask() {
           add("--type")
           add("$key=$value")
         }
+      }
+    }
+  }
+
+  /**
+   * Recursively traverse the raw input [directories] looking for directories that contain `.wit`
+   * files. If a directory contains at least one `.wit` file it is considered to be a package
+   * directory and added to the inputs. Otherwise, its child directories are recursively visited.
+   */
+  private fun MutableList<File>.collectWitDirectoriesRecursively(directories: List<File>) {
+    for (directory in directories) {
+      val children = directory.listFiles() ?: continue
+      if (children.any { it.name.endsWith(".wit", ignoreCase = true) }) {
+        add(directory)
+      } else {
+        collectWitDirectoriesRecursively(children.toList())
       }
     }
   }
