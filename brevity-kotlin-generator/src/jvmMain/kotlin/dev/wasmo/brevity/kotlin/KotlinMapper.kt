@@ -34,8 +34,8 @@ class KotlinMapper(
   }
 
   /**
-   * Returns the generated ABI class for [name], which is nested in its enclosing world or
-   * interface.
+   * Returns the generated Application Binary Interface (ABI) class for [name], which is nested in 
+   * its enclosing world or interface.
    *
    * If the declared type's enclosing service is named 'types', the declared type is promoted to the
    * enclosing package.
