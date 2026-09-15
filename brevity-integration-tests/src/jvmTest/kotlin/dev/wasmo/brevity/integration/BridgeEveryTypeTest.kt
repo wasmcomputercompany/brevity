@@ -543,7 +543,7 @@ class BridgeEveryTypeTest {
   @Test
   fun sizedLists() = runTest {
     val test = BrevityExecutionTester(
-      name = "sizedlists",
+      name = "sizedLists",
       types = listOf(
         SampleType(
           id = Identifier("sized-list-bool"),
@@ -786,6 +786,36 @@ class BridgeEveryTypeTest {
           },
         )
       },
+    )
+
+    test.execute()
+  }
+
+  @Test
+  fun typeAliases() = runTest {
+    val test = BrevityExecutionTester(
+      name = "typeAliases",
+      rawWit = """
+        |  type email-address = string;
+        |""".trimMargin(),
+      types = listOf(
+        SampleType(
+          id = Identifier("email-address"),
+          witType = "email-address",
+          kotlinType = "BrevityTest.EmailAddress",
+          rustType = "bindings::EmailAddress",
+          values = listOf(
+            SampleValue(
+              kotlin = "BrevityTest.EmailAddress(\"hello@wasmo.com\")",
+              rust = "\"hello@wasmo.com\"",
+            ),
+            SampleValue(
+              kotlin = "BrevityTest.EmailAddress(\"noreply@wasmo.com\")",
+              rust = "\"noreply@wasmo.com\"",
+            ),
+          ),
+        ),
+      ),
     )
 
     test.execute()
