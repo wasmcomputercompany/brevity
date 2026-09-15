@@ -12,7 +12,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
 
 @CacheableTask
-abstract class DownloadOciWitTask : DefaultTask() {
+internal abstract class DownloadOciWitTask : DefaultTask() {
   init {
     group = "brevity"
     description = "download WIT files from OCI registry"
@@ -24,9 +24,8 @@ abstract class DownloadOciWitTask : DefaultTask() {
   @get:Inject
   abstract val execOperations: ExecOperations
 
-  // A set of wit package names, e.g. wasi:cli@5.0.3
   @get:Input
-  abstract val packageNames: ListProperty<String>
+  abstract val ociPackages: ListProperty<String>
 
   @TaskAction
   fun execute() {
@@ -41,7 +40,7 @@ abstract class DownloadOciWitTask : DefaultTask() {
     // with real wit files, but here where we need a set of wit files for
     // a named list of packages, it's more straightforward and faster
     // to download them directly.
-    for (packageName in packageNames.get()) {
+    for (packageName in ociPackages.get()) {
       val outputFileName = packageName.replace(":", "_") +
         "/package.wit"
       val outputPath = File(witOutputDir.get().asFile, outputFileName)

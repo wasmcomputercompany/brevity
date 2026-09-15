@@ -22,21 +22,18 @@ kotlin {
 }
 
 brevity {
-  downloadOciWit {
-    packageNames.addAll(
-      "wasi:cli@0.2.0",
-      "wasi:clocks@0.2.0",
-      "wasi:filesystem@0.2.0",
-      "wasi:http@0.2.0",
-      "wasi:io@0.2.0",
-      "wasi:random@0.2.0",
-      "wasi:sockets@0.2.0",
-    )
-  }
-
-  generateKotlin {
-    worlds.add("wasi:cli/imports")
-    worlds.add("wasi:http/proxy")
-    customTypeMappings.put("wasi:clocks/wall-clock.datetime@0.2.0", "kotlin.time.Instant")
-  }
+  ociPackages.addAll(
+    "wasi:cli@0.2.0",
+    "wasi:clocks@0.2.0",
+    "wasi:filesystem@0.2.0",
+    "wasi:http@0.2.0",
+    "wasi:io@0.2.0",
+    "wasi:random@0.2.0",
+    "wasi:sockets@0.2.0",
+  )
+  worlds.addAll(
+    "wasi:cli/imports",
+    "wasi:http/proxy",
+  )
+  customTypeMappings.put("wasi:clocks/wall-clock.datetime@0.2.0", "kotlin.time.Instant")
 }

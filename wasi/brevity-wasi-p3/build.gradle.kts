@@ -22,17 +22,13 @@ kotlin {
 }
 
 brevity {
-  downloadOciWit {
-    packageNames.addAll(
-      "wasi:cli@0.3.1",
-      "wasi:clocks@0.3.1",
-      "wasi:filesystem@0.3.1",
-      "wasi:http@0.3.1",
-      "wasi:random@0.3.1",
-      "wasi:sockets@0.3.1",
-    )
-  }
-  generateKotlin {
-    worlds.add("wasi:http/service@0.3.1")
-  }
+  ociPackages.addAll(
+    "wasi:cli@0.3.1",
+    "wasi:clocks@0.3.1",
+    "wasi:filesystem@0.3.1",
+    "wasi:http@0.3.1",
+    "wasi:random@0.3.1",
+    "wasi:sockets@0.3.1",
+  )
+  worlds.add("wasi:http/service@0.3.1")
 }
