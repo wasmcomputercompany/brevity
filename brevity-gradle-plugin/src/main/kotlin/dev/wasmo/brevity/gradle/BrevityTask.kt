@@ -44,6 +44,10 @@ abstract class BrevityTask : DefaultTask() {
   @get:Input
   abstract val customTypeMappings: MapProperty<String, String>
 
+  /** A set of wit package names, e.g. wasi:cli@5.0.3 */
+  @get:Input
+  abstract val inputWitPackageNames: ListProperty<String>
+
   @get:OutputDirectory
   internal abstract val outputKotlinCommonMain: DirectoryProperty
 

@@ -83,7 +83,7 @@ RUN set -eux; \
     rustc --version
 RUN echo "Adding Rust WebAssembly tools" \
     && rustup target add wasm32-wasip2 \
-    && cargo install --locked wasm-tools \
+    && cargo install --locked wasm-tools wkg \
     \
     && echo "Seeding the Rust cache" \
     && cd /root/ \
