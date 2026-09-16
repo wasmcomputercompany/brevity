@@ -41,25 +41,24 @@ class CallBuilder(
   private var nextI64 = 0
   private val i64s = LongArray(i64Count)
 
-  fun put(v: Any) {
+  fun put(v: Int) {
+    i32s[nextI32++] = v
   }
 
-  fun takeF32() : Float = TODO()
-  fun takeF64() : Double = TODO()
-  fun takeI32() : Int = TODO()
-  fun takeI64() : Long = TODO()
+  fun put(v: Long) {
+    i64s[nextI64++] = v
+  }
 
-  // TODO(jwilson): restore these overloads once we've finished callers.
-  //  fun put(v: Int) {
-  //    i32s[nextI32++] = v
-  //  }
-  //  fun put(v: Long) {
-  //    i64s[nextI64++] = v
-  //  }
-  //  fun put(v: Float) {
-  //    i32s[nextI32++] = v.toBits()
-  //  }
-  //  fun put(v: Double) {
-  //    i64s[nextI64++] = v.toBits()
-  //  }
+  fun put(v: Float) {
+    put(v.toBits())
+  }
+
+  fun put(v: Double) {
+    put(v.toBits())
+  }
+
+  fun takeI32() = i32s[nextI32++ - i32s.size]
+  fun takeI64() = i64s[nextI64++ - i64s.size]
+  fun takeF32() = Float.fromBits(takeI32())
+  fun takeF64() = Double.fromBits(takeI64())
 }
