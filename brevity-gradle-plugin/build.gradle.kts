@@ -15,7 +15,7 @@ if (rootProject.name == "brevity-root") {
   plugins.apply("dev.wasmo.brevity-build")
 } else {
   // Don't poison the build when included in brevity-build.
-  layout.buildDirectory = File(rootDir, "build/brevity-gradle-plugin")
+  layout.buildDirectory = rootProject.layout.buildDirectory.dir("brevity-gradle-plugin").get().asFile
 }
 
 dependencies {
