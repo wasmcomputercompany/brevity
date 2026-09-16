@@ -3,7 +3,7 @@ Change Log
 
 ## Version 0.4.0
 
-_2026-09-06_
+_2026-09-16_
 
  * New: Support type aliases and flags.
  * Breaking: Change APIs to configure the Brevity Gradle plugin.
