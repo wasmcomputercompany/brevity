@@ -57,7 +57,7 @@ val publishTestingArtifacts = tasks.register("publishToMavenLocal", Exec::class.
   commandLine(
     "${rootDir}/gradlew",
     "-Pbrevity.version=0-testing",
-    "-Pbrevity.build.directory=build/publish-for-tests",
+    "-Pbrevity.build.directory=${rootProject.layout.buildDirectory.dir("publish-for-tests").get().asFile}",
     "publishAllPublicationsToMavenLocalRepository",
   )
 }
