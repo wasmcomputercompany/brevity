@@ -1,6 +1,17 @@
 Change Log
 ==========
 
+## Version 0.4.0
+
+_2026-09-06_
+
+ * New: Support type aliases and flags.
+ * Breaking: Change APIs to configure the Brevity Gradle plugin.
+ * New: Support downloading `.wit` files from an OCI registry. This requires [wkg] on the host
+   computer's `$PATH`.
+ * New: `WitAdapter` enables mapping WIT-generated types to Kotlin types.
+
+
 ## Version 0.3.0
 
 _2026-09-02_
@@ -34,3 +45,6 @@ _2026-08-26_
 _2026-08-26_
 
 Initial release.
+
+
+[wkg]: https://github.com/bytecodealliance/wasm-pkg-tools
