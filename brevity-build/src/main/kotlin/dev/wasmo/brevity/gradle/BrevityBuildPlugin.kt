@@ -59,9 +59,10 @@ internal class RealBrevityBuildExtension(
     }
   }
 
+  /** Attempt to balance parallelism vs. thrashing. */
   override fun parallelTests() {
     project.tasks.withType<Test> {
-      maxParallelForks = Runtime.getRuntime().availableProcessors()
+      maxParallelForks = maxOf(Runtime.getRuntime().availableProcessors() / 2, 2)
     }
   }
 
