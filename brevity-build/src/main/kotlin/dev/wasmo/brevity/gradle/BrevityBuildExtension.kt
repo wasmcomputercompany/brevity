@@ -9,5 +9,7 @@ interface BrevityBuildExtension {
     wasm: Boolean = false,
   )
 
+  fun parallelTests()
+
   fun publish()
 }

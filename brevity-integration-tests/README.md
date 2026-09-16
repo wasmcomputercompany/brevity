@@ -56,3 +56,15 @@ via Maven Local (`~/.m2/repository`), published with a special marker version (`
 To publish concurrently with the rest of the Brevity build, we fork a Gradle build with a separate
 output directory (`build/publish-for-tests`). We'd prefer to not fork a Gradle build, but that would
 contaminate Maven Local!
+
+
+Variations
+----------
+
+These tests are executed in parallel. Our JUnit parallelism is per-class.
+
+These tests confirm that we can transmit a value of each type through three code paths:
+
+ * As a parameter (flattened if it encodes to at most 16 core values)
+ * As a parameter with padding, to force it to not be flattened
+ * As a return value (flattened if it encodes to at most 1 core value)

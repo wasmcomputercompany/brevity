@@ -12,6 +12,7 @@ plugins {
 brevityBuild {
   wasmExecutable()
   library(jvm = true, wasm = true)
+  parallelTests()
 }
 
 kotlin {
