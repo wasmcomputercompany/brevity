@@ -59,10 +59,18 @@ internal class RealBrevityBuildExtension(
     }
   }
 
-  /** Attempt to balance parallelism vs. thrashing. */
+
+  /**
+   * Attempt to balance parallelism vs. thrashing.
+   *
+   * As of 2026-09-16, our Buildkite cluster thrashes if parallelism exceeds 2.
+   * It's a x64 with 8vCPU and 32 GB of RAM.
+   *
+   * https://buildkite.com/wasmo/brevity-build/settings
+   */
   override fun parallelTests() {
     project.tasks.withType<Test> {
-      maxParallelForks = maxOf(Runtime.getRuntime().availableProcessors() / 2, 2)
+      maxParallelForks = maxOf(Runtime.getRuntime().availableProcessors() / 4, 2)
     }
   }
 
