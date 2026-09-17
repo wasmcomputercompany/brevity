@@ -17,6 +17,7 @@ data class SampleType(
   val kotlinEqualityMethod: String? = null,
   val witType: String,
   val kotlinType: String,
+  val kotlinTypeMapping: Boolean = false,
   val rustType: String,
   val values: List<SampleValue>,
 ) {

@@ -39,6 +39,7 @@ class BrevityExecutionTester(
   val fileSystem: FileSystem = FileSystem.SYSTEM,
   val name: String,
   val rawWit: String = "",
+  val extraFiles: Map<Path, String> = mapOf(),
   val types: List<SampleType>,
 ) {
   private val layout = ProjectLayout(
@@ -54,6 +55,7 @@ class BrevityExecutionTester(
         launch { generateApiKotlinModule() }
         launch { generateGuestAppKotlinModule() }
         launch { generateHostAppKotlinModule() }
+        launch { writeExtraFiles() }
       }
 
       val wit = launch {
@@ -152,6 +154,9 @@ class BrevityExecutionTester(
         val generator = WitBridgeGenerator.precompile(
           fileSystem = fileSystem,
           packageDirectories = listOf(layout.wit),
+          customTypeMappings = types
+            .filter { it.kotlinTypeMapping }
+            .associate { "brevity:testing/brevity-test.${it.witType}" to it.kotlinType },
         ) ?: return@collectNoIssuesOrThrow
 
         val projectSpec = generator.generate()
@@ -178,6 +183,18 @@ class BrevityExecutionTester(
           |
           """.trimMargin(),
         )
+      }
+    }
+  }
+
+  suspend fun writeExtraFiles() {
+    for ((path, content) in extraFiles) {
+      executeIo("writeExtraFiles") {
+        val filePath = layout.path / path
+        fileSystem.createDirectories(filePath.parent!!)
+        fileSystem.write(filePath) {
+          writeUtf8(content)
+        }
       }
     }
   }
