@@ -8,10 +8,14 @@ class ProjectLayout(
   val wit: Path
     get() = path / "wit"
 
-  val api: Path
-    get() = path / "api"
-  val apiSrc: Path
-    get() = api / "src"
+  val brevity: Path
+    get() = path / "brevity"
+  val brevitySrc: Path
+    get() = brevity / "src"
+  val brevitySrcJvm: Path
+    get() = brevity / "src@jvm"
+  val brevitySrcWasmWasi: Path
+    get() = brevity / "src@wasmWasi"
 
   val guest: Path
     get() = path / "guest"

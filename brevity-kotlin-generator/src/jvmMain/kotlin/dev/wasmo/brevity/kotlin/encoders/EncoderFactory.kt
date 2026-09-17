@@ -242,7 +242,7 @@ class EncoderFactory(
               codeBuilder.addStatement(
                 "val %L = %M.toWit(%L)",
                 it,
-                kotlinMapper.getAdapterMemberName(type.type),
+                kotlinMapper.getAdaptersObjectMemberName(type.type),
                 value,
               )
             }
@@ -258,7 +258,7 @@ class EncoderFactory(
       return when {
         customType != null -> CodeBlock.of(
           "%M.fromWit(%L)",
-          kotlinMapper.getAdapterMemberName(type.type),
+          kotlinMapper.getAdaptersObjectMemberName(type.type),
           value,
         )
 

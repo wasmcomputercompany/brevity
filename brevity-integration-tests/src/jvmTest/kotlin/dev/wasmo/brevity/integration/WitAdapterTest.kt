@@ -15,7 +15,7 @@ class WitAdapterTest {
         |
         """.trimMargin(),
       extraFiles = mapOf(
-        "api/src/wit/brevity/testing/RealAdapters.kt".toPath() to """
+        "brevity/src/wit/brevity/testing/RealAdapters.kt".toPath() to """
           |package wit.brevity.testing
           |
           |import dev.wasmo.brevity.WitAdapter

@@ -7,7 +7,6 @@ import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.generator.Symbols
-import dev.wasmo.brevity.kotlin.generator.getHandleName
 import dev.wasmo.brevity.kotlin.generator.plus
 
 class GuestPlatform(

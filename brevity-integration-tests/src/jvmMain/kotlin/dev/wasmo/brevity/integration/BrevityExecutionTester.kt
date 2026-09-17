@@ -52,7 +52,7 @@ class BrevityExecutionTester(
     coroutineScope {
       val kotlinToolchain = launch {
         launch { generateKotlinProject() }
-        launch { generateApiKotlinModule() }
+        launch { generateBrevityKotlinModule() }
         launch { generateGuestAppKotlinModule() }
         launch { generateHostAppKotlinModule() }
         launch { writeExtraFiles() }
@@ -162,9 +162,9 @@ class BrevityExecutionTester(
         val projectSpec = generator.generate()
         projectSpec.writeTo(
           fileSystem = fileSystem,
-          commonMain = layout.apiSrc,
-          wasmWasiMain = layout.guestSrc,
-          jvmMain = layout.hostSrc,
+          commonMain = layout.brevitySrc,
+          wasmWasiMain = layout.brevitySrcWasmWasi,
+          jvmMain = layout.brevitySrcJvm,
         )
       }
     }
@@ -177,7 +177,7 @@ class BrevityExecutionTester(
         writeUtf8(
           """
           |modules:
-          |  - ./api
+          |  - ./brevity
           |  - ./guest
           |  - ./host
           |
@@ -199,10 +199,10 @@ class BrevityExecutionTester(
     }
   }
 
-  suspend fun generateApiKotlinModule() {
-    executeIo("generateApiKotlinModule") {
-      fileSystem.createDirectories(layout.api)
-      fileSystem.write(layout.api / "module.yaml") {
+  suspend fun generateBrevityKotlinModule() {
+    executeIo("generateBrevityKotlinModule") {
+      fileSystem.createDirectories(layout.brevity)
+      fileSystem.write(layout.brevity / "module.yaml") {
         writeUtf8(
           """
           |product:
@@ -256,7 +256,7 @@ class BrevityExecutionTester(
           |  - mavenLocal
           |
           |dependencies:
-          |  - ../api
+          |  - ../brevity
           |  - com.squareup.okio:okio:3.16.4
           |  - dev.wasmo.brevity:brevity:0-testing
           |
@@ -311,7 +311,7 @@ class BrevityExecutionTester(
           |  - mavenLocal
           |
           |dependencies:
-          |  - ../api
+          |  - ../brevity
           |  - com.dylibso.chicory:runtime:1.7.5
           |  - com.squareup.okio:okio:3.16.4
           |  - com.willowtreeapps.assertk:assertk:0.28.1

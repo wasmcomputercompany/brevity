@@ -8,14 +8,12 @@ import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.ServiceName
-import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrField
 import dev.wasmo.brevity.ir.IrFlag
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrParameter
-import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 
 const val kotlinPackagePrefix: String = "wit"
@@ -62,11 +60,6 @@ val CoreType.kotlinCoreType: KtTypeName
     CoreType.F64 -> DOUBLE
     CoreType.Pointer -> INT
   }
-
-fun KotlinMapper.getHandleName(name: TypeName.Declared): ClassName {
-  val className = getAbiClassName(name)
-  return ClassName(className.packageName, "${className.simpleName}Handle")
-}
 
 /** Returns true if we've done the work to implement this. */
 val IrFunction.isSupported: Boolean

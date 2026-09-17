@@ -41,17 +41,15 @@ class GuestGenerator(
     for (service in packages.flatMap { it.services }) {
       for (type in service.types) {
         val typeName = type.type
-        val className = kotlinMapper.getAbiClassName(typeName)
         // TODO: this is hacked because we don't also prune unreachable callsites.
         val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
-        val fileName = className.simpleNames.joinToString(separator = "") + "Guest"
 
         result.collect(
           sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
           locations = setOf(type.location),
           optIns = guestOptIns,
-          packageName = className.packageName,
-          fileName = fileName,
+          packageName = typeName.serviceName.kotlinApi.packageName,
+          fileName = "${typeName.name.upperCamelCase}Guest",
         ) {
           generateTypeFunctions(type, roles)
           declaredTypeEncodersGenerator.generate(type, roles)
