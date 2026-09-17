@@ -327,7 +327,8 @@ class KotlinGeneratorTest {
         /**
          * A catch-all.
          */
-        public data class Other(
+        @JvmInline
+        public value class Other(
           public val `value`: String?,
         ) : ErrorCode
       }

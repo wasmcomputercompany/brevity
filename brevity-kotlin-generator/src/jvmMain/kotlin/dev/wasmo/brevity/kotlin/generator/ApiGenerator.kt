@@ -122,7 +122,8 @@ class ApiGenerator(
               val caseType = kotlinMapper.get(type)
               addType(
                 TypeSpec.classBuilder(case.kotlinName)
-                  .addModifiers(KModifier.DATA)
+                  .addModifiers(KModifier.VALUE)
+                  .addAnnotation(JvmInline::class)
                   .addSuperinterface(className)
                   .primaryConstructor(
                     FunSpec.constructorBuilder()
