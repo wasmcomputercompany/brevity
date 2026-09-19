@@ -51,6 +51,7 @@ class WitBridgeGenerator private constructor(
       irFilter: (List<IrWitPackage>) -> List<IrWitPackage> = { it },
       validations: List<Validation> = listOf(RecursionValidator()),
       customTypeMappings: Map<String, String> = mapOf(),
+      supportAsync: Boolean = false,
     ): WitBridgeGenerator? = with(issueCollector) {
 
       val packageReader = collectNoIssuesOrThrow { IoWitPackageReader(fileSystem) }
@@ -102,6 +103,7 @@ class WitBridgeGenerator private constructor(
         ),
         roleTracker = roleTracker,
         packages = irPackages,
+        supportAsync = supportAsync,
       )
 
       val hostEncoderFactory = EncoderFactory(
@@ -120,10 +122,12 @@ class WitBridgeGenerator private constructor(
         ),
         roleTracker = roleTracker,
         packages = irPackages,
+        supportAsync = supportAsync,
       )
       val apiGenerator = ApiGenerator(
         kotlinMapper = kotlinMapper,
         packages = irPackages,
+        supportAsync = supportAsync,
       )
 
       WitBridgeGenerator(

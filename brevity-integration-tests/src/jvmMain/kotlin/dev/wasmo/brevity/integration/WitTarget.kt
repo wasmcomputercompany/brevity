@@ -40,6 +40,11 @@ class WitTarget(
       passAsReturnValue(
         type = type,
       )
+      if (type.async) {
+        asyncReturnValue(type = type)
+        asyncFutureReturnValue(type = type)
+        futureReturnValue(type = type)
+      }
     }
     writeUtf8(
       """
@@ -89,6 +94,39 @@ class WitTarget(
       |  export pass-as-return-value-${type.id}: func(
       |    index: s32,
       |  ) -> ${type.witType};
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.asyncReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |  export async-return-value-${type.id}: async func(
+      |    index: s32,
+      |  ) -> ${type.witType};
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.asyncFutureReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |  export async-future-return-value-${type.id}: async func(
+      |    index: s32,
+      |  ) -> future<${type.witType}>;
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.futureReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |  export future-return-value-${type.id}: func(
+      |    index: s32,
+      |  ) -> future<${type.witType}>;
       |
       """.trimMargin(),
     )

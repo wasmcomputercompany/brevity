@@ -157,6 +157,7 @@ class BrevityExecutionTester(
           customTypeMappings = types
             .filter { it.kotlinTypeMapping }
             .associate { "brevity:testing/brevity-test.${it.witType}" to it.kotlinType },
+          supportAsync = true,
         ) ?: return@collectNoIssuesOrThrow
 
         val projectSpec = generator.generate()
@@ -222,6 +223,7 @@ class BrevityExecutionTester(
           |dependencies:
           |  - com.squareup.okio:okio:3.16.4
           |  - dev.wasmo.brevity:brevity:0-testing
+          |  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2
           |
           |dependencies@jvm:
           |  - com.dylibso.chicory:runtime:1.7.5
@@ -259,6 +261,7 @@ class BrevityExecutionTester(
           |  - ../brevity
           |  - com.squareup.okio:okio:3.16.4
           |  - dev.wasmo.brevity:brevity:0-testing
+          |  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2
           |
           """.trimMargin(),
         )
@@ -279,6 +282,19 @@ class BrevityExecutionTester(
           |
           |[dependencies]
           |wit-bindgen = "0.58.0"
+          |
+          """.trimMargin(),
+        )
+        if (types.any { it.async }) {
+          writeUtf8(
+            """
+            |futures = "0.3.34"
+            |
+            """.trimMargin(),
+          )
+        }
+        writeUtf8(
+          """
           |
           |[lib]
           |path = "src/${name}_lib.rs"
@@ -320,6 +336,7 @@ class BrevityExecutionTester(
           |  - dev.wasmo.brevity:brevity-wasi-p3:0-testing
           |  - dev.wasmo.brevity:brevity-wasi:0-testing
           |  - dev.wasmo.brevity:brevity:0-testing
+          |  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2
           |
           """.trimMargin(),
         )

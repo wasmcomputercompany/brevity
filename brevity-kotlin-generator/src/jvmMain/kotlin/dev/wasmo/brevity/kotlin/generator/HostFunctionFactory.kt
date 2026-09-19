@@ -23,6 +23,7 @@ internal class HostFunctionFactory(
   encoderFactory: EncoderFactory,
   private val value: IrFunction,
   private val bridge: CodeBlock,
+  private val supportAsync: Boolean,
 ) {
   private val used = AtomicBoolean()
 
@@ -54,6 +55,9 @@ internal class HostFunctionFactory(
       .addModifiers(KModifier.OVERRIDE)
       .apply {
         context(codeBuilder) {
+          if (value.async && supportAsync) {
+            addModifiers(KModifier.SUSPEND)
+          }
           val parameterValues = mutableListOf<CodeBlock>()
           for (parameter in value.parameters) {
             addParameter(nameAllocator[parameter.name], kotlinMapper.get(parameter.type))

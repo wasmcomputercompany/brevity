@@ -10,6 +10,7 @@ import dev.wasmo.brevity.kotlin.KotlinMapper
 internal class ApiFunctionFactory(
   private val kotlinMapper: KotlinMapper,
   private val value: IrFunction,
+  private val supportAsync: Boolean,
 ) {
   private val nameAllocator = NameAllocator().apply {
     // Pre-allocate all the names we'll need.
@@ -21,6 +22,9 @@ internal class ApiFunctionFactory(
   fun api() = FunSpec.builder(value.kotlinName)
     .addModifiers(KModifier.ABSTRACT)
     .apply {
+      if (value.async && supportAsync) {
+        addModifiers(KModifier.SUSPEND)
+      }
       val kdoc = buildString {
         val functionDocumentation = value.documentation
         if (functionDocumentation != null) {

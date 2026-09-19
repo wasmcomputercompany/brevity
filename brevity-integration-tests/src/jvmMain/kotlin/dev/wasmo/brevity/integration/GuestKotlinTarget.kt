@@ -34,6 +34,8 @@ class GuestKotlinTarget(
       |import kotlin.wasm.unsafe.ComponentModelInternalApi
       |import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
       |import kotlin.wasm.unsafe.componentModelRealloc
+      |import kotlinx.coroutines.CompletableDeferred
+      |import kotlinx.coroutines.Deferred
       |import wit.brevity.testing.BrevityTest
       |import wit.brevity.testing.guest
       |
@@ -55,6 +57,11 @@ class GuestKotlinTarget(
         padding = 16,
       )
       passAsReturnValue(type)
+      if (type.async) {
+        asyncReturnValue(type)
+        asyncFutureReturnValue(type)
+        futureReturnValue(type)
+      }
     }
     writeUtf8(
       """
@@ -156,6 +163,39 @@ class GuestKotlinTarget(
       $$"""
       |      else -> error("unexpected index: $index")
       |    }
+      |  }
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.asyncReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |  override suspend fun asyncReturnValue${type.idUpperCamel}(index: Int): ${type.kotlinType} {
+      |    return passAsReturnValue${type.idUpperCamel}(index)
+      |  }
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.asyncFutureReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |  override suspend fun asyncFutureReturnValue${type.idUpperCamel}(index: Int): Deferred<${type.kotlinType}> {
+      |    return CompletableDeferred(passAsReturnValue${type.idUpperCamel}(index))
+      |  }
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.futureReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |  override fun futureReturnValue${type.idUpperCamel}(index: Int): Deferred<${type.kotlinType}> {
+      |    return CompletableDeferred(passAsReturnValue${type.idUpperCamel}(index))
       |  }
       |
       """.trimMargin(),
