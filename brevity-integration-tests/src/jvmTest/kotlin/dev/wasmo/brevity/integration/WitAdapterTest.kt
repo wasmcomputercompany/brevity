@@ -15,19 +15,20 @@ class WitAdapterTest {
         |
         """.trimMargin(),
       extraFiles = mapOf(
-        "api/src/wit/brevity/testing/RealAdapters.kt".toPath() to """
+        "brevity/src/wit/brevity/testing/RealAdapters.kt".toPath() to """
           |package wit.brevity.testing
           |
           |import dev.wasmo.brevity.WitAdapter
           |import kotlin.time.Instant
+          |import wit.brevity.testing.Adapters.BrevityTestDatetime
           |
-          |object RealAdapters : Adapters {
-          |  override val brevityTestDatetime = object : WitAdapter<BrevityTest.Datetime, Instant> {
-          |    override fun fromWit(wit: BrevityTest.Datetime) =
+          |internal object RealAdapters : Adapters {
+          |  override val brevityTestDatetime = object : WitAdapter<BrevityTestDatetime, Instant> {
+          |    override fun fromWit(wit: BrevityTestDatetime) =
           |      Instant.fromEpochMilliseconds(wit.value)
           |
           |    override fun toWit(value: Instant) =
-          |      BrevityTest.Datetime(value.toEpochMilliseconds())
+          |      BrevityTestDatetime(value.toEpochMilliseconds())
           |  }
           |}
           |

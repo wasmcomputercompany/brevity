@@ -3,13 +3,13 @@ package dev.wasmo.brevity.kotlin
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.LIST
-import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.MemberName.Companion.member
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import com.squareup.kotlinpoet.TypeSpec
+import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.generator.QualifiedSpec
 import dev.wasmo.brevity.kotlin.generator.Symbols
@@ -34,18 +34,39 @@ class KotlinMapper(
   }
 
   /**
-   * Returns the generated Application Binary Interface (ABI) class for [name], which is nested in 
+   * Returns the generated Application Binary Interface (ABI) class for [name], which is nested in
    * its enclosing world or interface.
+   *
+   * If the declared type is mapped, it is nested in the Adapters interface
    *
    * If the declared type's enclosing service is named 'types', the declared type is promoted to the
    * enclosing package.
    */
   fun getAbiClassName(name: TypeName.Declared): ClassName {
-    val serviceName = name.serviceName.kotlinApi
     return when {
-      name.serviceName.name.name == "types" -> serviceName.peerClass(name.name.upperCamelCase)
-      else -> serviceName.nestedClass(name.name.upperCamelCase)
+      customTypeMappings[name] != null -> {
+        getAdaptersInterfaceName(name)
+          .nestedClass("${name.serviceName.upperCamelCase}${name.upperCamelCase}")
+      }
+
+      name.serviceName.name.name == "types" -> ClassName(
+        name.serviceName.packageName.kotlinApi,
+        name.upperCamelCase,
+      )
+
+      else -> ClassName(
+        name.serviceName.packageName.kotlinApi,
+        name.serviceName.upperCamelCase,
+        name.upperCamelCase,
+      )
     }
+  }
+
+  fun getHandleName(name: TypeName.Declared): ClassName {
+    return ClassName(
+      name.serviceName.packageName.kotlinApi,
+      "${name.serviceName.upperCamelCase}${name.upperCamelCase}Handle",
+    )
   }
 
   /** Map WIT types to Kotlin types. */
@@ -134,8 +155,8 @@ class KotlinMapper(
     val result = mutableMapOf<ClassName, TypeSpec.Builder>()
 
     for ((name, target) in customTypeMappings) {
-      val memberName = getAdapterMemberName(name)
-      val adaptersClassName = ClassName(memberName.packageName, "Adapters")
+      val memberName = getAdaptersObjectMemberName(name)
+      val adaptersClassName = getAdaptersInterfaceName(name)
 
       val typeSpecBuilder = result.getOrPut(adaptersClassName) {
         TypeSpec.interfaceBuilder(adaptersClassName)
@@ -153,7 +174,7 @@ class KotlinMapper(
             |  ...
             |}
             |```
-            """.trimMargin()
+            """.trimMargin(),
           )
       }
 
@@ -163,8 +184,8 @@ class KotlinMapper(
           Symbols.Brevity.WitAdapter.parameterizedBy(
             getAbiClassName(name),
             target,
-          )
-        ).build()
+          ),
+        ).build(),
       )
     }
 
@@ -176,12 +197,26 @@ class KotlinMapper(
           fileName = className.simpleName,
         ),
         className = className,
-        type = typeSpecBuilder.build()
+        type = typeSpecBuilder.build(),
       )
     }
   }
 
-  fun getAdapterMemberName(name: TypeName.Declared): MemberName =
-    ClassName(getAbiClassName(name).packageName, "RealAdapters")
-      .member("${name.serviceName.name.lowerCamelCase}${name.name.upperCamelCase}")
+  private fun getAdaptersInterfaceName(memberName: TypeName.Declared) =
+    ClassName(memberName.serviceName.packageName.kotlinApi, "Adapters")
+
+  private fun getAdaptersObjectName(memberName: TypeName.Declared) =
+    ClassName(memberName.serviceName.packageName.kotlinApi, "RealAdapters")
+
+  fun getAdaptersObjectMemberName(name: TypeName.Declared) =
+    getAdaptersObjectName(name).member("${name.serviceName.lowerCamelCase}${name.upperCamelCase}")
+
+  private val ServiceName.lowerCamelCase: String
+    get() = name.lowerCamelCase
+
+  private val ServiceName.upperCamelCase: String
+    get() = name.upperCamelCase
+
+  private val TypeName.Declared.upperCamelCase: String
+    get() = name.upperCamelCase
 }

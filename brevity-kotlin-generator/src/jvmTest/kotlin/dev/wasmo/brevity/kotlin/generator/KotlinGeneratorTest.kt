@@ -1212,7 +1212,7 @@ class KotlinGeneratorTest {
       )
       private external fun types_pollable_close_import(self: Int)
 
-      internal class PollableHandle(
+      internal class TypesPollableHandle(
         private val id: Int,
       ) : Pollable {
         override fun ready(): Boolean {
@@ -1240,9 +1240,9 @@ class KotlinGeneratorTest {
 
       public fun lowerFlat_Types_Pollable_guest(bridge: GuestBridge, value_: Pollable): Int = bridge.toId<Pollable>(value_)
 
-      public fun load_Types_Pollable_guest(bridge: GuestBridge, address: Pointer): Pollable = bridge.fromId((address).loadInt(), ::PollableHandle)
+      public fun load_Types_Pollable_guest(bridge: GuestBridge, address: Pointer): Pollable = bridge.fromId((address).loadInt(), ::TypesPollableHandle)
 
-      public fun liftFlat_Types_Pollable_guest(bridge: GuestBridge, value_: Int): Pollable = bridge.fromId(value_, ::PollableHandle)
+      public fun liftFlat_Types_Pollable_guest(bridge: GuestBridge, value_: Int): Pollable = bridge.fromId(value_, ::TypesPollableHandle)
 
       """.trimIndent(),
     )

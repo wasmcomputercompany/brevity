@@ -38,15 +38,14 @@ class HostGenerator(
     for (service in packages.flatMap { it.services }) {
       for (type in service.types) {
         val typeName = type.type
-        val className = kotlinMapper.getAbiClassName(typeName)
         // TODO: this is hacked because we don't also prune unreachable callsites.
         val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
 
         result.collect(
           sourceSet = QualifiedSpec.SourceSet.JvmMain,
           locations = setOf(type.location),
-          packageName = className.packageName,
-          fileName = className.simpleNames.joinToString(separator = "") + "Host",
+          packageName = typeName.serviceName.kotlinApi.packageName,
+          fileName = "${typeName.name.upperCamelCase}Host",
         ) {
           declaredTypeEncodersGenerator.generate(type, roles)
         }
