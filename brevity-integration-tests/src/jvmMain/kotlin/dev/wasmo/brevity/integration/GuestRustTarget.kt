@@ -21,6 +21,17 @@ class GuestRustTarget(
   }
 
   private fun BufferedSink.writeRust() {
+    if (types.any { it.async }) {
+      writeUtf8(
+        """
+        |use crate::bindings::wit_future::FuturePayload;
+        |use wit_bindgen::FutureReader;
+        |extern crate futures;
+        |
+        |
+        """.trimMargin(),
+      )
+    }
     writeUtf8(
       """
       |mod bindings {
@@ -47,6 +58,11 @@ class GuestRustTarget(
         padding = 16,
       )
       passAsReturnValue(type)
+      if (type.async) {
+        asyncReturnValue(type)
+        asyncFutureReturnValue(type)
+        futureReturnValue(type)
+      }
     }
     writeUtf8(
       """
@@ -66,22 +82,22 @@ class GuestRustTarget(
 
     writeUtf8(
       """
-      |  fn pass_as_parameter_${type.idLowerSnake}$paddingSuffix(
+      |    fn pass_as_parameter_${type.idLowerSnake}$paddingSuffix(
       |
       """.trimMargin(),
     )
     for (i in 0 until padding) {
       writeUtf8(
         """
-        |    p$i: i32,
+        |        _p$i: i32,
         |
         """.trimMargin(),
       )
     }
     writeUtf8(
       """
-      |    v: ${type.rustType}
-      |  ) -> i32 {
+      |        v: ${type.rustType}
+      |    ) -> i32 {
       |
       """.trimMargin(),
     )
@@ -89,14 +105,14 @@ class GuestRustTarget(
     if (type.compareAsString) {
       writeUtf8(
         """
-        |    let v_str = v.to_string();
+        |        let v_str = v.to_string();
         |
         """.trimMargin(),
       )
       for ((index, value) in type.values.withIndex()) {
         writeUtf8(
           """
-          |    if v_str == (${value.rust}).to_string() { return $index }
+          |        if v_str == (${value.rust}).to_string() { return $index }
           |
           """.trimMargin(),
         )
@@ -105,7 +121,7 @@ class GuestRustTarget(
       for ((index, value) in type.values.withIndex()) {
         writeUtf8(
           """
-          |    if v == ${value.rust} { return $index }
+          |        if v == ${value.rust} { return $index }
           |
           """.trimMargin(),
         )
@@ -113,8 +129,8 @@ class GuestRustTarget(
     }
     writeUtf8(
       """
-      |    panic!("unexpected value")
-      |  }
+      |        panic!("unexpected value")
+      |    }
       |
       """.trimMargin(),
     )
@@ -123,24 +139,70 @@ class GuestRustTarget(
   private fun BufferedSink.passAsReturnValue(type: SampleType) {
     writeUtf8(
       """
-      |  fn pass_as_return_value_${type.idLowerSnake}(index: i32) -> ${type.rustType} {
-      |    match index {
+      |    fn pass_as_return_value_${type.idLowerSnake}(index: i32) -> ${type.rustType} {
+      |        match index {
       |
       """.trimMargin(),
     )
     for ((index, value) in type.values.withIndex()) {
       writeUtf8(
         """
-        |      $index => (${value.rust}).to_owned(),
+        |            $index => (${value.rust}).to_owned(),
         |
         """.trimMargin(),
       )
     }
     writeUtf8(
       """
-      |      _ => panic!("unexpected index {}", index)
+      |            _ => panic!("unexpected index {}", index)
+      |        }
       |    }
-      |  }
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.asyncReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |    async fn async_return_value_${type.idLowerSnake}(
+      |        index: i32
+      |    ) -> ${type.rustType} {
+      |        Self::pass_as_return_value_${type.idLowerSnake}(index)
+      |    }
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.asyncFutureReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |    async fn async_future_return_value_${type.idLowerSnake}(
+      |        index: i32
+      |    ) -> FutureReader<${type.rustType}> {
+      |        Self::future_return_value_${type.idLowerSnake}(index)
+      |    }
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.futureReturnValue(type: SampleType) {
+    writeUtf8(
+      """
+      |    fn future_return_value_${type.idLowerSnake}(
+      |        index: i32
+      |    ) -> FutureReader<${type.rustType}> {
+      |        let (future_writer, future_reader) = unsafe {
+      |            wit_bindgen::rt::async_support::future_new(
+      |                || -> ${type.rustType} { panic!("future default") },
+      |                ${type.rustType}::VTABLE,
+      |            )
+      |        };
+      |        future_writer.write(Self::pass_as_return_value_${type.idLowerSnake}(index));
+      |        future_reader
+      |    }
       |
       """.trimMargin(),
     )

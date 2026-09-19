@@ -31,6 +31,7 @@ class HostGenerator(
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
+  private val supportAsync: Boolean,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
@@ -403,6 +404,7 @@ class HostGenerator(
     encoderFactory = encoderFactory,
     value = function,
     bridge = bridge,
+    supportAsync = supportAsync,
   )
 
   internal sealed interface Receiver {

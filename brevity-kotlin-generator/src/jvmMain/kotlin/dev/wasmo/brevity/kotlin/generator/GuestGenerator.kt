@@ -34,6 +34,7 @@ class GuestGenerator(
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
+  private val supportAsync: Boolean,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
@@ -235,5 +236,6 @@ class GuestGenerator(
     encoderFactory = encoderFactory,
     receiver = receiver,
     value = function,
+    supportAsync = supportAsync,
   )
 }

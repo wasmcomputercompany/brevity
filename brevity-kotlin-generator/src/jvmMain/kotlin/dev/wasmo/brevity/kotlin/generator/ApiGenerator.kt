@@ -25,6 +25,7 @@ import dev.wasmo.brevity.kotlin.KotlinMapper
 class ApiGenerator(
   private val kotlinMapper: KotlinMapper,
   private val packages: List<IrWitPackage>,
+  private val supportAsync: Boolean,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
@@ -100,7 +101,7 @@ class ApiGenerator(
             if (!function.isSupported) continue
             // Don't override close(), it's inherited from the 'Resource' supertype.
             if (function.functionName is FunctionName.ResourceDrop) continue
-            addFunction(ApiFunctionFactory(kotlinMapper, function).api())
+            addFunction(ApiFunctionFactory(kotlinMapper, function, supportAsync).api())
           }
         }
         .build(),
@@ -261,7 +262,7 @@ class ApiGenerator(
     when (value) {
       is IrInterface -> {
         for (function in value.functions) {
-          builder.addFunction(ApiFunctionFactory(kotlinMapper, function).api())
+          builder.addFunction(ApiFunctionFactory(kotlinMapper, function, supportAsync).api())
         }
       }
 
@@ -289,7 +290,7 @@ class ApiGenerator(
           for (item in value.items) {
             when (item) {
               is IrExternalApi -> addProperty(item.instanceName, item.serviceName.kotlinApi)
-              is IrFunction -> addFunction(ApiFunctionFactory(kotlinMapper, item).api())
+              is IrFunction -> addFunction(ApiFunctionFactory(kotlinMapper, item, supportAsync).api())
             }
           }
         }
