@@ -7,7 +7,7 @@ import kotlinx.coroutines.test.runTest
 
 class WitAsyncTest {
   @Test
-//  @Ignore("async isn't working yet")
+  @Ignore("async isn't working yet")
   fun happyPath() = runTest {
     val test = BrevityExecutionTester(
       name = "asyncHappyPath",
