@@ -33,6 +33,7 @@ class GuestGenerator(
   private val kotlinMapper: KotlinMapper,
   private val guestPlatform: GuestPlatform,
   private val encoderFactory: EncoderFactory,
+  private val bridgeFunctionFactory: BridgeFunction.Factory,
   private val declarationIndex: DeclarationIndex,
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
   private val roleTracker: RoleTracker,
@@ -159,7 +160,7 @@ class GuestGenerator(
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
         handleBuilder.addFunction(
-          guestFunctionFactory(receiver, function, GuestCallsHost).callHost()
+          guestFunctionFactory(receiver, function, GuestCallsHost).callHost(),
         )
         collector += guestFunctionFactory(receiver, function, GuestCallsHost).wasmImport()
       }
@@ -248,10 +249,7 @@ class GuestGenerator(
   ) = GuestFunctionFactory(
     kotlinMapper = kotlinMapper,
     guestPlatform = guestPlatform,
-    encoderFactory = encoderFactory,
-    receiver = receiver,
-    value = function,
-    orientation = orientation,
+    function = bridgeFunctionFactory.create(receiver, orientation, function),
     supportAsync = supportAsync,
   )
 }

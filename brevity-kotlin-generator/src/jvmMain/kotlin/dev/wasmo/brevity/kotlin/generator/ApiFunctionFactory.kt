@@ -6,31 +6,14 @@ import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.KotlinMapper
-import dev.wasmo.brevity.kotlin.code.Platform
-import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver.OutboundInstance
 
 internal class ApiFunctionFactory(
-  private val platform: Platform,
   private val kotlinMapper: KotlinMapper,
-  private val encoderFactory: EncoderFactory,
-  private val value: IrFunction,
+  private val function: BridgeFunction,
   private val supportAsync: Boolean,
 ) {
-  private val function = run {
-    val factory = BridgeFunction.Factory(
-      platform = platform,
-      kotlinMapper = kotlinMapper,
-      encoderFactory = encoderFactory,
-    )
-
-    factory.create(
-      receiver = OutboundInstance,
-      orientation = Orientation.GuestCallsHost,
-      value = value,
-    )
-  }
+  private val value: IrFunction
+    get() = function.function
 
   private val nameAllocator: NameAllocator
     get() = function.nameAllocator

@@ -20,7 +20,6 @@ import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.HostPlatform
-import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.GuestCallsHost
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.HostCallsGuest
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
@@ -28,7 +27,7 @@ import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 class HostGenerator(
   private val kotlinMapper: KotlinMapper,
   private val hostPlatform: HostPlatform,
-  private val encoderFactory: EncoderFactory,
+  private val bridgeFunctionFactory: BridgeFunction.Factory,
   private val declarationIndex: DeclarationIndex,
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
   private val roleTracker: RoleTracker,
@@ -421,11 +420,8 @@ class HostGenerator(
   ) = HostFunctionFactory(
     kotlinMapper = kotlinMapper,
     hostPlatform = hostPlatform,
-    encoderFactory = encoderFactory,
-    value = function,
     bridge = bridge,
-    receiver = receiver,
-    orientation = orientation,
+    function = bridgeFunctionFactory.create(receiver, orientation, function),
     supportAsync = supportAsync,
   )
 }

@@ -21,13 +21,10 @@ import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
-import dev.wasmo.brevity.kotlin.code.Platform
-import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 
 class ApiGenerator(
-  private val platform: Platform,
   private val kotlinMapper: KotlinMapper,
-  private val encoderFactory: EncoderFactory,
+  private val bridgeFunctionFactory: BridgeFunction.Factory,
   private val packages: List<IrWitPackage>,
   private val supportAsync: Boolean,
 ) {
@@ -304,10 +301,12 @@ class ApiGenerator(
   }
 
   private fun apiFunctionFactory(item: IrFunction) = ApiFunctionFactory(
-    platform = platform,
     kotlinMapper = kotlinMapper,
-    encoderFactory = encoderFactory,
-    value = item,
+    function = bridgeFunctionFactory.create(
+      receiver = BridgeFunction.Receiver.OutboundInstance,
+      orientation = BridgeFunction.Orientation.GuestCallsHost,
+      value = item,
+    ),
     supportAsync = supportAsync,
   )
 }

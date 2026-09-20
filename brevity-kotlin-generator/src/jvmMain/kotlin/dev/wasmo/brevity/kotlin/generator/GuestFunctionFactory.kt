@@ -15,9 +15,7 @@ import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.encoders.CoreType
-import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.LoweredParameters
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -27,26 +25,19 @@ import java.util.concurrent.atomic.AtomicBoolean
 internal class GuestFunctionFactory(
   private val kotlinMapper: KotlinMapper,
   guestPlatform: GuestPlatform,
-  private val encoderFactory: EncoderFactory,
-  private val receiver: Receiver,
-  private val value: IrFunction,
-  private val orientation: Orientation,
+  private val function: BridgeFunction,
   private val supportAsync: Boolean,
 ) {
   private val used = AtomicBoolean()
 
-  private val function = run {
-    val factory = BridgeFunction.Factory(
-      platform = guestPlatform,
-      kotlinMapper = kotlinMapper,
-      encoderFactory = encoderFactory,
-    )
-
-    factory.create(receiver, orientation, value)
-  }
+  private val value: IrFunction
+    get() = function.function
 
   private val nameAllocator: NameAllocator
     get() = function.nameAllocator
+
+  private val receiver: Receiver
+    get() = function.liftedReceiver
 
   private val codeBuilder = CodeBuilder(
     bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),

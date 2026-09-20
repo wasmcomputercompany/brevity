@@ -19,7 +19,7 @@ class BridgeFunction(
   val nameAllocator: NameAllocator,
   val function: IrFunction,
   val kotlinName: String,
-  val liftedReceiver: Receiver? = null,
+  val liftedReceiver: Receiver,
   val loweredReceiver: FlatParameter? = null,
   val liftedParameters: List<ParameterSpec>,
   val liftedParameterValues: List<CodeBlock>,
