@@ -125,6 +125,7 @@ class WitBridgeGenerator private constructor(
         supportAsync = supportAsync,
       )
       val apiGenerator = ApiGenerator(
+        platform = guestPlatform, // either platform will work.
         kotlinMapper = kotlinMapper,
         encoderFactory = guestEncoderFactory, // either encoderFactory will work.
         packages = irPackages,

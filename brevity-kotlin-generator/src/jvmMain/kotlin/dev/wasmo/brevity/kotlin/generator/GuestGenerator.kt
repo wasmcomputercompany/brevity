@@ -18,6 +18,9 @@ import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.GuestCallsHost
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.HostCallsGuest
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 
 private val guestOptIns = setOf(
@@ -133,7 +136,7 @@ class GuestGenerator(
     if (guest) {
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
-        collector += guestFunctionFactory(receiver, function).wasmExport()
+        collector += guestFunctionFactory(receiver, function, HostCallsGuest).wasmExport()
       }
     }
 
@@ -155,8 +158,10 @@ class GuestGenerator(
 
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
-        handleBuilder.addFunction(guestFunctionFactory(receiver, function).callHost())
-        collector += guestFunctionFactory(receiver, function).wasmImport()
+        handleBuilder.addFunction(
+          guestFunctionFactory(receiver, function, GuestCallsHost).callHost()
+        )
+        collector += guestFunctionFactory(receiver, function, GuestCallsHost).wasmImport()
       }
 
       collector.addType(kotlinMapper.getHandleName(value.type), handleBuilder.build())
@@ -190,6 +195,7 @@ class GuestGenerator(
               guestFunctionFactory(
                 receiver = receiver,
                 function = item,
+                orientation = HostCallsGuest,
               ),
             )
           }
@@ -203,6 +209,7 @@ class GuestGenerator(
                     CodeBlock.of("%L.%N", receiver.codeBlock, item.instanceName),
                   ),
                   function = function,
+                  orientation = HostCallsGuest,
                 ),
               )
             }
@@ -237,12 +244,14 @@ class GuestGenerator(
   private fun guestFunctionFactory(
     receiver: Receiver,
     function: IrFunction,
+    orientation: Orientation,
   ) = GuestFunctionFactory(
     kotlinMapper = kotlinMapper,
     guestPlatform = guestPlatform,
     encoderFactory = encoderFactory,
     receiver = receiver,
     value = function,
+    orientation = orientation,
     supportAsync = supportAsync,
   )
 }

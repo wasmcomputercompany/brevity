@@ -8,6 +8,7 @@ import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.Platform
 import dev.wasmo.brevity.kotlin.encoders.AbstractRecordEncoder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.Encoder
@@ -15,6 +16,7 @@ import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.encoders.MAX_FLAT_PARAMS
 
 class BridgeFunction(
+  val nameAllocator: NameAllocator,
   val function: IrFunction,
   val kotlinName: String,
   val liftedReceiver: Receiver? = null,
@@ -24,7 +26,6 @@ class BridgeFunction(
   val loweredParameters: LoweredParameters,
   val result: Result?,
 ) {
-
   context(codeBuilder: CodeBuilder)
   fun lowerParameterValues(): List<Pair<CodeBlock, CoreType>> {
     return buildList {
@@ -58,6 +59,16 @@ class BridgeFunction(
           )
           add(codeBuilder.platform.lowerAddress(addressParameterValue) to CoreType.Pointer)
         }
+      }
+
+      if (result?.pointerParameter != null) {
+        codeBuilder.addStatement(
+          "val %N = %L",
+          result.pointerParameter.name,
+          codeBuilder.allocate("%L", CodeBlock.of("%L", result.encoder.byteCount)),
+        )
+        val pointer = CodeBlock.of("%N", result.pointerParameter.name)
+        add(codeBuilder.platform.lowerAddress(pointer) to CoreType.Pointer)
       }
     }
   }
@@ -139,13 +150,23 @@ class BridgeFunction(
     val pointerParameter: ParameterSpec?,
   )
 
+  enum class Orientation {
+    HostCallsGuest,
+    GuestCallsHost,
+  }
+
   class Factory(
-    val receiver: Receiver,
+    val platform: Platform,
     val kotlinMapper: KotlinMapper,
     val encoderFactory: EncoderFactory,
-    val nameAllocator: NameAllocator,
   ) {
-    fun create(value: IrFunction): BridgeFunction {
+    fun create(
+      receiver: Receiver,
+      orientation: Orientation,
+      value: IrFunction,
+    ): BridgeFunction {
+      val nameAllocator = NameAllocator()
+
       // Pre-allocate the names we'll need.
       for (parameter in value.parameters) {
         nameAllocator.newName(parameter.kotlinName, parameter.name)
@@ -155,12 +176,12 @@ class BridgeFunction(
       }
 
       val coreReceiver: FlatParameter? = when (receiver) {
-        is Receiver.Id -> flatParameter(receiver.name, receiver.type)
+        is Receiver.Id -> flatParameter(nameAllocator, receiver.name, receiver.type)
         else -> null
       }
 
       val coreParameters = value.parameters.map {
-        flatParameter(it.name, it.type)
+        flatParameter(nameAllocator, it.name, it.type)
       }
 
       val loweredParameters = when {
@@ -189,6 +210,7 @@ class BridgeFunction(
       }
 
       return BridgeFunction(
+        nameAllocator = nameAllocator,
         function = value,
         kotlinName = value.kotlinName,
         liftedReceiver = receiver,
@@ -196,11 +218,15 @@ class BridgeFunction(
         liftedParameters = liftedParameters,
         liftedParameterValues = liftedParameterValues,
         loweredParameters = loweredParameters,
-        result = value.returnType?.let { result(it) },
+        result = value.returnType?.let { result(nameAllocator, orientation, it) },
       )
     }
 
-    private fun flatParameter(name: Identifier, typeName: TypeName): FlatParameter {
+    private fun flatParameter(
+      nameAllocator: NameAllocator,
+      name: Identifier,
+      typeName: TypeName,
+    ): FlatParameter {
       val encoder = encoderFactory.get(typeName)
       return FlatParameter(
         encoder = encoder,
@@ -224,14 +250,18 @@ class BridgeFunction(
       )
     }
 
-    private fun result(type: TypeName): Result {
+    private fun result(
+      nameAllocator: NameAllocator,
+      orientation: Orientation,
+      type: TypeName,
+    ): Result {
       val encoder = encoderFactory.get(type)
       return Result(
         name = nameAllocator.newName("result"),
         type = type,
         encoder = encoder,
         pointerParameter = when {
-          encoder.coreTypes.size > 1 -> {
+          orientation == Orientation.GuestCallsHost && encoder.coreTypes.size > 1 -> {
             ParameterSpec(
               nameAllocator.newName("resultParameter"),
               CoreType.Pointer.kotlinCoreType,

@@ -21,6 +21,8 @@ import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.GuestCallsHost
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.HostCallsGuest
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 
 class HostGenerator(
@@ -230,6 +232,7 @@ class HostGenerator(
               function = item,
               bridge = CodeBlock.of("%N", "bridge"),
               receiver = Receiver.OutboundInstance,
+              orientation = HostCallsGuest,
             ).callGuest(),
           )
           builder.addProperty(
@@ -294,6 +297,7 @@ class HostGenerator(
             function = item,
             bridge = CodeBlock.of("%N", "bridge"),
             receiver = Receiver.OutboundInstance,
+            orientation = HostCallsGuest,
           ).callGuest(),
         )
         addProperty(
@@ -355,6 +359,7 @@ class HostGenerator(
                 function = function,
                 bridge = bridge,
                 receiver = Receiver.Id(type = typeDeclaration.type),
+                orientation = GuestCallsHost,
               ).declareHost(
                 store = store,
               ),
@@ -380,6 +385,7 @@ class HostGenerator(
               function = item,
               bridge = bridge,
               receiver = hostInstance,
+              orientation = GuestCallsHost,
             ).declareHost(
               store = store,
             ),
@@ -396,6 +402,7 @@ class HostGenerator(
                 receiver = Receiver.InboundInstance(
                   CodeBlock.of("%L.%N", hostInstance.codeBlock, item.instanceName),
                 ),
+                orientation = GuestCallsHost,
               ).declareHost(
                 store = store,
               ),
@@ -410,6 +417,7 @@ class HostGenerator(
     function: IrFunction,
     receiver: Receiver,
     bridge: CodeBlock,
+    orientation: BridgeFunction.Orientation,
   ) = HostFunctionFactory(
     kotlinMapper = kotlinMapper,
     hostPlatform = hostPlatform,
@@ -417,6 +425,7 @@ class HostGenerator(
     value = function,
     bridge = bridge,
     receiver = receiver,
+    orientation = orientation,
     supportAsync = supportAsync,
   )
 }

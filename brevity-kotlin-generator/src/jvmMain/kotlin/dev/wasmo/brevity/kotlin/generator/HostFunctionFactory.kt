@@ -15,6 +15,7 @@ import dev.wasmo.brevity.kotlin.encoders.coreTypeToLong
 import dev.wasmo.brevity.kotlin.encoders.longToCoreType
 import dev.wasmo.brevity.kotlin.encoders.valType
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.LoweredParameters
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -25,21 +26,22 @@ internal class HostFunctionFactory(
   private val value: IrFunction,
   private val bridge: CodeBlock,
   private val receiver: Receiver,
+  private val orientation: Orientation,
   private val supportAsync: Boolean,
 ) {
   private val used = AtomicBoolean()
 
-  private val nameAllocator = NameAllocator()
-
   private val function: BridgeFunction = run {
     val factory = BridgeFunction.Factory(
-      receiver = receiver,
       kotlinMapper = kotlinMapper,
       encoderFactory = encoderFactory,
-      nameAllocator = nameAllocator,
+      platform = hostPlatform,
     )
-    factory.create(value)
+    factory.create(receiver, orientation, value)
   }
+
+  private val nameAllocator: NameAllocator
+    get() = function.nameAllocator
 
   private val codeBuilder = CodeBuilder(
     bridge = bridge,

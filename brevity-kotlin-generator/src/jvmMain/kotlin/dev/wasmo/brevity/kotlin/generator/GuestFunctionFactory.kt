@@ -17,6 +17,7 @@ import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.LoweredParameters
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -29,22 +30,23 @@ internal class GuestFunctionFactory(
   private val encoderFactory: EncoderFactory,
   private val receiver: Receiver,
   private val value: IrFunction,
+  private val orientation: Orientation,
   private val supportAsync: Boolean,
 ) {
   private val used = AtomicBoolean()
 
-  private val nameAllocator = NameAllocator()
-
   private val function = run {
     val factory = BridgeFunction.Factory(
-      receiver = receiver,
+      platform = guestPlatform,
       kotlinMapper = kotlinMapper,
       encoderFactory = encoderFactory,
-      nameAllocator = nameAllocator,
     )
 
-    factory.create(value)
+    factory.create(receiver, orientation, value)
   }
+
+  private val nameAllocator: NameAllocator
+    get() = function.nameAllocator
 
   private val codeBuilder = CodeBuilder(
     bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
@@ -69,25 +71,10 @@ internal class GuestFunctionFactory(
           val loweredParameters = mutableListOf<Pair<CodeBlock, CoreType>>()
           loweredParameters += function.lowerParameterValues()
 
-          if (function.result != null) {
-            when {
-              function.result.pointerParameter != null -> {
-                codeBuilder.addStatement(
-                  "val %N = %L",
-                  function.result.pointerParameter.name,
-                  codeBuilder.allocate("%L", CodeBlock.of("%L", function.result.encoder.byteCount)),
-                )
-                val pointer = CodeBlock.of("%N", function.result.pointerParameter.name)
-                loweredParameters += with(codeBuilder) {
-                  platform.lowerAddress(pointer) to CoreType.Pointer
-                }
-              }
-
-              else -> {
-                codeBuilder.add("val %N = ", function.result.name)
-              }
-            }
+          if (function.result != null && function.result.pointerParameter == null) {
+            codeBuilder.add("val %N = ", function.result.name)
           }
+
           codeBuilder.add("%N(⇥", value.functionName.importFunctionName)
           if (loweredParameters.isNotEmpty()) {
             codeBuilder.add("\n")
