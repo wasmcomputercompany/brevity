@@ -6,20 +6,27 @@ import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.KotlinMapper
+import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 
 internal class ApiFunctionFactory(
   private val kotlinMapper: KotlinMapper,
+  private val encoderFactory: EncoderFactory,
   private val value: IrFunction,
   private val supportAsync: Boolean,
 ) {
-  private val nameAllocator = NameAllocator().apply {
-    // Pre-allocate all the names we'll need.
-    for (parameter in value.parameters) {
-      newName(parameter.kotlinName, parameter.name)
-    }
+  private val nameAllocator = NameAllocator()
+
+  private val function = run {
+    val factory = BridgeFunction.Factory(
+      receiver = BridgeFunction.Receiver.OutboundInstance,
+      encoderFactory = encoderFactory,
+      nameAllocator = nameAllocator,
+    )
+
+    factory.create(value)
   }
 
-  fun api() = FunSpec.builder(value.kotlinName)
+  fun api() = FunSpec.builder(function.kotlinName)
     .addModifiers(KModifier.ABSTRACT)
     .apply {
       if (value.async && supportAsync) {

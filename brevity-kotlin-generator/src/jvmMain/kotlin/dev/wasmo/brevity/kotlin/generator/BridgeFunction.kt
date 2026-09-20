@@ -100,9 +100,7 @@ class BridgeFunction(
     val encoderFactory: EncoderFactory,
     val nameAllocator: NameAllocator,
   ) {
-    fun function(
-      value: IrFunction,
-    ): BridgeFunction {
+    fun create(value: IrFunction): BridgeFunction {
       // Pre-allocate the names we'll need.
       for (parameter in value.parameters) {
         nameAllocator.newName(parameter.kotlinName, parameter.name)
@@ -112,12 +110,12 @@ class BridgeFunction(
       }
 
       val coreReceiver: FlatParameter? = when (receiver) {
-        is Receiver.Id -> parameter(receiver.name, receiver.type)
+        is Receiver.Id -> flatParameter(receiver.name, receiver.type)
         else -> null
       }
 
       val coreParameters = value.parameters.map {
-        parameter(it.name, it.type)
+        flatParameter(it.name, it.type)
       }
 
       val parameterList = when {
@@ -142,31 +140,27 @@ class BridgeFunction(
       )
     }
 
-    private fun parameter(name: Identifier, typeName: TypeName): FlatParameter {
+    private fun flatParameter(name: Identifier, typeName: TypeName): FlatParameter {
       val encoder = encoderFactory.get(typeName)
-      val nameHints = encoder.nameHints
-
-      val specs = buildList {
-        for ((v, coreType) in encoder.coreTypes.withIndex()) {
-          val nameHint = nameHints?.getOrNull(v)
-          val coreName = when {
-            nameHint != null -> nameAllocator.newName(
-              Identifier("${name}-${nameHint.name}").lowerCamelCase,
-            )
-
-            v == 0 -> nameAllocator[name]
-            else -> nameAllocator.newName(
-              suggestion = "${name.lowerCamelCase}${v + 1}",
-              tag = name to v,
-            )
-          }
-          add(ParameterSpec(coreName, coreType.kotlinCoreType))
-        }
-      }
-
       return FlatParameter(
         encoder = encoder,
-        coreSpecs = specs,
+        coreSpecs = buildList {
+          for ((v, coreType) in encoder.coreTypes.withIndex()) {
+            val nameHint = encoder.nameHints?.getOrNull(v)
+            val coreName = when {
+              nameHint != null -> nameAllocator.newName(
+                Identifier("${name}-${nameHint.name}").lowerCamelCase,
+              )
+
+              v == 0 -> nameAllocator[name]
+              else -> nameAllocator.newName(
+                suggestion = "${name.lowerCamelCase}${v + 1}",
+                tag = name to v,
+              )
+            }
+            add(ParameterSpec(coreName, coreType.kotlinCoreType))
+          }
+        },
       )
     }
 

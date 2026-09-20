@@ -36,13 +36,13 @@ internal class GuestFunctionFactory(
   private val nameAllocator = NameAllocator()
 
   private val function = run {
-    val bridgeFunctionFactory = BridgeFunction.Factory(
+    val factory = BridgeFunction.Factory(
       receiver = receiver,
       encoderFactory = encoderFactory,
       nameAllocator = nameAllocator,
     )
 
-    bridgeFunctionFactory.function(value)
+    factory.create(value)
   }
 
   private val codeBuilder = CodeBuilder(
@@ -56,7 +56,7 @@ internal class GuestFunctionFactory(
     require(used.compareAndSet(false, true)) { "cannot be reused" }
     require(receiver !is Receiver.InboundInstance)
 
-    return FunSpec.builder(value.kotlinName)
+    return FunSpec.builder(function.kotlinName)
       .addModifiers(KModifier.OVERRIDE)
       .apply {
         context(codeBuilder) {
@@ -248,7 +248,7 @@ internal class GuestFunctionFactory(
           if (function.result != null) {
             codeBuilder.add("val %N = ", function.result.name)
           }
-          codeBuilder.add("%L.%N(⇥\n", liftedReceiver, value.kotlinName)
+          codeBuilder.add("%L.%N(⇥\n", liftedReceiver, function.kotlinName)
           for (parameter in value.parameters) {
             codeBuilder.add(
               "%N = %L,\n",

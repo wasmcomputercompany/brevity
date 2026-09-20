@@ -21,9 +21,11 @@ import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
+import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 
 class ApiGenerator(
   private val kotlinMapper: KotlinMapper,
+  private val encoderFactory: EncoderFactory,
   private val packages: List<IrWitPackage>,
   private val supportAsync: Boolean,
 ) {
@@ -101,7 +103,7 @@ class ApiGenerator(
             if (!function.isSupported) continue
             // Don't override close(), it's inherited from the 'Resource' supertype.
             if (function.functionName is FunctionName.ResourceDrop) continue
-            addFunction(ApiFunctionFactory(kotlinMapper, function, supportAsync).api())
+            addFunction(apiFunctionFactory(function).api())
           }
         }
         .build(),
@@ -263,7 +265,7 @@ class ApiGenerator(
     when (value) {
       is IrInterface -> {
         for (function in value.functions) {
-          builder.addFunction(ApiFunctionFactory(kotlinMapper, function, supportAsync).api())
+          builder.addFunction(apiFunctionFactory(function).api())
         }
       }
 
@@ -291,11 +293,18 @@ class ApiGenerator(
           for (item in value.items) {
             when (item) {
               is IrExternalApi -> addProperty(item.instanceName, item.serviceName.kotlinApi)
-              is IrFunction -> addFunction(ApiFunctionFactory(kotlinMapper, item, supportAsync).api())
+              is IrFunction -> addFunction(apiFunctionFactory(item).api())
             }
           }
         }
         .build(),
     )
   }
+
+  private fun apiFunctionFactory(item: IrFunction) = ApiFunctionFactory(
+    kotlinMapper = kotlinMapper,
+    encoderFactory = encoderFactory,
+    value = item,
+    supportAsync = supportAsync,
+  )
 }

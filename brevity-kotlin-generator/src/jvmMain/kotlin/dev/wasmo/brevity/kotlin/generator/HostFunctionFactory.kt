@@ -32,12 +32,12 @@ internal class HostFunctionFactory(
   private val nameAllocator = NameAllocator()
 
   private val function: BridgeFunction = run {
-    val bridgeFunctionFactory = BridgeFunction.Factory(
+    val factory = BridgeFunction.Factory(
       receiver = receiver,
       encoderFactory = encoderFactory,
       nameAllocator = nameAllocator,
     )
-    bridgeFunctionFactory.function(value)
+    factory.create(value)
   }
 
   private val codeBuilder = CodeBuilder(
@@ -135,7 +135,7 @@ internal class HostFunctionFactory(
     require(receiver !is Receiver.OutboundInstance)
 
     context(codeBuilder) {
-      if (!value.isSupported) return CodeBlock.of("/* TODO: ${value.kotlinName} */\n")
+      if (!value.isSupported) return CodeBlock.of("/* TODO: ${function.kotlinName} */\n")
 
       val coreParameterTypes = buildList {
         if (receiver is Receiver.Id) {
@@ -191,7 +191,7 @@ internal class HostFunctionFactory(
       if (function.result != null) {
         codeBuilder.add("val %N = ", function.result.name)
       }
-      codeBuilder.add("%N.%N(⇥", self, value.kotlinName)
+      codeBuilder.add("%N.%N(⇥", self, function.kotlinName)
       if (value.parameters.isNotEmpty()) {
         codeBuilder.add("\n")
       }
