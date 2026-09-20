@@ -6,6 +6,8 @@ import com.squareup.kotlinpoet.ParameterSpec
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
+import dev.wasmo.brevity.kotlin.KotlinMapper
+import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.encoders.AbstractRecordEncoder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.Encoder
@@ -13,11 +15,53 @@ import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.encoders.MAX_FLAT_PARAMS
 
 class BridgeFunction(
+  val function: IrFunction,
   val kotlinName: String,
-  val receiver: FlatParameter? = null,
-  val parameterList: ParameterList,
+  val liftedReceiver: Receiver? = null,
+  val loweredReceiver: FlatParameter? = null,
+  val liftedParameters: List<ParameterSpec>,
+  val liftedParameterValues: List<CodeBlock>,
+  val loweredParameters: LoweredParameters,
   val result: Result?,
 ) {
+
+  context(codeBuilder: CodeBuilder)
+  fun lowerParameterValues(): List<Pair<CodeBlock, CoreType>> {
+    return buildList {
+      if (liftedReceiver is Receiver.Id) {
+        add(CodeBlock.of("this.%N", "id") to CoreType.I32)
+      }
+
+      when (loweredParameters) {
+        is LoweredParameters.Flattened -> {
+          for ((p, coreParameter) in loweredParameters.parameters.withIndex()) {
+            val loweredParameters = coreParameter.encoder.lowerFlat(liftedParameterValues[p])
+            for ((v, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
+              add(loweredParameters[v] to coreType)
+            }
+          }
+        }
+
+        is LoweredParameters.Stored -> {
+          codeBuilder.addStatement(
+            "val %N = %L",
+            loweredParameters.addressSpec.name,
+            codeBuilder.allocate("%L", loweredParameters.byteCount),
+          )
+          val addressParameterValue = CodeBlock.of(
+            "%N",
+            loweredParameters.addressSpec.name,
+          )
+          loweredParameters.storeAll(
+            baseAddress = addressParameterValue,
+            fieldValues = liftedParameterValues,
+          )
+          add(codeBuilder.platform.lowerAddress(addressParameterValue) to CoreType.Pointer)
+        }
+      }
+    }
+  }
+
   /** Polymorphic receiver of the API call. */
   sealed interface Receiver {
     /** A resource identified by an ID integer. */
@@ -52,15 +96,15 @@ class BridgeFunction(
    *
    *  * Stored to memory. We encode the list of parameters as if it were a tuple.
    */
-  sealed interface ParameterList {
+  sealed interface LoweredParameters {
     class Flattened(
       val parameters: List<FlatParameter>,
-    ) : ParameterList
+    ) : LoweredParameters
 
     class Stored(
       val addressSpec: ParameterSpec,
       fieldEncoders: List<Encoder>,
-    ) : AbstractRecordEncoder(fieldEncoders), ParameterList {
+    ) : AbstractRecordEncoder(fieldEncoders), LoweredParameters {
       override val instanceNameHint: String
         get() = "parameters"
 
@@ -97,6 +141,7 @@ class BridgeFunction(
 
   class Factory(
     val receiver: Receiver,
+    val kotlinMapper: KotlinMapper,
     val encoderFactory: EncoderFactory,
     val nameAllocator: NameAllocator,
   ) {
@@ -118,12 +163,12 @@ class BridgeFunction(
         flatParameter(it.name, it.type)
       }
 
-      val parameterList = when {
-        coreParameters.sumOf { it.coreSpecs.size } <= MAX_FLAT_PARAMS -> ParameterList.Flattened(
+      val loweredParameters = when {
+        coreParameters.sumOf { it.coreSpecs.size } <= MAX_FLAT_PARAMS -> LoweredParameters.Flattened(
           coreParameters,
         )
 
-        else -> ParameterList.Stored(
+        else -> LoweredParameters.Stored(
           addressSpec = ParameterSpec(
             nameAllocator.newName("parameterAddress"),
             CoreType.Pointer.kotlinCoreType,
@@ -132,10 +177,25 @@ class BridgeFunction(
         )
       }
 
+      val liftedParameters = value.parameters.map { parameter ->
+        ParameterSpec.builder(
+          nameAllocator[parameter.name],
+          kotlinMapper.get(parameter.type),
+        ).build()
+      }
+
+      val liftedParameterValues = value.parameters.map { parameter ->
+        CodeBlock.of("%N", nameAllocator[parameter.name])
+      }
+
       return BridgeFunction(
+        function = value,
         kotlinName = value.kotlinName,
-        receiver = coreReceiver,
-        parameterList = parameterList,
+        liftedReceiver = receiver,
+        loweredReceiver = coreReceiver,
+        liftedParameters = liftedParameters,
+        liftedParameterValues = liftedParameterValues,
+        loweredParameters = loweredParameters,
         result = value.returnType?.let { result(it) },
       )
     }

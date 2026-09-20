@@ -19,6 +19,7 @@ internal class ApiFunctionFactory(
   private val function = run {
     val factory = BridgeFunction.Factory(
       receiver = BridgeFunction.Receiver.OutboundInstance,
+      kotlinMapper = kotlinMapper,
       encoderFactory = encoderFactory,
       nameAllocator = nameAllocator,
     )

@@ -14,7 +14,7 @@ import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.encoders.coreTypeToLong
 import dev.wasmo.brevity.kotlin.encoders.longToCoreType
 import dev.wasmo.brevity.kotlin.encoders.valType
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.ParameterList
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.LoweredParameters
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -34,6 +34,7 @@ internal class HostFunctionFactory(
   private val function: BridgeFunction = run {
     val factory = BridgeFunction.Factory(
       receiver = receiver,
+      kotlinMapper = kotlinMapper,
       encoderFactory = encoderFactory,
       nameAllocator = nameAllocator,
     )
@@ -58,51 +59,15 @@ internal class HostFunctionFactory(
           if (value.async && supportAsync) {
             addModifiers(KModifier.SUSPEND)
           }
-          val parameterValues = mutableListOf<CodeBlock>()
-          for (parameter in value.parameters) {
-            addParameter(nameAllocator[parameter.name], kotlinMapper.get(parameter.type))
-            parameterValues += CodeBlock.of("%N", nameAllocator[parameter.name])
-          }
-
-          val longParameters = mutableListOf<CodeBlock>()
-          when (function.parameterList) {
-            is ParameterList.Flattened -> {
-              for (p in value.parameters.indices) {
-                val coreParameter = function.parameterList.parameters[p]
-                val loweredParameters = coreParameter.encoder.lowerFlat(parameterValues[p])
-                for ((v, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
-                  longParameters += coreTypeToLong(loweredParameters[v], coreType)
-                }
-              }
-            }
-
-            is ParameterList.Stored -> {
-              codeBuilder.addStatement(
-                "val %N = %L",
-                function.parameterList.addressSpec.name,
-                codeBuilder.allocate("%L", function.parameterList.byteCount),
-              )
-              val addressParameterValue = CodeBlock.of(
-                "%N",
-                function.parameterList.addressSpec.name,
-              )
-              function.parameterList.storeAll(
-                baseAddress = addressParameterValue,
-                fieldValues = parameterValues,
-              )
-              longParameters += coreTypeToLong(
-                codeBuilder.platform.lowerAddress(addressParameterValue),
-                CoreType.Pointer,
-              )
-            }
-          }
+          addParameters(function.liftedParameters)
+          val loweredParameterValues = function.lowerParameterValues()
 
           if (function.result != null) {
             codeBuilder.add("val %N = ", function.result.name)
           }
           codeBuilder.add("%N.apply(⇥\n", function.kotlinName)
-          for (longParameter in longParameters) {
-            codeBuilder.add("%L,\n", longParameter)
+          for ((parameter, coreType) in loweredParameterValues) {
+            codeBuilder.add("%L,\n", coreTypeToLong(parameter, coreType))
           }
           codeBuilder.add("⇤)\n")
 
@@ -141,14 +106,14 @@ internal class HostFunctionFactory(
         if (receiver is Receiver.Id) {
           add(CoreType.I32)
         }
-        when (function.parameterList) {
-          is ParameterList.Flattened -> {
-            for (coreParameter in function.parameterList.parameters) {
+        when (function.loweredParameters) {
+          is LoweredParameters.Flattened -> {
+            for (coreParameter in function.loweredParameters.parameters) {
               addAll(coreParameter.encoder.coreTypes)
             }
           }
 
-          is ParameterList.Stored -> {
+          is LoweredParameters.Stored -> {
             add(CoreType.Pointer)
           }
         }
@@ -168,9 +133,9 @@ internal class HostFunctionFactory(
         )
         is Receiver.InboundInstance -> receiver.codeBlock
       }
-      val liftedParameterValues = when (function.parameterList) {
-        is ParameterList.Flattened -> {
-          function.parameterList.parameters.map { coreParameter ->
+      val liftedParameterValues = when (function.loweredParameters) {
+        is LoweredParameters.Flattened -> {
+          function.loweredParameters.parameters.map { coreParameter ->
             coreParameter.encoder.liftFlat(
               values = coreParameter.encoder.coreTypes.map { coreType ->
                 longToCoreType("args", argIndex++, coreType)
@@ -179,8 +144,8 @@ internal class HostFunctionFactory(
           }
         }
 
-        is ParameterList.Stored -> {
-          function.parameterList.loadAll(
+        is LoweredParameters.Stored -> {
+          function.loweredParameters.loadAll(
             baseAddress = longToCoreType("args", argIndex++, CoreType.Pointer),
           )
         }

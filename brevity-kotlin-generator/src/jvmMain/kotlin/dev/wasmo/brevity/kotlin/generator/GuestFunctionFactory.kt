@@ -16,7 +16,7 @@ import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.ParameterList
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.LoweredParameters
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -38,6 +38,7 @@ internal class GuestFunctionFactory(
   private val function = run {
     val factory = BridgeFunction.Factory(
       receiver = receiver,
+      kotlinMapper = kotlinMapper,
       encoderFactory = encoderFactory,
       nameAllocator = nameAllocator,
     )
@@ -63,40 +64,10 @@ internal class GuestFunctionFactory(
           if (value.async && supportAsync) {
             addModifiers(KModifier.SUSPEND)
           }
-          val parameterValues = mutableListOf<CodeBlock>()
-          for (parameter in value.parameters) {
-            addParameter(nameAllocator[parameter.name], kotlinMapper.get(parameter.type))
-            parameterValues += CodeBlock.of("%N", nameAllocator[parameter.name])
-          }
+          addParameters(function.liftedParameters)
 
-          val loweredParameters = mutableListOf<CodeBlock>()
-          loweredParameters += CodeBlock.of("this.%L", "id")
-          when (function.parameterList) {
-            is ParameterList.Flattened -> {
-              loweredParameters += value.parameters.indices.flatMap { index ->
-                function.parameterList.parameters[index].encoder.lowerFlat(
-                  value = parameterValues[index],
-                )
-              }
-            }
-
-            is ParameterList.Stored -> {
-              codeBuilder.addStatement(
-                "val %N = %L",
-                function.parameterList.addressSpec.name,
-                codeBuilder.allocate("%L", function.parameterList.byteCount),
-              )
-              val addressParameterValue = CodeBlock.of(
-                "%N",
-                function.parameterList.addressSpec.name,
-              )
-              function.parameterList.storeAll(
-                baseAddress = addressParameterValue,
-                fieldValues = parameterValues,
-              )
-              loweredParameters += codeBuilder.platform.lowerAddress(addressParameterValue)
-            }
-          }
+          val loweredParameters = mutableListOf<Pair<CodeBlock, CoreType>>()
+          loweredParameters += function.lowerParameterValues()
 
           if (function.result != null) {
             when {
@@ -106,8 +77,9 @@ internal class GuestFunctionFactory(
                   function.result.pointerParameter.name,
                   codeBuilder.allocate("%L", CodeBlock.of("%L", function.result.encoder.byteCount)),
                 )
+                val pointer = CodeBlock.of("%N", function.result.pointerParameter.name)
                 loweredParameters += with(codeBuilder) {
-                  platform.lowerAddress(CodeBlock.of("%N", function.result.pointerParameter.name))
+                  platform.lowerAddress(pointer) to CoreType.Pointer
                 }
               }
 
@@ -120,8 +92,8 @@ internal class GuestFunctionFactory(
           if (loweredParameters.isNotEmpty()) {
             codeBuilder.add("\n")
           }
-          for (output in loweredParameters) {
-            codeBuilder.add("%L,\n", output)
+          for ((loweredParameter, _) in loweredParameters) {
+            codeBuilder.add("%L,\n", loweredParameter)
           }
           codeBuilder.add("⇤)\n")
 
@@ -157,18 +129,18 @@ internal class GuestFunctionFactory(
       .addAnnotation(value.functionName.wasmImportAnnotation)
       .addModifiers(KModifier.PRIVATE, KModifier.EXTERNAL)
       .apply {
-        if (function.receiver != null) {
-          addParameters(function.receiver.coreSpecs)
+        if (function.loweredReceiver != null) {
+          addParameters(function.loweredReceiver.coreSpecs)
         }
-        when (function.parameterList) {
-          is ParameterList.Flattened -> {
-            for (coreParameter in function.parameterList.parameters) {
+        when (function.loweredParameters) {
+          is LoweredParameters.Flattened -> {
+            for (coreParameter in function.loweredParameters.parameters) {
               addParameters(coreParameter.coreSpecs)
             }
           }
 
-          is ParameterList.Stored -> {
-            addParameter(function.parameterList.addressSpec)
+          is LoweredParameters.Stored -> {
+            addParameter(function.loweredParameters.addressSpec)
           }
         }
         if (function.result?.pointerParameter != null) {
@@ -193,20 +165,20 @@ internal class GuestFunctionFactory(
       .apply {
         context(codeBuilder) {
           val liftedReceiver = when {
-            function.receiver != null -> {
-              addParameters(function.receiver.coreSpecs)
+            function.loweredReceiver != null -> {
+              addParameters(function.loweredReceiver.coreSpecs)
 
-              function.receiver.encoder.liftFlat(
-                values = function.receiver.coreSpecs.map { CodeBlock.of("%N", it) },
+              function.loweredReceiver.encoder.liftFlat(
+                values = function.loweredReceiver.coreSpecs.map { CodeBlock.of("%N", it) },
               )
             }
 
             else -> (receiver as Receiver.InboundInstance).codeBlock
           }
 
-          when (function.parameterList) {
-            is ParameterList.Flattened -> {
-              for ((index, coreParameter) in function.parameterList.parameters.withIndex()) {
+          when (function.loweredParameters) {
+            is LoweredParameters.Flattened -> {
+              for ((index, coreParameter) in function.loweredParameters.parameters.withIndex()) {
                 addParameters(coreParameter.coreSpecs)
                 val liftedParameterExpression = coreParameter.encoder.liftFlat(
                   values = coreParameter.coreSpecs.map { CodeBlock.of("%N", it) },
@@ -219,15 +191,16 @@ internal class GuestFunctionFactory(
               }
             }
 
-            is ParameterList.Stored -> {
-              addParameter(function.parameterList.addressSpec)
-              val addressExpression = CodeBlock.of("%L", function.parameterList.addressSpec.name)
+            is LoweredParameters.Stored -> {
+              addParameter(function.loweredParameters.addressSpec)
+              val addressExpression =
+                CodeBlock.of("%L", function.loweredParameters.addressSpec.name)
               addStatement(
                 "val %L = %L",
-                function.parameterList.addressSpec.name,
+                function.loweredParameters.addressSpec.name,
                 codeBuilder.platform.liftAddress(addressExpression),
               )
-              val loadedParameterExpression = function.parameterList.loadAll(
+              val loadedParameterExpression = function.loweredParameters.loadAll(
                 baseAddress = addressExpression,
               )
               for ((index, parameter) in value.parameters.withIndex()) {
@@ -297,18 +270,18 @@ internal class GuestFunctionFactory(
 
   fun callWasmExportFunctionWithPlaceholders(): CodeBlock {
     val receiverAndParameters = buildList {
-      if (function.receiver != null) {
-        addAll(function.receiver.coreSpecs)
+      if (function.loweredReceiver != null) {
+        addAll(function.loweredReceiver.coreSpecs)
       }
-      when (function.parameterList) {
-        is ParameterList.Flattened -> {
-          for (parameter in function.parameterList.parameters) {
+      when (function.loweredParameters) {
+        is LoweredParameters.Flattened -> {
+          for (parameter in function.loweredParameters.parameters) {
             addAll(parameter.coreSpecs)
           }
         }
 
-        is ParameterList.Stored -> {
-          add(function.parameterList.addressSpec)
+        is LoweredParameters.Stored -> {
+          add(function.loweredParameters.addressSpec)
         }
       }
     }
