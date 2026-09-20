@@ -1,6 +1,5 @@
 package dev.wasmo.brevity.kotlin.generator
 
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
@@ -22,6 +21,7 @@ import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 
 class HostGenerator(
   private val kotlinMapper: KotlinMapper,
@@ -33,6 +33,11 @@ class HostGenerator(
   private val packages: List<IrWitPackage>,
   private val supportAsync: Boolean,
 ) {
+  /** Receives inbound calls on this host. */
+  private val hostInstance = Receiver.InboundInstance(
+    codeBlock = CodeBlock.of("%N", "host"),
+  )
+
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
 
@@ -191,13 +196,9 @@ class HostGenerator(
             .addParameter("store", Symbols.ChicoryRuntime.Store)
             .apply {
               if (hostApis != null) {
-                val receiver = Receiver.Instance(
-                  codeBlock = CodeBlock.of("%N", "host"),
-                )
                 initImports(
                   bridge = CodeBlock.of("%N", "bridge"),
                   store = CodeBlock.of("%N", "store"),
-                  receiver = receiver,
                   value = hostApis,
                 )
               }
@@ -225,7 +226,11 @@ class HostGenerator(
       is IrInterface -> {
         for (item in value.functions) {
           builder.addFunction(
-            hostFunctionFactory(item, CodeBlock.of("%N", "bridge")).callGuest(),
+            hostFunctionFactory(
+              function = item,
+              bridge = CodeBlock.of("%N", "bridge"),
+              receiver = Receiver.OutboundInstance,
+            ).callGuest(),
           )
           builder.addProperty(
             PropertySpec.builder(item.kotlinName, Symbols.ChicoryRuntime.ExportFunction)
@@ -285,7 +290,11 @@ class HostGenerator(
 
       is IrFunction -> {
         addFunction(
-          hostFunctionFactory(item, CodeBlock.of("%N", "bridge")).callGuest(),
+          hostFunctionFactory(
+            function = item,
+            bridge = CodeBlock.of("%N", "bridge"),
+            receiver = Receiver.OutboundInstance,
+          ).callGuest(),
         )
         addProperty(
           PropertySpec.builder(item.kotlinName, Symbols.ChicoryRuntime.ExportFunction)
@@ -339,17 +348,15 @@ class HostGenerator(
   ) {
     when (val typeDeclaration = declarationIndex[typeName]) {
       is IrResource -> {
-        val receiver = Receiver.Id(
-          bridge = bridge,
-          type = kotlinMapper.getAbiClassName(typeDeclaration.type),
-        )
-
         for (function in typeDeclaration.functions) {
           if (value.host) {
             addCode(
-              hostFunctionFactory(function, bridge).declareHost(
-                store,
-                receiver,
+              hostFunctionFactory(
+                function = function,
+                bridge = bridge,
+                receiver = Receiver.Id(type = typeDeclaration.type),
+              ).declareHost(
+                store = store,
               ),
             )
           }
@@ -363,16 +370,18 @@ class HostGenerator(
   private fun FunSpec.Builder.initImports(
     bridge: CodeBlock,
     store: CodeBlock,
-    receiver: Receiver.Instance,
     value: ExternalApis,
   ) {
     for (item in value.items) {
       when (item) {
         is IrFunction -> {
           addCode(
-            hostFunctionFactory(item, bridge).declareHost(
+            hostFunctionFactory(
+              function = item,
+              bridge = bridge,
+              receiver = hostInstance,
+            ).declareHost(
               store = store,
-              receiver = receiver,
             ),
           )
         }
@@ -381,11 +390,14 @@ class HostGenerator(
           val type = declarationIndex[item.serviceName] as IrInterface
           for (function in type.functions) {
             addCode(
-              hostFunctionFactory(function, bridge).declareHost(
-                store = store,
-                receiver = Receiver.Instance(
-                  CodeBlock.of("%L.%N", receiver.codeBlock, item.instanceName),
+              hostFunctionFactory(
+                function = function,
+                bridge = bridge,
+                receiver = Receiver.InboundInstance(
+                  CodeBlock.of("%L.%N", hostInstance.codeBlock, item.instanceName),
                 ),
+              ).declareHost(
+                store = store,
               ),
             )
           }
@@ -396,6 +408,7 @@ class HostGenerator(
 
   private fun hostFunctionFactory(
     function: IrFunction,
+    receiver: Receiver,
     bridge: CodeBlock,
   ) = HostFunctionFactory(
     kotlinMapper = kotlinMapper,
@@ -403,28 +416,7 @@ class HostGenerator(
     encoderFactory = encoderFactory,
     value = function,
     bridge = bridge,
+    receiver = receiver,
     supportAsync = supportAsync,
   )
-
-  internal sealed interface Receiver {
-    data class Instance(
-      val codeBlock: CodeBlock,
-    ) : Receiver
-
-    data class Id(
-      val bridge: CodeBlock,
-      val type: ClassName,
-    ) : Receiver {
-      val name: String
-        get() = "self"
-
-      fun codeBlock(id: CodeBlock) = CodeBlock.of(
-        "%L.%M<%T>(%L)",
-        bridge,
-        Symbols.Brevity.HostBridgeGet,
-        type,
-        id,
-      )
-    }
-  }
 }

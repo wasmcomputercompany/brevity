@@ -14,7 +14,8 @@ import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.encoders.coreTypeToLong
 import dev.wasmo.brevity.kotlin.encoders.longToCoreType
 import dev.wasmo.brevity.kotlin.encoders.valType
-import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.ParameterList
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal class HostFunctionFactory(
@@ -23,23 +24,21 @@ internal class HostFunctionFactory(
   encoderFactory: EncoderFactory,
   private val value: IrFunction,
   private val bridge: CodeBlock,
+  private val receiver: Receiver,
   private val supportAsync: Boolean,
 ) {
   private val used = AtomicBoolean()
 
-  private val nameAllocator = NameAllocator().apply {
-    // Pre-allocate the names we'll need.
-    for (parameter in value.parameters) {
-      newName(parameter.kotlinName, parameter.name)
-    }
-  }
+  private val nameAllocator = NameAllocator()
 
-  private val coreValueFactory = CoreValueFactory(
-    encoderFactory = encoderFactory,
-    nameAllocator = nameAllocator,
-  )
-  private val parameterListEncoder = coreValueFactory.parameters(value.parameters)
-  private val coreResult = value.returnType?.let { coreValueFactory.result(it) }
+  private val function: BridgeFunction = run {
+    val bridgeFunctionFactory = BridgeFunction.Factory(
+      receiver = receiver,
+      encoderFactory = encoderFactory,
+      nameAllocator = nameAllocator,
+    )
+    bridgeFunctionFactory.function(value)
+  }
 
   private val codeBuilder = CodeBuilder(
     bridge = bridge,
@@ -50,8 +49,9 @@ internal class HostFunctionFactory(
   /** Returns a function that calls the guest. It implements the friendly API. */
   fun callGuest(): FunSpec {
     require(used.compareAndSet(false, true)) { "cannot be reused" }
+    require(receiver !is Receiver.InboundInstance)
 
-    return FunSpec.builder(value.kotlinName)
+    return FunSpec.builder(function.kotlinName)
       .addModifiers(KModifier.OVERRIDE)
       .apply {
         context(codeBuilder) {
@@ -65,10 +65,10 @@ internal class HostFunctionFactory(
           }
 
           val longParameters = mutableListOf<CodeBlock>()
-          when (parameterListEncoder) {
-            is ParameterListEncoder.Flattened -> {
+          when (function.parameterList) {
+            is ParameterList.Flattened -> {
               for (p in value.parameters.indices) {
-                val coreParameter = parameterListEncoder.coreParameters[p]
+                val coreParameter = function.parameterList.parameters[p]
                 val loweredParameters = coreParameter.encoder.lowerFlat(parameterValues[p])
                 for ((v, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
                   longParameters += coreTypeToLong(loweredParameters[v], coreType)
@@ -76,17 +76,17 @@ internal class HostFunctionFactory(
               }
             }
 
-            is ParameterListEncoder.Stored -> {
+            is ParameterList.Stored -> {
               codeBuilder.addStatement(
                 "val %N = %L",
-                parameterListEncoder.addressSpec.name,
-                codeBuilder.allocate("%L", parameterListEncoder.byteCount),
+                function.parameterList.addressSpec.name,
+                codeBuilder.allocate("%L", function.parameterList.byteCount),
               )
               val addressParameterValue = CodeBlock.of(
                 "%N",
-                parameterListEncoder.addressSpec.name,
+                function.parameterList.addressSpec.name,
               )
-              parameterListEncoder.storeAll(
+              function.parameterList.storeAll(
                 baseAddress = addressParameterValue,
                 fieldValues = parameterValues,
               )
@@ -97,26 +97,26 @@ internal class HostFunctionFactory(
             }
           }
 
-          if (coreResult != null) {
-            codeBuilder.add("val %N = ", coreResult.name)
+          if (function.result != null) {
+            codeBuilder.add("val %N = ", function.result.name)
           }
-          codeBuilder.add("%N.apply(⇥\n", value.kotlinName)
+          codeBuilder.add("%N.apply(⇥\n", function.kotlinName)
           for (longParameter in longParameters) {
             codeBuilder.add("%L,\n", longParameter)
           }
           codeBuilder.add("⇤)\n")
 
-          if (coreResult != null) {
-            returns(kotlinMapper.get(coreResult.type))
-            val returnValue = when (coreResult.encoder.coreTypes.size) {
-              1 -> coreResult.encoder.liftFlat(
+          if (function.result != null) {
+            returns(kotlinMapper.get(function.result.type))
+            val returnValue = when (function.result.encoder.coreTypes.size) {
+              1 -> function.result.encoder.liftFlat(
                 values = listOf(
-                  longToCoreType(coreResult.name, 0, coreResult.encoder.coreTypes.single()),
+                  longToCoreType(function.result.name, 0, function.result.encoder.coreTypes.single()),
                 ),
               )
 
-              else -> coreResult.encoder.load(
-                longToCoreType(coreResult.name, 0, CoreType.Pointer),
+              else -> function.result.encoder.load(
+                longToCoreType(function.result.name, 0, CoreType.Pointer),
               )
             }
             codeBuilder.add("return %L", returnValue)
@@ -130,9 +130,9 @@ internal class HostFunctionFactory(
   /** Adds a host function using the Chicory API. */
   fun declareHost(
     store: CodeBlock,
-    receiver: Receiver,
   ): CodeBlock {
     require(used.compareAndSet(false, true)) { "cannot be reused" }
+    require(receiver !is Receiver.OutboundInstance)
 
     context(codeBuilder) {
       if (!value.isSupported) return CodeBlock.of("/* TODO: ${value.kotlinName} */\n")
@@ -141,30 +141,36 @@ internal class HostFunctionFactory(
         if (receiver is Receiver.Id) {
           add(CoreType.I32)
         }
-        when (parameterListEncoder) {
-          is ParameterListEncoder.Flattened -> {
-            for (coreParameter in parameterListEncoder.coreParameters) {
+        when (function.parameterList) {
+          is ParameterList.Flattened -> {
+            for (coreParameter in function.parameterList.parameters) {
               addAll(coreParameter.encoder.coreTypes)
             }
           }
 
-          is ParameterListEncoder.Stored -> {
+          is ParameterList.Stored -> {
             add(CoreType.Pointer)
           }
         }
-        if (coreResult?.parameter != null) {
+        if (function.result?.pointerParameter != null) {
           add(CoreType.I32)
         }
       }
 
       var argIndex = 0
       val receiverValue = when (receiver) {
-        is Receiver.Id -> receiver.codeBlock(longToCoreType("args", argIndex++, CoreType.I32))
-        is Receiver.Instance -> receiver.codeBlock
+        is Receiver.Id -> CodeBlock.of(
+          "%L.%M<%T>(%L)",
+          bridge,
+          Symbols.Brevity.HostBridgeGet,
+          kotlinMapper.getAbiClassName(receiver.type),
+          longToCoreType("args", argIndex++, CoreType.I32),
+        )
+        is Receiver.InboundInstance -> receiver.codeBlock
       }
-      val liftedParameterValues = when (parameterListEncoder) {
-        is ParameterListEncoder.Flattened -> {
-          parameterListEncoder.coreParameters.map { coreParameter ->
+      val liftedParameterValues = when (function.parameterList) {
+        is ParameterList.Flattened -> {
+          function.parameterList.parameters.map { coreParameter ->
             coreParameter.encoder.liftFlat(
               values = coreParameter.encoder.coreTypes.map { coreType ->
                 longToCoreType("args", argIndex++, coreType)
@@ -173,8 +179,8 @@ internal class HostFunctionFactory(
           }
         }
 
-        is ParameterListEncoder.Stored -> {
-          parameterListEncoder.loadAll(
+        is ParameterList.Stored -> {
+          function.parameterList.loadAll(
             baseAddress = longToCoreType("args", argIndex++, CoreType.Pointer),
           )
         }
@@ -182,8 +188,8 @@ internal class HostFunctionFactory(
 
       val self = nameAllocator.newName("self")
       codeBuilder.addStatement("val %N = %L", self, receiverValue)
-      if (coreResult != null) {
-        codeBuilder.add("val %N = ", coreResult.name)
+      if (function.result != null) {
+        codeBuilder.add("val %N = ", function.result.name)
       }
       codeBuilder.add("%N.%N(⇥", self, value.kotlinName)
       if (value.parameters.isNotEmpty()) {
@@ -195,27 +201,27 @@ internal class HostFunctionFactory(
       codeBuilder.add("⇤)\n")
 
       val returnValType: CoreType?
-      if (coreResult != null) {
+      if (function.result != null) {
         when {
-          coreResult.parameter != null -> {
+          function.result.pointerParameter != null -> {
             codeBuilder.addStatement(
               "val %N = %L",
-              coreResult.parameter.name,
+              function.result.pointerParameter.name,
               longToCoreType("args", argIndex++, CoreType.Pointer),
             )
-            coreResult.encoder.store(
-              baseAddress = CodeBlock.of("%N", coreResult.parameter.name),
-              value = CodeBlock.of("%N", coreResult.name),
+            function.result.encoder.store(
+              baseAddress = CodeBlock.of("%N", function.result.pointerParameter.name),
+              value = CodeBlock.of("%N", function.result.name),
             )
             returnValType = null
             codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
           }
 
           else -> {
-            val loweredReturnValues = coreResult.encoder.lowerFlat(
-              value = CodeBlock.of("%N", coreResult.name),
+            val loweredReturnValues = function.result.encoder.lowerFlat(
+              value = CodeBlock.of("%N", function.result.name),
             )
-            returnValType = coreResult.encoder.coreTypes.single()
+            returnValType = function.result.encoder.coreTypes.single()
             codeBuilder.add(
               "return@%T longArrayOf(%L)",
               Symbols.ChicoryRuntime.WasmFunctionHandle,
