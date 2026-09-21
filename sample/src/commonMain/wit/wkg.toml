@@ -5,6 +5,7 @@ members = [
   "jobs",
   "json",
   "object-store",
+  "platform",
   "sql",
   "transfer-service",
   "uuid",
