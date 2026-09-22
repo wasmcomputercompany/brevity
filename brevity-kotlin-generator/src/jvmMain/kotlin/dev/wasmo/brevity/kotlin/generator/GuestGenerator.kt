@@ -18,7 +18,10 @@ import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
-import dev.wasmo.brevity.kotlin.generator.GuestFunctionFactory.Receiver
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.GuestCallsHost
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.HostCallsGuest
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 
 private val guestOptIns = setOf(
   Symbols.KotlinWasm.ComponentModelInternalApi,
@@ -30,6 +33,7 @@ class GuestGenerator(
   private val kotlinMapper: KotlinMapper,
   private val guestPlatform: GuestPlatform,
   private val encoderFactory: EncoderFactory,
+  private val bridgeFunctionFactory: BridgeFunction.Factory,
   private val declarationIndex: DeclarationIndex,
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
   private val roleTracker: RoleTracker,
@@ -133,7 +137,7 @@ class GuestGenerator(
     if (guest) {
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
-        collector += guestFunctionFactory(receiver, function).wasmExport()
+        collector += guestFunctionFactory(receiver, function, HostCallsGuest).wasmExport()
       }
     }
 
@@ -155,8 +159,10 @@ class GuestGenerator(
 
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
-        handleBuilder.addFunction(guestFunctionFactory(receiver, function).callHost())
-        collector += guestFunctionFactory(receiver, function).wasmImport()
+        handleBuilder.addFunction(
+          guestFunctionFactory(receiver, function, GuestCallsHost).callHost(),
+        )
+        collector += guestFunctionFactory(receiver, function, GuestCallsHost).wasmImport()
       }
 
       collector.addType(kotlinMapper.getHandleName(value.type), handleBuilder.build())
@@ -175,27 +181,38 @@ class GuestGenerator(
   }
 
   private fun exportedGuestFunctionFactories(value: IrWorld): List<GuestFunctionFactory> {
-    return buildList {
-      // The object to dereference that defines the true implementation. This is either the guest
-      // interface or one of its members.
-      val guestApis = value.guestApis ?: return@buildList
+    // The object to dereference that defines the true implementation. This is either the guest
+    // interface or one of its members.
+    val guestApis = value.guestApis ?: return listOf()
+    val receiver = Receiver.InboundInstance(
+      CodeBlock.of("%N_", guestApis.instanceName),
+    )
 
+    return buildList {
       for (item in guestApis.items) {
         when (item) {
           is IrFunction -> {
-            val receiver = Receiver.Global(
-              CodeBlock.of("%N_", guestApis.instanceName),
+            add(
+              guestFunctionFactory(
+                receiver = receiver,
+                function = item,
+                orientation = HostCallsGuest,
+              ),
             )
-            add(guestFunctionFactory(receiver, item))
           }
 
           is IrExternalApi -> {
             val irInterface = declarationIndex[item.serviceName] as IrInterface
-            val receiver = Receiver.Global(
-              CodeBlock.of("%N_.%N", guestApis.instanceName, item.instanceName),
-            )
             for (function in irInterface.functions) {
-              add(guestFunctionFactory(receiver, function))
+              add(
+                guestFunctionFactory(
+                  receiver = Receiver.InboundInstance(
+                    CodeBlock.of("%L.%N", receiver.codeBlock, item.instanceName),
+                  ),
+                  function = function,
+                  orientation = HostCallsGuest,
+                ),
+              )
             }
           }
         }
@@ -228,12 +245,11 @@ class GuestGenerator(
   private fun guestFunctionFactory(
     receiver: Receiver,
     function: IrFunction,
+    orientation: Orientation,
   ) = GuestFunctionFactory(
     kotlinMapper = kotlinMapper,
     guestPlatform = guestPlatform,
-    encoderFactory = encoderFactory,
-    receiver = receiver,
-    value = function,
+    function = bridgeFunctionFactory.create(receiver, orientation, function),
     supportAsync = supportAsync,
   )
 }

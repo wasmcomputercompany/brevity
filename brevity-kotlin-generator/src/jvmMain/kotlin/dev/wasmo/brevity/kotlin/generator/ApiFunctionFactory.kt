@@ -9,17 +9,16 @@ import dev.wasmo.brevity.kotlin.KotlinMapper
 
 internal class ApiFunctionFactory(
   private val kotlinMapper: KotlinMapper,
-  private val value: IrFunction,
+  private val function: BridgeFunction,
   private val supportAsync: Boolean,
 ) {
-  private val nameAllocator = NameAllocator().apply {
-    // Pre-allocate all the names we'll need.
-    for (parameter in value.parameters) {
-      newName(parameter.kotlinName, parameter.name)
-    }
-  }
+  private val value: IrFunction
+    get() = function.function
 
-  fun api() = FunSpec.builder(value.kotlinName)
+  private val nameAllocator: NameAllocator
+    get() = function.nameAllocator
+
+  fun api() = FunSpec.builder(function.kotlinName)
     .addModifiers(KModifier.ABSTRACT)
     .apply {
       if (value.async && supportAsync) {

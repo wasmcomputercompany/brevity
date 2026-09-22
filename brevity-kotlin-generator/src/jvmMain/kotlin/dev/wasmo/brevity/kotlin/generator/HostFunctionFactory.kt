@@ -10,36 +10,29 @@ import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.CoreType
-import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.encoders.coreTypeToLong
 import dev.wasmo.brevity.kotlin.encoders.longToCoreType
 import dev.wasmo.brevity.kotlin.encoders.valType
-import dev.wasmo.brevity.kotlin.generator.HostGenerator.Receiver
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.LoweredParameters
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal class HostFunctionFactory(
   private val kotlinMapper: KotlinMapper,
   hostPlatform: HostPlatform,
-  encoderFactory: EncoderFactory,
-  private val value: IrFunction,
   private val bridge: CodeBlock,
+  private val function: BridgeFunction,
   private val supportAsync: Boolean,
 ) {
   private val used = AtomicBoolean()
 
-  private val nameAllocator = NameAllocator().apply {
-    // Pre-allocate the names we'll need.
-    for (parameter in value.parameters) {
-      newName(parameter.kotlinName, parameter.name)
-    }
-  }
+  private val value: IrFunction
+    get() = function.function
 
-  private val coreValueFactory = CoreValueFactory(
-    encoderFactory = encoderFactory,
-    nameAllocator = nameAllocator,
-  )
-  private val parameterListEncoder = coreValueFactory.parameters(value.parameters)
-  private val coreResult = value.returnType?.let { coreValueFactory.result(it) }
+  private val receiver: Receiver = function.liftedReceiver
+
+  private val nameAllocator: NameAllocator
+    get() = function.nameAllocator
 
   private val codeBuilder = CodeBuilder(
     bridge = bridge,
@@ -50,76 +43,60 @@ internal class HostFunctionFactory(
   /** Returns a function that calls the guest. It implements the friendly API. */
   fun callGuest(): FunSpec {
     require(used.compareAndSet(false, true)) { "cannot be reused" }
+    require(receiver !is Receiver.InboundInstance)
 
-    return FunSpec.builder(value.kotlinName)
+    return FunSpec.builder(function.kotlinName)
       .addModifiers(KModifier.OVERRIDE)
       .apply {
         context(codeBuilder) {
           if (value.async && supportAsync) {
             addModifiers(KModifier.SUSPEND)
           }
-          val parameterValues = mutableListOf<CodeBlock>()
-          for (parameter in value.parameters) {
-            addParameter(nameAllocator[parameter.name], kotlinMapper.get(parameter.type))
-            parameterValues += CodeBlock.of("%N", nameAllocator[parameter.name])
-          }
+          addParameters(function.liftedParameters)
+          val loweredParameterValues = function.lowerParameterValues()
 
-          val longParameters = mutableListOf<CodeBlock>()
-          when (parameterListEncoder) {
-            is ParameterListEncoder.Flattened -> {
-              for (p in value.parameters.indices) {
-                val coreParameter = parameterListEncoder.coreParameters[p]
-                val loweredParameters = coreParameter.encoder.lowerFlat(parameterValues[p])
-                for ((v, coreType) in coreParameter.encoder.coreTypes.withIndex()) {
-                  longParameters += coreTypeToLong(loweredParameters[v], coreType)
-                }
-              }
-            }
-
-            is ParameterListEncoder.Stored -> {
-              codeBuilder.addStatement(
-                "val %N = %L",
-                parameterListEncoder.addressSpec.name,
-                codeBuilder.allocate("%L", parameterListEncoder.byteCount),
-              )
-              val addressParameterValue = CodeBlock.of(
-                "%N",
-                parameterListEncoder.addressSpec.name,
-              )
-              parameterListEncoder.storeAll(
-                baseAddress = addressParameterValue,
-                fieldValues = parameterValues,
-              )
-              longParameters += coreTypeToLong(
-                codeBuilder.platform.lowerAddress(addressParameterValue),
-                CoreType.Pointer,
-              )
-            }
+          if (function.result != null) {
+            codeBuilder.add("val %N = ", function.result.name)
           }
-
-          if (coreResult != null) {
-            codeBuilder.add("val %N = ", coreResult.name)
-          }
-          codeBuilder.add("%N.apply(⇥\n", value.kotlinName)
-          for (longParameter in longParameters) {
-            codeBuilder.add("%L,\n", longParameter)
+          codeBuilder.add("%N.apply(⇥\n", function.kotlinName)
+          for ((parameter, coreType) in loweredParameterValues) {
+            codeBuilder.add("%L,\n", coreTypeToLong(parameter, coreType))
           }
           codeBuilder.add("⇤)\n")
 
-          if (coreResult != null) {
-            returns(kotlinMapper.get(coreResult.type))
-            val returnValue = when (coreResult.encoder.coreTypes.size) {
-              1 -> coreResult.encoder.liftFlat(
-                values = listOf(
-                  longToCoreType(coreResult.name, 0, coreResult.encoder.coreTypes.single()),
+          when (function.result) {
+            is BridgeFunction.Result.PointerParameter -> {
+              error("not implemented")
+            }
+
+            is BridgeFunction.Result.PointerReturn -> {
+              returns(kotlinMapper.get(function.result.type))
+              codeBuilder.add(
+                "return %L",
+                function.result.encoder.load(
+                  longToCoreType(function.result.name, 0, CoreType.Pointer),
                 ),
               )
+            }
 
-              else -> coreResult.encoder.load(
-                longToCoreType(coreResult.name, 0, CoreType.Pointer),
+            is BridgeFunction.Result.SingleCoreValueReturn -> {
+              returns(kotlinMapper.get(function.result.type))
+              codeBuilder.add(
+                "return %L",
+                function.result.encoder.liftFlat(
+                  values = listOf(
+                    longToCoreType(
+                      function.result.name,
+                      0,
+                      function.result.encoder.coreTypes.single(),
+                    ),
+                  ),
+                ),
               )
             }
-            codeBuilder.add("return %L", returnValue)
+
+            null -> {
+            }
           }
         }
       }
@@ -130,41 +107,50 @@ internal class HostFunctionFactory(
   /** Adds a host function using the Chicory API. */
   fun declareHost(
     store: CodeBlock,
-    receiver: Receiver,
   ): CodeBlock {
     require(used.compareAndSet(false, true)) { "cannot be reused" }
+    require(receiver !is Receiver.OutboundInstance)
 
     context(codeBuilder) {
-      if (!value.isSupported) return CodeBlock.of("/* TODO: ${value.kotlinName} */\n")
+      if (!value.isSupported) return CodeBlock.of("/* TODO: ${function.kotlinName} */\n")
 
       val coreParameterTypes = buildList {
         if (receiver is Receiver.Id) {
           add(CoreType.I32)
         }
-        when (parameterListEncoder) {
-          is ParameterListEncoder.Flattened -> {
-            for (coreParameter in parameterListEncoder.coreParameters) {
+
+        when (function.loweredParameters) {
+          is LoweredParameters.Flattened -> {
+            for (coreParameter in function.loweredParameters.parameters) {
               addAll(coreParameter.encoder.coreTypes)
             }
           }
 
-          is ParameterListEncoder.Stored -> {
+          is LoweredParameters.Stored -> {
             add(CoreType.Pointer)
           }
         }
-        if (coreResult?.parameter != null) {
-          add(CoreType.I32)
+
+        if (function.result is BridgeFunction.Result.PointerParameter) {
+          add(CoreType.Pointer)
         }
       }
 
       var argIndex = 0
       val receiverValue = when (receiver) {
-        is Receiver.Id -> receiver.codeBlock(longToCoreType("args", argIndex++, CoreType.I32))
-        is Receiver.Instance -> receiver.codeBlock
+        is Receiver.Id -> CodeBlock.of(
+          "%L.%M<%T>(%L)",
+          bridge,
+          Symbols.Brevity.HostBridgeGet,
+          kotlinMapper.getAbiClassName(receiver.type),
+          longToCoreType("args", argIndex++, CoreType.I32),
+        )
+
+        is Receiver.InboundInstance -> receiver.codeBlock
       }
-      val liftedParameterValues = when (parameterListEncoder) {
-        is ParameterListEncoder.Flattened -> {
-          parameterListEncoder.coreParameters.map { coreParameter ->
+      val liftedParameterValues = when (function.loweredParameters) {
+        is LoweredParameters.Flattened -> {
+          function.loweredParameters.parameters.map { coreParameter ->
             coreParameter.encoder.liftFlat(
               values = coreParameter.encoder.coreTypes.map { coreType ->
                 longToCoreType("args", argIndex++, coreType)
@@ -173,8 +159,8 @@ internal class HostFunctionFactory(
           }
         }
 
-        is ParameterListEncoder.Stored -> {
-          parameterListEncoder.loadAll(
+        is LoweredParameters.Stored -> {
+          function.loweredParameters.loadAll(
             baseAddress = longToCoreType("args", argIndex++, CoreType.Pointer),
           )
         }
@@ -182,10 +168,10 @@ internal class HostFunctionFactory(
 
       val self = nameAllocator.newName("self")
       codeBuilder.addStatement("val %N = %L", self, receiverValue)
-      if (coreResult != null) {
-        codeBuilder.add("val %N = ", coreResult.name)
+      if (function.result != null) {
+        codeBuilder.add("val %N = ", function.result.name)
       }
-      codeBuilder.add("%N.%N(⇥", self, value.kotlinName)
+      codeBuilder.add("%N.%N(⇥", self, function.kotlinName)
       if (value.parameters.isNotEmpty()) {
         codeBuilder.add("\n")
       }
@@ -195,37 +181,39 @@ internal class HostFunctionFactory(
       codeBuilder.add("⇤)\n")
 
       val returnValType: CoreType?
-      if (coreResult != null) {
-        when {
-          coreResult.parameter != null -> {
-            codeBuilder.addStatement(
-              "val %N = %L",
-              coreResult.parameter.name,
-              longToCoreType("args", argIndex++, CoreType.Pointer),
-            )
-            coreResult.encoder.store(
-              baseAddress = CodeBlock.of("%N", coreResult.parameter.name),
-              value = CodeBlock.of("%N", coreResult.name),
-            )
-            returnValType = null
-            codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
-          }
-
-          else -> {
-            val loweredReturnValues = coreResult.encoder.lowerFlat(
-              value = CodeBlock.of("%N", coreResult.name),
-            )
-            returnValType = coreResult.encoder.coreTypes.single()
-            codeBuilder.add(
-              "return@%T longArrayOf(%L)",
-              Symbols.ChicoryRuntime.WasmFunctionHandle,
-              coreTypeToLong(loweredReturnValues.single(), returnValType),
-            )
-          }
+      when (function.result) {
+        is BridgeFunction.Result.PointerParameter -> {
+          codeBuilder.addStatement(
+            "val %N = %L",
+            function.result.pointerParameter.name,
+            longToCoreType("args", argIndex++, CoreType.Pointer),
+          )
+          function.result.encoder.store(
+            baseAddress = CodeBlock.of("%N", function.result.pointerParameter.name),
+            value = CodeBlock.of("%N", function.result.name),
+          )
+          returnValType = null
+          codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
         }
-      } else {
-        returnValType = null
-        codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
+
+        is BridgeFunction.Result.PointerReturn,
+        is BridgeFunction.Result.SingleCoreValueReturn,
+          -> {
+          val loweredReturnValues = function.result.encoder.lowerFlat(
+            value = CodeBlock.of("%N", function.result.name),
+          )
+          returnValType = function.result.encoder.coreTypes.single()
+          codeBuilder.add(
+            "return@%T longArrayOf(%L)",
+            Symbols.ChicoryRuntime.WasmFunctionHandle,
+            coreTypeToLong(loweredReturnValues.single(), returnValType),
+          )
+        }
+
+        null -> {
+          returnValType = null
+          codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
+        }
       }
 
       return CodeBlock.of(

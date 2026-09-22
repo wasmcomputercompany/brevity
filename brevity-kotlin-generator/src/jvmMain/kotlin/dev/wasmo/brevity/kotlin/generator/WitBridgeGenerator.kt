@@ -80,7 +80,7 @@ class WitBridgeGenerator private constructor(
             ?: error("WIT type not found: '$key'")
           val ktTypeName = ClassName.bestGuess(value)
           typeName to ktTypeName
-        }
+        },
       )
       val guestPlatform = GuestPlatform(kotlinMapper)
       val hostPlatform = HostPlatform(kotlinMapper)
@@ -92,6 +92,11 @@ class WitBridgeGenerator private constructor(
         declarationIndex = declarationIndex,
         platform = guestPlatform,
       )
+      val guestBridgeFunctionFactory = BridgeFunction.Factory(
+        platform = guestPlatform,
+        kotlinMapper = kotlinMapper,
+        encoderFactory = guestEncoderFactory,
+      )
       val guestGenerator = GuestGenerator(
         kotlinMapper = kotlinMapper,
         guestPlatform = guestPlatform,
@@ -101,6 +106,7 @@ class WitBridgeGenerator private constructor(
           encoderFactory = guestEncoderFactory,
           platform = guestPlatform,
         ),
+        bridgeFunctionFactory = guestBridgeFunctionFactory,
         roleTracker = roleTracker,
         packages = irPackages,
         supportAsync = supportAsync,
@@ -111,10 +117,15 @@ class WitBridgeGenerator private constructor(
         declarationIndex = declarationIndex,
         platform = hostPlatform,
       )
+      val hostBridgeFunctionFactory = BridgeFunction.Factory(
+        platform = hostPlatform,
+        kotlinMapper = kotlinMapper,
+        encoderFactory = hostEncoderFactory,
+      )
       val hostGenerator = HostGenerator(
         kotlinMapper = kotlinMapper,
         hostPlatform = hostPlatform,
-        encoderFactory = hostEncoderFactory,
+        bridgeFunctionFactory = hostBridgeFunctionFactory,
         declarationIndex = declarationIndex,
         declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
           encoderFactory = hostEncoderFactory,
@@ -126,6 +137,7 @@ class WitBridgeGenerator private constructor(
       )
       val apiGenerator = ApiGenerator(
         kotlinMapper = kotlinMapper,
+        bridgeFunctionFactory = guestBridgeFunctionFactory, // either will work.
         packages = irPackages,
         supportAsync = supportAsync,
       )
