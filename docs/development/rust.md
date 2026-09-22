@@ -36,6 +36,16 @@ You'll need [wasm-tools] to process generated `.wasm` files.
 $ cargo install wasm-tools
 ```
 
+wkg
+---
+Brevity requires [wkg] to fetch WASI `.wit` files.
+
+```bash
+$ cargo install wkg
+```
+
+[wkg]: https://github.com/bytecodealliance/wasm-pkg-tools
+
 [rustup]: https://rust-lang.org/tools/install/
 
 [wasm-tools]: https://github.com/bytecodealliance/wasm-tools
