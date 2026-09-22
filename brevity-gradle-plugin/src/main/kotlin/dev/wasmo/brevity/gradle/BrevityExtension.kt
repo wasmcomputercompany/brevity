@@ -1,7 +1,10 @@
 package dev.wasmo.brevity.gradle
 
+import org.gradle.api.Action
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.Property
 
 interface BrevityExtension {
   /** A set of wit package names, e.g. wasi:cli@5.0.3 */
@@ -15,4 +18,21 @@ interface BrevityExtension {
    * `wasi:clocks/types.duration@0.3.1` to `kotin.time.Duration`.
    */
   val customTypeMappings: MapProperty<String, String>
+
+  fun publish(action: Action<in BrevityPublishExtension>)
+
+  interface BrevityPublishExtension {
+    /**
+     * Path to a config.toml file.
+     *
+     * wkg will use its default if this is omitted.
+     *
+     * Special note: wkg interprets paths within this config as relative to the working
+     * dir where wkg is run, which will be build/brevity/sourceWit. Take heed!
+     */
+    val config: RegularFileProperty
+
+    /** True if publishing a workspace, false if not. */
+    val isWorkspace: Property<Boolean>
+  }
 }

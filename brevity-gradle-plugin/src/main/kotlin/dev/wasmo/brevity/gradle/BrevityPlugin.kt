@@ -1,11 +1,14 @@
 package dev.wasmo.brevity.gradle
 
 import java.io.File
+import org.gradle.api.Action
 import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Copy
 import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.TaskProvider
@@ -99,7 +102,13 @@ class BrevityPlugin : Plugin<Project> {
     project.extensions.add(
       BrevityExtension::class.java,
       "brevity",
-      RealBrevityExtension(downloadOciWitTask, generateKotlinTask),
+      RealBrevityExtension(downloadOciWitTask, generateKotlinTask) {
+        val publishWitTask = project.tasks.register<PublishWitTask>("publishWit") {
+          inputWkgWorkingDir.set(witBuildSourceDir)
+          dependsOn(copyWitSourceToBuildFolder)
+        }
+        RealBrevityPublishExtension(publishWitTask)
+      },
     )
   }
 
@@ -118,6 +127,7 @@ class BrevityPlugin : Plugin<Project> {
 internal class RealBrevityExtension(
   private val downloadOciWitTask: TaskProvider<DownloadOciWitTask>,
   private val generateKotlinTask: TaskProvider<BrevityTask>,
+  publishExtension: () -> BrevityExtension.BrevityPublishExtension,
 ) : BrevityExtension {
   override val ociPackages: ListProperty<String>
     get() = downloadOciWitTask.get().ociPackages
@@ -125,4 +135,23 @@ internal class RealBrevityExtension(
     get() = generateKotlinTask.get().worlds
   override val customTypeMappings: MapProperty<String, String>
     get() = generateKotlinTask.get().customTypeMappings
+
+  private val publishExtension: BrevityExtension.BrevityPublishExtension by lazy {
+    publishExtension()
+  }
+
+  override fun publish(action: Action<in BrevityExtension.BrevityPublishExtension>) {
+    action.execute(publishExtension)
+  }
+}
+
+internal class RealBrevityPublishExtension(
+  private val publishWitTask: TaskProvider<PublishWitTask>,
+): BrevityExtension.BrevityPublishExtension {
+  override val config: RegularFileProperty
+    get() = publishWitTask.get().inputWkgConfig
+
+  override val isWorkspace: Property<Boolean>
+    get() = publishWitTask.get().inputIsWorkspace
+
 }

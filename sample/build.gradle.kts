@@ -9,6 +9,11 @@ brevity {
   customTypeMappings.put("wasmo:uuid/types.uuid@0.1.0", "kotlin.uuid.Uuid")
   customTypeMappings.put("wasi:clocks/wall-clock.datetime@0.2.0", "kotlin.time.Instant")
   worlds.add("wasmo:platform/wasmo")
+
+  publish {
+    isWorkspace = true
+    config = project.layout.projectDirectory.file("config.toml")
+  }
 }
 
 dependencies {

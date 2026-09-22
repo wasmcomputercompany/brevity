@@ -10,3 +10,8 @@ members = [
   "transfer-service",
   "uuid",
 ]
+
+[workspace.metadata]
+authors = "Wasmolians <noreply@wasmo.com>"
+license = "Apache-2.0"
+repository = "https://github.com/wasmcomputercompany/brevity/"
