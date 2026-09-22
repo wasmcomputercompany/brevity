@@ -64,20 +64,39 @@ internal class HostFunctionFactory(
           }
           codeBuilder.add("⇤)\n")
 
-          if (function.result != null) {
-            returns(kotlinMapper.get(function.result.type))
-            val returnValue = when (function.result.encoder.coreTypes.size) {
-              1 -> function.result.encoder.liftFlat(
-                values = listOf(
-                  longToCoreType(function.result.name, 0, function.result.encoder.coreTypes.single()),
+          when (function.result) {
+            is BridgeFunction.Result.PointerParameter -> {
+              error("not implemented")
+            }
+
+            is BridgeFunction.Result.PointerReturn -> {
+              returns(kotlinMapper.get(function.result.type))
+              codeBuilder.add(
+                "return %L",
+                function.result.encoder.load(
+                  longToCoreType(function.result.name, 0, CoreType.Pointer),
                 ),
               )
+            }
 
-              else -> function.result.encoder.load(
-                longToCoreType(function.result.name, 0, CoreType.Pointer),
+            is BridgeFunction.Result.SingleCoreValueReturn -> {
+              returns(kotlinMapper.get(function.result.type))
+              codeBuilder.add(
+                "return %L",
+                function.result.encoder.liftFlat(
+                  values = listOf(
+                    longToCoreType(
+                      function.result.name,
+                      0,
+                      function.result.encoder.coreTypes.single(),
+                    ),
+                  ),
+                ),
               )
             }
-            codeBuilder.add("return %L", returnValue)
+
+            null -> {
+            }
           }
         }
       }
@@ -99,6 +118,7 @@ internal class HostFunctionFactory(
         if (receiver is Receiver.Id) {
           add(CoreType.I32)
         }
+
         when (function.loweredParameters) {
           is LoweredParameters.Flattened -> {
             for (coreParameter in function.loweredParameters.parameters) {
@@ -110,8 +130,9 @@ internal class HostFunctionFactory(
             add(CoreType.Pointer)
           }
         }
-        if (function.result?.pointerParameter != null) {
-          add(CoreType.I32)
+
+        if (function.result is BridgeFunction.Result.PointerParameter) {
+          add(CoreType.Pointer)
         }
       }
 
@@ -124,6 +145,7 @@ internal class HostFunctionFactory(
           kotlinMapper.getAbiClassName(receiver.type),
           longToCoreType("args", argIndex++, CoreType.I32),
         )
+
         is Receiver.InboundInstance -> receiver.codeBlock
       }
       val liftedParameterValues = when (function.loweredParameters) {
@@ -159,37 +181,39 @@ internal class HostFunctionFactory(
       codeBuilder.add("⇤)\n")
 
       val returnValType: CoreType?
-      if (function.result != null) {
-        when {
-          function.result.pointerParameter != null -> {
-            codeBuilder.addStatement(
-              "val %N = %L",
-              function.result.pointerParameter.name,
-              longToCoreType("args", argIndex++, CoreType.Pointer),
-            )
-            function.result.encoder.store(
-              baseAddress = CodeBlock.of("%N", function.result.pointerParameter.name),
-              value = CodeBlock.of("%N", function.result.name),
-            )
-            returnValType = null
-            codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
-          }
-
-          else -> {
-            val loweredReturnValues = function.result.encoder.lowerFlat(
-              value = CodeBlock.of("%N", function.result.name),
-            )
-            returnValType = function.result.encoder.coreTypes.single()
-            codeBuilder.add(
-              "return@%T longArrayOf(%L)",
-              Symbols.ChicoryRuntime.WasmFunctionHandle,
-              coreTypeToLong(loweredReturnValues.single(), returnValType),
-            )
-          }
+      when (function.result) {
+        is BridgeFunction.Result.PointerParameter -> {
+          codeBuilder.addStatement(
+            "val %N = %L",
+            function.result.pointerParameter.name,
+            longToCoreType("args", argIndex++, CoreType.Pointer),
+          )
+          function.result.encoder.store(
+            baseAddress = CodeBlock.of("%N", function.result.pointerParameter.name),
+            value = CodeBlock.of("%N", function.result.name),
+          )
+          returnValType = null
+          codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
         }
-      } else {
-        returnValType = null
-        codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
+
+        is BridgeFunction.Result.PointerReturn,
+        is BridgeFunction.Result.SingleCoreValueReturn,
+          -> {
+          val loweredReturnValues = function.result.encoder.lowerFlat(
+            value = CodeBlock.of("%N", function.result.name),
+          )
+          returnValType = function.result.encoder.coreTypes.single()
+          codeBuilder.add(
+            "return@%T longArrayOf(%L)",
+            Symbols.ChicoryRuntime.WasmFunctionHandle,
+            coreTypeToLong(loweredReturnValues.single(), returnValType),
+          )
+        }
+
+        null -> {
+          returnValType = null
+          codeBuilder.add("return@%T longArrayOf()", Symbols.ChicoryRuntime.WasmFunctionHandle)
+        }
       }
 
       return CodeBlock.of(

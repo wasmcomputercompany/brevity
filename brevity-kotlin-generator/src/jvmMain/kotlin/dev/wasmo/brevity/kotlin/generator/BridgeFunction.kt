@@ -61,7 +61,7 @@ class BridgeFunction(
         }
       }
 
-      if (result?.pointerParameter != null) {
+      if (result is Result.PointerParameter) {
         codeBuilder.addStatement(
           "val %N = %L",
           result.pointerParameter.name,
@@ -99,19 +99,16 @@ class BridgeFunction(
     data object OutboundInstance : Receiver
   }
 
-  /**
-   * Lower a list of parameters in one of two ways:
-   *
-   *  * Flattened to core parameters, where each lifted parameter corresponds to one or more core
-   *    parameters.
-   *
-   *  * Stored to memory. We encode the list of parameters as if it were a tuple.
-   */
   sealed interface LoweredParameters {
+    /**
+     * Parameters are flattened to core values. Each lifted parameter corresponds to one or more
+     * core parameters.
+     */
     class Flattened(
       val parameters: List<FlatParameter>,
     ) : LoweredParameters
 
+    /** The caller allocates memory and writes parameters there. This uses tuple encoding. */
     class Stored(
       val addressSpec: ParameterSpec,
       fieldEncoders: List<Encoder>,
@@ -136,19 +133,34 @@ class BridgeFunction(
     val coreSpecs: List<ParameterSpec>,
   )
 
-  /**
-   * A return value for lifting and lowering.
-   */
-  class Result(
-    val name: String,
-    val type: TypeName,
-    val encoder: Encoder,
-    /**
-     * Non-null if a host function returns data to a guest-provided pointer, and not a
-     * host-allocated pointer.
-     */
-    val pointerParameter: ParameterSpec?,
-  )
+  /** How we transmit the result across the boundary. */
+  sealed interface Result {
+    val name: String
+    val type: TypeName
+    val encoder: Encoder
+
+    /** Encode the result as a single core value and return it. */
+    data class SingleCoreValueReturn(
+      override val name: String,
+      override val type: TypeName,
+      override val encoder: Encoder,
+    ) : Result
+
+    /** The callee allocates memory, writes the result there, and returns the address. */
+    data class PointerReturn(
+      override val name: String,
+      override val type: TypeName,
+      override val encoder: Encoder,
+    ) : Result
+
+    /** The caller allocates memory, and passes the address as a parameter. */
+    data class PointerParameter(
+      override val name: String,
+      override val type: TypeName,
+      override val encoder: Encoder,
+      val pointerParameter: ParameterSpec,
+    ) : Result
+  }
 
   enum class Orientation {
     HostCallsGuest,
@@ -256,21 +268,29 @@ class BridgeFunction(
       type: TypeName,
     ): Result {
       val encoder = encoderFactory.get(type)
-      return Result(
-        name = nameAllocator.newName("result"),
-        type = type,
-        encoder = encoder,
-        pointerParameter = when {
-          orientation == Orientation.GuestCallsHost && encoder.coreTypes.size > 1 -> {
-            ParameterSpec(
-              nameAllocator.newName("resultParameter"),
-              CoreType.Pointer.kotlinCoreType,
-            )
-          }
+      return when {
+        encoder.coreTypes.size == 1 -> Result.SingleCoreValueReturn(
+          name = nameAllocator.newName("result"),
+          type = type,
+          encoder = encoder,
+        )
 
-          else -> null
-        },
-      )
+        orientation == Orientation.GuestCallsHost -> Result.PointerParameter(
+          name = nameAllocator.newName("result"),
+          type = type,
+          encoder = encoder,
+          pointerParameter = ParameterSpec(
+            nameAllocator.newName("resultParameter"),
+            CoreType.Pointer.kotlinCoreType,
+          ),
+        )
+
+        else -> Result.PointerReturn(
+          name = nameAllocator.newName("result"),
+          type = type,
+          encoder = encoder,
+        )
+      }
     }
   }
 }
