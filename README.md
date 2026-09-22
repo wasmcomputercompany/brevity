@@ -2,7 +2,7 @@ Brevity
 =======
 
 > _‘brevity is the soul of wit’_
->  –– Polonius in Shakespeare’s Hamlet
+>  –– Polonius in Shakespeare’s Hamlet (blitheringly)
 
 This is a Kotlin implementation of a WIT processor. It compiles WIT specifications into Kotlin
 interfaces, as well as host and guest bridging code for the Wasm runtime.
@@ -22,6 +22,7 @@ This project contains documentation and specifications copyrighted by the
 * **brevity-kotlin-generator**: uses parsed `.wit` files to generate `.kt` files.
 * **brevity-testing**: test facets for our own internal testing.
 * **brevity-wit**: Parses and models `.wit` files.
+* **sample**: Sample project to exercise brevity gradle functionality.
 * **wasi**
   * **brevity-wasi**: Our implementations of the WASI APIs.
   * **brevity-wasi-p1**: A hand-authored host binding for [WASI Preview 1]. We can't use Brevity
@@ -43,6 +44,72 @@ WASI which uses `types` convention extensively.
 Brevity can map limited WIT types like `WallClock.Datetime` to preferred platform types like
 `kotlin.time.Instant`.
 
+Usage
+-----
+
+Add the Brevity plugin to your `build.gradle.kts`:
+
+```kotlin
+plugins {
+  id("dev.wasmo.brevity")
+}
+```
+
+Then add the worlds you want to generate APIs for:
+
+```kotlin
+brevity {
+  worlds.add("wasmo:platform/wasmo")
+}
+```
+
+WIT source is defined in `commonMain/wit` in a [wkg]-friendly structure. [wkg] is run on `commonMain/wit`
+to fetch dependencies as part of the build process. Refer to [wkg] documentation for information on how
+this may be configured.
+
+Custom type mappings may be declared in your build file, too:
+
+```kotlin
+  customTypeMappings.put("wasi:clocks/wall-clock.datetime@0.2.0", "kotlin.time.Instant")
+```
+
+...and then implemented in Kotlin by providing an implementation of the generated Adapters
+interface in the same package:
+
+```kotlin
+package wit.wasi.clocks.v0_2_0
+
+import dev.wasmo.brevity.WitAdapter
+import kotlin.time.Instant
+
+internal object RealAdapters : Adapters {
+  override val wallClockDatetime = object : WitAdapter<WallClock.Datetime, Instant> {
+    override fun fromWit(wit: WallClock.Datetime) =
+      Instant.fromEpochSeconds(wit.seconds.toLong(), wit.nanoseconds.toInt())
+
+    override fun toWit(value: Instant) =
+      WallClock.Datetime(value.epochSeconds.toULong(), value.nanosecondsOfSecond.toUInt())
+  }
+}
+```
+
+If you need to generate a Kotlin interface for a world defined in an existing WASM component
+(as is done in `:wasi:brevity-wasi-p3`), manually add the source packages and all their dependencies
+to brevity's build source in your gradle file:
+
+```kotlin
+brevity {
+  ociPackages.addAll(
+    "wasi:cli@0.3.1",
+    "wasi:clocks@0.3.1",
+    "wasi:filesystem@0.3.1",
+    "wasi:http@0.3.1",
+    "wasi:random@0.3.1",
+    "wasi:sockets@0.3.1",
+  )
+  worlds.add("wasi:http/service@0.3.1")
+}
+```
 
 Implementation
 --------------
@@ -68,3 +135,4 @@ We have several different representations of the `.wit` code, that fit together 
 [WASI 0.2.0 tag]: https://github.com/WebAssembly/WASI/tree/v0.2.0
 [WASI Preview 1]: https://github.com/WebAssembly/WASI/tree/wasi-0.1
 [WASI main branch]: https://github.com/WebAssembly/WASI/
+[wkg]: https://github.com/bytecodealliance/wasm-pkg-tools

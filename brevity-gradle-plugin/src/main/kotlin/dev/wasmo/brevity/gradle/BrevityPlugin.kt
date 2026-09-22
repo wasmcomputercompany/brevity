@@ -6,6 +6,8 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
+import org.gradle.api.tasks.Copy
+import org.gradle.api.tasks.Exec
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.register
@@ -21,6 +23,30 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper
 @Suppress("unused") // Registered as a Gradle plugin.
 class BrevityPlugin : Plugin<Project> {
   override fun apply(project: Project) {
+    val witBuildSourceDir = project.layout.buildDirectory.dir("brevity/sourceWit")
+    val copyWitSourceToBuildFolder = project.tasks.register<Copy>("copyWitSource") {
+      from(File(project.projectDir, "src/commonMain/wit"))
+      into(witBuildSourceDir)
+    }
+
+    val wkgFetchDependencies = project.tasks.register<Exec>("wkgFetchDependencies") {
+      inputs.files(copyWitSourceToBuildFolder)
+      outputs.files(
+        project.layout.buildDirectory.files("brevity/sourceWit/wkg.lock"),
+      )
+      outputs.dirs(
+        project.layout.buildDirectory.dir("brevity/sourceWit/wkg")
+      )
+      onlyIf { spec ->
+        witBuildSourceDir.get().asFileTree.any { file -> file.name.endsWith(".wit") }
+      }
+      workingDir(witBuildSourceDir)
+      commandLine(
+        "wkg",
+        "fetch",
+      )
+    }
+
     val downloadOciWitTask = project.tasks.register<DownloadOciWitTask>("brevityDownloadOciWit") {
       witOutputDir.value(project.layout.buildDirectory.dir("brevity/oci-wit"))
     }
@@ -40,7 +66,8 @@ class BrevityPlugin : Plugin<Project> {
       }
 
       classpath.setFrom(cliConfiguration)
-      inputWitPackageDirectories.from(File(project.projectDir, "src/commonMain/wit"))
+      dependsOn(wkgFetchDependencies)
+      inputWitPackageDirectories.from(copyWitSourceToBuildFolder)
       outputKotlinCommonMain.value(project.layout.buildDirectory.dir("brevity/commonMain"))
       outputKotlinWasmWasiMain.value(project.layout.buildDirectory.dir("brevity/wasmWasiMain"))
       outputKotlinJvmMain.value(project.layout.buildDirectory.dir("brevity/jvmMain"))
