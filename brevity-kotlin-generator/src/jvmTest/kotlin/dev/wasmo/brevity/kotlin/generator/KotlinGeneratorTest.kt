@@ -169,10 +169,10 @@ class KotlinGeneratorTest {
           val stringByteCount = (elementAddress + 4).loadInt()
           Pointer(stringAddress.toUInt()).loadString(stringByteCount)
         }
-        val args = list
         freeAllComponentModelReallocAllocatedMemory()
-        val result = guest_.run(
-          args = args,
+        val self = guest_
+        val result = self.run(
+          args = list,
         )
         return result
       }
@@ -230,9 +230,9 @@ class KotlinGeneratorTest {
                 listOf(),
               ),
               WasmFunctionHandle { instance, args ->
+                val resultParameter = args[0].toInt()
                 val self = host.types
                 val result = self.now()
-                val resultParameter = args[0].toInt()
                 store_Types_Datetime_host(bridge, resultParameter, result)
                 return@WasmFunctionHandle longArrayOf()
               },
@@ -1183,22 +1183,16 @@ class KotlinGeneratorTest {
       @WasmExport("wasi:clocks/types@0.2.12#[method]pollable.ready")
       private fun types_pollable_ready_export(self: Int): Int {
         freeAllComponentModelReallocAllocatedMemory()
-        val result = liftFlat_Types_Pollable_guest(
-          GuestBridge,
-          self,
-        ).ready(
-        )
+        val self_ = GuestBridge.fromId(self, ::TypesPollableHandle)
+        val result = self_.ready()
         return (if (result) 1 else 0)
       }
 
       @WasmExport("wasi:clocks/types@0.2.12#[resource-drop]pollable")
       private fun types_pollable_close_export(self: Int) {
         freeAllComponentModelReallocAllocatedMemory()
-        liftFlat_Types_Pollable_guest(
-          GuestBridge,
-          self,
-        ).close(
-        )
+        val self_ = GuestBridge.fromId(self, ::TypesPollableHandle)
+        self_.close()
       }
 
       @WasmImport(
@@ -1228,6 +1222,7 @@ class KotlinGeneratorTest {
           types_pollable_close_import(
             this.id,
           )
+          freeAllComponentModelReallocAllocatedMemory()
         }
       }
 

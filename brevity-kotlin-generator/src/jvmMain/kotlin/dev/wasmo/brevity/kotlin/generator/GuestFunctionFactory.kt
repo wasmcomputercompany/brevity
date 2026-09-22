@@ -14,7 +14,6 @@ import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
-import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.LoweredParameters
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
@@ -57,43 +56,39 @@ internal class GuestFunctionFactory(
           if (value.async && supportAsync) {
             addModifiers(KModifier.SUSPEND)
           }
-          addParameters(function.liftedParameters)
+          addParameters(function.liftedParameterSpecs)
 
-          val loweredParameters = mutableListOf<Pair<CodeBlock, CoreType>>()
-          loweredParameters += function.lowerParameterValues()
+          val loweredParameterValues = function.lowerParameterValues()
 
-          if (
-            function.result is BridgeFunction.Result.PointerReturn ||
-            function.result is BridgeFunction.Result.SingleCoreValueReturn
-          ) {
+          if (function.result != null) {
             codeBuilder.add("val %N = ", function.result.name)
           }
-
           codeBuilder.add("%N(⇥", value.functionName.importFunctionName)
-          if (loweredParameters.isNotEmpty()) {
+          if (loweredParameterValues.isNotEmpty()) {
             codeBuilder.add("\n")
           }
-          for ((loweredParameter, _) in loweredParameters) {
-            codeBuilder.add("%L,\n", loweredParameter)
+          for (loweredParameterValue in loweredParameterValues) {
+            codeBuilder.add("%L,\n", loweredParameterValue)
           }
           codeBuilder.add("⇤)\n")
 
           if (function.result != null) {
             returns(kotlinMapper.get(function.result.type))
-            val returnValue = when (function.result) {
-              is BridgeFunction.Result.PointerParameter -> {
-                function.result.encoder.load(
-                  CodeBlock.of("%N", function.result.pointerParameter.name),
-                )
-              }
+          }
 
-              else -> function.result.encoder.liftFlat(
-                values = listOf(CodeBlock.of("%N", function.result.name)),
-              )
-            }
+          val returnValue = function.liftReturnValue { name, _ ->
+            CodeBlock.of("%N", name)
+          }
+
+          if (returnValue != null) {
             codeBuilder.add("return %L", returnValue)
             codeBuilder.add(
               "\n⇥.also { %M() }⇤\n",
+              Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
+            )
+          } else {
+            codeBuilder.addStatement(
+              "%M()",
               Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
             )
           }
@@ -112,34 +107,16 @@ internal class GuestFunctionFactory(
       .addAnnotation(value.functionName.wasmImportAnnotation)
       .addModifiers(KModifier.PRIVATE, KModifier.EXTERNAL)
       .apply {
-        if (function.loweredReceiver != null) {
-          addParameters(function.loweredReceiver.coreSpecs)
-        }
-
-        when (function.loweredParameters) {
-          is LoweredParameters.Flattened -> {
-            for (coreParameter in function.loweredParameters.parameters) {
-              addParameters(coreParameter.coreSpecs)
-            }
-          }
-
-          is LoweredParameters.Stored -> {
-            addParameter(function.loweredParameters.addressSpec)
-          }
-        }
+        addParameters(function.loweredParameterSpecs)
 
         when (function.result) {
-          is BridgeFunction.Result.PointerParameter -> {
-            addParameter(function.result.pointerParameter)
-          }
-
           is BridgeFunction.Result.PointerReturn,
           is BridgeFunction.Result.SingleCoreValueReturn,
             -> {
             returns(function.result.encoder.coreTypes.single().kotlinCoreType)
           }
 
-          null -> {}
+          else -> {}
         }
       }
       .build()
@@ -155,109 +132,49 @@ internal class GuestFunctionFactory(
       .addModifiers(KModifier.PRIVATE)
       .apply {
         context(codeBuilder) {
-          val liftedReceiver = when {
-            function.loweredReceiver != null -> {
-              addParameters(function.loweredReceiver.coreSpecs)
+          val loweredParameterSpecs = function.loweredParameterSpecs
+          addParameters(loweredParameterSpecs)
 
-              function.loweredReceiver.encoder.liftFlat(
-                values = function.loweredReceiver.coreSpecs.map { CodeBlock.of("%N", it) },
-              )
-            }
-
-            else -> (receiver as Receiver.InboundInstance).codeBlock
+          val loweredParameterValues = loweredParameterSpecs.map {
+            CodeBlock.of("%N", it)
           }
 
-          when (function.loweredParameters) {
-            is LoweredParameters.Flattened -> {
-              for ((index, coreParameter) in function.loweredParameters.parameters.withIndex()) {
-                addParameters(coreParameter.coreSpecs)
-                val liftedParameterExpression = coreParameter.encoder.liftFlat(
-                  values = coreParameter.coreSpecs.map { CodeBlock.of("%N", it) },
-                )
-                codeBuilder.addStatement(
-                  "val %N = %L",
-                  nameAllocator[value.parameters[index].name],
-                  liftedParameterExpression,
-                )
-              }
-            }
-
-            is LoweredParameters.Stored -> {
-              addParameter(function.loweredParameters.addressSpec)
-              val addressExpression = CodeBlock.of(
-                "%L",
-                function.loweredParameters.addressSpec.name,
-              )
-              addStatement(
-                "val %L = %L",
-                function.loweredParameters.addressSpec.name,
-                codeBuilder.platform.liftAddress(addressExpression),
-              )
-              val loadedParameterExpression = function.loweredParameters.loadAll(
-                baseAddress = addressExpression,
-              )
-              for ((index, parameter) in value.parameters.withIndex()) {
-                codeBuilder.addStatement(
-                  "val %N = %L",
-                  nameAllocator[parameter.name],
-                  loadedParameterExpression[index],
-                )
-              }
-            }
-          }
+          val liftedParameterValues = function.liftParameterValues(
+            loweredParameterValues,
+          )
 
           codeBuilder.addStatement(
             "%M()",
             Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
           )
 
+          val self = nameAllocator.newName("self")
+          codeBuilder.addStatement("val %N = %L", self, liftedParameterValues.receiverValue)
           if (function.result != null) {
             codeBuilder.add("val %N = ", function.result.name)
           }
-          codeBuilder.add("%L.%N(⇥\n", liftedReceiver, function.kotlinName)
-          for (parameter in value.parameters) {
+          codeBuilder.add("%N.%N(⇥", self, function.kotlinName)
+          if (value.parameters.isNotEmpty()) {
+            codeBuilder.add("\n")
+          }
+          for ((index, parameter) in value.parameters.withIndex()) {
             codeBuilder.add(
               "%N = %L,\n",
               nameAllocator[parameter.name],
-              nameAllocator[parameter.name],
+              liftedParameterValues.parameterValues[index],
             )
           }
           codeBuilder.add("⇤)\n")
 
           codeBuilder.permitAllocationsNow()
 
-          when (function.result) {
-            is BridgeFunction.Result.PointerReturn -> {
-              returns(CoreType.Pointer.kotlinCoreType)
-              val address = nameAllocator.newName("resultAddress")
-              codeBuilder.addStatement(
-                "val %N = %L",
-                address,
-                codeBuilder.allocate("%L", function.result.encoder.byteCount),
-              )
-              function.result.encoder.store(
-                baseAddress = CodeBlock.of("%N", address),
-                value = CodeBlock.of("%N", function.result.name),
-              )
-              codeBuilder.add(
-                "return %L\n",
-                codeBuilder.platform.lowerAddress(CodeBlock.of("%N", address)),
-              )
-            }
-
-            is BridgeFunction.Result.SingleCoreValueReturn -> {
-              returns(function.result.encoder.coreTypes.single().kotlinCoreType)
-              val loweredReturnValues = function.result.encoder.lowerFlat(
-                value = CodeBlock.of("%N", function.result.name),
-              )
-              codeBuilder.add("return %L\n", loweredReturnValues.single())
-            }
-
-            is BridgeFunction.Result.PointerParameter -> {
-              error("unimplemented")
-            }
-
-            null -> {}
+          val returnValue = function.lowerReturnValue(liftedParameterValues)
+          if (returnValue != null) {
+            returns(function.loweredReturnType!!.kotlinCoreType)
+            codeBuilder.add(
+              "return %L\n",
+              returnValue,
+            )
           }
         }
       }
