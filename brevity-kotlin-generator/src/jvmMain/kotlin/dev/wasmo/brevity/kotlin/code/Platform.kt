@@ -46,6 +46,11 @@ interface Platform {
   fun beforeLowerReturnValue() {
   }
 
+  /** Frees any memory no longer necessary after lifting the return value. */
+  context(codeBuilder: CodeBuilder)
+  fun afterLiftResult() {
+  }
+
   fun runtimeValueToCoreValue(value: CodeBlock, coreType: CoreType) = value
 
   fun coreValueToRuntimeValue(value: CodeBlock, coreType: CoreType) = value

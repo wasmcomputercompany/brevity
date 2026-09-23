@@ -93,14 +93,13 @@ class WitBridgeGenerator private constructor(
         platform = guestPlatform,
       )
       val guestBridgeFunctionFactory = BridgeFunction.Factory(
-        platform = guestPlatform,
         kotlinMapper = kotlinMapper,
         encoderFactory = guestEncoderFactory,
+        supportAsync = supportAsync,
       )
       val guestGenerator = GuestGenerator(
         kotlinMapper = kotlinMapper,
         guestPlatform = guestPlatform,
-        encoderFactory = guestEncoderFactory,
         declarationIndex = declarationIndex,
         declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
           encoderFactory = guestEncoderFactory,
@@ -109,7 +108,6 @@ class WitBridgeGenerator private constructor(
         bridgeFunctionFactory = guestBridgeFunctionFactory,
         roleTracker = roleTracker,
         packages = irPackages,
-        supportAsync = supportAsync,
       )
 
       val hostEncoderFactory = EncoderFactory(
@@ -118,12 +116,11 @@ class WitBridgeGenerator private constructor(
         platform = hostPlatform,
       )
       val hostBridgeFunctionFactory = BridgeFunction.Factory(
-        platform = hostPlatform,
         kotlinMapper = kotlinMapper,
         encoderFactory = hostEncoderFactory,
+        supportAsync = supportAsync,
       )
       val hostGenerator = HostGenerator(
-        kotlinMapper = kotlinMapper,
         hostPlatform = hostPlatform,
         bridgeFunctionFactory = hostBridgeFunctionFactory,
         declarationIndex = declarationIndex,
@@ -133,13 +130,11 @@ class WitBridgeGenerator private constructor(
         ),
         roleTracker = roleTracker,
         packages = irPackages,
-        supportAsync = supportAsync,
       )
       val apiGenerator = ApiGenerator(
         kotlinMapper = kotlinMapper,
         bridgeFunctionFactory = guestBridgeFunctionFactory, // either will work.
         packages = irPackages,
-        supportAsync = supportAsync,
       )
 
       WitBridgeGenerator(

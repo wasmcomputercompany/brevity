@@ -26,7 +26,6 @@ class ApiGenerator(
   private val kotlinMapper: KotlinMapper,
   private val bridgeFunctionFactory: BridgeFunction.Factory,
   private val packages: List<IrWitPackage>,
-  private val supportAsync: Boolean,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
@@ -307,6 +306,5 @@ class ApiGenerator(
       orientation = BridgeFunction.Orientation.GuestCallsHost,
       value = item,
     ),
-    supportAsync = supportAsync,
   )
 }

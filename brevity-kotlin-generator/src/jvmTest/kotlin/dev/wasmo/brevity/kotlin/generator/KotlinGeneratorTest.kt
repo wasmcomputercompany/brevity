@@ -262,7 +262,8 @@ class KotlinGeneratorTest {
               args.size.toLong(),
             )
             val result = resultArray[0]
-            return result.toInt()
+            val liftedResult = result.toInt()
+            return liftedResult
           }
         }
 
@@ -958,7 +959,8 @@ class KotlinGeneratorTest {
           val resultArray = now.apply(
           )
           val result = resultArray[0]
-          return load_Types_Datetime_host(bridge, result.toInt())
+          val liftedResult = load_Types_Datetime_host(bridge, result.toInt())
+          return liftedResult
         }
       }
 
@@ -1216,8 +1218,9 @@ class KotlinGeneratorTest {
           val result = types_pollable_ready_import(
             this.id,
           )
-          return (result != 0)
-            .also { freeAllComponentModelReallocAllocatedMemory() }
+          val liftedResult = (result != 0)
+          freeAllComponentModelReallocAllocatedMemory()
+          return liftedResult
         }
 
         override fun close() {
