@@ -76,9 +76,7 @@ internal class GuestFunctionFactory(
             returns(kotlinMapper.get(function.result.type))
           }
 
-          val returnValue = function.liftReturnValue { name, _ ->
-            CodeBlock.of("%N", name)
-          }
+          val returnValue = function.liftReturnValue()
 
           if (returnValue != null) {
             codeBuilder.add("return %L", returnValue)
@@ -143,10 +141,7 @@ internal class GuestFunctionFactory(
             loweredParameterValues,
           )
 
-          codeBuilder.addStatement(
-            "%M()",
-            Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
-          )
+          codeBuilder.platform.afterLiftParameters()
 
           val self = nameAllocator.newName("self")
           codeBuilder.addStatement("val %N = %L", self, liftedParameterValues.receiverValue)
@@ -166,15 +161,12 @@ internal class GuestFunctionFactory(
           }
           codeBuilder.add("⇤)\n")
 
-          codeBuilder.permitAllocationsNow()
+          codeBuilder.platform.beforeLowerReturnValue()
 
           val returnValue = function.lowerReturnValue(liftedParameterValues)
           if (returnValue != null) {
             returns(function.loweredReturnType!!.kotlinCoreType)
-            codeBuilder.add(
-              "return %L\n",
-              returnValue,
-            )
+            codeBuilder.addStatement("return %L", returnValue)
           }
         }
       }

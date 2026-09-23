@@ -1,11 +1,14 @@
 package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.DOUBLE
+import com.squareup.kotlinpoet.FLOAT
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
+import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.plus
@@ -50,6 +53,30 @@ class HostPlatform(
       kotlinMapper.getAbiClassName(handleType),
       resource,
     )
+
+  /** Everything in Chicory is a [Long], so we need to convert core types. */
+  override fun runtimeValueToCoreValue(
+    value: CodeBlock,
+    coreType: CoreType,
+  ) = when (coreType) {
+    CoreType.F32 -> CodeBlock.of("%T.fromBits(%L.toInt())", FLOAT, value)
+    CoreType.F64 -> CodeBlock.of("%T.fromBits(%L)", DOUBLE, value)
+    CoreType.I32 -> CodeBlock.of("%L.toInt()", value)
+    CoreType.I64 -> value
+    CoreType.Pointer -> CodeBlock.of("%L.toInt()", value)
+  }
+
+  /** Everything in Chicory is a [Long], so we need to convert core types. */
+  override fun coreValueToRuntimeValue(
+    value: CodeBlock,
+    coreType: CoreType,
+  ) = when (coreType) {
+    CoreType.F32 -> CodeBlock.of("%L.toBits().toLong()", value)
+    CoreType.F64 -> CodeBlock.of("%L.toBits()", value)
+    CoreType.I32 -> CodeBlock.of("%L.toLong()", value)
+    CoreType.I64 -> value
+    CoreType.Pointer -> CodeBlock.of("%L.toLong()", value)
+  }
 
   context(codeBuilder: CodeBuilder)
   override fun loadString(address: CodeBlock, byteCount: CodeBlock) =

@@ -52,6 +52,19 @@ class GuestPlatform(
     )
 
   context(codeBuilder: CodeBuilder)
+  override fun afterLiftParameters() {
+    codeBuilder.addStatement(
+      "%M()",
+      Symbols.KotlinWasm.FreeAllComponentModelReallocAllocatedMemory,
+    )
+  }
+
+  context(codeBuilder: CodeBuilder)
+  override fun beforeLowerReturnValue() {
+    codeBuilder.permitAllocationsNow()
+  }
+
+  context(codeBuilder: CodeBuilder)
   override fun loadString(address: CodeBlock, byteCount: CodeBlock): CodeBlock {
     return CodeBlock.of(
       "%T(%L.toUInt()).%M(%L)",

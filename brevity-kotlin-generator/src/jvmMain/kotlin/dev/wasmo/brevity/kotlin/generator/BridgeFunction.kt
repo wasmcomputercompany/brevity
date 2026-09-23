@@ -83,13 +83,21 @@ class BridgeFunction(
   context(codeBuilder: CodeBuilder)
   fun lowerParameterValues(): List<CodeBlock> = buildList {
     if (liftedReceiver is Receiver.Id) {
-      add(CodeBlock.of("this.%N", "id"))
+      add(
+        codeBuilder.platform.coreValueToRuntimeValue(
+          CodeBlock.of("this.%N", "id"),
+          CoreType.I32,
+        ),
+      )
     }
 
     when (loweredParameters) {
       is LoweredParameters.Flattened -> {
         for ((p, coreParameter) in loweredParameters.parameters.withIndex()) {
-          addAll(coreParameter.encoder.lowerFlat(liftedParameterValues[p]))
+          val coreValues = coreParameter.encoder.lowerFlat(liftedParameterValues[p])
+          for ((index, type) in coreParameter.encoder.coreTypes.withIndex()) {
+            add(codeBuilder.platform.coreValueToRuntimeValue(coreValues[index], type))
+          }
         }
       }
 
@@ -107,7 +115,12 @@ class BridgeFunction(
           baseAddress = addressParameterValue,
           fieldValues = liftedParameterValues,
         )
-        add(codeBuilder.platform.lowerAddress(addressParameterValue))
+        add(
+          codeBuilder.platform.coreValueToRuntimeValue(
+            codeBuilder.platform.lowerAddress(addressParameterValue),
+            CoreType.Pointer,
+          ),
+        )
       }
     }
 
@@ -118,7 +131,12 @@ class BridgeFunction(
         codeBuilder.allocate("%L", CodeBlock.of("%L", result.encoder.byteCount)),
       )
       val pointer = CodeBlock.of("%N", result.pointerParameter.name)
-      add(codeBuilder.platform.lowerAddress(pointer))
+      add(
+        codeBuilder.platform.coreValueToRuntimeValue(
+          codeBuilder.platform.lowerAddress(pointer),
+          CoreType.Pointer,
+        ),
+      )
     }
   }
 
@@ -126,7 +144,11 @@ class BridgeFunction(
   fun liftParameterValues(
     loweredParameterValues: List<CodeBlock>,
   ): LiftedParameterValues {
-    val p = loweredParameterValues.iterator()
+    val coreValues = loweredParameterValues.zip(loweredParameterTypes) { value, type ->
+      codeBuilder.platform.runtimeValueToCoreValue(value, type)
+    }
+
+    val p = coreValues.iterator()
 
     val receiverValue = when (liftedReceiver) {
       is Receiver.Id -> codeBuilder.platform.liftResource(
@@ -193,11 +215,17 @@ class BridgeFunction(
           baseAddress = addressNameCodeBlock,
           value = CodeBlock.of("%N", result.name),
         )
-        codeBuilder.platform.lowerAddress(addressNameCodeBlock)
+        codeBuilder.platform.coreValueToRuntimeValue(
+          codeBuilder.platform.lowerAddress(addressNameCodeBlock),
+          CoreType.Pointer,
+        )
       }
 
       is Result.SingleCoreValueReturn -> {
-        result.encoder.lowerFlat(CodeBlock.of("%N", result.name)).single()
+        codeBuilder.platform.coreValueToRuntimeValue(
+          result.encoder.lowerFlat(CodeBlock.of("%N", result.name)).single(),
+          result.encoder.coreTypes.single(),
+        )
       }
 
       is Result.PointerParameter -> {
@@ -213,26 +241,33 @@ class BridgeFunction(
   }
 
   context(codeBuilder: CodeBuilder)
-  fun liftReturnValue(
-    resultToCoreType: (name: String, type: CoreType) -> CodeBlock,
-  ): CodeBlock? {
+  fun liftReturnValue(): CodeBlock? {
     return when (result) {
       is Result.PointerParameter -> {
         result.encoder.load(
-          resultToCoreType(result.pointerParameter.name, CoreType.Pointer)
+          codeBuilder.platform.runtimeValueToCoreValue(
+            CodeBlock.of("%N", result.pointerParameter),
+            CoreType.Pointer,
+          ),
         )
       }
 
       is Result.PointerReturn -> {
         result.encoder.load(
-          resultToCoreType(result.name, CoreType.Pointer),
+          codeBuilder.platform.runtimeValueToCoreValue(
+            CodeBlock.of("%N", result.name),
+            CoreType.Pointer,
+          ),
         )
       }
 
       is Result.SingleCoreValueReturn -> {
         result.encoder.liftFlat(
           values = listOf(
-            resultToCoreType(result.name, result.encoder.coreTypes.single()),
+            codeBuilder.platform.runtimeValueToCoreValue(
+              CodeBlock.of("%N", result.name),
+              result.encoder.coreTypes.single(),
+            ),
           ),
         )
       }
@@ -310,12 +345,14 @@ class BridgeFunction(
   /** How we transmit the result across the boundary. */
   sealed interface Result {
     val name: String
+    val arrayName: String
     val type: TypeName
     val encoder: Encoder
 
     /** Encode the result as a single core value and return it. */
     data class SingleCoreValueReturn(
       override val name: String,
+      override val arrayName: String,
       override val type: TypeName,
       override val encoder: Encoder,
     ) : Result
@@ -323,6 +360,7 @@ class BridgeFunction(
     /** The callee allocates memory, writes the result there, and returns the address. */
     data class PointerReturn(
       override val name: String,
+      override val arrayName: String,
       override val type: TypeName,
       override val encoder: Encoder,
       val addressName: String,
@@ -331,6 +369,7 @@ class BridgeFunction(
     /** The caller allocates memory, and passes the address as a parameter. */
     data class PointerParameter(
       override val name: String,
+      override val arrayName: String,
       override val type: TypeName,
       override val encoder: Encoder,
       val pointerParameter: ParameterSpec,
@@ -446,12 +485,14 @@ class BridgeFunction(
       return when {
         encoder.coreTypes.size == 1 -> Result.SingleCoreValueReturn(
           name = nameAllocator.newName("result"),
+          arrayName = nameAllocator.newName("resultArray"),
           type = type,
           encoder = encoder,
         )
 
         orientation == Orientation.GuestCallsHost -> Result.PointerParameter(
           name = nameAllocator.newName("result"),
+          arrayName = nameAllocator.newName("resultArray"),
           type = type,
           encoder = encoder,
           pointerParameter = ParameterSpec(
@@ -462,6 +503,7 @@ class BridgeFunction(
 
         else -> Result.PointerReturn(
           name = nameAllocator.newName("result"),
+          arrayName = nameAllocator.newName("resultArray"),
           type = type,
           encoder = encoder,
           addressName = nameAllocator.newName("resultAddress"),

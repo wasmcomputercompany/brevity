@@ -36,6 +36,20 @@ interface Platform {
   context(codeBuilder: CodeBuilder)
   fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared): CodeBlock
 
+  /** Frees any memory no longer necessary after lifting parameters. */
+  context(codeBuilder: CodeBuilder)
+  fun afterLiftParameters() {
+  }
+
+  /** Prepares to allocate memory necessary to lower the return value. */
+  context(codeBuilder: CodeBuilder)
+  fun beforeLowerReturnValue() {
+  }
+
+  fun runtimeValueToCoreValue(value: CodeBlock, coreType: CoreType) = value
+
+  fun coreValueToRuntimeValue(value: CodeBlock, coreType: CoreType) = value
+
   /** Loads a string from linear memory. */
   context(codeBuilder: CodeBuilder)
   fun loadString(address: CodeBlock, byteCount: CodeBlock): CodeBlock
