@@ -49,7 +49,7 @@ internal abstract class DownloadOciWitTask : DefaultTask() {
         outputPath.parentFile.mkdirs()
         execOperations.exec {
           commandLine(
-            "wkg",
+            Paths.probe("wkg"),
             "get",
             "--output", outputPath.absolutePath,
             packageName,
