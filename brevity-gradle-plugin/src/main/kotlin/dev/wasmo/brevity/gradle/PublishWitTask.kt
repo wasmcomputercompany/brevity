@@ -41,23 +41,12 @@ internal abstract class PublishWitTask : DefaultTask() {
   @TaskAction
   fun execute() {
     execOperations.exec {
-      workingDir(inputWkgWorkingDir)
-
-      commandLine(
-        *buildList {
-          add(Paths.probe("wkg"))
-          add("publish")
-
-          if (inputWkgConfig.isPresent) {
-            add("--config")
-            add(inputWkgConfig.get().asFile.absolutePath)
-          }
-
+      WkgRunner(inputWkgConfig, inputWkgWorkingDir)
+        .exec(this, "publish") {
           if (inputIsWorkspace.getOrElse(false)) {
             add("--workspace")
           }
-        }.toTypedArray()
-      )
+        }
     }
   }
 }
