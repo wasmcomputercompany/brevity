@@ -9,8 +9,6 @@ import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.HostPlatform
-import dev.wasmo.brevity.kotlin.encoders.coreTypeToLong
-import dev.wasmo.brevity.kotlin.encoders.longToCoreType
 import dev.wasmo.brevity.kotlin.encoders.valType
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 import java.util.concurrent.atomic.AtomicBoolean
@@ -52,27 +50,30 @@ internal class HostFunctionFactory(
           }
           addParameters(function.liftedParameterSpecs)
           val loweredParameterValues = function.lowerParameterValues()
-          val loweredParameterTypes = function.loweredParameterTypes
 
           if (function.result != null) {
-            codeBuilder.add("val %N = ", function.result.name)
+            codeBuilder.add("val %N = ", function.result.arrayName)
           }
           codeBuilder.add("%N.apply(⇥\n", function.kotlinName)
-          for (p in loweredParameterValues.indices) {
+          for (loweredParameterValue in loweredParameterValues) {
             codeBuilder.add(
               "%L,\n",
-              coreTypeToLong(loweredParameterValues[p], loweredParameterTypes[p]),
+              loweredParameterValue,
             )
           }
           codeBuilder.add("⇤)\n")
 
           if (function.result != null) {
+            codeBuilder.addStatement(
+              "val %N = %N[%L]",
+              function.result.name,
+              function.result.arrayName,
+              0,
+            )
             returns(kotlinMapper.get(function.result.type))
           }
 
-          val returnValue = function.liftReturnValue { name, type ->
-            longToCoreType(name, 0, type)
-          }
+          val returnValue = function.liftReturnValue()
 
           if (returnValue != null) {
             codeBuilder.add(
@@ -96,14 +97,13 @@ internal class HostFunctionFactory(
     context(codeBuilder) {
       if (!value.isSupported) return CodeBlock.of("/* TODO: ${function.kotlinName} */\n")
 
-      val loweredParameterTypes = function.loweredParameterTypes
-      val loweredParameterValues = loweredParameterTypes.withIndex().map { (index, coreType) ->
-        longToCoreType("args", index, coreType)
+      val runtimeParameterValues = function.loweredParameterTypes.indices.map { index ->
+        CodeBlock.of("%N[%L]", "args", index)
       }
 
-      val liftedParameterValues = function.liftParameterValues(
-        loweredParameterValues = loweredParameterValues,
-      )
+      val liftedParameterValues = function.liftParameterValues(runtimeParameterValues)
+
+      codeBuilder.platform.afterLiftParameters()
 
       val self = nameAllocator.newName("self")
       codeBuilder.addStatement("val %N = %L", self, liftedParameterValues.receiverValue)
@@ -123,21 +123,17 @@ internal class HostFunctionFactory(
       }
       codeBuilder.add("⇤)\n")
 
-      val returnValType = function.loweredReturnType
-      val returnValue = function.lowerReturnValue(liftedParameterValues)
+      codeBuilder.platform.beforeLowerReturnValue()
 
+      val returnValue = function.lowerReturnValue(
+        liftedParameterValues = liftedParameterValues,
+      )
+
+      codeBuilder.add("return@%T longArrayOf(", Symbols.ChicoryRuntime.WasmFunctionHandle)
       if (returnValue != null) {
-        codeBuilder.add(
-          "return@%T longArrayOf(%L)",
-          Symbols.ChicoryRuntime.WasmFunctionHandle,
-          coreTypeToLong(returnValue, returnValType!!),
-        )
-      } else {
-        codeBuilder.add(
-          "return@%T longArrayOf()",
-          Symbols.ChicoryRuntime.WasmFunctionHandle,
-        )
+        codeBuilder.add("%L", returnValue)
       }
+      codeBuilder.add(")")
 
       return CodeBlock.of(
         """
@@ -161,8 +157,8 @@ internal class HostFunctionFactory(
         value.functionName.moduleName?.let { CodeBlock.of("%S", it) } ?: CodeBlock.of("null"),
         value.functionName.abiName,
         Symbols.ChicoryRuntime.FunctionType,
-        loweredParameterTypes.joinToCode { it.valType },
-        returnValType?.valType ?: CodeBlock.of(""),
+        function.loweredParameterTypes.joinToCode { it.valType },
+        function.loweredReturnType?.valType ?: CodeBlock.of(""),
         Symbols.ChicoryRuntime.WasmFunctionHandle,
         codeBuilder.build(),
       )

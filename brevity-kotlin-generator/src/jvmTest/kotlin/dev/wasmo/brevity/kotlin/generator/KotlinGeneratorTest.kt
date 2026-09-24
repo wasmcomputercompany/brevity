@@ -257,11 +257,12 @@ class KotlinGeneratorTest {
               bridge.memory.writeI32(elementAddress, stringAddress_)
               bridge.memory.writeI32(elementAddress + 4, stringByteCount)
             }
-            val result = run.apply(
+            val resultArray = run.apply(
               listAddress.toLong(),
               args.size.toLong(),
             )
-            return result[0].toInt()
+            val result = resultArray[0]
+            return result.toInt()
           }
         }
 
@@ -954,9 +955,10 @@ class KotlinGeneratorTest {
         internal lateinit var now: ExportFunction
 
         override fun now(): Datetime {
-          val result = now.apply(
+          val resultArray = now.apply(
           )
-          return load_Types_Datetime_host(bridge, result[0].toInt())
+          val result = resultArray[0]
+          return load_Types_Datetime_host(bridge, result.toInt())
         }
       }
 
