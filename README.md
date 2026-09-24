@@ -111,6 +111,24 @@ brevity {
 }
 ```
 
+Publishing Wit APIs
+-------------------
+
+Add a `publish` section to publish wit APIs through gradle:
+
+```kotlin
+brevity {
+  publish {
+    // Required - true if your wit folder is a single package layout, false if it
+    // is a whole workspace of packages.
+    workplace = true
+    // Optional - override wkg's config.toml file. Any paths defined here are resolved relative
+    // to the working dir where wkg is invoked, `build/brevity/sourceWit`.
+    config = "path/to/config/file"
+  }
+}
+```
+
 Implementation
 --------------
 
