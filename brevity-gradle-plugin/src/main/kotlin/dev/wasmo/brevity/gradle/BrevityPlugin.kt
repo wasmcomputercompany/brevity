@@ -42,7 +42,7 @@ class BrevityPlugin : Plugin<Project> {
       }
       workingDir(witBuildSourceDir)
       commandLine(
-        "wkg",
+        Paths.probe("wkg"),
         "fetch",
       )
     }
