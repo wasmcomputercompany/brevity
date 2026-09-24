@@ -1,11 +1,13 @@
 package dev.wasmo.brevity.gradle
 
 import java.io.File
+import javax.inject.Inject
 import org.gradle.api.Action
 import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
@@ -24,9 +26,15 @@ import org.jetbrains.kotlin.gradle.plugin.KotlinMultiplatformPluginWrapper
  * Kotlin, and add that Kotlin to this project.
  */
 @Suppress("unused") // Registered as a Gradle plugin.
-class BrevityPlugin : Plugin<Project> {
+class BrevityPlugin @Inject constructor(
+  private val objects: ObjectFactory,
+): Plugin<Project> {
   override fun apply(project: Project) {
+    val wkgConfigProperty = objects.fileProperty()
     val witBuildSourceDir = project.layout.buildDirectory.dir("brevity/sourceWit")
+
+    val wkg = WkgRunner(wkgConfigProperty, witBuildSourceDir)
+
     val copyWitSourceToBuildFolder = project.tasks.register<Copy>("copyWitSource") {
       from(File(project.projectDir, "src/commonMain/wit"))
       into(witBuildSourceDir)
@@ -43,11 +51,7 @@ class BrevityPlugin : Plugin<Project> {
       onlyIf { spec ->
         witBuildSourceDir.get().asFileTree.any { file -> file.name.endsWith(".wit") }
       }
-      workingDir(witBuildSourceDir)
-      commandLine(
-        Paths.probe("wkg"),
-        "fetch",
-      )
+      wkg.exec(this, "fetch")
     }
 
     val downloadOciWitTask = project.tasks.register<DownloadOciWitTask>("brevityDownloadOciWit") {
@@ -102,9 +106,10 @@ class BrevityPlugin : Plugin<Project> {
     project.extensions.add(
       BrevityExtension::class.java,
       "brevity",
-      RealBrevityExtension(downloadOciWitTask, generateKotlinTask) {
+      RealBrevityExtension(wkgConfigProperty, downloadOciWitTask, generateKotlinTask) {
         val publishWitTask = project.tasks.register<PublishWitTask>("publishWit") {
           inputWkgWorkingDir.set(witBuildSourceDir)
+          inputWkgConfig.set(wkgConfigProperty)
           dependsOn(copyWitSourceToBuildFolder)
         }
         RealBrevityPublishExtension(publishWitTask)
@@ -125,6 +130,7 @@ class BrevityPlugin : Plugin<Project> {
 }
 
 internal class RealBrevityExtension(
+  override val config: RegularFileProperty,
   private val downloadOciWitTask: TaskProvider<DownloadOciWitTask>,
   private val generateKotlinTask: TaskProvider<BrevityTask>,
   publishExtension: () -> BrevityExtension.BrevityPublishExtension,
@@ -148,9 +154,6 @@ internal class RealBrevityExtension(
 internal class RealBrevityPublishExtension(
   private val publishWitTask: TaskProvider<PublishWitTask>,
 ): BrevityExtension.BrevityPublishExtension {
-  override val config: RegularFileProperty
-    get() = publishWitTask.get().inputWkgConfig
-
   override val isWorkspace: Property<Boolean>
     get() = publishWitTask.get().inputIsWorkspace
 

@@ -7,6 +7,16 @@ import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 
 interface BrevityExtension {
+  /**
+   * Path to a config.toml file.
+   *
+   * wkg will use its default if this is omitted.
+   *
+   * Special note: wkg interprets paths within this config as relative to the working
+   * dir where wkg is run, which will be build/brevity/sourceWit. Take heed!
+   */
+  val config: RegularFileProperty
+
   /** A set of wit package names, e.g. wasi:cli@5.0.3 */
   val ociPackages: ListProperty<String>
 
@@ -22,16 +32,6 @@ interface BrevityExtension {
   fun publish(action: Action<in BrevityPublishExtension>)
 
   interface BrevityPublishExtension {
-    /**
-     * Path to a config.toml file.
-     *
-     * wkg will use its default if this is omitted.
-     *
-     * Special note: wkg interprets paths within this config as relative to the working
-     * dir where wkg is run, which will be build/brevity/sourceWit. Take heed!
-     */
-    val config: RegularFileProperty
-
     /** True if publishing a workspace, false if not. */
     val isWorkspace: Property<Boolean>
   }

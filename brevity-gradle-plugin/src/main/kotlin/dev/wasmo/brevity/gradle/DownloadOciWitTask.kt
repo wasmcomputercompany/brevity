@@ -4,10 +4,15 @@ import java.io.File
 import javax.inject.Inject
 import org.gradle.api.DefaultTask
 import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.process.ExecOperations
 
@@ -27,9 +32,16 @@ internal abstract class DownloadOciWitTask : DefaultTask() {
   @get:Input
   abstract val ociPackages: ListProperty<String>
 
+  @get:InputFile
+  @get:Optional
+  @get:PathSensitive(PathSensitivity.RELATIVE)
+  abstract val config: RegularFileProperty
+
   @TaskAction
   fun execute() {
     witOutputDir.get().asFile.mkdirs()
+
+    val wkgRunner = WkgRunner(config, null)
 
     // We download our WASI WIT dependencies directly here. Each package is
     // downloaded to a corresponding folder, with `:` replaced with `_`.
@@ -48,10 +60,10 @@ internal abstract class DownloadOciWitTask : DefaultTask() {
       if (!outputPath.exists()) {
         outputPath.parentFile.mkdirs()
         execOperations.exec {
-          commandLine(
-            Paths.probe("wkg"),
+          wkgRunner.exec(this,
             "get",
-            "--output", outputPath.absolutePath,
+            "--output",
+            outputPath.absolutePath,
             packageName,
           )
         }
