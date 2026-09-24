@@ -17,7 +17,6 @@ import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
-import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.GuestCallsHost
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.HostCallsGuest
@@ -32,13 +31,11 @@ private val guestOptIns = setOf(
 class GuestGenerator(
   private val kotlinMapper: KotlinMapper,
   private val guestPlatform: GuestPlatform,
-  private val encoderFactory: EncoderFactory,
   private val bridgeFunctionFactory: BridgeFunction.Factory,
   private val declarationIndex: DeclarationIndex,
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
-  private val supportAsync: Boolean,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
@@ -247,9 +244,7 @@ class GuestGenerator(
     function: IrFunction,
     orientation: Orientation,
   ) = GuestFunctionFactory(
-    kotlinMapper = kotlinMapper,
     guestPlatform = guestPlatform,
     function = bridgeFunctionFactory.create(receiver, orientation, function),
-    supportAsync = supportAsync,
   )
 }
