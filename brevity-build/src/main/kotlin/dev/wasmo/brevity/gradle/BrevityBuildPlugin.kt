@@ -26,7 +26,7 @@ class BrevityBuildPlugin : Plugin<Project> {
   override fun apply(project: Project) {
     val buildDirectory = project.findProperty("brevity.build.directory")
     if (buildDirectory != null) {
-      project.layout.buildDirectory.set(File(project.rootDir, "${buildDirectory}/${project.name}"))
+      project.layout.buildDirectory.set(project.rootDir.resolve(buildDirectory.toString()).resolve(project.name))
     }
 
     val libs = project.extensions.getByName("libs") as LibrariesForLibs

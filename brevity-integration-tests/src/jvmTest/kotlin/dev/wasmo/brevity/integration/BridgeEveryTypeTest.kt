@@ -820,4 +820,90 @@ class BridgeEveryTypeTest {
 
     test.execute()
   }
+
+  @Test
+  fun tuples() = runTest {
+    val test = BrevityExecutionTester(
+      name = "tuples",
+      rawWit = """
+        |  enum colour-space {
+        |    srgb,
+        |    linear-srgb,
+        |    display-p3,
+        |  }
+        |""".trimMargin(),
+      types = listOf(
+        SampleType(
+          id = Identifier("pair-s8-bool"),
+          witType = "tuple<s8, bool>",
+          kotlinType = "Pair<Byte, Boolean>",
+          rustType = "(i8, bool)",
+          values = listOf(
+            SampleValue( kotlin = "Pair(0.toByte(), false)", rust = "(0, false)",),
+            SampleValue( kotlin = "Pair(5.toByte(), false)", rust = "(5, false)",),
+            SampleValue(kotlin = "Pair(kotlin.Byte.MIN_VALUE, true)", rust = "(-128, true)"),
+            SampleValue(kotlin = "Pair(kotlin.Byte.MAX_VALUE, true)", rust = "(127, true)"),
+          ),
+        ),
+        SampleType(
+          id = Identifier("triple-s32-u64-char"),
+          witType = "tuple<s32, u64, char>",
+          kotlinType = "Triple<Int, ULong, Int>",
+          rustType = "(i32, u64, char)",
+          values = listOf(
+            SampleValue( kotlin = "Triple(0, 0UL, 'a'.code)", rust = "(0, 0, 'a')",),
+            SampleValue( kotlin = "Triple(5, 5UL, 'b'.code)", rust = "(5, 5, 'b')",),
+            SampleValue(
+              kotlin = "Triple(kotlin.Int.MIN_VALUE, kotlin.ULong.MIN_VALUE, 'c'.code)",
+              rust = "(-2147483648, 0, 'c')",
+            ),
+            SampleValue(
+              kotlin = "Triple(kotlin.Int.MAX_VALUE, kotlin.ULong.MAX_VALUE, 'z'.code)",
+              rust = "(2147483647, 18446744073709551615, 'z')",
+            ),
+          ),
+        ),
+        SampleType(
+          id = Identifier("quad-3d-named-vertices"),
+          witType = "tuple<string, f64, f64, f64>",
+          kotlinType = "dev.wasmo.brevity.Quad<String, Double, Double, Double>",
+          rustType = "(String, f64, f64, f64)",
+          values = listOf(
+            SampleValue( kotlin = "dev.wasmo.brevity.Quad(\"Origin\", 0.0, 0.0, 0.0)", rust = "(\"Origin\".to_string(), 0.0, 0.0, 0.0)",),
+            SampleValue( kotlin = "dev.wasmo.brevity.Quad(\"\uD83D\uDCC8\", 0.5, 0.5, 0.5)", rust = "(\"\uD83D\uDCC8\".to_string(), 0.5, 0.5, 0.5)",),
+            SampleValue(
+              kotlin = "dev.wasmo.brevity.Quad(\"To the\\u0000 fences\", 2.2250738585072014e-308, kotlin.Double.MIN_VALUE, kotlin.Double.MAX_VALUE)",
+              rust = "(\"To the\\u{0000} fences\".to_string(), 2.2250738585072014e-308, 4.9E-324, 1.7976931348623157E308)",
+            ),
+            SampleValue(
+              kotlin = "dev.wasmo.brevity.Quad(\"\", kotlin.Double.POSITIVE_INFINITY, kotlin.Double.NEGATIVE_INFINITY, kotlin.Double.POSITIVE_INFINITY)",
+              rust = "(\"\".to_string(), std::f64::INFINITY, std::f64::NEG_INFINITY, std::f64::INFINITY)",
+            ),
+          ),
+        ),
+        SampleType(
+          id = Identifier("quintuple-colour-space"),
+          witType = "tuple<u8, u8, u8, u8, colour-space>",
+          kotlinType = "List<*>",
+          rustType = "(u8, u8, u8, u8, bindings::ColourSpace)",
+          values = listOf(
+            SampleValue(
+              kotlin = "listOf(0.toUByte(), 0.toUByte(), 0.toUByte(), 255.toUByte(), BrevityTest.ColourSpace.Srgb)",
+              rust = "(0, 0, 0, 255, bindings::ColourSpace::Srgb)",
+            ),
+            SampleValue(
+              kotlin = "listOf(255.toUByte(), 255.toUByte(), 255.toUByte(), 255.toUByte(), BrevityTest.ColourSpace.LinearSrgb)",
+              rust = "(255, 255, 255, 255, bindings::ColourSpace::LinearSrgb)",
+            ),
+            SampleValue(
+              kotlin = "listOf(128.toUByte(), 128.toUByte(), 0.toUByte(), 128.toUByte(), BrevityTest.ColourSpace.DisplayP3)",
+              rust = "(128, 128, 0, 128, bindings::ColourSpace::DisplayP3)",
+            ),
+          ),
+        ),
+      ),
+    )
+
+    test.execute()
+  }
 }
