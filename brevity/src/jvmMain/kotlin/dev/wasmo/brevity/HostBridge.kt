@@ -29,6 +29,20 @@ class HostBridge {
     return idToResource[id]
   }
 
+  @PublishedApi
+  internal fun dropInternal(id: Int): Resource? {
+    return idToResource.remove(id)
+  }
+
+  @BrevityInternalApi
+  fun taskReturn(value: Any? = Unit) {
+  }
+
+  @BrevityInternalApi
+  fun <T> taskResult(): T {
+    error("TODO")
+  }
+
   /** Invoke `cabi_realloc(originalAddress, originalSize, align, newSize)`. */
   fun allocate(byteCount: Int): Int {
     return cabiRealloc.apply(0L, 0L, 0L, byteCount.toLong())[0].toInt()
@@ -37,4 +51,8 @@ class HostBridge {
 
 inline operator fun <reified T : Resource> HostBridge.get(id: Int): T {
   return getInternal(id) as T
+}
+
+inline fun <reified T : Resource> HostBridge.drop(id: Int): T {
+  return dropInternal(id) as T
 }
