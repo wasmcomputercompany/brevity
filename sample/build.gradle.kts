@@ -16,6 +16,10 @@ brevity {
   }
 }
 
+project.tasks.named("test") {
+  dependsOn(project.tasks.named("publishWit"))
+}
+
 dependencies {
   implementation(projects.brevity)
   implementation(libs.okio)
