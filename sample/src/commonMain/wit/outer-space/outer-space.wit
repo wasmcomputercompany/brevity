@@ -1,0 +1,5 @@
+package brevity:outer-space@0.0.1;
+
+world outer-space {
+  export brevity:hyperspace/hyperspace@0.0.1;
+}

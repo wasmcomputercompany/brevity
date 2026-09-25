@@ -1,14 +1,7 @@
 [workspace]
 members = [
-  "content-type",
-  "http",
-  "jobs",
-  "json",
-  "object-store",
-  "platform",
-  "sql",
-  "transfer-service",
-  "uuid",
+  "outer-space",
+  "hyperspace",
 ]
 
 [workspace.metadata]

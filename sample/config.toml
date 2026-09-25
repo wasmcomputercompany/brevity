@@ -1,6 +1,6 @@
 [namespace_registries]
 wasi = "wasi.dev"
-wasmo = "wasmo.com"
+brevity = "wasmo.com"
 
 [registry."wasmo.com"]
 default = "local"
