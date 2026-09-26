@@ -1,9 +1,0 @@
-package wasmo:json@0.1.0;
-
-@since(version = 0.1.0)
-interface types {
-  /// Corresponds to the `json` and `jsonb` types in Postgres.
-  /// https://www.postgresql.org/docs/current/datatype-json.html
-  @since(version = 0.1.0)
-  type json-literal = string;
-}

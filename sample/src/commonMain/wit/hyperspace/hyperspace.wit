@@ -1,0 +1,56 @@
+package brevity:hyperspace@0.0.1;
+
+interface types {
+  record rect {
+    x: u32,
+    y: u32,
+  }
+
+  enum fighter-distance {
+    near,
+    middle,
+    far,
+  }
+
+  record fighter {
+    location: rect,
+
+    distance: fighter-distance,
+  }
+
+  record state {
+    /// Target reticule location, [0,0] is the lower left hand corner
+    reticule-location: rect,
+
+    /// Size of the targeting area
+    space: rect,
+
+    /// Fighter on screen
+    fighter: option<rect>,
+
+    /// Number of fighters killed
+    kill-count: u32,
+
+    /// Target location of lasers currently being fired
+    laser-fire: option<rect>,
+  }
+
+  /// Current input state.
+  flags input {
+    move-left,
+    move-right,
+    move-up,
+    move-down,
+    fire,
+    quit,
+  }
+
+  resource dogfight {
+    next: func(input: input) -> option<state>;
+  }
+}
+
+interface hyperspace {
+  use types.{dogfight};
+  start-dogfight: func() -> dogfight;
+}
