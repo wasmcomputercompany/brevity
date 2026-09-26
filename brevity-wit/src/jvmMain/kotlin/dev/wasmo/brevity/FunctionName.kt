@@ -93,4 +93,34 @@ sealed class FunctionName {
 
     override fun toString() = super.toString()
   }
+
+  /** The caller's function to accept the lowered result. */
+  data class TaskReturn(val original: FunctionName) : FunctionName() {
+    override val moduleName: String
+      get() = $$"[export]$root"
+    override val abiName: String
+      get() = "[task-return]${original.abiName}"
+
+    override fun toString() = super.toString()
+  }
+
+  /** The callee's name of an async function. */
+  data class AsyncLift(val original: FunctionName) : FunctionName() {
+    override val moduleName: String?
+      get() = original.moduleName
+    override val abiName: String
+      get() = "[async-lift]${original.abiName}"
+
+    override fun toString() = super.toString()
+  }
+
+  /** The callee's name of an async function's callback. */
+  data class AsyncLiftCallback(val original: FunctionName) : FunctionName() {
+    override val moduleName: String?
+      get() = original.moduleName
+    override val abiName: String
+      get() = "[callback][async-lift]${original.abiName}"
+
+    override fun toString() = super.toString()
+  }
 }

@@ -300,7 +300,6 @@ class ApiGenerator(
   }
 
   private fun apiFunctionFactory(item: IrFunction) = ApiFunctionFactory(
-    kotlinMapper = kotlinMapper,
     function = bridgeFunctionFactory.create(
       receiver = BridgeFunction.Receiver.OutboundInstance,
       orientation = BridgeFunction.Orientation.GuestCallsHost,

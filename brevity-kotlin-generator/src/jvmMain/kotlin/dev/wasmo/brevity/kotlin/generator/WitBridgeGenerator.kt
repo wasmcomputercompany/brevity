@@ -99,7 +99,9 @@ class WitBridgeGenerator private constructor(
       )
       val guestGenerator = GuestGenerator(
         kotlinMapper = kotlinMapper,
-        guestPlatform = guestPlatform,
+        guestFunctionFactory = GuestFunctionFactory(
+          guestPlatform = guestPlatform,
+        ),
         declarationIndex = declarationIndex,
         declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
           encoderFactory = guestEncoderFactory,
@@ -121,7 +123,9 @@ class WitBridgeGenerator private constructor(
         supportAsync = supportAsync,
       )
       val hostGenerator = HostGenerator(
-        hostPlatform = hostPlatform,
+        hostFunctionFactory = HostFunctionFactory(
+          hostPlatform = hostPlatform,
+        ),
         bridgeFunctionFactory = hostBridgeFunctionFactory,
         declarationIndex = declarationIndex,
         declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(

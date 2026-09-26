@@ -24,12 +24,17 @@ class HostKotlinTarget(
   private fun BufferedSink.writeKotlin() {
     writeUtf8(
       """
+      |@file:OptIn(dev.wasmo.brevity.BrevityInternalApi::class)
+      |
       |package dev.wasmo.brevity.integration
       |
       |import assertk.assertThat
       |import assertk.assertions.isEqualTo
-      |import dev.wasmo.brevity.integration.isEqualTo
+      |import dev.wasmo.brevity.Async
+      |import dev.wasmo.brevity.RealAsyncHost
       |import dev.wasmo.brevity.WasmInstance
+      |import dev.wasmo.brevity.World
+      |import dev.wasmo.brevity.integration.isEqualTo
       |import dev.wasmo.brevity.wasi.p1.RealWasiP1Host
       |import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
       |import okio.Path.Companion.toPath
@@ -45,6 +50,7 @@ class HostKotlinTarget(
       |    worlds = listOf(
       |      wit.wasi.v0_1.Wasi.World({ RealWasiP1Host() }),
       |      wit.wasi.cli.v0_2_0.Imports.World({ RealWasiP2Host() }),
+      |      Async.World { RealAsyncHost() },
       |      world,
       |    ),
       |  )

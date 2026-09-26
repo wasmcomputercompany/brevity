@@ -6,32 +6,36 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.TypeName as KtTypeName
+import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.Platform
 import dev.wasmo.brevity.kotlin.encoders.AbstractRecordEncoder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.Encoder
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.encoders.MAX_FLAT_PARAMS
 
-class BridgeFunction(
-  val nameAllocator: NameAllocator,
-  val supportAsync: Boolean,
-  val function: IrFunction,
-  val kotlinName: String,
+class BridgeFunction private constructor(
+  private val supportAsync: Boolean,
+  private val nameAllocator: NameAllocator,
+  val documentation: String? = null,
+  val async: Boolean = false,
+  val isSupported: Boolean = true,
+  val functionName: FunctionName,
   val liftedReceiver: Receiver,
   private val loweredReceiver: FlatParameter? = null,
-  val liftedParameterSpecs: List<ParameterSpec>,
-  private val liftedParameterValues: List<CodeBlock>,
+  private val receiverName: String,
+  val liftedParameters: List<LiftedParameter>,
   private val loweredParameters: LoweredParameters,
-  val result: Result?,
+  val loweredResult: LoweredResult = LoweredResult.VoidReturn,
 ) {
-  val functionName: FunctionName
-    get() = function.functionName
+  val kotlinName: String
+    get() = functionName.kotlinName
 
   val loweredParameterSpecs: List<ParameterSpec>
     get() = buildList {
@@ -51,8 +55,8 @@ class BridgeFunction(
         }
       }
 
-      if (result is Result.PointerParameter) {
-        add(result.pointerParameter)
+      if (loweredResult is LoweredResult.PointerParameter) {
+        add(loweredResult.pointerParameter)
       }
     }
 
@@ -74,18 +78,16 @@ class BridgeFunction(
         }
       }
 
-      if (result is Result.PointerParameter) {
+      if (loweredResult is LoweredResult.PointerParameter) {
         add(CoreType.Pointer)
       }
     }
 
   val loweredReturnType: CoreType?
-    get() = when (result) {
-      null -> null
-      is Result.PointerReturn -> CoreType.Pointer
-      is Result.SingleCoreValueReturn -> result.encoder.coreTypes.single()
-      is Result.PointerParameter -> null
-    }
+    get() = loweredResult.loweredReturnType
+
+  /** Returns a name allocator that already has the names used by this function allocated. */
+  fun nameAllocator() = nameAllocator.copy()
 
   /** Lift parameters, call the function, and lower the result. */
   context(codeBuilder: CodeBuilder)
@@ -122,13 +124,13 @@ class BridgeFunction(
     }
 
     val pointerParameterValue = when {
-      result is Result.PointerParameter -> {
+      loweredResult is LoweredResult.PointerParameter -> {
         codeBuilder.addStatement(
           "val %N = %L",
-          result.pointerParameter.name,
+          loweredResult.pointerParameter.name,
           codeBuilder.platform.liftAddress(p.next()),
         )
-        CodeBlock.of("%N", result.pointerParameter.name)
+        CodeBlock.of("%N", loweredResult.pointerParameter.name)
       }
 
       else -> null
@@ -140,37 +142,57 @@ class BridgeFunction(
 
     codeBuilder.platform.afterLiftParameters()
 
-    val self = nameAllocator.newName("self")
-    codeBuilder.addStatement("val %N = %L", self, receiverValue)
-    if (result != null) {
-      codeBuilder.add("val %N = ", result.loweredName)
+    when (functionName) {
+      is FunctionName.TaskReturn -> {
+        codeBuilder.add("%L.taskReturn(⇥", codeBuilder.bridge)
+        if (liftedParameterValues.size == 1) {
+          codeBuilder.add("\n%L,\n", liftedParameterValues.single())
+        }
+        codeBuilder.add("⇤)\n")
+      }
+
+      is FunctionName.AsyncLift -> {
+        require(loweredResult is LoweredResult.AsyncLift)
+        codeBuilder.addStatement("val %N = %L", receiverName, receiverValue)
+        codeBuilder.beginControlFlow(
+          "val %N = %L.launchTask",
+          loweredResult.packedAsyncResultName,
+          codeBuilder.bridge,
+        )
+        invoke(liftedParameterValues)
+        codeBuilder.endControlFlow()
+      }
+
+      else -> {
+        codeBuilder.addStatement("val %N = %L", receiverName, receiverValue)
+        invoke(liftedParameterValues)
+      }
     }
-    codeBuilder.add("%N.%N(⇥", self, kotlinName)
-    if (function.parameters.isNotEmpty()) {
-      codeBuilder.add("\n")
-    }
-    for ((index, parameter) in function.parameters.withIndex()) {
-      codeBuilder.add(
-        "%N = %L,\n",
-        nameAllocator[parameter.name],
-        liftedParameterValues[index],
-      )
-    }
-    codeBuilder.add("⇤)\n")
 
     codeBuilder.platform.beforeLowerReturnValue()
 
-    return when (result) {
-      is Result.PointerReturn -> {
+    return when (loweredResult) {
+      LoweredResult.VoidReturn -> null
+
+      is LoweredResult.SingleCoreValueReturn -> {
+        codeBuilder.platform.coreValueToRuntimeValue(
+          loweredResult.result.encoder.lowerFlat(
+            CodeBlock.of("%N", loweredResult.result.loweredName),
+          ).single(),
+          loweredResult.result.encoder.coreTypes.single(),
+        )
+      }
+
+      is LoweredResult.PointerReturn -> {
         codeBuilder.addStatement(
           "val %N = %L",
-          result.addressName,
-          codeBuilder.allocate("%L", result.encoder.byteCount),
+          loweredResult.addressName,
+          codeBuilder.allocate("%L", loweredResult.result.encoder.byteCount),
         )
-        val resultAddressValue = CodeBlock.of("%N", result.addressName)
-        result.encoder.store(
+        val resultAddressValue = CodeBlock.of("%N", loweredResult.addressName)
+        loweredResult.result.encoder.store(
           baseAddress = resultAddressValue,
-          value = CodeBlock.of("%N", result.loweredName),
+          value = CodeBlock.of("%N", loweredResult.result.loweredName),
         )
         codeBuilder.platform.coreValueToRuntimeValue(
           codeBuilder.platform.lowerAddress(resultAddressValue),
@@ -178,23 +200,44 @@ class BridgeFunction(
         )
       }
 
-      is Result.SingleCoreValueReturn -> {
-        codeBuilder.platform.coreValueToRuntimeValue(
-          result.encoder.lowerFlat(CodeBlock.of("%N", result.loweredName)).single(),
-          result.encoder.coreTypes.single(),
-        )
-      }
-
-      is Result.PointerParameter -> {
-        result.encoder.store(
+      is LoweredResult.PointerParameter -> {
+        loweredResult.result.encoder.store(
           baseAddress = pointerParameterValue!!,
-          value = CodeBlock.of("%N", result.loweredName),
+          value = CodeBlock.of("%N", loweredResult.result.loweredName),
         )
         null
       }
 
-      null -> null
+      is LoweredResult.AsyncLift -> {
+        codeBuilder.platform.coreValueToRuntimeValue(
+          CodeBlock.of(
+            "%N.value.toInt()",
+            loweredResult.packedAsyncResultName,
+          ),
+          CoreType.I32,
+        )
+      }
     }
+  }
+
+  context(codeBuilder: CodeBuilder)
+  private fun invoke(liftedParameterValues: List<CodeBlock>) {
+    val result = loweredResult.result
+    if (result != null) {
+      codeBuilder.add("val %N = ", result.loweredName)
+    }
+    codeBuilder.add("%N.%N(⇥", receiverName, kotlinName)
+    if (liftedParameters.isNotEmpty()) {
+      codeBuilder.add("\n")
+    }
+    for ((index, parameter) in liftedParameters.withIndex()) {
+      codeBuilder.add(
+        "%N = %L,\n",
+        parameter.spec.name,
+        liftedParameterValues[index],
+      )
+    }
+    codeBuilder.add("⇤)\n")
   }
 
   context(codeBuilder: CodeBuilder)
@@ -211,7 +254,7 @@ class BridgeFunction(
     when (loweredParameters) {
       is LoweredParameters.Flattened -> {
         for ((p, coreParameter) in loweredParameters.parameters.withIndex()) {
-          val coreValues = coreParameter.encoder.lowerFlat(liftedParameterValues[p])
+          val coreValues = coreParameter.encoder.lowerFlat(liftedParameters[p].value)
           for ((index, type) in coreParameter.encoder.coreTypes.withIndex()) {
             add(codeBuilder.platform.coreValueToRuntimeValue(coreValues[index], type))
           }
@@ -230,7 +273,7 @@ class BridgeFunction(
         )
         loweredParameters.storeAll(
           baseAddress = addressParameterValue,
-          fieldValues = liftedParameterValues,
+          fieldValues = liftedParameters.map { it.value },
         )
         add(
           codeBuilder.platform.coreValueToRuntimeValue(
@@ -241,13 +284,13 @@ class BridgeFunction(
       }
     }
 
-    if (result is Result.PointerParameter) {
+    if (loweredResult is LoweredResult.PointerParameter) {
       codeBuilder.addStatement(
         "val %N = %L",
-        result.pointerParameter.name,
-        codeBuilder.allocate("%L", CodeBlock.of("%L", result.encoder.byteCount)),
+        loweredResult.pointerParameter.name,
+        codeBuilder.allocate("%L", CodeBlock.of("%L", loweredResult.result.encoder.byteCount)),
       )
-      val pointer = CodeBlock.of("%N", result.pointerParameter.name)
+      val pointer = CodeBlock.of("%N", loweredResult.pointerParameter.name)
       add(
         codeBuilder.platform.coreValueToRuntimeValue(
           codeBuilder.platform.lowerAddress(pointer),
@@ -259,54 +302,66 @@ class BridgeFunction(
 
   context(codeBuilder: CodeBuilder)
   fun liftReturnValue(): CodeBlock? {
-    return when (result) {
-      is Result.PointerParameter -> {
-        result.encoder.load(
-          codeBuilder.platform.runtimeValueToCoreValue(
-            CodeBlock.of("%N", result.pointerParameter),
-            CoreType.Pointer,
-          ),
-        )
-      }
+    return when (loweredResult) {
+      LoweredResult.VoidReturn -> null
 
-      is Result.PointerReturn -> {
-        result.encoder.load(
-          codeBuilder.platform.runtimeValueToCoreValue(
-            CodeBlock.of("%N", result.loweredName),
-            CoreType.Pointer,
-          ),
-        )
-      }
-
-      is Result.SingleCoreValueReturn -> {
-        result.encoder.liftFlat(
+      is LoweredResult.SingleCoreValueReturn -> {
+        loweredResult.result.encoder.liftFlat(
           values = listOf(
             codeBuilder.platform.runtimeValueToCoreValue(
-              CodeBlock.of("%N", result.loweredName),
-              result.encoder.coreTypes.single(),
+              CodeBlock.of("%N", loweredResult.result.loweredName),
+              loweredResult.result.encoder.coreTypes.single(),
             ),
           ),
         )
       }
 
-      null -> null
+      is LoweredResult.PointerReturn -> {
+        loweredResult.result.encoder.load(
+          codeBuilder.platform.runtimeValueToCoreValue(
+            CodeBlock.of("%N", loweredResult.result.loweredName),
+            CoreType.Pointer,
+          ),
+        )
+      }
+
+      is LoweredResult.PointerParameter -> {
+        loweredResult.result.encoder.load(
+          codeBuilder.platform.runtimeValueToCoreValue(
+            CodeBlock.of("%N", loweredResult.pointerParameter),
+            CoreType.Pointer,
+          ),
+        )
+      }
+
+      is LoweredResult.AsyncLift -> {
+        CodeBlock.of(
+          "%L.taskResult<%T>()",
+          codeBuilder.bridge,
+          loweredResult.result?.kotlinType ?: UNIT,
+        )
+      }
     }
   }
 
-  fun outboundFunction(
-    codeBuilder: CodeBuilder,
-    invoker: Invoker,
-  ): FunSpec {
+  fun outboundFunction(bridge: CodeBlock, platform: Platform, invoker: Invoker): FunSpec {
+    val codeBuilder = CodeBuilder(
+      bridge = bridge,
+      platform = platform,
+      nameAllocator = nameAllocator(),
+    )
+
     require(liftedReceiver !is Receiver.InboundInstance)
 
     return FunSpec.builder(kotlinName)
       .addModifiers(KModifier.OVERRIDE)
       .apply {
         context(codeBuilder) {
-          if (function.async && supportAsync) {
+          if (async && supportAsync) {
             addModifiers(KModifier.SUSPEND)
           }
-          addParameters(liftedParameterSpecs)
+          addParameters(liftedParameters.map { it.spec })
+          val result = loweredResult.result
           if (result != null) {
             returns(result.kotlinType)
           }
@@ -358,6 +413,11 @@ class BridgeFunction(
     data object OutboundInstance : Receiver
   }
 
+  data class LiftedParameter(
+    val spec: ParameterSpec,
+    val value: CodeBlock,
+  )
+
   sealed interface LoweredParameters {
     /**
      * Parameters are flattened to core values. Each lifted parameter corresponds to one or more
@@ -392,46 +452,64 @@ class BridgeFunction(
     val coreSpecs: List<ParameterSpec>,
   )
 
+  class Result(
+    val loweredName: String,
+    val liftedName: String,
+    val arrayName: String,
+    val type: TypeName,
+    val kotlinType: KtTypeName,
+    val encoder: Encoder,
+  )
+
   /** How we transmit the result across the boundary. */
-  sealed interface Result {
-    val loweredName: String
-    val liftedName: String
-    val arrayName: String
-    val type: TypeName
-    val kotlinType: KtTypeName
-    val encoder: Encoder
+  sealed interface LoweredResult {
+    val result: Result?
+    val loweredReturnType: CoreType?
+
+    /** The function does not return a value. */
+    object VoidReturn : LoweredResult {
+      override val result: Result?
+        get() = null
+      override val loweredReturnType: CoreType?
+        get() = null
+    }
 
     /** Encode the result as a single core value and return it. */
     data class SingleCoreValueReturn(
-      override val loweredName: String,
-      override val liftedName: String,
-      override val arrayName: String,
-      override val type: TypeName,
-      override val kotlinType: KtTypeName,
-      override val encoder: Encoder,
-    ) : Result
+      override val result: Result,
+    ) : LoweredResult {
+      override val loweredReturnType: CoreType = result.encoder.coreTypes.single()
+    }
 
     /** The callee allocates memory, writes the result there, and returns the address. */
     data class PointerReturn(
-      override val loweredName: String,
-      override val liftedName: String,
-      override val arrayName: String,
-      override val type: TypeName,
-      override val kotlinType: KtTypeName,
-      override val encoder: Encoder,
+      override val result: Result,
       val addressName: String,
-    ) : Result
+    ) : LoweredResult {
+      override val loweredReturnType: CoreType
+        get() = CoreType.Pointer
+    }
 
     /** The caller allocates memory, and passes the address as a parameter. */
     data class PointerParameter(
-      override val loweredName: String,
-      override val liftedName: String,
-      override val arrayName: String,
-      override val type: TypeName,
-      override val kotlinType: KtTypeName,
-      override val encoder: Encoder,
+      override val result: Result,
       val pointerParameter: ParameterSpec,
-    ) : Result
+    ) : LoweredResult {
+      override val loweredReturnType: CoreType?
+        get() = null
+    }
+
+    /**
+     * Call a callback function to provide the result to the caller. The lowered function returns a
+     * `PackedAsyncResult`
+     */
+    data class AsyncLift(
+      override val result: Result?,
+      val packedAsyncResultName: String,
+    ) : LoweredResult {
+      override val loweredReturnType: CoreType
+        get() = CoreType.I32
+    }
   }
 
   enum class Orientation {
@@ -457,27 +535,103 @@ class BridgeFunction(
     ): BridgeFunction {
       val nameAllocator = NameAllocator()
 
-      // Pre-allocate the names we'll need.
-      for (parameter in value.parameters) {
-        nameAllocator.newName(parameter.kotlinName, parameter.name)
-      }
-      if (receiver is Receiver.Id) {
-        nameAllocator.newName(receiver.name.lowerCamelCase, receiver.name)
-      }
+      val coreReceiver = flatParameter(nameAllocator, receiver)
 
-      val coreReceiver: FlatParameter? = when (receiver) {
-        is Receiver.Id -> flatParameter(nameAllocator, receiver.name, receiver.type)
-        else -> null
+      val liftedParameters = value.parameters.map { parameter ->
+        liftedParameter(nameAllocator, parameter.kotlinName, parameter.type)
       }
 
       val coreParameters = value.parameters.map {
         flatParameter(nameAllocator, it.name, it.type)
       }
 
-      val loweredParameters = when {
-        coreParameters.sumOf { it.coreSpecs.size } <= MAX_FLAT_PARAMS -> LoweredParameters.Flattened(
-          coreParameters,
-        )
+      val loweredParameters = lowerParameters(nameAllocator, coreParameters)
+
+      return BridgeFunction(
+        supportAsync = supportAsync,
+        nameAllocator = nameAllocator,
+        documentation = documentation(value, liftedParameters),
+        async = supportAsync && value.async,
+        isSupported = value.isSupported,
+        functionName = when {
+          value.async -> FunctionName.AsyncLift(value.functionName)
+          else -> value.functionName
+        },
+        liftedReceiver = receiver,
+        loweredReceiver = coreReceiver,
+        receiverName = nameAllocator.newName("self"),
+        liftedParameters = liftedParameters,
+        loweredParameters = loweredParameters,
+        loweredResult = loweredResult(
+          nameAllocator = nameAllocator,
+          orientation = orientation,
+          async = value.async,
+          type = value.returnType,
+        ),
+      )
+    }
+
+    fun taskReturn(
+      receiver: Receiver,
+      value: IrFunction,
+    ): BridgeFunction {
+      val nameAllocator = NameAllocator()
+
+      val coreReceiver = flatParameter(nameAllocator, receiver)
+
+      val returnType = value.returnType
+      val coreParameters = mutableListOf<FlatParameter>()
+      val liftedParameters = mutableListOf<LiftedParameter>()
+      if (returnType != null) {
+        coreParameters += flatParameter(nameAllocator, Identifier("result"), returnType)
+        liftedParameters += liftedParameter(nameAllocator, "liftedResult", returnType)
+      }
+
+      val loweredParameters = lowerParameters(nameAllocator, coreParameters)
+      val functionName = FunctionName.TaskReturn(value.functionName)
+
+      return BridgeFunction(
+        supportAsync = supportAsync,
+        nameAllocator = nameAllocator,
+        documentation = null,
+        functionName = functionName,
+        liftedReceiver = receiver,
+        loweredReceiver = coreReceiver,
+        receiverName = nameAllocator.newName("self"),
+        liftedParameters = liftedParameters,
+        loweredParameters = loweredParameters,
+      )
+    }
+
+    private fun documentation(
+      value: IrFunction,
+      liftedParameters: List<LiftedParameter>,
+    ): String? {
+      val result = buildString {
+        val functionDocumentation = value.documentation
+        if (functionDocumentation != null) {
+          this.append(functionDocumentation.content.trimIndent())
+          this.append("\n\n")
+        }
+
+        for ((index, parameter) in value.parameters.withIndex()) {
+          val parameterDocumentation = parameter.documentation ?: continue
+          this.append("@param ${liftedParameters[index].spec.name} ")
+          this.append(parameterDocumentation.content.trimIndent().replace("\n", "\n  "))
+          this.append("\n\n")
+        }
+      }
+
+      return result.trim().takeIf { it.isNotEmpty() }
+    }
+
+    private fun lowerParameters(
+      nameAllocator: NameAllocator,
+      coreParameters: List<FlatParameter>,
+    ): LoweredParameters {
+      return when {
+        coreParameters.sumOf { it.coreSpecs.size } <= MAX_FLAT_PARAMS ->
+          LoweredParameters.Flattened(coreParameters)
 
         else -> LoweredParameters.Stored(
           addressSpec = ParameterSpec(
@@ -487,30 +641,28 @@ class BridgeFunction(
           fieldEncoders = coreParameters.map { it.encoder },
         )
       }
+    }
 
-      val liftedParameters = value.parameters.map { parameter ->
-        ParameterSpec.builder(
-          nameAllocator[parameter.name],
-          kotlinMapper.get(parameter.type),
-        ).build()
-      }
-
-      val liftedParameterValues = value.parameters.map { parameter ->
-        CodeBlock.of("%N", nameAllocator[parameter.name])
-      }
-
-      return BridgeFunction(
-        nameAllocator = nameAllocator,
-        supportAsync = supportAsync,
-        function = value,
-        kotlinName = value.kotlinName,
-        liftedReceiver = receiver,
-        loweredReceiver = coreReceiver,
-        liftedParameterSpecs = liftedParameters,
-        liftedParameterValues = liftedParameterValues,
-        loweredParameters = loweredParameters,
-        result = value.returnType?.let { result(nameAllocator, orientation, it) },
+    private fun liftedParameter(
+      nameAllocator: NameAllocator,
+      nameHint: String,
+      type: TypeName,
+    ): LiftedParameter {
+      val name = nameAllocator.newName(nameHint)
+      return LiftedParameter(
+        spec = ParameterSpec.builder(name, kotlinMapper.get(type)).build(),
+        value = CodeBlock.of("%N", name),
       )
+    }
+
+    private fun flatParameter(
+      nameAllocator: NameAllocator,
+      receiver: Receiver,
+    ): FlatParameter? {
+      return when (receiver) {
+        is Receiver.Id -> flatParameter(nameAllocator, receiver.name, receiver.type)
+        else -> null
+      }
     }
 
     private fun flatParameter(
@@ -529,11 +681,8 @@ class BridgeFunction(
                 Identifier("${name}-${nameHint.name}").lowerCamelCase,
               )
 
-              v == 0 -> nameAllocator[name]
-              else -> nameAllocator.newName(
-                suggestion = "${name.lowerCamelCase}${v + 1}",
-                tag = name to v,
-              )
+              v == 0 -> nameAllocator.newName(name.lowerCamelCase)
+              else -> nameAllocator.newName(suggestion = "${name.lowerCamelCase}${v + 1}")
             }
             add(ParameterSpec(coreName, coreType.kotlinCoreType))
           }
@@ -541,43 +690,52 @@ class BridgeFunction(
       )
     }
 
-    private fun result(
+    private fun loweredResult(
       nameAllocator: NameAllocator,
+      type: TypeName?,
       orientation: Orientation,
-      type: TypeName,
-    ): Result {
-      val encoder = encoderFactory.get(type)
-      val kotlinType = kotlinMapper.get(type)
+      async: Boolean,
+    ): LoweredResult {
+      if (type == null) {
+        return when {
+          async -> LoweredResult.AsyncLift(
+            result = null,
+            packedAsyncResultName = nameAllocator.newName("packedAsyncResultName"),
+          )
+
+          else -> LoweredResult.VoidReturn
+        }
+      }
+
+      val result = Result(
+        loweredName = nameAllocator.newName("result"),
+        liftedName = nameAllocator.newName("liftedResult"),
+        arrayName = nameAllocator.newName("resultArray"),
+        type = type,
+        kotlinType = kotlinMapper.get(type),
+        encoder = encoderFactory.get(type),
+      )
+
       return when {
-        encoder.coreTypes.size == 1 -> Result.SingleCoreValueReturn(
-          loweredName = nameAllocator.newName("result"),
-          liftedName = nameAllocator.newName("liftedResult"),
-          arrayName = nameAllocator.newName("resultArray"),
-          type = type,
-          kotlinType = kotlinType,
-          encoder = encoder,
+        async -> LoweredResult.AsyncLift(
+          result = result,
+          packedAsyncResultName = nameAllocator.newName("packedAsyncResultName"),
         )
 
-        orientation == Orientation.GuestCallsHost -> Result.PointerParameter(
-          loweredName = nameAllocator.newName("result"),
-          liftedName = nameAllocator.newName("liftedResult"),
-          arrayName = nameAllocator.newName("resultArray"),
-          type = type,
-          kotlinType = kotlinType,
-          encoder = encoder,
+        result.encoder.coreTypes.size == 1 -> LoweredResult.SingleCoreValueReturn(
+          result = result,
+        )
+
+        orientation == Orientation.GuestCallsHost -> LoweredResult.PointerParameter(
+          result = result,
           pointerParameter = ParameterSpec(
             nameAllocator.newName("resultParameter"),
             CoreType.Pointer.kotlinCoreType,
           ),
         )
 
-        else -> Result.PointerReturn(
-          loweredName = nameAllocator.newName("result"),
-          liftedName = nameAllocator.newName("liftedResult"),
-          arrayName = nameAllocator.newName("resultArray"),
-          type = type,
-          kotlinType = kotlinType,
-          encoder = encoder,
+        else -> LoweredResult.PointerReturn(
+          result = result,
           addressName = nameAllocator.newName("resultAddress"),
         )
       }

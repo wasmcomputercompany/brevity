@@ -13,50 +13,42 @@ import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Invoker
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Creates bridge functions that run on the guest.
  */
-internal class GuestFunctionFactory(
-  guestPlatform: GuestPlatform,
-  private val function: BridgeFunction,
+class GuestFunctionFactory(
+  private val guestPlatform: GuestPlatform,
 ) {
-  private val used = AtomicBoolean()
-
-  private val codeBuilder = CodeBuilder(
-    bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
-    platform = guestPlatform,
-    nameAllocator = function.nameAllocator,
-  )
-
   /** Bridge an API function into a call to [wasmImport]. */
-  fun callHost(): FunSpec {
-    require(used.compareAndSet(false, true)) { "cannot be reused" }
-
+  fun callHost(function: BridgeFunction): FunSpec {
     val invoker = object : Invoker {
       context(codeBuilder: CodeBuilder)
       override fun invoke(parameterValues: List<CodeBlock>) {
-        if (function.result != null) {
-          codeBuilder.add("val %N = ", function.result.loweredName)
+        val result = function.loweredResult.result
+        if (result != null) {
+          codeBuilder.add("val %N = ", result.loweredName)
         }
         codeBuilder.add("%N(⇥", function.functionName.importFunctionName)
         if (parameterValues.isNotEmpty()) {
           codeBuilder.add("\n")
         }
-        for (loweredParameterValue in parameterValues) {
-          codeBuilder.add("%L,\n", loweredParameterValue)
+        for (parameterValue in parameterValues) {
+          codeBuilder.add("%L,\n", parameterValue)
         }
         codeBuilder.add("⇤)\n")
       }
     }
 
-    return function.outboundFunction(codeBuilder, invoker)
+    return function.outboundFunction(
+      bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
+      platform = guestPlatform,
+      invoker = invoker,
+    )
   }
 
   /** Returns the `@WasmImport`-annotated function. It must be added directly to a file. */
-  fun wasmImport(): FunSpec {
-    require(used.compareAndSet(false, true)) { "cannot be reused" }
+  fun wasmImport(function: BridgeFunction): FunSpec {
     require(function.liftedReceiver !is Receiver.InboundInstance)
 
     return FunSpec.builder(function.functionName.importFunctionName)
@@ -73,9 +65,14 @@ internal class GuestFunctionFactory(
   }
 
   /** Returns the `@WasmExport`-annotated function. It must be added directly to a file. */
-  fun wasmExport(): FunSpec {
-    require(used.compareAndSet(false, true)) { "cannot be reused" }
+  fun wasmExport(function: BridgeFunction): FunSpec {
     require(function.liftedReceiver !is Receiver.OutboundInstance)
+
+    val codeBuilder = CodeBuilder(
+      bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
+      platform = guestPlatform,
+      nameAllocator = function.nameAllocator(),
+    )
 
     return FunSpec.builder(function.functionName.exportFunctionName)
       .addAnnotation(function.functionName.wasmExportAnnotation)
@@ -101,7 +98,7 @@ internal class GuestFunctionFactory(
       .build()
   }
 
-  fun callWasmExportFunctionWithPlaceholders(): CodeBlock {
+  fun callWasmExportFunctionWithPlaceholders(function: BridgeFunction): CodeBlock {
     return function.loweredParameterSpecs.joinToCode(
       prefix = "${function.functionName.exportFunctionName}(",
       suffix = ")",

@@ -18,6 +18,20 @@ object GuestBridge {
   fun <T : Resource> fromId(id: Int, constructor: (Int) -> T): T {
     return constructor(id)
   }
+
+  @BrevityInternalApi
+  fun taskReturn(value: Any? = Unit) {
+  }
+
+  @BrevityInternalApi
+  fun launchTask(block: suspend () -> Unit): PackedAsyncResult {
+    return PackedAsyncResult(CallbackCode.Exit)
+  }
+
+  @BrevityInternalApi
+  fun <T> taskResult(): T {
+    error("TODO")
+  }
 }
 
 fun Pointer.loadPointer(): Pointer {

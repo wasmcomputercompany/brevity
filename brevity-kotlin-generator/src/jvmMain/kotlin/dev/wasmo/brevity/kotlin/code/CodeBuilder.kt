@@ -92,6 +92,11 @@ class CodeBuilder private constructor(
   fun addStatement(format: String, vararg args: Any?) =
     code.addStatement(format, *args)
 
+  fun beginControlFlow(format: String, vararg args: Any?) =
+    code.beginControlFlow(format, *args)
+
+  fun endControlFlow() = code.endControlFlow()
+
   fun build(): CodeBlock {
     val lastCode = when {
       platform !is GuestPlatform -> code.build()

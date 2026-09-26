@@ -5,62 +5,65 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.HostPlatform
+import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.valType
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Invoker
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
-import java.util.concurrent.atomic.AtomicBoolean
 
-internal class HostFunctionFactory(
-  hostPlatform: HostPlatform,
-  private val bridge: CodeBlock,
-  private val function: BridgeFunction,
+class HostFunctionFactory(
+  private val hostPlatform: HostPlatform,
 ) {
-  private val used = AtomicBoolean()
-
-  private val codeBuilder = CodeBuilder(
-    bridge = bridge,
-    platform = hostPlatform,
-    nameAllocator = function.nameAllocator,
-  )
-
   /** Returns a function that calls the guest. It implements the friendly API. */
-  fun callGuest(): FunSpec {
-    require(used.compareAndSet(false, true)) { "cannot be reused" }
-
+  fun callGuest(
+    bridge: CodeBlock,
+    function: BridgeFunction,
+  ): FunSpec {
     val invoker = object : Invoker {
       context(codeBuilder: CodeBuilder)
       override fun invoke(parameterValues: List<CodeBlock>) {
-        if (function.result != null) {
-          codeBuilder.add("val %N = ", function.result.arrayName)
+        val result = function.loweredResult.result
+        if (result != null) {
+          codeBuilder.add("val %N = ", result.arrayName)
         }
         codeBuilder.add("%N.apply(⇥\n", function.kotlinName)
-        for (loweredParameterValue in parameterValues) {
-          codeBuilder.add("%L,\n", loweredParameterValue)
+        for (parameterValue in parameterValues) {
+          codeBuilder.add("%L,\n", parameterValue)
         }
         codeBuilder.add("⇤)\n")
-        if (function.result != null) {
+        if (result != null) {
           codeBuilder.addStatement(
             "val %N = %N[%L]",
-            function.result.loweredName,
-            function.result.arrayName,
+            result.loweredName,
+            result.arrayName,
             0,
           )
         }
       }
     }
 
-    return function.outboundFunction(codeBuilder, invoker)
+    return function.outboundFunction(
+      bridge = bridge,
+      platform = hostPlatform,
+      invoker,
+    )
   }
 
   /** Adds a host function using the Chicory API. */
   fun declareHost(
+    bridge: CodeBlock,
     store: CodeBlock,
+    function: BridgeFunction,
   ): CodeBlock {
-    require(used.compareAndSet(false, true)) { "cannot be reused" }
-    require(function.liftedReceiver !is Receiver.OutboundInstance)
+    check(function.liftedReceiver !is Receiver.OutboundInstance)
+
+    val codeBuilder = CodeBuilder(
+      bridge = bridge,
+      platform = hostPlatform,
+      nameAllocator = function.nameAllocator(),
+    )
 
     context(codeBuilder) {
-      if (!function.function.isSupported) {
+      if (!function.isSupported) {
         return CodeBlock.of("/* TODO: ${function.kotlinName} */\n")
       }
 
@@ -75,34 +78,52 @@ internal class HostFunctionFactory(
         codeBuilder.add("%L", returnValue)
       }
       codeBuilder.add(")")
-
-      return CodeBlock.of(
-        """
-        |%L.addFunction(
-        |  %T(
-        |    %L,
-        |    %S,
-        |    %T.of(
-        |      listOf(%L),
-        |      listOf(%L),
-        |    ),
-        |    %T { instance, args ->
-        |      ⇥⇥⇥%L⇤⇤⇤
-        |    },
-        |  )
-        |)
-        |
-        """.trimMargin(),
-        store,
-        Symbols.ChicoryRuntime.HostFunction,
-        function.functionName.moduleName?.let { CodeBlock.of("%S", it) } ?: CodeBlock.of("null"),
-        function.functionName.abiName,
-        Symbols.ChicoryRuntime.FunctionType,
-        function.loweredParameterTypes.joinToCode { it.valType },
-        function.loweredReturnType?.valType ?: CodeBlock.of(""),
-        Symbols.ChicoryRuntime.WasmFunctionHandle,
-        codeBuilder.build(),
-      )
     }
+
+    return addChicoryFunction(
+      store = store,
+      moduleName = function.functionName.moduleName,
+      abiName = function.functionName.abiName,
+      parameterTypes = function.loweredParameterTypes,
+      returnType = function.loweredReturnType,
+      body = codeBuilder.build(),
+    )
+  }
+
+  private fun addChicoryFunction(
+    store: CodeBlock,
+    moduleName: String?,
+    abiName: String,
+    parameterTypes: List<CoreType>,
+    returnType: CoreType?,
+    body: CodeBlock,
+  ): CodeBlock {
+    return CodeBlock.of(
+      """
+      |%L.addFunction(
+      |  %T(
+      |    %L,
+      |    %S,
+      |    %T.of(
+      |      listOf(%L),
+      |      listOf(%L),
+      |    ),
+      |    %T { instance, args ->
+      |      ⇥⇥⇥%L⇤⇤⇤
+      |    },
+      |  )
+      |)
+      |
+      """.trimMargin(),
+      store,
+      Symbols.ChicoryRuntime.HostFunction,
+      moduleName?.let { CodeBlock.of("%S", it) } ?: CodeBlock.of("null"),
+      abiName,
+      Symbols.ChicoryRuntime.FunctionType,
+      parameterTypes.joinToCode { it.valType },
+      returnType?.valType ?: CodeBlock.of(""),
+      Symbols.ChicoryRuntime.WasmFunctionHandle,
+      body,
+    )
   }
 }

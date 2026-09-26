@@ -16,13 +16,12 @@ import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
-import dev.wasmo.brevity.kotlin.code.GuestPlatform
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.GuestCallsHost
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.HostCallsGuest
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 
 private val guestOptIns = setOf(
+  Symbols.Brevity.BrevityInternalApi,
   Symbols.KotlinWasm.ComponentModelInternalApi,
   Symbols.KotlinWasm.ExperimentalWasmInterop,
   Symbols.KotlinWasm.UnsafeWasmMemoryApi,
@@ -30,7 +29,7 @@ private val guestOptIns = setOf(
 
 class GuestGenerator(
   private val kotlinMapper: KotlinMapper,
-  private val guestPlatform: GuestPlatform,
+  private val guestFunctionFactory: GuestFunctionFactory,
   private val bridgeFunctionFactory: BridgeFunction.Factory,
   private val declarationIndex: DeclarationIndex,
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
@@ -134,7 +133,9 @@ class GuestGenerator(
     if (guest) {
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
-        collector += guestFunctionFactory(receiver, function, HostCallsGuest).wasmExport()
+        collector += guestFunctionFactory.wasmExport(
+          bridgeFunctionFactory.create(receiver, HostCallsGuest, function),
+        )
       }
     }
 
@@ -157,9 +158,13 @@ class GuestGenerator(
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
         handleBuilder.addFunction(
-          guestFunctionFactory(receiver, function, GuestCallsHost).callHost(),
+          guestFunctionFactory.callHost(
+            bridgeFunctionFactory.create(receiver, GuestCallsHost, function),
+          ),
         )
-        collector += guestFunctionFactory(receiver, function, GuestCallsHost).wasmImport()
+        collector += guestFunctionFactory.wasmImport(
+          bridgeFunctionFactory.create(receiver, GuestCallsHost, function),
+        )
       }
 
       collector.addType(kotlinMapper.getHandleName(value.type), handleBuilder.build())
@@ -172,12 +177,12 @@ class GuestGenerator(
    */
   context(collector: QualifiedSpecCollector)
   private fun addExternalFunctions(value: IrWorld) {
-    for (factory in exportedGuestFunctionFactories(value)) {
-      collector += factory.wasmExport()
+    for (guestFunction in exportedGuestFunctions(value)) {
+      collector += guestFunctionFactory.wasmExport(guestFunction)
     }
   }
 
-  private fun exportedGuestFunctionFactories(value: IrWorld): List<GuestFunctionFactory> {
+  private fun exportedGuestFunctions(value: IrWorld): List<BridgeFunction> {
     // The object to dereference that defines the true implementation. This is either the guest
     // interface or one of its members.
     val guestApis = value.guestApis ?: return listOf()
@@ -190,9 +195,9 @@ class GuestGenerator(
         when (item) {
           is IrFunction -> {
             add(
-              guestFunctionFactory(
+              bridgeFunctionFactory.create(
                 receiver = receiver,
-                function = item,
+                value = item,
                 orientation = HostCallsGuest,
               ),
             )
@@ -202,11 +207,11 @@ class GuestGenerator(
             val irInterface = declarationIndex[item.serviceName] as IrInterface
             for (function in irInterface.functions) {
               add(
-                guestFunctionFactory(
+                bridgeFunctionFactory.create(
                   receiver = Receiver.InboundInstance(
                     CodeBlock.of("%L.%N", receiver.codeBlock, item.instanceName),
                   ),
-                  function = function,
+                  value = function,
                   orientation = HostCallsGuest,
                 ),
               )
@@ -232,19 +237,13 @@ class GuestGenerator(
       .addStatement("// Equivalent to 'if (true) return', but immune to dead code elimination.")
       .addStatement("if (%S.hashCode() == 0) return", "")
       .apply {
-        for (factory in exportedGuestFunctionFactories(value)) {
-          addStatement("%L", factory.callWasmExportFunctionWithPlaceholders())
+        for (function in exportedGuestFunctions(value)) {
+          addStatement(
+            "%L",
+            guestFunctionFactory.callWasmExportFunctionWithPlaceholders(function),
+          )
         }
       }
       .build()
   }
-
-  private fun guestFunctionFactory(
-    receiver: Receiver,
-    function: IrFunction,
-    orientation: Orientation,
-  ) = GuestFunctionFactory(
-    guestPlatform = guestPlatform,
-    function = bridgeFunctionFactory.create(receiver, orientation, function),
-  )
 }
