@@ -13,6 +13,7 @@ kotlin {
     commonMain {
       dependencies {
         implementation(libs.okio)
+        implementation(libs.kotlinx.coroutines.core)
       }
     }
     val jvmMain by getting {

@@ -2,12 +2,17 @@
 
 package dev.wasmo.brevity
 
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.wasm.unsafe.Pointer
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 object GuestBridge {
   private val idToResource = mutableMapOf<Int, Resource>()
   private var nextId = 4_040_000
+
+  private var taskResult: Any? = null
 
   fun <T : Resource> toId(resource: T): Int {
     val id = nextId++
@@ -21,16 +26,21 @@ object GuestBridge {
 
   @BrevityInternalApi
   fun taskReturn(value: Any? = Unit) {
+    this.taskResult = value
   }
 
   @BrevityInternalApi
   fun launchTask(block: suspend () -> Unit): PackedAsyncResult {
+    val coroutineContext = EmptyCoroutineContext
+    CoroutineScope(coroutineContext).launch {
+      block()
+    }
     return PackedAsyncResult(CallbackCode.Exit)
   }
 
   @BrevityInternalApi
   fun <T> taskResult(): T {
-    error("TODO")
+    return taskResult as T
   }
 }
 
