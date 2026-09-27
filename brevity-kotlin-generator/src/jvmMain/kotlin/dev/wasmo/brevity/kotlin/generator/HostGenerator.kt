@@ -34,6 +34,7 @@ class HostGenerator(
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
+  private val supportAsync: Boolean,
 ) {
   /** Receives inbound calls on this host. */
   private val hostInstance = Receiver.InboundInstance(
@@ -146,6 +147,7 @@ class HostGenerator(
         .initializer("bridge")
         .build(),
     )
+    val bridgeValue = CodeBlock.of("%N", "bridge")
 
     when (value) {
       is IrWorld -> {
@@ -199,18 +201,17 @@ class HostGenerator(
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("store", Symbols.ChicoryRuntime.Store)
             .apply {
-              val bridge = CodeBlock.of("%N", "bridge")
               val store = CodeBlock.of("%N", "store")
               if (hostApis != null) {
                 initImports(
-                  bridge = bridge,
+                  bridge = bridgeValue,
                   store = store,
                   value = hostApis,
                 )
               }
               if (guestApis != null) {
                 initImportCallbacks(
-                  bridge = bridge,
+                  bridge = bridgeValue,
                   store = store,
                   value = guestApis,
                 )
@@ -218,7 +219,7 @@ class HostGenerator(
               for ((typeName, entry) in roleTracker.types) {
                 initImports(
                   typeName = typeName,
-                  bridge = bridge,
+                  bridge = bridgeValue,
                   store = store,
                   value = entry,
                 )
@@ -240,7 +241,7 @@ class HostGenerator(
         for (item in value.functions) {
           builder.addFunction(
             hostFunctionFactory.callGuest(
-              bridge = CodeBlock.of("%N", "bridge"),
+              bridge = bridgeValue,
               function = bridgeFunctionFactory.create(
                 Receiver.OutboundInstance,
                 HostCallsGuest,
@@ -300,9 +301,10 @@ class HostGenerator(
       }
 
       is IrFunction -> {
+        val bridge = CodeBlock.of("%N", "bridge")
         addFunction(
           hostFunctionFactory.callGuest(
-            bridge = CodeBlock.of("%N", "bridge"),
+            bridge = bridge,
             function = bridgeFunctionFactory.create(
               Receiver.OutboundInstance,
               HostCallsGuest,
@@ -409,6 +411,17 @@ class HostGenerator(
                 ),
               ),
             )
+            if (supportAsync && function.async) {
+              hostFunctionFactory.declareHost(
+                bridge = bridge,
+                store = store,
+                function = bridgeFunctionFactory.asyncCallback(
+                  receiver = id,
+                  orientation = GuestCallsHost,
+                  value = function,
+                ),
+              )
+            }
           }
         }
       }
@@ -436,6 +449,19 @@ class HostGenerator(
               ),
             ),
           )
+          if (supportAsync && item.async) {
+            addCode(
+              hostFunctionFactory.declareHost(
+                bridge = bridge,
+                store = store,
+                function = bridgeFunctionFactory.asyncCallback(
+                  receiver = hostInstance,
+                  orientation = GuestCallsHost,
+                  value = item,
+                ),
+              ),
+            )
+          }
         }
 
         is IrExternalApi -> {
@@ -455,6 +481,19 @@ class HostGenerator(
                 ),
               ),
             )
+            if (supportAsync && function.async) {
+              addCode(
+                hostFunctionFactory.declareHost(
+                  bridge = bridge,
+                  store = store,
+                  function = bridgeFunctionFactory.asyncCallback(
+                    receiver = inboundInstance,
+                    orientation = GuestCallsHost,
+                    value = function,
+                  ),
+                ),
+              )
+            }
           }
         }
       }

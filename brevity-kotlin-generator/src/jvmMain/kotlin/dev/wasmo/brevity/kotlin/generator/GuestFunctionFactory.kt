@@ -49,8 +49,6 @@ class GuestFunctionFactory(
 
   /** Returns the `@WasmImport`-annotated function. It must be added directly to a file. */
   fun wasmImport(function: BridgeFunction): FunSpec {
-    require(function.liftedReceiver !is Receiver.InboundInstance)
-
     return FunSpec.builder(function.functionName.importFunctionName)
       .addAnnotation(function.functionName.wasmImportAnnotation)
       .addModifiers(KModifier.PRIVATE, KModifier.EXTERNAL)

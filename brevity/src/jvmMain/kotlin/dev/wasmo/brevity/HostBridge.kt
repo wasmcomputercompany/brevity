@@ -42,12 +42,17 @@ class HostBridge {
   }
 
   @BrevityInternalApi
+  fun resumeTask(eventCode: Int, p1: Int, p2: Int): PackedAsyncResult {
+    return PackedAsyncResult(CallbackCode.Exit)
+  }
+
+  @BrevityInternalApi
   fun taskReturn(value: Any? = Unit) {
     this.taskResult = value
   }
 
   @BrevityInternalApi
-  fun <T> taskResult(): T {
+  suspend fun <T> awaitTaskResult(): T {
     return taskResult as T
   }
 

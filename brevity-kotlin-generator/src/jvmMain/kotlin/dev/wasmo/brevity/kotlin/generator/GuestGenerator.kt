@@ -35,6 +35,7 @@ class GuestGenerator(
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
+  private val supportAsync: Boolean,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
@@ -134,8 +135,27 @@ class GuestGenerator(
       for (function in value.functions) {
         if (!function.isSupported) continue // TODO
         collector += guestFunctionFactory.wasmExport(
-          bridgeFunctionFactory.create(receiver, HostCallsGuest, function),
+          bridgeFunctionFactory.create(
+            receiver,
+            HostCallsGuest,
+            function,
+          ),
         )
+        if (supportAsync && function.async) {
+          collector += guestFunctionFactory.wasmExport(
+            bridgeFunctionFactory.asyncCallback(
+              receiver,
+              HostCallsGuest,
+              function,
+            ),
+          )
+          collector += guestFunctionFactory.wasmImport(
+            bridgeFunctionFactory.taskReturn(
+              receiver,
+              function,
+            ),
+          )
+        }
       }
     }
 
@@ -177,12 +197,27 @@ class GuestGenerator(
    */
   context(collector: QualifiedSpecCollector)
   private fun addExternalFunctions(value: IrWorld) {
-    for (guestFunction in exportedGuestFunctions(value)) {
-      collector += guestFunctionFactory.wasmExport(guestFunction)
+    for ((function, receiver) in guestFunctions(value)) {
+      collector += guestFunctionFactory.wasmExport(
+        bridgeFunctionFactory.create(receiver, HostCallsGuest, function),
+      )
+      if (supportAsync && function.async) {
+        collector += guestFunctionFactory.wasmExport(
+          bridgeFunctionFactory.asyncCallback(receiver, HostCallsGuest, function),
+        )
+        collector += guestFunctionFactory.wasmImport(
+          bridgeFunctionFactory.taskReturn(receiver, function),
+        )
+      }
     }
   }
 
-  private fun exportedGuestFunctions(value: IrWorld): List<BridgeFunction> {
+  private data class FunctionAndReceiver(
+    val function: IrFunction,
+    val receiver: Receiver,
+  )
+
+  private fun guestFunctions(value: IrWorld): List<FunctionAndReceiver> {
     // The object to dereference that defines the true implementation. This is either the guest
     // interface or one of its members.
     val guestApis = value.guestApis ?: return listOf()
@@ -194,27 +229,16 @@ class GuestGenerator(
       for (item in guestApis.items) {
         when (item) {
           is IrFunction -> {
-            add(
-              bridgeFunctionFactory.create(
-                receiver = receiver,
-                value = item,
-                orientation = HostCallsGuest,
-              ),
-            )
+            add(FunctionAndReceiver(item, receiver))
           }
 
           is IrExternalApi -> {
             val irInterface = declarationIndex[item.serviceName] as IrInterface
+            val apiReceiver = Receiver.InboundInstance(
+              CodeBlock.of("%L.%N", receiver.codeBlock, item.instanceName),
+            )
             for (function in irInterface.functions) {
-              add(
-                bridgeFunctionFactory.create(
-                  receiver = Receiver.InboundInstance(
-                    CodeBlock.of("%L.%N", receiver.codeBlock, item.instanceName),
-                  ),
-                  value = function,
-                  orientation = HostCallsGuest,
-                ),
-              )
+              add(FunctionAndReceiver(function, apiReceiver))
             }
           }
         }
@@ -237,10 +261,11 @@ class GuestGenerator(
       .addStatement("// Equivalent to 'if (true) return', but immune to dead code elimination.")
       .addStatement("if (%S.hashCode() == 0) return", "")
       .apply {
-        for (function in exportedGuestFunctions(value)) {
+        for ((function, receiver) in guestFunctions(value)) {
+          val bridgedFunction = bridgeFunctionFactory.create(receiver, HostCallsGuest, function)
           addStatement(
             "%L",
-            guestFunctionFactory.callWasmExportFunctionWithPlaceholders(function),
+            guestFunctionFactory.callWasmExportFunctionWithPlaceholders(bridgedFunction),
           )
         }
       }

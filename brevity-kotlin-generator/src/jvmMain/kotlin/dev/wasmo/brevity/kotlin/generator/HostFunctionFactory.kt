@@ -22,7 +22,7 @@ class HostFunctionFactory(
       context(codeBuilder: CodeBuilder)
       override fun invoke(parameterValues: List<CodeBlock>) {
         val result = function.loweredResult.result
-        if (result != null) {
+        if (result != null && !function.async) {
           codeBuilder.add("val %N = ", result.arrayName)
         }
         codeBuilder.add("%N.apply(⇥\n", function.kotlinName)
@@ -30,7 +30,7 @@ class HostFunctionFactory(
           codeBuilder.add("%L,\n", parameterValue)
         }
         codeBuilder.add("⇤)\n")
-        if (result != null) {
+        if (result != null && !function.async) {
           codeBuilder.addStatement(
             "val %N = %N[%L]",
             result.loweredName,
@@ -77,7 +77,7 @@ class HostFunctionFactory(
       if (returnValue != null) {
         codeBuilder.add("%L", returnValue)
       }
-      codeBuilder.add(")")
+      codeBuilder.add(")\n")
     }
 
     return addChicoryFunction(
@@ -109,8 +109,7 @@ class HostFunctionFactory(
       |      listOf(%L),
       |    ),
       |    %T { instance, args ->
-      |      ⇥⇥⇥%L⇤⇤⇤
-      |    },
+      |      ⇥⇥⇥%L⇤⇤⇤    },
       |  )
       |)
       |
