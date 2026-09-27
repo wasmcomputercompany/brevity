@@ -59,6 +59,8 @@ class GuestKotlinTarget(
       passAsReturnValue(type)
       if (type.async) {
         asyncReturnValue(type)
+      }
+      if (type.futures) {
         asyncFutureReturnValue(type)
         futureReturnValue(type)
       }

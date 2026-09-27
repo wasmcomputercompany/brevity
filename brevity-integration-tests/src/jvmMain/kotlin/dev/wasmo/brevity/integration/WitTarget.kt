@@ -42,6 +42,8 @@ class WitTarget(
       )
       if (type.async) {
         asyncReturnValue(type = type)
+      }
+      if (type.futures) {
         asyncFutureReturnValue(type = type)
         futureReturnValue(type = type)
       }

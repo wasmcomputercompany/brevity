@@ -24,27 +24,34 @@ class HostKotlinTarget(
   private fun BufferedSink.writeKotlin() {
     writeUtf8(
       """
+      |@file:OptIn(dev.wasmo.brevity.BrevityInternalApi::class)
+      |
       |package dev.wasmo.brevity.integration
       |
       |import assertk.assertThat
       |import assertk.assertions.isEqualTo
-      |import dev.wasmo.brevity.integration.isEqualTo
+      |import dev.wasmo.brevity.Async
+      |import dev.wasmo.brevity.RealAsyncHost
       |import dev.wasmo.brevity.WasmInstance
+      |import dev.wasmo.brevity.World
+      |import dev.wasmo.brevity.integration.isEqualTo
       |import dev.wasmo.brevity.wasi.p1.RealWasiP1Host
       |import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
+      |import kotlinx.coroutines.runBlocking
       |import okio.Path.Companion.toPath
       |import wit.brevity.testing.BrevityTest
       |import wit.brevity.testing.World
       |import wit.wasi.cli.v0_2_0.World
       |import wit.wasi.v0_1.World
       |
-      |fun main(vararg args: String) {
+      |fun main(vararg args: String) = runBlocking {
       |  val world = BrevityTest.World { }
       |  WasmInstance(
       |    path = args[0].toPath(),
       |    worlds = listOf(
       |      wit.wasi.v0_1.Wasi.World({ RealWasiP1Host() }),
       |      wit.wasi.cli.v0_2_0.Imports.World({ RealWasiP2Host() }),
+      |      Async.World { RealAsyncHost() },
       |      world,
       |    ),
       |  )
@@ -70,6 +77,13 @@ class HostKotlinTarget(
           index = index,
           value = value,
         )
+        if (type.async) {
+          callAsync(
+            type = type,
+            index = index,
+            value = value,
+          )
+        }
       }
     }
     writeUtf8(
@@ -140,6 +154,36 @@ class HostKotlinTarget(
         """
         |  assertThat(
         |    world.guest.passAsReturnValue${type.idUpperCamel}($index),
+        |    "${type.id}.$index.return",
+        |  ).isEqualTo(${value.kotlin})
+        |
+        |
+        """.trimMargin(),
+      )
+    }
+  }
+
+  private fun BufferedSink.callAsync(
+    type: SampleType,
+    index: Int,
+    value: SampleValue,
+  ) {
+    if (type.compareAsString) {
+      writeUtf8(
+        """
+        |  assertThat(
+        |    world.guest.asyncReturnValue${type.idUpperCamel}($index).toString(),
+        |    "${type.id}.$index.return",
+        |  ).isEqualTo((${value.kotlin}).toString())
+        |
+        |
+        """.trimMargin(),
+      )
+    } else {
+      writeUtf8(
+        """
+        |  assertThat(
+        |    world.guest.asyncReturnValue${type.idUpperCamel}($index),
         |    "${type.id}.$index.return",
         |  ).isEqualTo(${value.kotlin})
         |

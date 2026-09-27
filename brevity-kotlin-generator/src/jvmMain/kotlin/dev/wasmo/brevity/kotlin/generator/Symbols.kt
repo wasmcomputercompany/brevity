@@ -76,6 +76,7 @@ object Symbols {
 
   object Brevity {
     val Borrow = ClassName("dev.wasmo.brevity", "Borrow")
+    val BrevityInternalApi = ClassName("dev.wasmo.brevity", "BrevityInternalApi")
     val CallBuilder = ClassName("dev.wasmo.brevity", "CallBuilder")
     val CallbackCode = ClassName("dev.wasmo.brevity", "CallbackCode")
     val GuestBridge = ClassName("dev.wasmo.brevity", "GuestBridge")
@@ -83,7 +84,6 @@ object Symbols {
     val HostBridgeGet = MemberName("dev.wasmo.brevity", "get")
     val LoadPointer = MemberName("dev.wasmo.brevity", "loadPointer")
     val LoadString = MemberName("dev.wasmo.brevity", "loadString")
-    val PackedAsyncResult = ClassName("dev.wasmo.brevity", "PackedAsyncResult")
     val Quad = ClassName("dev.wasmo.brevity", "Quad")
     val Resource = ClassName("dev.wasmo.brevity", "Resource")
     val Result = ClassName("dev.wasmo.brevity", "Result")

@@ -13,6 +13,8 @@ class HostBridge {
   val memory: Memory
     get() = _memory
 
+  private var taskResult: Any? = null
+
   fun init(instance: Instance) {
     this._memory = instance.memory()
     this.cabiRealloc = instance.export("cabi_realloc")
@@ -35,12 +37,18 @@ class HostBridge {
   }
 
   @BrevityInternalApi
+  fun launchTask(block: suspend () -> Unit): PackedAsyncResult {
+    return PackedAsyncResult(CallbackCode.Exit)
+  }
+
+  @BrevityInternalApi
   fun taskReturn(value: Any? = Unit) {
+    this.taskResult = value
   }
 
   @BrevityInternalApi
   fun <T> taskResult(): T {
-    error("TODO")
+    return taskResult as T
   }
 
   /** Invoke `cabi_realloc(originalAddress, originalSize, align, newSize)`. */

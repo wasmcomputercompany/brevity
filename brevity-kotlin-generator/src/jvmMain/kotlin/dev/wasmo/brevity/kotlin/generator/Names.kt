@@ -14,18 +14,28 @@ val IrWorld.retainWasmExportsFunctionName: String
   get() = "retainWasmExportsFor${serviceName.name.upperCamelCase}"
 
 private fun FunctionName.toExternalName(suffix: Identifier): String {
-  val segments = when (this) {
-    is FunctionName.Constructor -> listOf(serviceName.name, name, suffix)
-    is FunctionName.Interface -> listOf(serviceName.name, name, suffix)
-    is FunctionName.Method -> listOf(serviceName.name, resourceName, name, suffix)
-    is FunctionName.ResourceDrop -> listOf(serviceName.name, resourceName, dropFunctionName, suffix)
-    is FunctionName.Static -> listOf(serviceName.name, resourceName, name, suffix)
-    is FunctionName.World -> listOf(name, suffix)
-  }
+  val segments = segments() + suffix
 
   return segments.joinToString(separator = "_") {
     it.lowerCamelCase.replace(Regex("\\W"), "_")
   }
 }
 
+private fun FunctionName.segments(): List<Identifier> {
+  return when (this) {
+    is FunctionName.Constructor -> listOf(serviceName.name, name)
+    is FunctionName.Interface -> listOf(serviceName.name, name)
+    is FunctionName.Method -> listOf(serviceName.name, resourceName, name)
+    is FunctionName.ResourceDrop -> listOf(serviceName.name, resourceName, dropFunctionName)
+    is FunctionName.Static -> listOf(serviceName.name, resourceName, name)
+    is FunctionName.World -> listOf(name)
+    is FunctionName.TaskReturn -> original.segments() + taskReturnSuffix
+    is FunctionName.AsyncLift -> original.segments() + asyncLiftSuffix
+    is FunctionName.AsyncLiftCallback -> original.segments() + asyncLiftCallbackSuffix
+  }
+}
+
 val dropFunctionName = Identifier("close")
+val taskReturnSuffix = Identifier("task-return")
+val asyncLiftSuffix = Identifier("async")
+val asyncLiftCallbackSuffix = Identifier("async-callback")

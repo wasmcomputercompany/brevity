@@ -21,7 +21,7 @@ class GuestRustTarget(
   }
 
   private fun BufferedSink.writeRust() {
-    if (types.any { it.async }) {
+    if (types.any { it.futures }) {
       writeUtf8(
         """
         |use crate::bindings::wit_future::FuturePayload;
@@ -60,6 +60,8 @@ class GuestRustTarget(
       passAsReturnValue(type)
       if (type.async) {
         asyncReturnValue(type)
+      }
+      if (type.futures) {
         asyncFutureReturnValue(type)
         futureReturnValue(type)
       }

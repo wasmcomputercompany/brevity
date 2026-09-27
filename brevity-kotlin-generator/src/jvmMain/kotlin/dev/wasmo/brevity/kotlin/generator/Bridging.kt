@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.ir.IrExternalApi
@@ -30,17 +31,23 @@ val IrField.kotlinName: String
 val IrFlag.kotlinName: String
   get() = name.lowerCamelCase
 
-val IrFunction.kotlinName: String
+val FunctionName.kotlinName: String
+  get() = kotlinIdentifier.lowerCamelCase
+
+private val FunctionName.kotlinIdentifier: Identifier
   get() {
-    val identifier = when (val functionName = functionName) {
+    return when (this) {
       is FunctionName.ResourceDrop -> dropFunctionName
-      is FunctionName.Constructor -> functionName.name
-      is FunctionName.Interface -> functionName.name
-      is FunctionName.Method -> functionName.name
-      is FunctionName.Static -> functionName.name
-      is FunctionName.World -> functionName.name
+      is FunctionName.Constructor -> name
+      is FunctionName.Interface -> name
+      is FunctionName.Method -> name
+      is FunctionName.Static -> name
+      is FunctionName.World -> name
+      is FunctionName.TaskReturn -> Identifier("${original.kotlinIdentifier}-$taskReturnSuffix")
+      is FunctionName.AsyncLift -> original.kotlinIdentifier
+      is FunctionName.AsyncLiftCallback ->
+        Identifier("${original.kotlinIdentifier}-$asyncLiftCallbackSuffix")
     }
-    return identifier.lowerCamelCase
   }
 
 val IrExternalApi.instanceName: String
