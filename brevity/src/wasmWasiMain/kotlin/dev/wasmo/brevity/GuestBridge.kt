@@ -39,7 +39,12 @@ object GuestBridge {
   }
 
   @BrevityInternalApi
-  fun <T> taskResult(): T {
+  fun resumeTask(eventCode: Int, p1: Int, p2: Int): PackedAsyncResult {
+    return PackedAsyncResult(CallbackCode.Exit)
+  }
+
+  @BrevityInternalApi
+  suspend fun <T> awaitTaskResult(): T {
     return taskResult as T
   }
 }

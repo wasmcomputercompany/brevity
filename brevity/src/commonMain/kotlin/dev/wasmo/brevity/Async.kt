@@ -58,6 +58,17 @@ enum class CallbackCode {
   Exit, Yield, Wait, Max;
 }
 
+@BrevityInternalApi
+enum class EventCode {
+  None,
+  Subtask,
+  StreamRead,
+  StreamWrite,
+  FutureRead,
+  FutureWrite,
+  TaskCancelled,
+}
+
 /**
  * https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#canon-lift
  */

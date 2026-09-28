@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterSpec
@@ -18,6 +19,7 @@ import dev.wasmo.brevity.kotlin.encoders.AbstractRecordEncoder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.Encoder
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.kotlin.encoders.IntEncoder
 import dev.wasmo.brevity.kotlin.encoders.MAX_FLAT_PARAMS
 
 class BridgeFunction private constructor(
@@ -160,7 +162,24 @@ class BridgeFunction private constructor(
           codeBuilder.bridge,
         )
         invoke(liftedParameterValues)
+        codeBuilder.addStatement(
+          "TODO(%S)",
+          "call ${FunctionName.TaskReturn(functionName.original)}",
+        )
         codeBuilder.endControlFlow()
+      }
+
+      is FunctionName.AsyncLiftCallback -> {
+        check(loweredResult is LoweredResult.SingleCoreValueReturn)
+        check(liftedParameterValues.size == 3)
+        codeBuilder.addStatement(
+          "val %N = %L.resumeTask(%L, %L, %L).value",
+          loweredResult.result.loweredName,
+          codeBuilder.bridge,
+          liftedParameterValues[0],
+          liftedParameterValues[1],
+          liftedParameterValues[2],
+        )
       }
 
       else -> {
@@ -336,7 +355,7 @@ class BridgeFunction private constructor(
 
       is LoweredResult.AsyncLift -> {
         CodeBlock.of(
-          "%L.taskResult<%T>()",
+          "%L.awaitTaskResult<%T>()",
           codeBuilder.bridge,
           loweredResult.result?.kotlinType ?: UNIT,
         )
@@ -571,6 +590,46 @@ class BridgeFunction private constructor(
       )
     }
 
+    fun asyncCallback(
+      receiver: Receiver,
+      orientation: Orientation,
+      value: IrFunction,
+    ): BridgeFunction {
+      val nameAllocator = NameAllocator()
+
+      val coreReceiver = flatParameter(nameAllocator, receiver)
+
+      val liftedParameters = listOf(
+        liftedParameter(nameAllocator, "eventCode", TypeName.U32),
+        liftedParameter(nameAllocator, "p1", TypeName.U32),
+        liftedParameter(nameAllocator, "p2", TypeName.U32),
+      )
+
+      val loweredParameters = LoweredParameters.Flattened(
+        listOf(
+          FlatParameter(IntEncoder, listOf(ParameterSpec.builder("eventCode", INT).build())),
+          FlatParameter(IntEncoder, listOf(ParameterSpec.builder("p1", INT).build())),
+          FlatParameter(IntEncoder, listOf(ParameterSpec.builder("p2", INT).build())),
+        ),
+      )
+
+      return BridgeFunction(
+        supportAsync = supportAsync,
+        nameAllocator = nameAllocator,
+        functionName = FunctionName.AsyncLiftCallback(value.functionName),
+        liftedReceiver = receiver,
+        loweredReceiver = coreReceiver,
+        receiverName = nameAllocator.newName("self"),
+        liftedParameters = liftedParameters,
+        loweredParameters = loweredParameters,
+        loweredResult = loweredResult(
+          nameAllocator = nameAllocator,
+          orientation = orientation,
+          type = TypeName.U32,
+        ),
+      )
+    }
+
     fun taskReturn(
       receiver: Receiver,
       value: IrFunction,
@@ -694,7 +753,7 @@ class BridgeFunction private constructor(
       nameAllocator: NameAllocator,
       type: TypeName?,
       orientation: Orientation,
-      async: Boolean,
+      async: Boolean = false,
     ): LoweredResult {
       if (type == null) {
         return when {
