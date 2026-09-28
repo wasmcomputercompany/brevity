@@ -7,7 +7,6 @@ import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.valType
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Invoker
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 
 class HostFunctionFactory(
@@ -18,33 +17,9 @@ class HostFunctionFactory(
     bridge: CodeBlock,
     function: BridgeFunction,
   ): FunSpec {
-    val invoker = object : Invoker {
-      context(codeBuilder: CodeBuilder)
-      override fun invoke(parameterValues: List<CodeBlock>) {
-        val result = function.loweredResult.result
-        if (result != null && !function.async) {
-          codeBuilder.add("val %N = ", result.arrayName)
-        }
-        codeBuilder.add("%N.apply(⇥\n", function.kotlinName)
-        for (parameterValue in parameterValues) {
-          codeBuilder.add("%L,\n", parameterValue)
-        }
-        codeBuilder.add("⇤)\n")
-        if (result != null && !function.async) {
-          codeBuilder.addStatement(
-            "val %N = %N[%L]",
-            result.loweredName,
-            result.arrayName,
-            0,
-          )
-        }
-      }
-    }
-
     return function.outboundFunction(
       bridge = bridge,
       platform = hostPlatform,
-      invoker,
     )
   }
 

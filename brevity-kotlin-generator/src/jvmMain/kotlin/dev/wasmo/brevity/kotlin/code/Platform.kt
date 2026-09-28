@@ -2,11 +2,13 @@ package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
+import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.encoders.integerType
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction
 
 /**
  * Abstracts over the differences in Wasm APIs like Kotlin/Wasm and Chicory.
@@ -92,5 +94,12 @@ interface Platform {
     offset: Int = 0,
     type: IntegerType,
     value: CodeBlock,
+  )
+
+  context(codeBuilder: CodeBuilder)
+  fun invokeLowered(
+    name: FunctionName,
+    parameterValues: List<CodeBlock>,
+    result: BridgeFunction.Result? = null,
   )
 }

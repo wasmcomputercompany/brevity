@@ -5,12 +5,16 @@ import com.squareup.kotlinpoet.DOUBLE
 import com.squareup.kotlinpoet.FLOAT
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.TypeName as KtTypeName
+import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction
 import dev.wasmo.brevity.kotlin.generator.Symbols
+import dev.wasmo.brevity.kotlin.generator.exportFunctionName
+import dev.wasmo.brevity.kotlin.generator.kotlinName
 import dev.wasmo.brevity.kotlin.generator.plus
 
 class HostPlatform(
@@ -153,5 +157,33 @@ class HostPlatform(
       baseAddress + offset,
       value,
     )
+  }
+
+  context(codeBuilder: CodeBuilder)
+  override fun invokeLowered(
+    name: FunctionName,
+    parameterValues: List<CodeBlock>,
+    result: BridgeFunction.Result?,
+  ) {
+    if (result != null && name !is FunctionName.AsyncLift) {
+      codeBuilder.add("val %N = ", result.arrayName)
+    }
+    val propertyName = when {
+      name is FunctionName.TaskReturn -> name.exportFunctionName
+      else -> name.kotlinName
+    }
+    codeBuilder.add("%N.apply(⇥\n", propertyName)
+    for (parameterValue in parameterValues) {
+      codeBuilder.add("%L,\n", parameterValue)
+    }
+    codeBuilder.add("⇤)\n")
+    if (result != null && name !is FunctionName.AsyncLift) {
+      codeBuilder.addStatement(
+        "val %N = %N[%L]",
+        result.loweredName,
+        result.arrayName,
+        0,
+      )
+    }
   }
 }

@@ -11,7 +11,6 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Invoker
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 
 /**
@@ -22,28 +21,9 @@ class GuestFunctionFactory(
 ) {
   /** Bridge an API function into a call to [wasmImport]. */
   fun callHost(function: BridgeFunction): FunSpec {
-    val invoker = object : Invoker {
-      context(codeBuilder: CodeBuilder)
-      override fun invoke(parameterValues: List<CodeBlock>) {
-        val result = function.loweredResult.result
-        if (result != null) {
-          codeBuilder.add("val %N = ", result.loweredName)
-        }
-        codeBuilder.add("%N(⇥", function.functionName.importFunctionName)
-        if (parameterValues.isNotEmpty()) {
-          codeBuilder.add("\n")
-        }
-        for (parameterValue in parameterValues) {
-          codeBuilder.add("%L,\n", parameterValue)
-        }
-        codeBuilder.add("⇤)\n")
-      }
-    }
-
     return function.outboundFunction(
       bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
       platform = guestPlatform,
-      invoker = invoker,
     )
   }
 

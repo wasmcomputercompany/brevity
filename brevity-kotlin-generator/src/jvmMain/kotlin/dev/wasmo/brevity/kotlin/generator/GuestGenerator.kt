@@ -262,11 +262,20 @@ class GuestGenerator(
       .addStatement("if (%S.hashCode() == 0) return", "")
       .apply {
         for ((function, receiver) in guestFunctions(value)) {
-          val bridgedFunction = bridgeFunctionFactory.create(receiver, HostCallsGuest, function)
           addStatement(
             "%L",
-            guestFunctionFactory.callWasmExportFunctionWithPlaceholders(bridgedFunction),
+            guestFunctionFactory.callWasmExportFunctionWithPlaceholders(
+              bridgeFunctionFactory.create(receiver, HostCallsGuest, function)
+            ),
           )
+          if (function.async) {
+            addStatement(
+              "%L",
+              guestFunctionFactory.callWasmExportFunctionWithPlaceholders(
+                bridgeFunctionFactory.asyncCallback(receiver, HostCallsGuest, function),
+              )
+            )
+          }
         }
       }
       .build()

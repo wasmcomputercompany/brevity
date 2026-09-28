@@ -32,7 +32,7 @@ class BridgeFunction private constructor(
   val liftedReceiver: Receiver,
   private val loweredReceiver: FlatParameter? = null,
   private val receiverName: String,
-  val liftedParameters: List<LiftedParameter>,
+  val liftedParameters: List<ParameterSpec>,
   private val loweredParameters: LoweredParameters,
   val loweredResult: LoweredResult = LoweredResult.VoidReturn,
 ) {
@@ -156,17 +156,12 @@ class BridgeFunction private constructor(
       is FunctionName.AsyncLift -> {
         require(loweredResult is LoweredResult.AsyncLift)
         codeBuilder.addStatement("val %N = %L", receiverName, receiverValue)
-        codeBuilder.beginControlFlow(
+        codeBuilder.beginControlFlowWithMemory(
           "val %N = %L.launchTask",
           loweredResult.packedAsyncResultName,
           codeBuilder.bridge,
         )
-        invoke(liftedParameterValues)
-        codeBuilder.addStatement(
-          "TODO(%S)",
-          "call ${FunctionName.TaskReturn(functionName.original)}",
-        )
-        codeBuilder.endControlFlow()
+        invokeLifted(liftedParameterValues)
       }
 
       is FunctionName.AsyncLiftCallback -> {
@@ -184,7 +179,7 @@ class BridgeFunction private constructor(
 
       else -> {
         codeBuilder.addStatement("val %N = %L", receiverName, receiverValue)
-        invoke(liftedParameterValues)
+        invokeLifted(liftedParameterValues)
       }
     }
 
@@ -228,6 +223,15 @@ class BridgeFunction private constructor(
       }
 
       is LoweredResult.AsyncLift -> {
+        loweredResult.taskReturn.invokeLowered(
+          liftedParameterValues = buildList {
+            if (loweredResult.result != null) {
+              add(CodeBlock.of("%N", loweredResult.result.loweredName))
+            }
+          },
+        )
+        codeBuilder.endControlFlow()
+
         codeBuilder.platform.coreValueToRuntimeValue(
           CodeBlock.of(
             "%N.value.toInt()",
@@ -240,7 +244,7 @@ class BridgeFunction private constructor(
   }
 
   context(codeBuilder: CodeBuilder)
-  private fun invoke(liftedParameterValues: List<CodeBlock>) {
+  private fun invokeLifted(liftedParameterValues: List<CodeBlock>) {
     val result = loweredResult.result
     if (result != null) {
       codeBuilder.add("val %N = ", result.loweredName)
@@ -252,7 +256,7 @@ class BridgeFunction private constructor(
     for ((index, parameter) in liftedParameters.withIndex()) {
       codeBuilder.add(
         "%N = %L,\n",
-        parameter.spec.name,
+        parameter.name,
         liftedParameterValues[index],
       )
     }
@@ -260,20 +264,32 @@ class BridgeFunction private constructor(
   }
 
   context(codeBuilder: CodeBuilder)
-  fun lowerParameterValues(): List<CodeBlock> = buildList {
+  private fun lowerParameterValues(
+    liftedParameterValues: List<CodeBlock>,
+  ): List<CodeBlock> = buildList {
     if (liftedReceiver is Receiver.Id) {
-      add(
-        codeBuilder.platform.coreValueToRuntimeValue(
-          CodeBlock.of("this.%N", "id"),
-          CoreType.I32,
-        ),
-      )
+      when {
+        functionName is FunctionName.TaskReturn -> {
+          // TODO: this is an unfortunate hack.
+          //  We should wire the name of the enclosing 'self' through.
+          add(CodeBlock.of("%N", "self"))
+        }
+
+        else -> {
+          add(
+            codeBuilder.platform.coreValueToRuntimeValue(
+              CodeBlock.of("this.%N", "id"),
+              CoreType.I32,
+            ),
+          )
+        }
+      }
     }
 
     when (loweredParameters) {
       is LoweredParameters.Flattened -> {
         for ((p, coreParameter) in loweredParameters.parameters.withIndex()) {
-          val coreValues = coreParameter.encoder.lowerFlat(liftedParameters[p].value)
+          val coreValues = coreParameter.encoder.lowerFlat(liftedParameterValues[p])
           for ((index, type) in coreParameter.encoder.coreTypes.withIndex()) {
             add(codeBuilder.platform.coreValueToRuntimeValue(coreValues[index], type))
           }
@@ -292,7 +308,7 @@ class BridgeFunction private constructor(
         )
         loweredParameters.storeAll(
           baseAddress = addressParameterValue,
-          fieldValues = liftedParameters.map { it.value },
+          fieldValues = liftedParameterValues,
         )
         add(
           codeBuilder.platform.coreValueToRuntimeValue(
@@ -363,7 +379,7 @@ class BridgeFunction private constructor(
     }
   }
 
-  fun outboundFunction(bridge: CodeBlock, platform: Platform, invoker: Invoker): FunSpec {
+  fun outboundFunction(bridge: CodeBlock, platform: Platform): FunSpec {
     val codeBuilder = CodeBuilder(
       bridge = bridge,
       platform = platform,
@@ -379,17 +395,15 @@ class BridgeFunction private constructor(
           if (async && supportAsync) {
             addModifiers(KModifier.SUSPEND)
           }
-          addParameters(liftedParameters.map { it.spec })
+          addParameters(liftedParameters)
           val result = loweredResult.result
           if (result != null) {
             returns(result.kotlinType)
           }
 
-          val loweredParameterValues = lowerParameterValues()
-
-          invoker.invoke(loweredParameterValues)
-
-          val returnValue = liftReturnValue()
+          val returnValue = invokeLowered(
+            liftedParameterValues = liftedParameters.map { CodeBlock.of("%N", it.name) },
+          )
 
           if (result != null) {
             codeBuilder.addStatement("val %N = %L", result.liftedName, returnValue)
@@ -404,6 +418,22 @@ class BridgeFunction private constructor(
       }
       .addCode(codeBuilder.build())
       .build()
+  }
+
+  /** Lowers parameters, invoke the function, and lifts the result. */
+  context(codeBuilder: CodeBuilder)
+  private fun invokeLowered(
+    liftedParameterValues: List<CodeBlock>,
+  ): CodeBlock? {
+    val loweredParameterValues = lowerParameterValues(liftedParameterValues)
+
+    codeBuilder.platform.invokeLowered(
+      name = functionName,
+      parameterValues = loweredParameterValues,
+      result = loweredResult.result,
+    )
+
+    return liftReturnValue()
   }
 
   /** Polymorphic receiver of the API call. */
@@ -431,11 +461,6 @@ class BridgeFunction private constructor(
      */
     data object OutboundInstance : Receiver
   }
-
-  data class LiftedParameter(
-    val spec: ParameterSpec,
-    val value: CodeBlock,
-  )
 
   sealed interface LoweredParameters {
     /**
@@ -525,6 +550,7 @@ class BridgeFunction private constructor(
     data class AsyncLift(
       override val result: Result?,
       val packedAsyncResultName: String,
+      val taskReturn: BridgeFunction,
     ) : LoweredResult {
       override val loweredReturnType: CoreType
         get() = CoreType.I32
@@ -534,12 +560,6 @@ class BridgeFunction private constructor(
   enum class Orientation {
     HostCallsGuest,
     GuestCallsHost,
-  }
-
-  interface Invoker {
-    /** Append code to [codeBuilder] to call the lowered function. */
-    context(codeBuilder: CodeBuilder)
-    fun invoke(parameterValues: List<CodeBlock>)
   }
 
   class Factory(
@@ -586,6 +606,8 @@ class BridgeFunction private constructor(
           orientation = orientation,
           async = value.async,
           type = value.returnType,
+          receiver = receiver,
+          function = value,
         ),
       )
     }
@@ -626,6 +648,8 @@ class BridgeFunction private constructor(
           nameAllocator = nameAllocator,
           orientation = orientation,
           type = TypeName.U32,
+          receiver = receiver,
+          function = value,
         ),
       )
     }
@@ -633,14 +657,13 @@ class BridgeFunction private constructor(
     fun taskReturn(
       receiver: Receiver,
       value: IrFunction,
+      nameAllocator: NameAllocator = NameAllocator(),
     ): BridgeFunction {
-      val nameAllocator = NameAllocator()
-
       val coreReceiver = flatParameter(nameAllocator, receiver)
 
       val returnType = value.returnType
       val coreParameters = mutableListOf<FlatParameter>()
-      val liftedParameters = mutableListOf<LiftedParameter>()
+      val liftedParameters = mutableListOf<ParameterSpec>()
       if (returnType != null) {
         coreParameters += flatParameter(nameAllocator, Identifier("result"), returnType)
         liftedParameters += liftedParameter(nameAllocator, "liftedResult", returnType)
@@ -664,7 +687,7 @@ class BridgeFunction private constructor(
 
     private fun documentation(
       value: IrFunction,
-      liftedParameters: List<LiftedParameter>,
+      liftedParameters: List<ParameterSpec>,
     ): String? {
       val result = buildString {
         val functionDocumentation = value.documentation
@@ -675,7 +698,7 @@ class BridgeFunction private constructor(
 
         for ((index, parameter) in value.parameters.withIndex()) {
           val parameterDocumentation = parameter.documentation ?: continue
-          this.append("@param ${liftedParameters[index].spec.name} ")
+          this.append("@param ${liftedParameters[index].name} ")
           this.append(parameterDocumentation.content.trimIndent().replace("\n", "\n  "))
           this.append("\n\n")
         }
@@ -706,13 +729,10 @@ class BridgeFunction private constructor(
       nameAllocator: NameAllocator,
       nameHint: String,
       type: TypeName,
-    ): LiftedParameter {
-      val name = nameAllocator.newName(nameHint)
-      return LiftedParameter(
-        spec = ParameterSpec.builder(name, kotlinMapper.get(type)).build(),
-        value = CodeBlock.of("%N", name),
-      )
-    }
+    ) = ParameterSpec.builder(
+      nameAllocator.newName(nameHint),
+      kotlinMapper.get(type),
+    ).build()
 
     private fun flatParameter(
       nameAllocator: NameAllocator,
@@ -754,12 +774,15 @@ class BridgeFunction private constructor(
       type: TypeName?,
       orientation: Orientation,
       async: Boolean = false,
+      receiver: Receiver,
+      function: IrFunction,
     ): LoweredResult {
       if (type == null) {
         return when {
           async -> LoweredResult.AsyncLift(
             result = null,
-            packedAsyncResultName = nameAllocator.newName("packedAsyncResultName"),
+            packedAsyncResultName = nameAllocator.newName("packedAsyncResult"),
+            taskReturn = taskReturn(receiver, function, nameAllocator),
           )
 
           else -> LoweredResult.VoidReturn
@@ -778,7 +801,8 @@ class BridgeFunction private constructor(
       return when {
         async -> LoweredResult.AsyncLift(
           result = result,
-          packedAsyncResultName = nameAllocator.newName("packedAsyncResultName"),
+          packedAsyncResultName = nameAllocator.newName("packedAsyncResult"),
+          taskReturn = taskReturn(receiver, function, nameAllocator),
         )
 
         result.encoder.coreTypes.size == 1 -> LoweredResult.SingleCoreValueReturn(
