@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
+import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
@@ -21,11 +22,26 @@ class GuestPlatform(
   override val bridgeType: KtTypeName
     get() = Symbols.Brevity.GuestBridge
 
-  context(codeBuilder: CodeBuilder)
-  override fun allocate(
-    memoryAllocatorName: String,
-    byteCount: CodeBlock,
-  ) = CodeBlock.of("%N.allocate(%L)", memoryAllocatorName, byteCount)
+  override val memoryAllocator = object : MemoryAllocator {
+    override fun allocate(
+      bridge: CodeBlock,
+      memoryAllocatorName: String,
+      byteCount: CodeBlock,
+    ) = CodeBlock.of("%N.allocate(%L)", memoryAllocatorName, byteCount)
+
+    override fun scope(
+      memoryAllocatorName: String,
+      body: CodeBlock,
+    ) = buildCodeBlock {
+      beginControlFlow(
+        "%M { %N ->",
+        Symbols.KotlinWasm.WithScopedMemoryAllocator,
+        memoryAllocatorName,
+      )
+      add(body)
+      endControlFlow()
+    }
+  }
 
   override fun liftAddress(address: CodeBlock) =
     CodeBlock.of("%T(%L.toUInt())", Symbols.KotlinWasm.Pointer, address)

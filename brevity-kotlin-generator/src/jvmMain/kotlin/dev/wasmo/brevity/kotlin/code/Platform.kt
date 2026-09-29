@@ -18,9 +18,7 @@ interface Platform {
 
   val bridgeType: KtTypeName
 
-  /** Allocates [byteCount] bytes of linear memory and returns its address. */
-  context(codeBuilder: CodeBuilder)
-  fun allocate(memoryAllocatorName: String, byteCount: CodeBlock): CodeBlock
+  val memoryAllocator: MemoryAllocator
 
   /** Convert an I32 to a pointer. */
   fun liftAddress(address: CodeBlock): CodeBlock

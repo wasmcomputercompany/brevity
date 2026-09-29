@@ -25,11 +25,18 @@ class HostPlatform(
   override val bridgeType: KtTypeName
     get() = Symbols.Brevity.HostBridge
 
-  context(codeBuilder: CodeBuilder)
-  override fun allocate(
-    memoryAllocatorName: String,
-    byteCount: CodeBlock,
-  ) = CodeBlock.of("%L.allocate(%L)", codeBuilder.bridge, byteCount)
+  override val memoryAllocator = object : MemoryAllocator {
+    override fun allocate(
+      bridge: CodeBlock,
+      memoryAllocatorName: String,
+      byteCount: CodeBlock,
+    ) = CodeBlock.of("%L.allocate(%L)", bridge, byteCount)
+
+    override fun scope(
+      memoryAllocatorName: String,
+      body: CodeBlock,
+    ) = body
+  }
 
   override fun lowerAddress(address: CodeBlock) = address
 
