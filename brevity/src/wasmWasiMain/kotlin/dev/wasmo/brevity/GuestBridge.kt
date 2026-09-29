@@ -1,8 +1,10 @@
-@file:OptIn(UnsafeWasmMemoryApi::class)
+@file:OptIn(
+  UnsafeWasmMemoryApi::class,
+  BrevityInternalApi::class,
+)
 
 package dev.wasmo.brevity
 
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.wasm.unsafe.Pointer
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +15,16 @@ object GuestBridge {
   private var nextId = 4_040_000
 
   private var taskResult: Any? = null
+
+  private val brevityDispatcher = BrevityDispatcher()
+  private val brevityScope = CoroutineScope(brevityDispatcher)
+
+  // Prevent kotlinx-coroutines DefaultExecutor from registering a hook when exported functions
+  // exit. That hook is particularly problematic for `cabi_realloc`, because it prevents that
+  // function from being bridged.
+  init {
+    kotlin.wasm.internal.onExportedFunctionExit = {}
+  }
 
   fun <T : Resource> toId(resource: T): Int {
     val id = nextId++
@@ -31,10 +43,10 @@ object GuestBridge {
 
   @BrevityInternalApi
   fun launchTask(block: suspend () -> Unit): PackedAsyncResult {
-    val coroutineContext = EmptyCoroutineContext
-    CoroutineScope(coroutineContext).launch {
+    brevityScope.launch {
       block()
     }
+    brevityDispatcher.runUntilIdle()
     return PackedAsyncResult(CallbackCode.Exit)
   }
 

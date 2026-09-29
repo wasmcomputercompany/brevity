@@ -1,13 +1,11 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 
 class WitAsyncTest {
   @Test
-  @Ignore("async isn't working yet")
   fun happyPath() = runTest {
     val test = BrevityExecutionTester(
       name = "asyncHappyPath",
