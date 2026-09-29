@@ -19,6 +19,7 @@ import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.GuestCallsHost
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.HostCallsGuest
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
@@ -179,19 +180,16 @@ class HostGenerator(
             .build(),
         )
 
+        builder.declareTaskReturnProperties(hostApis)
+
         builder.addFunction(
           FunSpec.builder("initExports")
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("instance", Symbols.ChicoryRuntime.Instance)
             .apply {
               addStatement("this.%N.init(%N)", "bridge", "instance")
-              if (guestApis != null) {
-                initExports(
-                  guest = CodeBlock.of("%N", "guest"),
-                  instance = CodeBlock.of("%N", "instance"),
-                  value = guestApis,
-                )
-              }
+              initExports(guestApis, HostCallsGuest)
+              initExports(hostApis, GuestCallsHost)
             }
             .build(),
         )
@@ -229,11 +227,11 @@ class HostGenerator(
         )
 
         if (guestApis != null) {
-          generateExternalApis(guestApis)
+          generateExternalApis(guestApis, HostCallsGuest)
         }
 
         if (hostApis != null) {
-          generateExternalApis(hostApis)
+          generateExternalApis(hostApis, GuestCallsHost)
         }
       }
 
@@ -249,7 +247,9 @@ class HostGenerator(
               ),
             ),
           )
-          builder.addProperties(exportProperties(item))
+          builder.addProperties(
+            exportProperties(item, HostCallsGuest),
+          )
         }
       }
     }
@@ -259,8 +259,73 @@ class HostGenerator(
     collector.addType(value.serviceName.bridgeType, builder.build())
   }
 
+  private fun FunSpec.Builder.initExports(
+    guestApis: ExternalApis?,
+    orientation: Orientation,
+  ) {
+    if (guestApis == null) return
+
+    val guest = CodeBlock.of("%N", "guest")
+    val instance = CodeBlock.of("%N", "instance")
+    for (item in guestApis.items) {
+      when (item) {
+        is IrFunction -> {
+          saveExports(guest, instance, item, orientation)
+        }
+
+        is IrExternalApi -> {
+          val type = declarationIndex[item.serviceName] as IrInterface
+          val owner = CodeBlock.of("%L.%N", guest, item.instanceName)
+          for (function in type.functions) {
+            saveExports(owner, instance, function, orientation)
+          }
+        }
+      }
+    }
+  }
+
+  private fun TypeSpec.Builder.declareTaskReturnProperties(
+    guestApis: ExternalApis?,
+  ) {
+    if (guestApis == null) return
+
+    for (item in guestApis.items) {
+      when (item) {
+        is IrFunction -> {
+          declareTaskReturnProperties(item)
+        }
+
+        is IrExternalApi -> {
+          val type = declarationIndex[item.serviceName] as IrInterface
+          for (function in type.functions) {
+            declareTaskReturnProperties(function)
+          }
+        }
+      }
+    }
+  }
+
+  private fun TypeSpec.Builder.declareTaskReturnProperties(function: IrFunction) {
+    if (function.async) {
+      val taskReturnFunctionName = FunctionName.TaskReturn(function.functionName)
+      addProperty(
+        PropertySpec.builder(
+          taskReturnFunctionName.exportFunctionName,
+          Symbols.ChicoryRuntime.ExportFunction,
+          KModifier.PRIVATE,
+          KModifier.LATEINIT,
+        )
+          .mutable()
+          .build(),
+      )
+    }
+  }
+
   context(collector: QualifiedSpecCollector)
-  private fun generateExternalApis(externalApis: ExternalApis) {
+  private fun generateExternalApis(
+    externalApis: ExternalApis,
+    orientation: Orientation,
+  ) {
     collector.addType(
       className = externalApis.bridgeType,
       type = TypeSpec.classBuilder(externalApis.bridgeType)
@@ -279,7 +344,7 @@ class HostGenerator(
         )
         .apply {
           for (item in externalApis.items) {
-            addExternalApisItem(externalApis, item)
+            addExternalApisItem(externalApis, item, orientation)
           }
         }
         .build(),
@@ -289,6 +354,7 @@ class HostGenerator(
   private fun TypeSpec.Builder.addExternalApisItem(
     externalApis: ExternalApis,
     item: IrWorld.Api,
+    orientation: Orientation,
   ) {
     when (item) {
       is IrExternalApi -> {
@@ -312,30 +378,7 @@ class HostGenerator(
             ),
           ),
         )
-        addProperties(exportProperties(item))
-      }
-    }
-  }
-
-  private fun FunSpec.Builder.initExports(
-    guest: CodeBlock,
-    instance: CodeBlock,
-    value: ExternalApis,
-  ) {
-    for (item in value.items) {
-      when (item) {
-        is IrFunction -> {
-          val owner = CodeBlock.of("%L", guest)
-          saveExports(owner, instance, item)
-        }
-
-        is IrExternalApi -> {
-          val type = declarationIndex[item.serviceName] as IrInterface
-          val owner = CodeBlock.of("%L.%N", guest, item.instanceName)
-          for (function in type.functions) {
-            saveExports(owner, instance, function)
-          }
-        }
+        addProperties(exportProperties(item, orientation))
       }
     }
   }
@@ -344,15 +387,22 @@ class HostGenerator(
     owner: CodeBlock,
     instance: CodeBlock,
     item: IrFunction,
+    orientation: Orientation,
   ) {
-    when {
-      item.async -> {
-        saveExport(owner, instance, FunctionName.AsyncLift(item.functionName))
-        saveExport(owner, instance, FunctionName.AsyncLiftCallback(item.functionName))
+    when (orientation) {
+      GuestCallsHost -> {
+        if (item.async) {
+          saveExport(owner, instance, FunctionName.TaskReturn(item.functionName))
+        }
       }
 
-      else -> {
-        saveExport(owner, instance, item.functionName)
+      HostCallsGuest -> {
+        if (item.async) {
+          saveExport(owner, instance, FunctionName.AsyncLift(item.functionName))
+          saveExport(owner, instance, FunctionName.AsyncLiftCallback(item.functionName))
+        } else {
+          saveExport(owner, instance, item.functionName)
+        }
       }
     }
   }
@@ -362,23 +412,48 @@ class HostGenerator(
     instance: CodeBlock,
     functionName: FunctionName,
   ) {
-    addStatement(
-      "%L.%N = %L.export(%S)",
-      owner,
-      functionName.kotlinName,
-      instance,
-      functionName,
-    )
+    when (functionName) {
+      is FunctionName.TaskReturn -> {
+        addStatement(
+          "this.%N = %L.export(%S)",
+          functionName.exportFunctionName,
+          instance,
+          functionName,
+        )
+      }
+      else -> {
+        addStatement(
+          "%L.%N = %L.export(%S)",
+          owner,
+          functionName.kotlinName,
+          instance,
+          functionName,
+        )
+      }
+    }
   }
 
-  private fun exportProperties(item: IrFunction): List<PropertySpec> {
-    return when {
-      item.async -> listOf(
-        exportProperty(FunctionName.AsyncLift(item.functionName)),
-        exportProperty(FunctionName.AsyncLiftCallback(item.functionName)),
-      )
+  private fun exportProperties(
+    item: IrFunction,
+    orientation: Orientation,
+  ): List<PropertySpec> {
+    return buildList {
+      when (orientation) {
+        HostCallsGuest -> {
+          if (item.async) {
+            add(exportProperty(FunctionName.AsyncLift(item.functionName)))
+            add(exportProperty(FunctionName.AsyncLiftCallback(item.functionName)))
+          } else {
+            add(exportProperty(item.functionName))
+          }
+        }
 
-      else -> listOf(exportProperty(item.functionName))
+        GuestCallsHost -> {
+          if (item.async) {
+            add(exportProperty(FunctionName.TaskReturn(item.functionName)))
+          }
+        }
+      }
     }
   }
 

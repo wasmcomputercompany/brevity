@@ -9,7 +9,7 @@ internal class ApiFunctionFactory(
 ) {
   fun api() = FunSpec.builder(function.kotlinName)
     .addModifiers(KModifier.ABSTRACT)
-    .addParameters(function.liftedParameters.map { it.spec })
+    .addParameters(function.liftedParameters)
     .returns(function.loweredResult.result?.kotlinType ?: UNIT)
     .apply {
       if (function.async) {

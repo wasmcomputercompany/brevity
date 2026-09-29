@@ -318,12 +318,10 @@ class EncoderFactory(
         .addParameter(addressName, codeBuilder.platform.addressType)
         .addParameter(valueName, customType ?: className)
         .apply {
-          context(codeBuilder) {
-            encoder.store(
-              baseAddress = CodeBlock.of("%L", addressName),
-              value = CodeBlock.of("%L", toWit(CodeBlock.of("%N", valueName))),
-            )
-          }
+          encoder.store(
+            baseAddress = CodeBlock.of("%L", addressName),
+            value = CodeBlock.of("%L", toWit(CodeBlock.of("%N", valueName))),
+          )
           addCode(codeBuilder.build())
         }
         .build()
@@ -351,16 +349,14 @@ class EncoderFactory(
         .addParameter(bridgeParameter)
         .returns(customType ?: className)
         .apply {
-          context(codeBuilder) {
-            val coreValueNames = allocateNames("value", encoder.coreTypes.size)
-            for ((v, coreType) in encoder.coreTypes.withIndex()) {
-              addParameter(coreValueNames[v], coreType.kotlinCoreType)
-            }
-            codeBuilder.addStatement(
-              "return %L",
-              fromWit(encoder.liftFlat(coreValueNames.map { CodeBlock.of("%N", it) })),
-            )
+          val coreValueNames = allocateNames("value", encoder.coreTypes.size)
+          for ((v, coreType) in encoder.coreTypes.withIndex()) {
+            addParameter(coreValueNames[v], coreType.kotlinCoreType)
           }
+          codeBuilder.addStatement(
+            "return %L",
+            fromWit(encoder.liftFlat(coreValueNames.map { CodeBlock.of("%N", it) })),
+          )
           addCode(codeBuilder.build())
         }
         .build()
@@ -394,22 +390,20 @@ class EncoderFactory(
         .addParameter(bridgeParameter)
         .addParameter(valueName, customType ?: className)
         .apply {
-          context(codeBuilder) {
-            val witValue = toWit(CodeBlock.of("%N", valueName))
-            if (encoder.coreTypes.size > 1) {
-              val callBuilderName = codeBuilder.newName("callBuilder")
-              addParameter(callBuilderName, Symbols.Brevity.CallBuilder)
-              val codeBlocks = encoder.lowerFlat(witValue)
-              for (coreValue in codeBlocks) {
-                codeBuilder.addStatement("%N.put(%L)", callBuilderName, coreValue)
-              }
-            } else {
-              returns(encoder.coreTypes.single().kotlinCoreType)
-              codeBuilder.addStatement(
-                "return %L",
-                encoder.lowerFlat(witValue).single(),
-              )
+          val witValue = toWit(CodeBlock.of("%N", valueName))
+          if (encoder.coreTypes.size > 1) {
+            val callBuilderName = codeBuilder.newName("callBuilder")
+            addParameter(callBuilderName, Symbols.Brevity.CallBuilder)
+            val codeBlocks = encoder.lowerFlat(witValue)
+            for (coreValue in codeBlocks) {
+              codeBuilder.addStatement("%N.put(%L)", callBuilderName, coreValue)
             }
+          } else {
+            returns(encoder.coreTypes.single().kotlinCoreType)
+            codeBuilder.addStatement(
+              "return %L",
+              encoder.lowerFlat(witValue).single(),
+            )
           }
           addCode(codeBuilder.build())
         }

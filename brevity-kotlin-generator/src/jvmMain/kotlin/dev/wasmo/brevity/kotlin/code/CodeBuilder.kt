@@ -76,6 +76,15 @@ class CodeBuilder(
     pushScope()
   }
 
+  /** Begins a new scope that can create its own nested memory allocator. */
+  fun beginControlFlowWithMemory(
+    format: String,
+    vararg args: Any?,
+  ) {
+    scope.code.beginControlFlow(format, *args)
+    pushScope(memoryScope = true)
+  }
+
   fun endControlFlow() {
     popScope()
     scope.code.endControlFlow()

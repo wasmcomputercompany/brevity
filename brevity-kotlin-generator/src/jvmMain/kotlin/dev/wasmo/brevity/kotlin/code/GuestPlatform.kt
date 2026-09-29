@@ -3,11 +3,14 @@ package dev.wasmo.brevity.kotlin.code
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import com.squareup.kotlinpoet.buildCodeBlock
+import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
+import dev.wasmo.brevity.kotlin.generator.BridgeFunction
 import dev.wasmo.brevity.kotlin.generator.Symbols
+import dev.wasmo.brevity.kotlin.generator.importFunctionName
 import dev.wasmo.brevity.kotlin.generator.plus
 
 class GuestPlatform(
@@ -161,5 +164,24 @@ class GuestPlatform(
       },
       value,
     )
+  }
+
+  context(codeBuilder: CodeBuilder)
+  override fun invokeLowered(
+    name: FunctionName,
+    parameterValues: List<CodeBlock>,
+    result: BridgeFunction.Result?,
+  ) {
+    if (result != null) {
+      codeBuilder.add("val %N = ", result.loweredName)
+    }
+    codeBuilder.add("%N(⇥", name.importFunctionName)
+    if (parameterValues.isNotEmpty()) {
+      codeBuilder.add("\n")
+    }
+    for (parameterValue in parameterValues) {
+      codeBuilder.add("%L,\n", parameterValue)
+    }
+    codeBuilder.add("⇤)\n")
   }
 }
