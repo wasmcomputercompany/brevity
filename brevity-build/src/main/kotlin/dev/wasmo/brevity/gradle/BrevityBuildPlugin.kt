@@ -8,7 +8,6 @@ import com.vanniktech.maven.publish.KotlinMultiplatform
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 import com.vanniktech.maven.publish.MavenPublishBasePlugin
 import com.vanniktech.maven.publish.SourcesJar
-import java.io.File
 import org.gradle.accessors.dm.LibrariesForLibs
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -26,7 +25,9 @@ class BrevityBuildPlugin : Plugin<Project> {
   override fun apply(project: Project) {
     val buildDirectory = project.findProperty("brevity.build.directory")
     if (buildDirectory != null) {
-      project.layout.buildDirectory.set(project.rootDir.resolve(buildDirectory.toString()).resolve(project.name))
+      project.layout.buildDirectory.set(
+        project.rootDir.resolve(buildDirectory.toString()).resolve(project.name),
+      )
     }
 
     val libs = project.extensions.getByName("libs") as LibrariesForLibs
@@ -107,6 +108,13 @@ internal class RealBrevityBuildExtension(
         if (wasm) {
           wasmWasi {
             nodejs()
+            compilations.configureEach {
+              compileTaskProvider.configure {
+                compilerOptions {
+                  optIn.add("kotlin.wasm.internal.InternalWasmApi")
+                }
+              }
+            }
           }
         }
       }
