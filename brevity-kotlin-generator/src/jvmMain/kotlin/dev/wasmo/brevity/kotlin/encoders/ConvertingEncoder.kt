@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 /**
  * Wraps another encoder, transforming the value in and out.
@@ -18,6 +19,8 @@ abstract class ConvertingEncoder(
     get() = delegate.alignment
   override val nameHints: List<Identifier>?
     get() = delegate.nameHints
+  override val lowerAllocates: Boolean
+    get() = delegate.lowerAllocates
 
   abstract fun encode(codeBlock: CodeBlock): CodeBlock
   abstract fun decode(codeBlock: CodeBlock): CodeBlock
@@ -30,10 +33,11 @@ abstract class ConvertingEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun store(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
-  ) = delegate.store(baseAddress, offset, encode(value))
+  ) = delegate.store(memoryAllocator, baseAddress, offset, encode(value))
 
   context(codeBuilder: CodeBuilder)
   override fun liftFlat(transformer: Transformer) {
@@ -46,8 +50,11 @@ abstract class ConvertingEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(transformer: Transformer) {
-    val coreValues = delegate.lowerFlat(encode(transformer.take()))
+  override fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  ) {
+    val coreValues = delegate.lowerFlat(memoryAllocator, encode(transformer.take()))
     for (i in delegate.coreTypes.indices) {
       transformer.put(coreValues[i])
     }

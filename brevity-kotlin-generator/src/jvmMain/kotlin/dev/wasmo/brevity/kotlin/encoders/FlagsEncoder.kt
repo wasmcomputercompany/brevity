@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.buildCodeBlock
 import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.ir.IrFlag
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.generator.kotlinName
 
 /**
@@ -30,6 +31,7 @@ class FlagsEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun store(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
@@ -42,6 +44,7 @@ class FlagsEncoder(
     )
 
     packedFlagEncoder.store(
+      memoryAllocator = memoryAllocator,
       baseAddress = baseAddress,
       offset = offset,
       value = CodeBlock.of("%N", packedFlagsName)
@@ -54,7 +57,10 @@ class FlagsEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(transformer: Transformer) {
+  override fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  ) {
     transformer.put(instanceToPackedValue(transformer.take()))
   }
 

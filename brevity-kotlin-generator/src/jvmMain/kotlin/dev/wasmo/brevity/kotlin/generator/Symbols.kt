@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 object Symbols {
   object Kotlin {
@@ -52,6 +53,7 @@ object Symbols {
       "kotlin.wasm.unsafe",
       "freeAllComponentModelReallocAllocatedMemory",
     )
+    val MemoryAllocator = ClassName("kotlin.wasm.unsafe", "MemoryAllocator")
     val Pointer = ClassName("kotlin.wasm.unsafe", "Pointer")
     val UnsafeWasmMemoryApi = ClassName("kotlin.wasm.unsafe", "UnsafeWasmMemoryApi")
     val WasmExport = ClassName("kotlin.wasm", "WasmExport")
@@ -84,6 +86,7 @@ object Symbols {
     val HostBridgeGet = MemberName("dev.wasmo.brevity", "get")
     val LoadPointer = MemberName("dev.wasmo.brevity", "loadPointer")
     val LoadString = MemberName("dev.wasmo.brevity", "loadString")
+    val MemoryAllocator = ClassName("dev.wasmo.brevity", "MemoryAllocator")
     val Quad = ClassName("dev.wasmo.brevity", "Quad")
     val Resource = ClassName("dev.wasmo.brevity", "Resource")
     val Result = ClassName("dev.wasmo.brevity", "Result")

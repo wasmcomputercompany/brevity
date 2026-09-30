@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 abstract class AbstractRecordEncoder(
   protected val fieldEncoders: List<Encoder>,
@@ -15,6 +16,9 @@ abstract class AbstractRecordEncoder(
     get() = fieldEncoders.maxOf { it.alignment }
 
   abstract val instanceNameHint: String
+
+  override val lowerAllocates: Boolean
+    get() = fieldEncoders.any { it.lowerAllocates }
 
   context(codeBuilder: CodeBuilder)
   override fun load(
@@ -44,11 +48,13 @@ abstract class AbstractRecordEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun store(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
   ) {
     storeAll(
+      memoryAllocator = memoryAllocator,
       baseAddress = baseAddress,
       offset = offset,
       fieldValues = instanceToFieldValues(value),
@@ -57,6 +63,7 @@ abstract class AbstractRecordEncoder(
 
   context(codeBuilder: CodeBuilder)
   fun storeAll(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int = 0,
     fieldValues: List<CodeBlock>,
@@ -65,6 +72,7 @@ abstract class AbstractRecordEncoder(
     for ((index, fieldEncoder) in fieldEncoders.withIndex()) {
       offset = offset.alignTo(fieldEncoder.alignment)
       fieldEncoder.store(
+        memoryAllocator = memoryAllocator,
         baseAddress = baseAddress,
         offset = offset,
         value = fieldValues[index],
@@ -87,13 +95,16 @@ abstract class AbstractRecordEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(transformer: Transformer) {
+  override fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  ) {
     val nameHint = codeBuilder.newName(instanceNameHint)
     codeBuilder.addStatement("val %N = %L", nameHint, transformer.take())
 
     val fieldValues = instanceToFieldValues(CodeBlock.of("%N", nameHint))
     for ((i, fieldEncoder) in fieldEncoders.withIndex()) {
-      for (coreType in fieldEncoder.lowerFlat(fieldValues[i])) {
+      for (coreType in fieldEncoder.lowerFlat(memoryAllocator, fieldValues[i])) {
         transformer.put(coreType)
       }
     }

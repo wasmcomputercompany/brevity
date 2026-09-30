@@ -14,6 +14,7 @@ import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.code.Platform
 import dev.wasmo.brevity.kotlin.encoders.AbstractRecordEncoder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
@@ -156,7 +157,7 @@ class BridgeFunction private constructor(
       is FunctionName.AsyncLift -> {
         require(loweredResult is LoweredResult.AsyncLift)
         codeBuilder.addStatement("val %N = %L", receiverName, receiverValue)
-        codeBuilder.beginControlFlowWithMemory(
+        codeBuilder.beginControlFlow(
           "val %N = %L.launchTask",
           loweredResult.packedAsyncResultName,
           codeBuilder.bridge,
@@ -183,43 +184,59 @@ class BridgeFunction private constructor(
       }
     }
 
-    codeBuilder.platform.beforeLowerReturnValue()
-
     return when (loweredResult) {
       LoweredResult.VoidReturn -> null
 
       is LoweredResult.SingleCoreValueReturn -> {
-        codeBuilder.platform.coreValueToRuntimeValue(
-          loweredResult.result.encoder.lowerFlat(
-            CodeBlock.of("%N", loweredResult.result.loweredName),
-          ).single(),
-          loweredResult.result.encoder.coreTypes.single(),
-        )
+        withMemoryAllocator(
+          lowerAllocates = loweredResult.result.encoder.lowerAllocates,
+          resultName = codeBuilder.newName("result"),
+        ) { memoryAllocator ->
+          codeBuilder.platform.coreValueToRuntimeValue(
+            loweredResult.result.encoder.lowerFlat(
+              memoryAllocator = memoryAllocator,
+              value = CodeBlock.of("%N", loweredResult.result.loweredName),
+            ).single(),
+            loweredResult.result.encoder.coreTypes.single(),
+          )
+        }
       }
 
       is LoweredResult.PointerReturn -> {
-        codeBuilder.addStatement(
-          "val %N = %L",
-          loweredResult.addressName,
-          codeBuilder.allocate("%L", loweredResult.result.encoder.byteCount),
-        )
-        val resultAddressValue = CodeBlock.of("%N", loweredResult.addressName)
-        loweredResult.result.encoder.store(
-          baseAddress = resultAddressValue,
-          value = CodeBlock.of("%N", loweredResult.result.loweredName),
-        )
-        codeBuilder.platform.coreValueToRuntimeValue(
-          codeBuilder.platform.lowerAddress(resultAddressValue),
-          CoreType.Pointer,
-        )
+        withMemoryAllocator(
+          lowerAllocates = true,
+          resultName = codeBuilder.newName("result"),
+        ) { memoryAllocator ->
+          codeBuilder.addStatement(
+            "val %N = %L",
+            loweredResult.addressName,
+            memoryAllocator!!.allocate("%L", loweredResult.result.encoder.byteCount),
+          )
+          val resultAddressValue = CodeBlock.of("%N", loweredResult.addressName)
+          loweredResult.result.encoder.store(
+            memoryAllocator = memoryAllocator,
+            baseAddress = resultAddressValue,
+            value = CodeBlock.of("%N", loweredResult.result.loweredName),
+          )
+          codeBuilder.platform.coreValueToRuntimeValue(
+            codeBuilder.platform.lowerAddress(resultAddressValue),
+            CoreType.Pointer,
+          )
+        }
       }
 
       is LoweredResult.PointerParameter -> {
-        loweredResult.result.encoder.store(
-          baseAddress = pointerParameterValue!!,
-          value = CodeBlock.of("%N", loweredResult.result.loweredName),
-        )
-        null
+        withMemoryAllocator(
+          lowerAllocates = loweredResult.result.encoder.lowerAllocates,
+          resultName = null,
+        ) { memoryAllocator ->
+          loweredResult.result.encoder.store(
+            memoryAllocator = memoryAllocator,
+            baseAddress = pointerParameterValue!!,
+            value = CodeBlock.of("%N", loweredResult.result.loweredName),
+          )
+          null
+        }
       }
 
       is LoweredResult.AsyncLift -> {
@@ -265,6 +282,7 @@ class BridgeFunction private constructor(
 
   context(codeBuilder: CodeBuilder)
   private fun lowerParameterValues(
+    memoryAllocator: MemoryAllocator?,
     liftedParameterValues: List<CodeBlock>,
   ): List<CodeBlock> = buildList {
     if (liftedReceiver is Receiver.Id) {
@@ -289,7 +307,10 @@ class BridgeFunction private constructor(
     when (loweredParameters) {
       is LoweredParameters.Flattened -> {
         for ((p, coreParameter) in loweredParameters.parameters.withIndex()) {
-          val coreValues = coreParameter.encoder.lowerFlat(liftedParameterValues[p])
+          val coreValues = coreParameter.encoder.lowerFlat(
+            memoryAllocator,
+            liftedParameterValues[p],
+          )
           for ((index, type) in coreParameter.encoder.coreTypes.withIndex()) {
             add(codeBuilder.platform.coreValueToRuntimeValue(coreValues[index], type))
           }
@@ -300,13 +321,14 @@ class BridgeFunction private constructor(
         codeBuilder.addStatement(
           "val %N = %L",
           loweredParameters.addressSpec.name,
-          codeBuilder.allocate("%L", loweredParameters.byteCount),
+          memoryAllocator!!.allocate("%L", loweredParameters.byteCount),
         )
         val addressParameterValue = CodeBlock.of(
           "%N",
           loweredParameters.addressSpec.name,
         )
         loweredParameters.storeAll(
+          memoryAllocator = memoryAllocator,
           baseAddress = addressParameterValue,
           fieldValues = liftedParameterValues,
         )
@@ -323,7 +345,7 @@ class BridgeFunction private constructor(
       codeBuilder.addStatement(
         "val %N = %L",
         loweredResult.pointerParameter.name,
-        codeBuilder.allocate("%L", CodeBlock.of("%L", loweredResult.result.encoder.byteCount)),
+        memoryAllocator!!.allocate("%L", loweredResult.result.encoder.byteCount),
       )
       val pointer = CodeBlock.of("%N", loweredResult.pointerParameter.name)
       add(
@@ -420,20 +442,67 @@ class BridgeFunction private constructor(
       .build()
   }
 
+  /**
+   * Executes [block] with a memory allocator, if [lowerAllocates] is true. Otherwise, this executes
+   * it inline.
+   *
+   * If [resultName] is non-null, [block] must return non-null.
+   *
+   * Returns the result of [block].
+   */
+  context(codeBuilder: CodeBuilder)
+  fun withMemoryAllocator(
+    lowerAllocates: Boolean,
+    resultName: String?,
+    block: context(CodeBuilder) (MemoryAllocator?) -> CodeBlock?,
+  ): CodeBlock? {
+    if (lowerAllocates) {
+      if (resultName != null) {
+        codeBuilder.add("val %N = ", resultName)
+        val memoryAllocator = codeBuilder.platform.beginMemoryAllocationScope()
+        val blockResult = block(memoryAllocator)
+        check(blockResult != null)
+        codeBuilder.addStatement("%L", blockResult)
+        codeBuilder.platform.endMemoryAllocationScope()
+        return CodeBlock.of("%N", resultName)
+      } else {
+        val memoryAllocator = codeBuilder.platform.beginMemoryAllocationScope()
+        val blockResult = block(memoryAllocator)
+        check(blockResult == null)
+        codeBuilder.platform.endMemoryAllocationScope()
+        return null
+      }
+    } else {
+      val blockResult = block(null)
+      check((resultName != null) == (blockResult != null))
+      return blockResult
+    }
+  }
+
   /** Lowers parameters, invoke the function, and lifts the result. */
   context(codeBuilder: CodeBuilder)
   private fun invokeLowered(
     liftedParameterValues: List<CodeBlock>,
   ): CodeBlock? {
-    val loweredParameterValues = lowerParameterValues(liftedParameterValues)
+    val resultName = when (loweredResult) {
+      LoweredResult.VoidReturn -> null
+      else -> codeBuilder.newName("result")
+    }
 
-    codeBuilder.platform.invokeLowered(
-      name = functionName,
-      parameterValues = loweredParameterValues,
-      result = loweredResult.result,
-    )
+    return withMemoryAllocator(
+      lowerAllocates = loweredParameters.lowerAllocates
+        || loweredResult is LoweredResult.PointerParameter,
+      resultName = resultName,
+    ) { memoryAllocator ->
+      val loweredParameterValues = lowerParameterValues(memoryAllocator, liftedParameterValues)
 
-    return liftReturnValue()
+      codeBuilder.platform.invokeLowered(
+        name = functionName,
+        parameterValues = loweredParameterValues,
+        result = loweredResult.result,
+      )
+      liftReturnValue()
+    }
   }
 
   /** Polymorphic receiver of the API call. */
@@ -463,13 +532,18 @@ class BridgeFunction private constructor(
   }
 
   sealed interface LoweredParameters {
+    val lowerAllocates: Boolean
+
     /**
      * Parameters are flattened to core values. Each lifted parameter corresponds to one or more
      * core parameters.
      */
     class Flattened(
       val parameters: List<FlatParameter>,
-    ) : LoweredParameters
+    ) : LoweredParameters {
+      override val lowerAllocates: Boolean
+        get() = parameters.any { it.encoder.lowerAllocates }
+    }
 
     /** The caller allocates memory and writes parameters there. This uses tuple encoding. */
     class Stored(
@@ -484,6 +558,9 @@ class BridgeFunction private constructor(
 
       override fun instanceToFieldValues(record: CodeBlock) =
         error("no instance for a list of parameters")
+
+      override val lowerAllocates: Boolean
+        get() = true
     }
   }
 
