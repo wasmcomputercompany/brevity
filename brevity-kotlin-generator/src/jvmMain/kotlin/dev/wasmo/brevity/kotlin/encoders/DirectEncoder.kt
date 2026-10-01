@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 open class DirectEncoder(
   override val alignment: Int,
@@ -24,6 +25,7 @@ open class DirectEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun store(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
@@ -37,7 +39,10 @@ open class DirectEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(transformer: Transformer) {
+  override fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  ) {
     transformer.put(valueToCoreType(transformer.take()))
   }
 

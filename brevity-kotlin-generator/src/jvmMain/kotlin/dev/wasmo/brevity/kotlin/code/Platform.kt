@@ -20,7 +20,15 @@ interface Platform {
 
   val bridgeType: KtTypeName
 
-  val memoryAllocator: MemoryAllocator
+  /** Creates block that can allocate memory. Terminated it with [endMemoryAllocationScope]. */
+  context(codeBuilder: CodeBuilder)
+  fun beginMemoryAllocationScope(): MemoryAllocator
+
+  context(codeBuilder: CodeBuilder)
+  fun endMemoryAllocationScope()
+
+  /** Gets a [MemoryAllocator] from a parameter or local variable named [name]. */
+  fun getMemoryAllocator(name: String): MemoryAllocator
 
   /** Convert an I32 to a pointer. */
   fun liftAddress(address: CodeBlock): CodeBlock
@@ -41,11 +49,6 @@ interface Platform {
   fun afterLiftParameters() {
   }
 
-  /** Prepares to allocate memory necessary to lower the return value. */
-  context(codeBuilder: CodeBuilder)
-  fun beforeLowerReturnValue() {
-  }
-
   /** Frees any memory no longer necessary after lifting the return value. */
   context(codeBuilder: CodeBuilder)
   fun afterLiftResult() {
@@ -64,7 +67,10 @@ interface Platform {
    * address and byte count.
    */
   context(codeBuilder: CodeBuilder)
-  fun storeString(string: CodeBlock): Pair<CodeBlock, CodeBlock>
+  fun storeString(
+    memoryAllocator: MemoryAllocator,
+    string: CodeBlock,
+  ): Pair<CodeBlock, CodeBlock>
 
   context(codeBuilder: CodeBuilder)
   fun load(

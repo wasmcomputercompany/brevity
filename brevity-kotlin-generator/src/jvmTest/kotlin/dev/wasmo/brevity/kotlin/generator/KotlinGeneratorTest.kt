@@ -251,23 +251,26 @@ class KotlinGeneratorTest {
           internal lateinit var run: ExportFunction
 
           override fun run(args: List<String>): Int {
-            val listAddress = bridge.allocate(args.size * 8)
-            for (i in args.indices) {
-              val elementAddress = listAddress + i * 8
-              val byteArray = args[i].encodeToByteArray()
-              val stringAddress = bridge.allocate(byteArray.size)
-              bridge.memory.write(stringAddress, byteArray)
-              val stringAddress_ = stringAddress
-              val stringByteCount = byteArray.size
-              bridge.memory.writeI32(elementAddress, stringAddress_)
-              bridge.memory.writeI32(elementAddress + 4, stringByteCount)
+            val result_ = bridge.memoryAllocator.let { memoryAllocator ->
+              val listAddress = memoryAllocator.allocate(args.size * 8)
+              for (i in args.indices) {
+                val elementAddress = listAddress + i * 8
+                val byteArray = args[i].encodeToByteArray()
+                val stringAddress = memoryAllocator.allocate(byteArray.size)
+                bridge.memory.write(stringAddress, byteArray)
+                val stringAddress_ = stringAddress
+                val stringByteCount = byteArray.size
+                bridge.memory.writeI32(elementAddress, stringAddress_)
+                bridge.memory.writeI32(elementAddress + 4, stringByteCount)
+              }
+              val resultArray = run.apply(
+                listAddress.toLong(),
+                args.size.toLong(),
+              )
+              val result = resultArray[0]
+              result.toInt()
             }
-            val resultArray = run.apply(
-              listAddress.toLong(),
-              args.size.toLong(),
-            )
-            val result = resultArray[0]
-            val liftedResult = result.toInt()
+            val liftedResult = result_
             return liftedResult
           }
         }
@@ -673,86 +676,84 @@ class KotlinGeneratorTest {
       import kotlin.text.encodeToByteArray
       import kotlin.wasm.ExperimentalWasmInterop
       import kotlin.wasm.unsafe.ComponentModelInternalApi
+      import kotlin.wasm.unsafe.MemoryAllocator
       import kotlin.wasm.unsafe.Pointer
       import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
-      import kotlin.wasm.unsafe.withScopedMemoryAllocator
 
       public fun store_Types_ErrorCode_guest(
         bridge: GuestBridge,
+        memoryAllocator: MemoryAllocator,
         address: Pointer,
         value_: ErrorCode,
       ) {
-        withScopedMemoryAllocator { memoryAllocator ->
-          val errorCodeDiscriminator: Byte = when (val errorCode = value_) {
-            ErrorCode.AccessDenied -> {
-              0
-            }
-            is ErrorCode.Other -> {
-              val optionalDiscriminator: Byte = when (val optional = errorCode.value) {
-                null -> {
-                  0
-                }
-                else -> {
-                  val byteArray = optional.encodeToByteArray()
-                  val stringAddress = memoryAllocator.allocate(byteArray.size)
-                  stringAddress.storeByteArray(byteArray)
-                  val stringAddress_ = stringAddress.address.toInt()
-                  val stringByteCount = byteArray.size
-                  (address + 8).storeInt(stringAddress_)
-                  (address + 12).storeInt(stringByteCount)
-                  1
-                }
-              }
-              (address + 4).storeByte(optionalDiscriminator)
-              1
-            }
+        val errorCodeDiscriminator: Byte = when (val errorCode = value_) {
+          ErrorCode.AccessDenied -> {
+            0
           }
-          (address).storeByte(errorCodeDiscriminator)
+          is ErrorCode.Other -> {
+            val optionalDiscriminator: Byte = when (val optional = errorCode.value) {
+              null -> {
+                0
+              }
+              else -> {
+                val byteArray = optional.encodeToByteArray()
+                val stringAddress = memoryAllocator.allocate(byteArray.size)
+                stringAddress.storeByteArray(byteArray)
+                val stringAddress_ = stringAddress.address.toInt()
+                val stringByteCount = byteArray.size
+                (address + 8).storeInt(stringAddress_)
+                (address + 12).storeInt(stringByteCount)
+                1
+              }
+            }
+            (address + 4).storeByte(optionalDiscriminator)
+            1
+          }
         }
+        (address).storeByte(errorCodeDiscriminator)
       }
 
       public fun lowerFlat_Types_ErrorCode_guest(
         bridge: GuestBridge,
+        memoryAllocator: MemoryAllocator,
         value_: ErrorCode,
         callBuilder: CallBuilder,
       ) {
-        withScopedMemoryAllocator { memoryAllocator ->
-          val errorCode = value_
-          var errorCodeCoreValueBits0 = 0
-          var errorCodeCoreValueBits1 = 0
-          var errorCodeCoreValueBits2 = 0
-          val errorCodeDiscriminator = when (errorCode) {
-            ErrorCode.AccessDenied -> {
-              0
-            }
-            is ErrorCode.Other -> {
-              val optional = errorCode.value
-              var optionalCoreValueBits0 = 0
-              var optionalCoreValueBits1 = 0
-              val optionalDiscriminator = when (optional) {
-                null -> {
-                  0
-                }
-                else -> {
-                  val byteArray = optional.encodeToByteArray()
-                  val stringAddress = memoryAllocator.allocate(byteArray.size)
-                  stringAddress.storeByteArray(byteArray)
-                  optionalCoreValueBits0 = stringAddress.address.toInt()
-                  optionalCoreValueBits1 = byteArray.size
-                  1
-                }
-              }
-              errorCodeCoreValueBits0 = optionalDiscriminator
-              errorCodeCoreValueBits1 = optionalCoreValueBits0
-              errorCodeCoreValueBits2 = optionalCoreValueBits1
-              1
-            }
+        val errorCode = value_
+        var errorCodeCoreValueBits0 = 0
+        var errorCodeCoreValueBits1 = 0
+        var errorCodeCoreValueBits2 = 0
+        val errorCodeDiscriminator = when (errorCode) {
+          ErrorCode.AccessDenied -> {
+            0
           }
-          callBuilder.put(errorCodeDiscriminator)
-          callBuilder.put(errorCodeCoreValueBits0)
-          callBuilder.put(errorCodeCoreValueBits1)
-          callBuilder.put(errorCodeCoreValueBits2)
+          is ErrorCode.Other -> {
+            val optional = errorCode.value
+            var optionalCoreValueBits0 = 0
+            var optionalCoreValueBits1 = 0
+            val optionalDiscriminator = when (optional) {
+              null -> {
+                0
+              }
+              else -> {
+                val byteArray = optional.encodeToByteArray()
+                val stringAddress = memoryAllocator.allocate(byteArray.size)
+                stringAddress.storeByteArray(byteArray)
+                optionalCoreValueBits0 = stringAddress.address.toInt()
+                optionalCoreValueBits1 = byteArray.size
+                1
+              }
+            }
+            errorCodeCoreValueBits0 = optionalDiscriminator
+            errorCodeCoreValueBits1 = optionalCoreValueBits0
+            errorCodeCoreValueBits2 = optionalCoreValueBits1
+            1
+          }
         }
+        callBuilder.put(errorCodeDiscriminator)
+        callBuilder.put(errorCodeCoreValueBits0)
+        callBuilder.put(errorCodeCoreValueBits1)
+        callBuilder.put(errorCodeCoreValueBits2)
       }
 
       public fun load_Types_ErrorCode_guest(bridge: GuestBridge, address: Pointer): ErrorCode {
@@ -824,6 +825,7 @@ class KotlinGeneratorTest {
       import dev.wasmo.brevity.BrevityInternalApi
       import dev.wasmo.brevity.CallBuilder
       import dev.wasmo.brevity.HostBridge
+      import dev.wasmo.brevity.MemoryAllocator
       import kotlin.Byte
       import kotlin.Int
       import kotlin.OptIn
@@ -831,6 +833,7 @@ class KotlinGeneratorTest {
 
       public fun store_Types_ErrorCode_host(
         bridge: HostBridge,
+        memoryAllocator: MemoryAllocator,
         address: Int,
         value_: ErrorCode,
       ) {
@@ -845,7 +848,7 @@ class KotlinGeneratorTest {
               }
               else -> {
                 val byteArray = optional.encodeToByteArray()
-                val stringAddress = bridge.allocate(byteArray.size)
+                val stringAddress = memoryAllocator.allocate(byteArray.size)
                 bridge.memory.write(stringAddress, byteArray)
                 val stringAddress_ = stringAddress
                 val stringByteCount = byteArray.size
@@ -863,6 +866,7 @@ class KotlinGeneratorTest {
 
       public fun lowerFlat_Types_ErrorCode_host(
         bridge: HostBridge,
+        memoryAllocator: MemoryAllocator,
         value_: ErrorCode,
         callBuilder: CallBuilder,
       ) {
@@ -884,7 +888,7 @@ class KotlinGeneratorTest {
               }
               else -> {
                 val byteArray = optional.encodeToByteArray()
-                val stringAddress = bridge.allocate(byteArray.size)
+                val stringAddress = memoryAllocator.allocate(byteArray.size)
                 bridge.memory.write(stringAddress, byteArray)
                 optionalCoreValueBits0 = stringAddress
                 optionalCoreValueBits1 = byteArray.size

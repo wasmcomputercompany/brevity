@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 /** Stores a string as an address pointer and a byte count. */
 object StringEncoder : Encoder() {
@@ -17,6 +18,9 @@ object StringEncoder : Encoder() {
 
   override val alignment: Int
     get() = CoreType.Pointer.alignment
+
+  override val lowerAllocates: Boolean
+    get() = true
 
   context(codeBuilder: CodeBuilder)
   override fun load(
@@ -43,11 +47,15 @@ object StringEncoder : Encoder() {
 
   context(codeBuilder: CodeBuilder)
   override fun store(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
   ) {
-    val (addressCodeBlock, byteCountCodeBlock) = codeBuilder.platform.storeString(value)
+    val (addressCodeBlock, byteCountCodeBlock) = codeBuilder.platform.storeString(
+      memoryAllocator!!,
+      value,
+    )
     val address = codeBuilder.newName("stringAddress")
     val byteCount = codeBuilder.newName("stringByteCount")
     codeBuilder.addStatement(
@@ -70,8 +78,11 @@ object StringEncoder : Encoder() {
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(transformer: Transformer) {
-    val (address, size) = codeBuilder.platform.storeString(transformer.take())
+  override fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  ) {
+    val (address, size) = codeBuilder.platform.storeString(memoryAllocator!!, transformer.take())
     transformer.put(address)
     transformer.put(size)
   }

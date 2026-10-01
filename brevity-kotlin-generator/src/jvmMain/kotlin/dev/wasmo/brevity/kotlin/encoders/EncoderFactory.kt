@@ -18,6 +18,7 @@ import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.code.Platform
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.allocateNames
@@ -213,6 +214,11 @@ class EncoderFactory(
       },
     )
 
+    protected fun memoryAllocator(nameAllocator: NameAllocator): MemoryAllocator? {
+      if (!encoder.lowerAllocates) return null
+      return platform.getMemoryAllocator(nameAllocator.newName("memoryAllocator"))
+    }
+
     fun generate(): FunSpec {
       val nameAllocator = NameAllocator()
       val bridgeParameter = ParameterSpec.builder(
@@ -313,12 +319,20 @@ class EncoderFactory(
     ): FunSpec {
       val addressName = codeBuilder.newName("address")
       val valueName = codeBuilder.newName("value")
+      val memoryAllocator = memoryAllocator(codeBuilder.nameAllocator)
+
       return FunSpec.builder(memberName)
         .addParameter(bridgeParameter)
+        .apply {
+          if (memoryAllocator != null) {
+            addParameter(memoryAllocator.name, memoryAllocator.type)
+          }
+        }
         .addParameter(addressName, codeBuilder.platform.addressType)
         .addParameter(valueName, customType ?: className)
         .apply {
           encoder.store(
+            memoryAllocator = memoryAllocator,
             baseAddress = CodeBlock.of("%L", addressName),
             value = CodeBlock.of("%L", toWit(CodeBlock.of("%N", valueName))),
           )
@@ -328,14 +342,29 @@ class EncoderFactory(
     }
 
     context(codeBuilder: CodeBuilder)
-    fun call(baseAddress: CodeBlock, value: CodeBlock) {
-      codeBuilder.addStatement(
-        "%M(%L, %L, %L)",
-        memberName,
-        codeBuilder.bridge,
-        baseAddress,
-        value,
-      )
+    fun call(
+      memoryAllocator: MemoryAllocator?,
+      baseAddress: CodeBlock,
+      value: CodeBlock,
+    ) {
+      if (encoder.lowerAllocates) {
+        codeBuilder.addStatement(
+          "%M(%L, %L, %L, %L)",
+          memberName,
+          codeBuilder.bridge,
+          memoryAllocator!!.name,
+          baseAddress,
+          value,
+        )
+      } else {
+        codeBuilder.addStatement(
+          "%M(%L, %L, %L)",
+          memberName,
+          codeBuilder.bridge,
+          baseAddress,
+          value,
+        )
+      }
     }
   }
 
@@ -386,15 +415,21 @@ class EncoderFactory(
       bridgeParameter: ParameterSpec,
     ): FunSpec {
       val valueName = codeBuilder.newName("value")
+      val memoryAllocator = memoryAllocator(codeBuilder.nameAllocator)
       return FunSpec.builder(memberName)
         .addParameter(bridgeParameter)
+        .apply {
+          if (memoryAllocator != null) {
+            addParameter(memoryAllocator.name, memoryAllocator.type)
+          }
+        }
         .addParameter(valueName, customType ?: className)
         .apply {
           val witValue = toWit(CodeBlock.of("%N", valueName))
           if (encoder.coreTypes.size > 1) {
             val callBuilderName = codeBuilder.newName("callBuilder")
             addParameter(callBuilderName, Symbols.Brevity.CallBuilder)
-            val codeBlocks = encoder.lowerFlat(witValue)
+            val codeBlocks = encoder.lowerFlat(memoryAllocator, witValue)
             for (coreValue in codeBlocks) {
               codeBuilder.addStatement("%N.put(%L)", callBuilderName, coreValue)
             }
@@ -402,7 +437,7 @@ class EncoderFactory(
             returns(encoder.coreTypes.single().kotlinCoreType)
             codeBuilder.addStatement(
               "return %L",
-              encoder.lowerFlat(witValue).single(),
+              encoder.lowerFlat(memoryAllocator, witValue).single(),
             )
           }
           addCode(codeBuilder.build())
@@ -411,7 +446,10 @@ class EncoderFactory(
     }
 
     context(codeBuilder: CodeBuilder)
-    fun call(transformer: Encoder.Transformer) {
+    fun call(
+      memoryAllocator: MemoryAllocator?,
+      transformer: Encoder.Transformer,
+    ) {
       if (encoder.coreTypes.size > 1) {
         val callBuilderName = codeBuilder.newName("callBuilder")
         val i32Count = encoder.coreTypes.count { it.byteCount == 4 }
@@ -425,13 +463,24 @@ class EncoderFactory(
           i64Count,
         )
 
-        codeBuilder.addStatement(
-          "%M(%L, %L, %N)",
-          memberName,
-          codeBuilder.bridge,
-          transformer.take(),
-          callBuilderName,
-        )
+        if (encoder.lowerAllocates) {
+          codeBuilder.addStatement(
+            "%M(%L, %L, %L, %N)",
+            memberName,
+            codeBuilder.bridge,
+            memoryAllocator!!.name,
+            transformer.take(),
+            callBuilderName,
+          )
+        } else {
+          codeBuilder.addStatement(
+            "%M(%L, %L, %N)",
+            memberName,
+            codeBuilder.bridge,
+            transformer.take(),
+            callBuilderName,
+          )
+        }
 
         val coreValueNames = allocateNames("value", encoder.coreTypes.size)
         for ((v, coreType) in encoder.coreTypes.withIndex()) {

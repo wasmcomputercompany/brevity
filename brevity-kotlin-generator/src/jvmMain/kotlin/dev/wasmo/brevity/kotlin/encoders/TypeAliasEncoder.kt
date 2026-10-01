@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 class TypeAliasEncoder(
   val type: KtTypeName,
@@ -14,6 +15,8 @@ class TypeAliasEncoder(
     get() = delegate.byteCount
   override val alignment: Int
     get() = delegate.alignment
+  override val lowerAllocates: Boolean
+    get() = delegate.lowerAllocates
 
   context(codeBuilder: CodeBuilder)
   override fun load(
@@ -27,14 +30,16 @@ class TypeAliasEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun store(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
   ) {
     delegate.store(
-      baseAddress,
-      offset,
-      CodeBlock.of("(%L).%N", value, "value"),
+      memoryAllocator = memoryAllocator,
+      baseAddress = baseAddress,
+      offset = offset,
+      value = CodeBlock.of("(%L).%N", value, "value"),
     )
   }
 
@@ -51,9 +56,13 @@ class TypeAliasEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(transformer: Transformer) {
+  override fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  ) {
     val values = delegate.lowerFlat(
-      CodeBlock.of(
+      memoryAllocator = memoryAllocator,
+      value = CodeBlock.of(
         "(%L).%N",
         transformer.take(),
         "value",

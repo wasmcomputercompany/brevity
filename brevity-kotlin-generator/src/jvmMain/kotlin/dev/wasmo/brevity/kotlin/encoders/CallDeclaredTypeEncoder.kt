@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.generator.plus
 
 /** An encoder that invokes a function like [EncoderFactory.Load]. */
@@ -24,6 +25,9 @@ class CallDeclaredTypeEncoder(
   override val alignment: Int
     get() = typeEncoder.alignment
 
+  override val lowerAllocates: Boolean
+    get() = typeEncoder.lowerAllocates
+
   context(codeBuilder: CodeBuilder)
   override fun load(
     baseAddress: CodeBlock,
@@ -32,11 +36,12 @@ class CallDeclaredTypeEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun store(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
   ) {
-    encoderFactory.store(type).call(baseAddress + offset, value)
+    encoderFactory.store(type).call(memoryAllocator, baseAddress + offset, value)
   }
 
   context(codeBuilder: CodeBuilder)
@@ -45,7 +50,10 @@ class CallDeclaredTypeEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(transformer: Transformer) {
-    encoderFactory.lowerFlat(type).call(transformer)
+  override fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  ) {
+    encoderFactory.lowerFlat(type).call(memoryAllocator, transformer)
   }
 }

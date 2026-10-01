@@ -3,11 +3,16 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 abstract class Encoder {
   abstract val coreTypes: List<CoreType>
   abstract val byteCount: Int
   abstract val alignment: Int
+
+  /** Returns true if [store] and [lowerFlat]'s `memoryAllocator` parameter must be non-null. */
+  open val lowerAllocates: Boolean
+    get() = false
 
   open val nameHints: List<Identifier>?
     get() = null
@@ -18,7 +23,12 @@ abstract class Encoder {
 
   /** Stores [value] in memory at [baseAddress] + [offset]. */
   context(codeBuilder: CodeBuilder)
-  abstract fun store(baseAddress: CodeBlock, offset: Int = 0, value: CodeBlock)
+  abstract fun store(
+    memoryAllocator: MemoryAllocator?,
+    baseAddress: CodeBlock,
+    offset: Int = 0,
+    value: CodeBlock,
+  )
 
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
   context(codeBuilder: CodeBuilder)
@@ -42,12 +52,18 @@ abstract class Encoder {
 
   /** Lower an API value like a resource instance to an ABI value like a memory address. */
   context(codeBuilder: CodeBuilder)
-  abstract fun lowerFlat(transformer: Transformer)
+  abstract fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  )
 
   context(codeBuilder: CodeBuilder)
-  fun lowerFlat(value: CodeBlock): List<CodeBlock> {
+  fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    value: CodeBlock,
+  ): List<CodeBlock> {
     val transformer = Transformer(mutableListOf(value))
-    lowerFlat(transformer)
+    lowerFlat(memoryAllocator, transformer)
 
     check(transformer.inputs.isEmpty()) {
       "expected 1 call to take(), but was 0"

@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 /** Fake encoder for all the types we don't actually implement yet. */
 class FallbackEncoder(
@@ -30,6 +31,7 @@ class FallbackEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun store(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
@@ -44,7 +46,10 @@ class FallbackEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(transformer: Transformer) {
+  override fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  ) {
     transformer.take()
     transformer.put("TODO(%S)", "lower ${kotlinMapper.get(type)}")
   }

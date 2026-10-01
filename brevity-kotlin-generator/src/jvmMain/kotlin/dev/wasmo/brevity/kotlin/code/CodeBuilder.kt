@@ -6,48 +6,17 @@ import com.squareup.kotlinpoet.NameAllocator
 /**
  * Combines a [NameAllocator] and [CodeBlock.Builder] to make generating a lot of code a little
  * easier.
- *
- * This uses a stack of nested scopes. Each structured control flow has its own name allocator,
- * whose names survive only in that scope.
- *
- * If memory is allocated within a block, the entire block is wrapped in a second block,
- * `withScopedMemoryAllocator`.
  */
 class CodeBuilder(
   val bridge: CodeBlock,
   val platform: Platform,
-  val nameAllocator: NameAllocator,
+  nameAllocator: NameAllocator,
 ) {
-  private val memoryAllocatorName = nameAllocator.newName("memoryAllocator")
+  private val code = CodeBlock.Builder()
+  private val scopeStack = mutableListOf(nameAllocator)
 
-  /**
-   * This contains the current working scope, plus a root scope that's only ever appended to when
-   * we call [permitAllocationsNow].
-   */
-  private val scopeStack = mutableListOf<Scope>(
-    MemoryScope(nameAllocator),
-    MemoryScope(nameAllocator),
-  )
-
-  private val memoryAllocator: MemoryAllocator
-    get() = platform.memoryAllocator
-
-  private val scope: Scope
+  val nameAllocator: NameAllocator
     get() = scopeStack.last()
-
-  fun allocate(byteCount: CodeBlock): CodeBlock {
-    this.scope.memoryScope.memoryAllocatorUsed = true
-    return memoryAllocator.allocate(bridge, memoryAllocatorName, byteCount)
-  }
-
-  fun permitAllocationsNow() {
-    check((scope as? MemoryScope)?.memoryAllocatorUsed == false) { "unexpected allocation" }
-
-    popScope()
-    pushScope(memoryScope = true)
-  }
-
-  fun allocate(format: String, vararg args: Any?): CodeBlock = allocate(CodeBlock.of(format, *args))
 
   fun newName(suggestion: String): String = nameAllocator.newName(suggestion)
 
@@ -66,83 +35,20 @@ class CodeBuilder(
   }
 
   fun add(format: String, vararg args: Any?) =
-    scope.code.add(format, *args)
+    code.add(format, *args)
 
   fun addStatement(format: String, vararg args: Any?) =
-    scope.code.addStatement(format, *args)
+    code.addStatement(format, *args)
 
   fun beginControlFlow(format: String, vararg args: Any?) {
-    scope.code.beginControlFlow(format, *args)
-    pushScope()
-  }
-
-  /** Begins a new scope that can create its own nested memory allocator. */
-  fun beginControlFlowWithMemory(
-    format: String,
-    vararg args: Any?,
-  ) {
-    scope.code.beginControlFlow(format, *args)
-    pushScope(memoryScope = true)
+    code.beginControlFlow(format, *args)
+    scopeStack += nameAllocator.copy()
   }
 
   fun endControlFlow() {
-    popScope()
-    scope.code.endControlFlow()
+    code.endControlFlow()
+    scopeStack.removeLast()
   }
 
-  private fun pushScope(memoryScope: Boolean = false) {
-    scopeStack += when {
-      memoryScope -> MemoryScope(scope.nameAllocator.copy())
-      else -> ControlFlowScope(scope.nameAllocator.copy(), scope.memoryScope)
-    }
-  }
-
-  private fun popScope() {
-    val popped = scopeStack.removeLast()
-    val parent = scopeStack.last()
-
-    val poppedCode = popped.code.build()
-
-    parent.code.add(
-      when {
-        (popped as? MemoryScope)?.memoryAllocatorUsed == true -> {
-          memoryAllocator.scope(memoryAllocatorName, poppedCode)
-        }
-
-        else -> poppedCode
-      },
-    )
-  }
-
-  fun build(): CodeBlock {
-    check(scopeStack.size == 2) { "unbalanced begin/end control flow" }
-    popScope()
-    return scope.code.build()
-  }
-
-  private interface Scope {
-    val nameAllocator: NameAllocator
-    val code: CodeBlock.Builder
-
-    /** The nearest enclosing scope of type [MemoryScope]. */
-    val memoryScope: MemoryScope
-  }
-
-  /** A scope for naming, but inherits its enclosing scope for allocations. */
-  private class ControlFlowScope(
-    override val nameAllocator: NameAllocator,
-    override val memoryScope: MemoryScope,
-  ) : Scope {
-    override val code = CodeBlock.Builder()
-  }
-
-  /** A scope for naming and allocations. */
-  private class MemoryScope(
-    override val nameAllocator: NameAllocator,
-  ) : Scope {
-    override val code = CodeBlock.Builder()
-    var memoryAllocatorUsed = false
-    override val memoryScope: MemoryScope
-      get() = this
-  }
+  fun build(): CodeBlock = code.build()
 }

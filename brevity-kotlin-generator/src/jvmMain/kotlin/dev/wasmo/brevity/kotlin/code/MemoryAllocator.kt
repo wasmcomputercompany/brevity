@@ -1,18 +1,17 @@
 package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.TypeName as KtTypeName
 
-/**
- * Generates platform-appropriate code for allocating memory.
- */
+/** Abstracts over a platform-specific API to access linear memory. */
 interface MemoryAllocator {
-  /** Allocates [byteCount] bytes of linear memory and returns its address. */
-  fun allocate(
-    bridge: CodeBlock,
-    memoryAllocatorName: String,
-    byteCount: CodeBlock,
-  ): CodeBlock
+  val name: String
+  val type: KtTypeName
 
-  /** Wraps [body] in a block that can allocate memory. */
-  fun scope(memoryAllocatorName: String, body: CodeBlock): CodeBlock
+  /** Allocates [byteCount] bytes of linear memory and returns its address. */
+  fun allocate(byteCount: CodeBlock): CodeBlock
+
+  /** Allocates [byteCount] bytes of linear memory and returns its address. */
+  fun allocate(format: String, vararg args: Any?): CodeBlock =
+    allocate(CodeBlock.of(format, *args))
 }

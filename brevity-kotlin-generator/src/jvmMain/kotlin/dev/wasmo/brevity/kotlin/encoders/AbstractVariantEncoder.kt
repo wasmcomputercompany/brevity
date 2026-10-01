@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinName
 
@@ -42,6 +43,9 @@ abstract class AbstractVariantEncoder(
   override val coreTypes = listOf(CoreType.I32) + casesCoreTypesBits
 
   abstract val instanceNameHint: String
+
+  override val lowerAllocates: Boolean
+    get() = caseEncoders.any { it?.lowerAllocates == true }
 
   /** Turns an index and argument into an instance. */
   abstract fun constructInstance(index: Int, value: CodeBlock?): CodeBlock
@@ -88,6 +92,7 @@ abstract class AbstractVariantEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun store(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
@@ -104,6 +109,7 @@ abstract class AbstractVariantEncoder(
       for ((index, caseEncoder) in caseEncoders.withIndex()) {
         codeBuilder.controlFlow("%L ->", matchInstance(index)) {
           caseEncoder?.store(
+            memoryAllocator = memoryAllocator,
             baseAddress = baseAddress,
             offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
             value = instanceValue(index, CodeBlock.of("%N", variantName))
@@ -160,7 +166,10 @@ abstract class AbstractVariantEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(transformer: Transformer) {
+  override fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  ) {
     val variantName = codeBuilder.newName(instanceNameHint)
     codeBuilder.addStatement("val %N = %L", variantName, transformer.take())
     val variant = CodeBlock.of("%N", variantName)
@@ -180,7 +189,7 @@ abstract class AbstractVariantEncoder(
       for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
         codeBuilder.controlFlow("%L ->", matchInstance(caseIndex)) {
           if (caseEncoder != null) {
-            val values = caseEncoder.lowerFlat(instanceValue(caseIndex, variant)!!)
+            val values = caseEncoder.lowerFlat(memoryAllocator, instanceValue(caseIndex, variant)!!)
             for ((v, coreType) in caseEncoder.coreTypes.withIndex()) {
               codeBuilder.addStatement(
                 "%N = %L",

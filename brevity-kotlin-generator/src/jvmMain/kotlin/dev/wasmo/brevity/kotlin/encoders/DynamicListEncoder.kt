@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 /**
  * Encode a [List], [ByteArray], [IntArray], etc., whose length is not known at build time.
@@ -23,6 +24,9 @@ class DynamicListEncoder(
   override val alignment: Int
     get() = CoreType.Pointer.alignment
 
+  override val lowerAllocates: Boolean
+    get() = true
+
   context(codeBuilder: CodeBuilder)
   override fun load(
     baseAddress: CodeBlock,
@@ -40,11 +44,12 @@ class DynamicListEncoder(
 
   context(codeBuilder: CodeBuilder)
   override fun store(
+    memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
   ) {
-    val (address, length) = storeList(value)
+    val (address, length) = storeList(memoryAllocator!!, value)
     codeBuilder.platform.store(baseAddress, offset, CoreType.Pointer, address)
     codeBuilder.platform.store(
       baseAddress,
@@ -60,9 +65,12 @@ class DynamicListEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(transformer: Transformer) {
+  override fun lowerFlat(
+    memoryAllocator: MemoryAllocator?,
+    transformer: Transformer,
+  ) {
     val value = transformer.take()
-    val (address, length) = storeList(value)
+    val (address, length) = storeList(memoryAllocator!!, value)
     transformer.put(address)
     transformer.put(length)
   }
@@ -115,6 +123,7 @@ class DynamicListEncoder(
 
   context(codeBuilder: CodeBuilder)
   private fun storeList(
+    memoryAllocator: MemoryAllocator,
     list: CodeBlock,
   ): Pair<CodeBlock, CodeBlock> {
     val addressName = codeBuilder.newName("listAddress")
@@ -124,7 +133,7 @@ class DynamicListEncoder(
     codeBuilder.addStatement(
       "val %N = %L",
       addressName,
-      codeBuilder.allocate(CodeBlock.of("%L.size * %L", list, elementEncoder.byteCount)),
+      memoryAllocator.allocate("%L.size * %L", list, elementEncoder.byteCount),
     )
     codeBuilder.controlFlow(
       "for (%N in %L.indices)",
@@ -139,6 +148,7 @@ class DynamicListEncoder(
         elementEncoder.byteCount,
       )
       elementEncoder.store(
+        memoryAllocator = memoryAllocator,
         baseAddress = CodeBlock.of("%N", elementAddressName),
         value = CodeBlock.of("%L[%N]", list, indexName),
       )

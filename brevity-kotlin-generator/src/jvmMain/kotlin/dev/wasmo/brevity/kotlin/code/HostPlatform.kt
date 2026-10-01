@@ -29,18 +29,23 @@ class HostPlatform(
   override val bridgeType: KtTypeName
     get() = Symbols.Brevity.HostBridge
 
-  override val memoryAllocator = object : MemoryAllocator {
-    override fun allocate(
-      bridge: CodeBlock,
-      memoryAllocatorName: String,
-      byteCount: CodeBlock,
-    ) = CodeBlock.of("%L.allocate(%L)", bridge, byteCount)
-
-    override fun scope(
-      memoryAllocatorName: String,
-      body: CodeBlock,
-    ) = body
+  context(codeBuilder: CodeBuilder)
+  override fun beginMemoryAllocationScope(): MemoryAllocator {
+    val name = codeBuilder.newName("memoryAllocator")
+    codeBuilder.beginControlFlow(
+      "%L.memoryAllocator.let { %N ->",
+      codeBuilder.bridge,
+      name,
+    )
+    return HostMemoryAllocator(name)
   }
+
+  context(codeBuilder: CodeBuilder)
+  override fun endMemoryAllocationScope() {
+    codeBuilder.endControlFlow()
+  }
+
+  override fun getMemoryAllocator(name: String): MemoryAllocator = HostMemoryAllocator(name)
 
   override fun lowerAddress(address: CodeBlock) = address
 
@@ -94,7 +99,10 @@ class HostPlatform(
     CodeBlock.of("%L.memory.readString(%L, %L)", codeBuilder.bridge, address, byteCount)
 
   context(codeBuilder: CodeBuilder)
-  override fun storeString(string: CodeBlock): Pair<CodeBlock, CodeBlock> {
+  override fun storeString(
+    memoryAllocator: MemoryAllocator,
+    string: CodeBlock,
+  ): Pair<CodeBlock, CodeBlock> {
     val byteArray = codeBuilder.newName("byteArray")
     val stringAddress = codeBuilder.newName("stringAddress")
 
@@ -107,7 +115,7 @@ class HostPlatform(
     codeBuilder.addStatement(
       "val %N = %L",
       stringAddress,
-      codeBuilder.allocate("%N.size", byteArray),
+      memoryAllocator.allocate("%N.size", byteArray),
     )
     codeBuilder.addStatement(
       "%L.memory.write(%N, %N)",
@@ -185,5 +193,15 @@ class HostPlatform(
         0,
       )
     }
+  }
+
+  private class HostMemoryAllocator(
+    override val name: String,
+  ) : MemoryAllocator {
+    override val type: KtTypeName
+      get() = Symbols.Brevity.MemoryAllocator
+
+    override fun allocate(byteCount: CodeBlock) =
+      CodeBlock.of("%N.allocate(%L)", name, byteCount)
   }
 }

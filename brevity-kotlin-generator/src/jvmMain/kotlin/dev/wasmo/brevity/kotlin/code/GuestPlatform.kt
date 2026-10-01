@@ -2,7 +2,6 @@ package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
-import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
@@ -25,26 +24,23 @@ class GuestPlatform(
   override val bridgeType: KtTypeName
     get() = Symbols.Brevity.GuestBridge
 
-  override val memoryAllocator = object : MemoryAllocator {
-    override fun allocate(
-      bridge: CodeBlock,
-      memoryAllocatorName: String,
-      byteCount: CodeBlock,
-    ) = CodeBlock.of("%N.allocate(%L)", memoryAllocatorName, byteCount)
-
-    override fun scope(
-      memoryAllocatorName: String,
-      body: CodeBlock,
-    ) = buildCodeBlock {
-      beginControlFlow(
-        "%M { %N ->",
-        Symbols.KotlinWasm.WithScopedMemoryAllocator,
-        memoryAllocatorName,
-      )
-      add(body)
-      endControlFlow()
-    }
+  context(codeBuilder: CodeBuilder)
+  override fun beginMemoryAllocationScope(): MemoryAllocator {
+    val name = codeBuilder.newName("memoryAllocator")
+    codeBuilder.beginControlFlow(
+      "%M { %N ->",
+      Symbols.KotlinWasm.WithScopedMemoryAllocator,
+      name,
+    )
+    return GuestMemoryAllocator(name)
   }
+
+  context(codeBuilder: CodeBuilder)
+  override fun endMemoryAllocationScope() {
+    codeBuilder.endControlFlow()
+  }
+
+  override fun getMemoryAllocator(name: String): MemoryAllocator = GuestMemoryAllocator(name)
 
   override fun liftAddress(address: CodeBlock) =
     CodeBlock.of("%T(%L.toUInt())", Symbols.KotlinWasm.Pointer, address)
@@ -79,11 +75,6 @@ class GuestPlatform(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun beforeLowerReturnValue() {
-    codeBuilder.permitAllocationsNow()
-  }
-
-  context(codeBuilder: CodeBuilder)
   override fun afterLiftResult() {
     codeBuilder.addStatement(
       "%M()",
@@ -103,7 +94,10 @@ class GuestPlatform(
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun storeString(string: CodeBlock): Pair<CodeBlock, CodeBlock> {
+  override fun storeString(
+    memoryAllocator: MemoryAllocator,
+    string: CodeBlock,
+  ): Pair<CodeBlock, CodeBlock> {
     val byteArray = codeBuilder.newName("byteArray")
     val address = codeBuilder.newName("stringAddress")
 
@@ -116,7 +110,7 @@ class GuestPlatform(
     codeBuilder.addStatement(
       "val %N = %L",
       address,
-      codeBuilder.allocate("%N.size", byteArray),
+      memoryAllocator.allocate("%N.size", byteArray),
     )
     codeBuilder.addStatement(
       "%N.%M(%N)",
@@ -183,5 +177,15 @@ class GuestPlatform(
       codeBuilder.add("%L,\n", parameterValue)
     }
     codeBuilder.add("⇤)\n")
+  }
+
+  private class GuestMemoryAllocator(
+    override val name: String,
+  ) : MemoryAllocator {
+    override val type: KtTypeName
+      get() = Symbols.KotlinWasm.MemoryAllocator
+
+    override fun allocate(byteCount: CodeBlock) =
+      CodeBlock.of("%N.allocate(%L)", name, byteCount)
   }
 }
