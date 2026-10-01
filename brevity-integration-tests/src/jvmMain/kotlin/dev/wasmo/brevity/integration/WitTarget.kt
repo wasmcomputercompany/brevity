@@ -36,12 +36,26 @@ class WitTarget(
       passAsParameter(
         type = type,
         padding = 16,
+        async = false,
       )
       passAsReturnValue(
         type = type,
+        async = false,
       )
       if (type.async) {
-        asyncReturnValue(type = type)
+        passAsParameter(
+          type = type,
+          async = true,
+        )
+        passAsParameter(
+          type = type,
+          padding = 4,
+          async = true,
+        )
+        passAsReturnValue(
+          type = type,
+          async = true,
+        )
       }
       if (type.futures) {
         asyncFutureReturnValue(type = type)
@@ -61,15 +75,26 @@ class WitTarget(
   private fun BufferedSink.passAsParameter(
     type: SampleType,
     padding: Int = 0,
+    async: Boolean = false,
   ) {
     val paddingSuffix = when {
       padding > 0 -> "-p$padding"
       else -> ""
     }
 
+    val asyncSuffix = when {
+      async -> "-async"
+      else -> ""
+    }
+
+    val modifiers = when {
+      async -> " async"
+      else -> ""
+    }
+
     writeUtf8(
       """
-      |  export pass-as-parameter-${type.id}$paddingSuffix: func(
+      |  export pass-as-parameter-${type.id}$paddingSuffix$asyncSuffix:$modifiers func(
       |
       """.trimMargin(),
     )
@@ -90,21 +115,23 @@ class WitTarget(
     )
   }
 
-  private fun BufferedSink.passAsReturnValue(type: SampleType) {
-    writeUtf8(
-      """
-      |  export pass-as-return-value-${type.id}: func(
-      |    index: s32,
-      |  ) -> ${type.witType};
-      |
-      """.trimMargin(),
-    )
-  }
+  private fun BufferedSink.passAsReturnValue(
+    type: SampleType,
+    async: Boolean = false,
+  ) {
+    val asyncSuffix = when {
+      async -> "-async"
+      else -> ""
+    }
 
-  private fun BufferedSink.asyncReturnValue(type: SampleType) {
+    val modifiers = when {
+      async -> " async"
+      else -> ""
+    }
+
     writeUtf8(
       """
-      |  export async-return-value-${type.id}: async func(
+      |  export pass-as-return-value-${type.id}$asyncSuffix:$modifiers func(
       |    index: s32,
       |  ) -> ${type.witType};
       |

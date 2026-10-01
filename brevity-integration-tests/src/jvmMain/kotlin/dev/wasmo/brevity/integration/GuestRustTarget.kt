@@ -57,9 +57,23 @@ class GuestRustTarget(
         type = type,
         padding = 16,
       )
-      passAsReturnValue(type)
+      passAsReturnValue(
+        type = type,
+      )
       if (type.async) {
-        asyncReturnValue(type)
+        passAsParameter(
+          type = type,
+          async = true,
+        )
+        passAsParameter(
+          type = type,
+          padding = 4,
+          async = true,
+        )
+        passAsReturnValue(
+          type = type,
+          async = true,
+        )
       }
       if (type.futures) {
         asyncFutureReturnValue(type)
@@ -76,15 +90,24 @@ class GuestRustTarget(
   private fun BufferedSink.passAsParameter(
     type: SampleType,
     padding: Int = 0,
+    async: Boolean = false,
   ) {
     val paddingSuffix = when {
       padding > 0 -> "_p$padding"
       else -> ""
     }
+    val asyncSuffix = when {
+      async -> "_async"
+      else -> ""
+    }
+    val modifiers = when {
+      async -> "async "
+      else -> ""
+    }
 
     writeUtf8(
       """
-      |    fn pass_as_parameter_${type.idLowerSnake}$paddingSuffix(
+      |    ${modifiers}fn pass_as_parameter_${type.idLowerSnake}$paddingSuffix$asyncSuffix(
       |
       """.trimMargin(),
     )
@@ -138,10 +161,21 @@ class GuestRustTarget(
     )
   }
 
-  private fun BufferedSink.passAsReturnValue(type: SampleType) {
+  private fun BufferedSink.passAsReturnValue(
+    type: SampleType,
+    async: Boolean = false,
+  ) {
+    val asyncSuffix = when {
+      async -> "_async"
+      else -> ""
+    }
+    val modifiers = when {
+      async -> "async "
+      else -> ""
+    }
     writeUtf8(
       """
-      |    fn pass_as_return_value_${type.idLowerSnake}(index: i32) -> ${type.rustType} {
+      |    ${modifiers}fn pass_as_return_value_${type.idLowerSnake}$asyncSuffix(index: i32) -> ${type.rustType} {
       |        match index {
       |
       """.trimMargin(),
@@ -158,19 +192,6 @@ class GuestRustTarget(
       """
       |            _ => panic!("unexpected index {}", index)
       |        }
-      |    }
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.asyncReturnValue(type: SampleType) {
-    writeUtf8(
-      """
-      |    async fn async_return_value_${type.idLowerSnake}(
-      |        index: i32
-      |    ) -> ${type.rustType} {
-      |        Self::pass_as_return_value_${type.idLowerSnake}(index)
       |    }
       |
       """.trimMargin(),

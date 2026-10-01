@@ -56,9 +56,23 @@ class GuestKotlinTarget(
         type = type,
         padding = 16,
       )
-      passAsReturnValue(type)
+      passAsReturnValue(
+        type = type,
+      )
       if (type.async) {
-        asyncReturnValue(type)
+        passAsParameter(
+          type = type,
+          async = true,
+        )
+        passAsParameter(
+          type = type,
+          padding = 4,
+          async = true,
+        )
+        passAsReturnValue(
+          type = type,
+          async = true,
+        )
       }
       if (type.futures) {
         asyncFutureReturnValue(type)
@@ -76,14 +90,25 @@ class GuestKotlinTarget(
   private fun BufferedSink.passAsParameter(
     type: SampleType,
     padding: Int = 0,
+    async: Boolean = false,
   ) {
     val paddingSuffix = when {
       padding > 0 -> "P$padding"
       else -> ""
     }
+    val asyncSuffix = when {
+      async -> "Async"
+      else -> ""
+    }
+
+    val modifiers = when {
+      async -> " suspend"
+      else -> ""
+    }
+
     writeUtf8(
       """
-      |  override fun passAsParameter${type.idUpperCamel}$paddingSuffix(
+      |  override$modifiers fun passAsParameter${type.idUpperCamel}$paddingSuffix$asyncSuffix(
       |
       """.trimMargin(),
     )
@@ -145,10 +170,23 @@ class GuestKotlinTarget(
     )
   }
 
-  private fun BufferedSink.passAsReturnValue(type: SampleType) {
+  private fun BufferedSink.passAsReturnValue(
+    type: SampleType,
+    async: Boolean = false,
+  ) {
+    val asyncSuffix = when {
+      async -> "Async"
+      else -> ""
+    }
+
+    val modifiers = when {
+      async -> " suspend"
+      else -> ""
+    }
+
     writeUtf8(
       """
-      |  override fun passAsReturnValue${type.idUpperCamel}(index: Int): ${type.kotlinType} {
+      |  override$modifiers fun passAsReturnValue${type.idUpperCamel}$asyncSuffix(index: Int): ${type.kotlinType} {
       |    return when (index) {
       |
       """.trimMargin(),
@@ -165,17 +203,6 @@ class GuestKotlinTarget(
       $$"""
       |      else -> error("unexpected index: $index")
       |    }
-      |  }
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.asyncReturnValue(type: SampleType) {
-    writeUtf8(
-      """
-      |  override suspend fun asyncReturnValue${type.idUpperCamel}(index: Int): ${type.kotlinType} {
-      |    return passAsReturnValue${type.idUpperCamel}(index)
       |  }
       |
       """.trimMargin(),
