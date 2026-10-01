@@ -19,7 +19,6 @@ class WitAsyncTest {
           witType = "datetime",
           kotlinType = "BrevityTest.Datetime",
           rustType = "bindings::Datetime",
-          async = true,
           values = listOf(
             SampleValue(
               kotlin = "BrevityTest.Datetime(3_600_000L)",

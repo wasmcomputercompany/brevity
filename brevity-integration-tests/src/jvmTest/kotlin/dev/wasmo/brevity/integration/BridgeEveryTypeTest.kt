@@ -678,8 +678,11 @@ class BridgeEveryTypeTest {
             ),
           ),
         ),
+        // Async is disabled here because of a bug in wit-bindgen
+        // https://github.com/bytecodealliance/wit-bindgen/issues/1728
         SampleType(
           id = Identifier("sized-list-string"),
+          async = false,
           witType = "list<string, 2>",
           kotlinType = "List<String>",
           rustType = "[String; 2]",
