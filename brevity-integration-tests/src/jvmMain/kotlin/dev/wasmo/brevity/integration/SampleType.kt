@@ -14,7 +14,7 @@ import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 data class SampleType(
   val id: Identifier,
   val compareAsString: Boolean = false,
-  val async: Boolean = false,
+  val async: Boolean = true,
   val futures: Boolean = false,
   val kotlinEqualityMethod: String? = null,
   val witType: String,
