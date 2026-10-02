@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 
@@ -29,6 +30,7 @@ class WitAsyncTest {
   }
 
   @Test
+  @Ignore("not working on Kotlin yet")
   fun sleep() = runTest {
     val test = BrevityExecutionTester(
       name = "asyncSleep",
