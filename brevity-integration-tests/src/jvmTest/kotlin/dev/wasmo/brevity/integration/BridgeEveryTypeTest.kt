@@ -682,7 +682,7 @@ class BridgeEveryTypeTest {
         // https://github.com/bytecodealliance/wit-bindgen/issues/1728
         SampleType(
           id = Identifier("sized-list-string"),
-          async = false,
+          callingMechanisms = listOf(CallingMechanism.Sync),
           witType = "list<string, 2>",
           kotlinType = "List<String>",
           rustType = "[String; 2]",

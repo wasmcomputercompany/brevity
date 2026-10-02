@@ -68,7 +68,7 @@ class BrevityExecutionTester(
       }
 
       val hostKt = launch {
-        HostKotlinTarget(name, fileSystem, layout, types, sleep).generate()
+        HostKotlinTarget(name, fileSystem, layout, types).generate()
       }
       val hostKtJar = async {
         brevityKt.join()
@@ -79,7 +79,7 @@ class BrevityExecutionTester(
       }
 
       val guestKt = launch {
-        GuestKotlinTarget(name, fileSystem, layout, types, sleep).generate()
+        GuestKotlinTarget(name, fileSystem, layout, types).generate()
       }
       val guestKtWasm = async {
         // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
@@ -97,7 +97,7 @@ class BrevityExecutionTester(
         generateGuestAppRustCargoToml()
       }
       val guestRs = launch {
-        GuestRustTarget(name, fileSystem, layout, types, sleep).generate()
+        GuestRustTarget(name, fileSystem, layout, types).generate()
       }
       val guestRsWasm = async {
         guestRs.join()
@@ -286,7 +286,7 @@ class BrevityExecutionTester(
           |
           """.trimMargin(),
         )
-        if (types.any { it.async }) {
+        if (types.any { it.futures }) {
           writeUtf8(
             """
             |futures = "0.3.34"

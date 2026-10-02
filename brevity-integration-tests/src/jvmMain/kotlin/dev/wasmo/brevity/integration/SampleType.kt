@@ -1,7 +1,6 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import dev.wasmo.brevity.kotlin.generator.lowerSnakeCase
 import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 
@@ -14,7 +13,10 @@ import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 data class SampleType(
   val id: Identifier,
   val compareAsString: Boolean = false,
-  val async: Boolean = true,
+  val callingMechanisms: List<CallingMechanism> = listOf(
+    CallingMechanism.Sync,
+    CallingMechanism.Async(),
+  ),
   val futures: Boolean = false,
   val kotlinEqualityMethod: String? = null,
   val witType: String,
@@ -25,8 +27,6 @@ data class SampleType(
 ) {
   val idUpperCamel: String
     get() = id.upperCamelCase
-  val idLowerCamel: String
-    get() = id.lowerCamelCase
   val idLowerSnake: String
     get() = id.lowerSnakeCase
 }

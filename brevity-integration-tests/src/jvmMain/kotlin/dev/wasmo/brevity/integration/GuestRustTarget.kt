@@ -11,7 +11,6 @@ class GuestRustTarget(
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val types: List<SampleType>,
-  private val sleep: Boolean,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("GuestRustTarget")) {
@@ -57,202 +56,15 @@ class GuestRustTarget(
       |
       """.trimMargin(),
     )
-    for (type in types) {
-      passAsParameter(
-        type = type,
-      )
-      passAsParameter(
-        type = type,
-        padding = 16,
-      )
-      passAsReturnValue(
-        type = type,
-      )
-      if (type.async) {
-        passAsParameter(
-          type = type,
-          async = true,
-        )
-        passAsParameter(
-          type = type,
-          padding = 4,
-          async = true,
-        )
-        passAsReturnValue(
-          type = type,
-          async = true,
-        )
-      }
-      if (type.futures) {
-        asyncFutureReturnValue(type)
-        futureReturnValue(type)
+
+    for (testFunction in types.testFunctions) {
+      with(testFunction) {
+        rustDeclare()
       }
     }
     writeUtf8(
       """
       |}
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.passAsParameter(
-    type: SampleType,
-    padding: Int = 0,
-    async: Boolean = false,
-  ) {
-    val paddingSuffix = when {
-      padding > 0 -> "_p$padding"
-      else -> ""
-    }
-    val asyncSuffix = when {
-      async -> "_async"
-      else -> ""
-    }
-    val modifiers = when {
-      async -> "async "
-      else -> ""
-    }
-
-    writeUtf8(
-      """
-      |    ${modifiers}fn pass_as_parameter_${type.idLowerSnake}$paddingSuffix$asyncSuffix(
-      |
-      """.trimMargin(),
-    )
-    for (i in 0 until padding) {
-      writeUtf8(
-        """
-        |        _p$i: i32,
-        |
-        """.trimMargin(),
-      )
-    }
-    writeUtf8(
-      """
-      |        v: ${type.rustType}
-      |    ) -> i32 {
-      |
-      """.trimMargin(),
-    )
-
-    maybeWriteSleep(async)
-
-    if (type.compareAsString) {
-      writeUtf8(
-        """
-        |        let v_str = v.to_string();
-        |
-        """.trimMargin(),
-      )
-      for ((index, value) in type.values.withIndex()) {
-        writeUtf8(
-          """
-          |        if v_str == (${value.rust}).to_string() { return $index }
-          |
-          """.trimMargin(),
-        )
-      }
-    } else {
-      for ((index, value) in type.values.withIndex()) {
-        writeUtf8(
-          """
-          |        if v == ${value.rust} { return $index }
-          |
-          """.trimMargin(),
-        )
-      }
-    }
-    writeUtf8(
-      """
-      |        panic!("unexpected value")
-      |    }
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.passAsReturnValue(
-    type: SampleType,
-    async: Boolean = false,
-  ) {
-    val asyncSuffix = when {
-      async -> "_async"
-      else -> ""
-    }
-    val modifiers = when {
-      async -> "async "
-      else -> ""
-    }
-    writeUtf8(
-      """
-      |    ${modifiers}fn pass_as_return_value_${type.idLowerSnake}$asyncSuffix(index: i32) -> ${type.rustType} {
-      |
-      """.trimMargin(),
-    )
-    maybeWriteSleep(async)
-    writeUtf8(
-      """
-      |        match index {
-      |
-      """.trimMargin(),
-    )
-    for ((index, value) in type.values.withIndex()) {
-      writeUtf8(
-        """
-        |            $index => (${value.rust}).to_owned(),
-        |
-        """.trimMargin(),
-      )
-    }
-    writeUtf8(
-      """
-      |            _ => panic!("unexpected index {}", index)
-      |        }
-      |    }
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.asyncFutureReturnValue(type: SampleType) {
-    writeUtf8(
-      """
-      |    async fn async_future_return_value_${type.idLowerSnake}(
-      |        index: i32
-      |    ) -> FutureReader<${type.rustType}> {
-      |        Self::future_return_value_${type.idLowerSnake}(index)
-      |    }
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.futureReturnValue(type: SampleType) {
-    writeUtf8(
-      """
-      |    fn future_return_value_${type.idLowerSnake}(
-      |        index: i32
-      |    ) -> FutureReader<${type.rustType}> {
-      |        let (future_writer, future_reader) = unsafe {
-      |            wit_bindgen::rt::async_support::future_new(
-      |                || -> ${type.rustType} { panic!("future default") },
-      |                ${type.rustType}::VTABLE,
-      |            )
-      |        };
-      |        future_writer.write(Self::pass_as_return_value_${type.idLowerSnake}(index));
-      |        future_reader
-      |    }
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.maybeWriteSleep(async: Boolean) {
-    if (!async || !sleep) return
-    writeUtf8(
-      """
-      |        sleep(Duration::from_millis(4000));
-      |
       """.trimMargin(),
     )
   }
