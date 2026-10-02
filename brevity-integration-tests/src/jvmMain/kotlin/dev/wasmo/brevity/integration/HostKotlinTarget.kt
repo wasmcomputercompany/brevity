@@ -78,10 +78,24 @@ class HostKotlinTarget(
           value = value,
         )
         if (type.async) {
-          callAsync(
+          callPassAsParameter(
             type = type,
             index = index,
             value = value,
+            async = true,
+          )
+          callPassAsParameter(
+            type = type,
+            index = index,
+            padding = 4,
+            value = value,
+            async = true,
+          )
+          callPassAsReturnValue(
+            type = type,
+            index = index,
+            value = value,
+            async = true,
           )
         }
       }
@@ -101,23 +115,28 @@ class HostKotlinTarget(
     value: SampleValue,
     index: Int,
     padding: Int = 0,
+    async: Boolean = false,
   ) {
     val paddingSuffix = when {
       padding > 0 -> "P$padding"
+      else -> ""
+    }
+    val asyncSuffix = when {
+      async -> "Async"
       else -> ""
     }
 
     writeUtf8(
       """
       |  assertThat(
-      |    world.guest.passAsParameter${type.idUpperCamel}$paddingSuffix(
+      |    world.guest.passAsParameter${type.idUpperCamel}$paddingSuffix$asyncSuffix(
       |
       """.trimMargin(),
     )
     for (i in 0 until padding) {
       writeUtf8(
         """
-        |    p$i = 0,
+        |      p$i = 0,
         |
         """.trimMargin(),
       )
@@ -137,42 +156,17 @@ class HostKotlinTarget(
     type: SampleType,
     index: Int,
     value: SampleValue,
+    async: Boolean = false,
   ) {
-    if (type.compareAsString) {
-      writeUtf8(
-        """
-        |  assertThat(
-        |    world.guest.passAsReturnValue${type.idUpperCamel}($index).toString(),
-        |    "${type.id}.$index.return",
-        |  ).isEqualTo((${value.kotlin}).toString())
-        |
-        |
-        """.trimMargin(),
-      )
-    } else {
-      writeUtf8(
-        """
-        |  assertThat(
-        |    world.guest.passAsReturnValue${type.idUpperCamel}($index),
-        |    "${type.id}.$index.return",
-        |  ).isEqualTo(${value.kotlin})
-        |
-        |
-        """.trimMargin(),
-      )
+    val asyncSuffix = when {
+      async -> "Async"
+      else -> ""
     }
-  }
-
-  private fun BufferedSink.callAsync(
-    type: SampleType,
-    index: Int,
-    value: SampleValue,
-  ) {
     if (type.compareAsString) {
       writeUtf8(
         """
         |  assertThat(
-        |    world.guest.asyncReturnValue${type.idUpperCamel}($index).toString(),
+        |    world.guest.passAsReturnValue${type.idUpperCamel}$asyncSuffix($index).toString(),
         |    "${type.id}.$index.return",
         |  ).isEqualTo((${value.kotlin}).toString())
         |
@@ -183,7 +177,7 @@ class HostKotlinTarget(
       writeUtf8(
         """
         |  assertThat(
-        |    world.guest.asyncReturnValue${type.idUpperCamel}($index),
+        |    world.guest.passAsReturnValue${type.idUpperCamel}$asyncSuffix($index),
         |    "${type.id}.$index.return",
         |  ).isEqualTo(${value.kotlin})
         |
