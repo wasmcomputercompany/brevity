@@ -11,6 +11,7 @@ class GuestKotlinTarget(
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val types: List<SampleType>,
+  private val sleep: Boolean,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("GuestKotlinTarget")) {
@@ -31,11 +32,13 @@ class GuestKotlinTarget(
       |)
       |package dev.wasmo.brevity.integration
       |
+      |import kotlin.time.Duration.Companion.milliseconds
       |import kotlin.wasm.unsafe.ComponentModelInternalApi
       |import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
       |import kotlin.wasm.unsafe.componentModelRealloc
       |import kotlinx.coroutines.CompletableDeferred
       |import kotlinx.coroutines.Deferred
+      |import kotlinx.coroutines.delay
       |import wit.brevity.testing.BrevityTest
       |import wit.brevity.testing.guest
       |
@@ -127,6 +130,7 @@ class GuestKotlinTarget(
       |
       """.trimMargin(),
     )
+    maybeWriteSleep(async)
     if (type.compareAsString) {
       writeUtf8(
         """
@@ -187,6 +191,12 @@ class GuestKotlinTarget(
     writeUtf8(
       """
       |  override$modifiers fun passAsReturnValue${type.idUpperCamel}$asyncSuffix(index: Int): ${type.kotlinType} {
+      |
+      """.trimMargin(),
+    )
+    maybeWriteSleep(async)
+    writeUtf8(
+      """
       |    return when (index) {
       |
       """.trimMargin(),
@@ -226,6 +236,16 @@ class GuestKotlinTarget(
       |  override fun futureReturnValue${type.idUpperCamel}(index: Int): Deferred<${type.kotlinType}> {
       |    return CompletableDeferred(passAsReturnValue${type.idUpperCamel}(index))
       |  }
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.maybeWriteSleep(async: Boolean) {
+    if (!async || !sleep) return
+    writeUtf8(
+      """
+      |    delay(100.milliseconds)
       |
       """.trimMargin(),
     )

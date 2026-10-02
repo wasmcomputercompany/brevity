@@ -17,5 +17,7 @@ object Wasi {
     fun getTime(clockId: ClockId): Long
     fun write(fd: Int, buffer: Buffer): Errno
     fun poll(subscriptions: List<Subscription>): List<Event>
+    fun randomGet(byteCount: Int): ByteArray
+    fun procExit(code: Int)
   }
 }

@@ -11,6 +11,7 @@ class GuestRustTarget(
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val types: List<SampleType>,
+  private val sleep: Boolean,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("GuestRustTarget")) {
@@ -28,10 +29,17 @@ class GuestRustTarget(
         |use wit_bindgen::FutureReader;
         |extern crate futures;
         |
-        |
         """.trimMargin(),
       )
     }
+    writeUtf8(
+      """
+      |use std::thread::sleep;
+      |use std::time::Duration;
+      |
+      |
+      """.trimMargin(),
+    )
     writeUtf8(
       """
       |mod bindings {
@@ -127,6 +135,8 @@ class GuestRustTarget(
       """.trimMargin(),
     )
 
+    maybeWriteSleep(async)
+
     if (type.compareAsString) {
       writeUtf8(
         """
@@ -176,6 +186,12 @@ class GuestRustTarget(
     writeUtf8(
       """
       |    ${modifiers}fn pass_as_return_value_${type.idLowerSnake}$asyncSuffix(index: i32) -> ${type.rustType} {
+      |
+      """.trimMargin(),
+    )
+    maybeWriteSleep(async)
+    writeUtf8(
+      """
       |        match index {
       |
       """.trimMargin(),
@@ -226,6 +242,16 @@ class GuestRustTarget(
       |        future_writer.write(Self::pass_as_return_value_${type.idLowerSnake}(index));
       |        future_reader
       |    }
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.maybeWriteSleep(async: Boolean) {
+    if (!async || !sleep) return
+    writeUtf8(
+      """
+      |        sleep(Duration::from_millis(4000));
       |
       """.trimMargin(),
     )

@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.integration
 
+import kotlin.random.Random
 import kotlin.time.Clock
 import okio.Buffer
 import wit.wasi.v0_1.ClockId
@@ -78,5 +79,11 @@ class FakeWasi(
 
       else -> Errno.badf
     }
+  }
+
+  override fun randomGet(byteCount: Int) = Random.nextBytes(byteCount)
+
+  override fun procExit(code: Int) {
+    error("unexpected call to proc_exit, code=$code")
   }
 }
