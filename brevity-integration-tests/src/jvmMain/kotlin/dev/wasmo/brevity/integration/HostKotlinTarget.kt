@@ -47,8 +47,22 @@ class HostKotlinTarget(
       |import wit.wasi.cli.v0_2_0.World
       |import wit.wasi.v0_1.World
       |
+      |object RealHost : BrevityTest.Host {
+      |
+      """.trimMargin(),
+    )
+    for (testFunction in types.testFunctions) {
+      with(testFunction) {
+        kotlinDeclareHostFunctions()
+      }
+    }
+    writeUtf8(
+      """
+      |}
+      |
+      |val world = BrevityTest.World { RealHost }
+      |
       |fun main(vararg args: String) = runTest {
-      |  val world = BrevityTest.World { }
       |  WasmInstance(
       |    path = args[0].toPath(),
       |    worlds = listOf(
@@ -66,7 +80,7 @@ class HostKotlinTarget(
     for (testFunction in types.testFunctions) {
       for (testCase in testFunction.testCases) {
         with(testCase) {
-          kotlinCall("world.guest")
+          kotlinCallAndAssert("world.guest")
         }
       }
     }
