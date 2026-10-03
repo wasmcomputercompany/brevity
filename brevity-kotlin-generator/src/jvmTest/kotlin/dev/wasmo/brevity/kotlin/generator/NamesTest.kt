@@ -7,12 +7,14 @@ import dev.wasmo.brevity.FunctionNameInterface
 import dev.wasmo.brevity.FunctionNameMethod
 import dev.wasmo.brevity.FunctionNameStatic
 import dev.wasmo.brevity.FunctionNameWorld
+import dev.wasmo.brevity.Orientation
 import kotlin.test.Test
 
 class NamesTest {
   @Test
   fun `function on world`() {
     val function = FunctionNameWorld(
+      orientation = Orientation.Export,
       name = "sum",
     )
     assertThat(function.importFunctionName).isEqualTo("sum_import")

@@ -72,7 +72,9 @@ fun FunctionNameStatic(
 
 fun FunctionNameWorld(
   name: String,
+  orientation: Orientation,
 ) = FunctionName.World(
+  orientation = orientation,
   name = Identifier(name),
 )
 

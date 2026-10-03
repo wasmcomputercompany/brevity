@@ -6,6 +6,7 @@ import dev.wasmo.brevity.FunctionNameWorld
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.toServiceName
@@ -109,9 +110,10 @@ fun IrFunction(
   location: Location = Location("file.wit"),
   async: Boolean = false,
   name: String,
+  orientation: Orientation = Orientation.Export,
   parameters: List<IrParameter> = listOf(),
   returnType: TypeName? = null,
-  functionName: FunctionName = FunctionNameWorld(name),
+  functionName: FunctionName = FunctionNameWorld(name, orientation),
 ) = IrFunction(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
