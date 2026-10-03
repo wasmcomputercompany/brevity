@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.integration.PassingMechanism.Parameter
 import dev.wasmo.brevity.integration.PassingMechanism.Return
 import okio.Buffer
@@ -13,6 +14,8 @@ data class TestCase(
     get() = function.passingMechanism
   val callingMechanism: CallingMechanism
     get() = function.callingMechanism
+  val orientation: Orientation
+    get() = function.orientation
   val type: SampleType
     get() = function.type
 
@@ -29,9 +32,9 @@ data class TestCase(
       else -> ""
     }
 
-    val expected = when (passingMechanism) {
-      is Parameter -> valueIndex
-      Return -> value.kotlin
+    val expected = when {
+      passingMechanism is Parameter || orientation == Orientation.Import -> valueIndex
+      else -> value.kotlin
     }
 
     writeUtf8(

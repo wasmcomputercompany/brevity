@@ -40,6 +40,11 @@ object Async {
      * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-taskcancel
      */
     fun taskCancel()
+
+    /**
+     * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-subtaskcancel
+     */
+    fun subtaskCancel(subtask: Int): Int
   }
 }
 

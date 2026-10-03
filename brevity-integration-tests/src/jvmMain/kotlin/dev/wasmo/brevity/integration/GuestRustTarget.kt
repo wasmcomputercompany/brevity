@@ -59,7 +59,7 @@ class GuestRustTarget(
 
     for (testFunction in types.testFunctions) {
       with(testFunction) {
-        rustDeclare()
+        rustDeclareGuestFunctions()
       }
     }
     writeUtf8(

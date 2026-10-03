@@ -6,8 +6,9 @@ import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.PackageName
+import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.IoCase
 import dev.wasmo.brevity.io.IoEnum
@@ -145,6 +146,7 @@ class IrMapper(
   context(context: Context, issueCollector: IssueCollector)
   private fun IoFunction.functionToIr(
     worldFunction: Boolean = false,
+    orientation: Orientation? = null,
     resourceName: Identifier? = null,
   ) = IrFunction(
     documentation = documentation,
@@ -155,6 +157,7 @@ class IrMapper(
     returnType = returnType?.typeNameToIr(location),
     functionName = when {
       worldFunction -> FunctionName.World(
+        orientation = orientation!!,
         name = name,
       )
 
@@ -233,19 +236,19 @@ class IrMapper(
   context(context: Context, issueCollector: IssueCollector)
   private fun IoResource.resourceToIr() = pushIssueLocation(this.location) {
     IrResource(
-    documentation = documentation,
-    gate = gate,
-    location = location,
-    type = TypeName.Declared(context.serviceName, name),
-    functions = buildList {
-      addAll(
-        functions.map {
-          it.functionToIr(resourceName = name)
-        },
-      )
-      add(dropFunction())
-    },
-  )
+      documentation = documentation,
+      gate = gate,
+      location = location,
+      type = TypeName.Declared(context.serviceName, name),
+      functions = buildList {
+        addAll(
+          functions.map {
+            it.functionToIr(resourceName = name)
+          },
+        )
+        add(dropFunction())
+      },
+    )
   }
 
   context(context: Context, issueCollector: IssueCollector)
@@ -275,14 +278,14 @@ class IrMapper(
       documentation = documentation,
       gate = gate,
       location = location,
-      plainName = plainName?.let { it },
+      plainName = plainName,
       serviceName = serviceName,
     )
   }
 
   context(context: Context)
   private fun UsePath.usePathToIr(): ServiceName = ServiceName(
-    packageName = packageName?.let { it } ?: context.serviceName.packageName,
+    packageName = packageName ?: context.serviceName.packageName,
     name = name,
   )
 
@@ -320,10 +323,12 @@ class IrMapper(
           null
         }
       }
+
       is IoTypeName.Option -> type.typeNameToIr(referenceSite)?.let { TypeName.Option(it) }
       is IoTypeName.Result -> (ok?.typeNameToIr(referenceSite) to error?.typeNameToIr(referenceSite)).let { (resolvedOk, resolvedError) ->
         TypeName.Result(resolvedOk, resolvedError)
       }
+
       is IoTypeName.Stream -> TypeName.Stream(type?.typeNameToIr(referenceSite))
       is IoTypeName.Tuple -> TypeName.Tuple(types.mapNotNull { it.typeNameToIr(referenceSite) })
     }
@@ -395,7 +400,7 @@ class IrMapper(
           if (itemMatch != null) {
             val useContext = Context(
               ServiceName(
-                packageName = declaration.path.packageName?.let { it } ?: serviceNamePackageName,
+                packageName = declaration.path.packageName ?: serviceNamePackageName,
                 name = declaration.path.name,
               ),
             )
@@ -447,12 +452,12 @@ class IrMapper(
       },
       imports = set.flatMap { included ->
         context(included.context) {
-          included.world.imports.mapNotNull { it.worldApiToIr() }
+          included.world.imports.mapNotNull { it.worldApiToIr(Orientation.Import) }
         }
       },
       exports = set.flatMap { included ->
         context(included.context) {
-          included.world.exports.mapNotNull { it.worldApiToIr() }
+          included.world.exports.mapNotNull { it.worldApiToIr(Orientation.Export) }
         }
       },
     )
@@ -478,7 +483,9 @@ class IrMapper(
    * because some WASI worlds import multiple 'types' interfaces.)
    */
   context(context: Context, builder: PackageBuilder, issueCollector: IssueCollector)
-  private fun IoWorld.Api.worldApiToIr(): IrWorld.Api? {
+  private fun IoWorld.Api.worldApiToIr(
+    orientation: Orientation,
+  ): IrWorld.Api? {
     return when (this) {
       is IoExternalApi -> externalUsePathToIr()
         .takeIf {
@@ -497,7 +504,8 @@ class IrMapper(
           } else {
             val caseInsensitiveServiceMatch = ioSymbolTable.getCaseInsensitiveMatch(it.serviceName)
             val packageMatch = ioSymbolTable[it.serviceName.packageName]
-            val caseInsensitivePackageMatch = ioSymbolTable.getCaseInsensitiveMatch(it.serviceName.packageName)
+            val caseInsensitivePackageMatch =
+              ioSymbolTable.getCaseInsensitiveMatch(it.serviceName.packageName)
             when {
               service is IoWorld -> reportIssue("I found it but it's a world, not an interface")
               caseInsensitiveServiceMatch != null -> reportIssue("maybe you meant $caseInsensitiveServiceMatch")
@@ -510,7 +518,11 @@ class IrMapper(
           }
         }
 
-      is IoFunction -> functionToIr(worldFunction = true)
+      is IoFunction -> functionToIr(
+        worldFunction = true,
+        orientation = orientation,
+      )
+
       is IoInterface -> {
         if (!declaresApis()) return null
         interfaceToIr(context.serviceName.packageName)
@@ -530,7 +542,7 @@ class IrMapper(
     if (!set.add(this)) return // Duplicate.
 
     for (include in world.items.filterIsInstance<IoInclude>()) {
-      val packageName = include.path.packageName?.let { it } ?: packageName
+      val packageName = include.path.packageName ?: packageName
       val lookupPath = include.path.copy(
         packageName = packageName,
       )
@@ -542,7 +554,7 @@ class IrMapper(
           Issue(
             "Unable to find world $lookupPath included by ${this@collectIncludesRecursively}",
             include.location,
-          )
+          ),
         )
       } else {
         IncludedWorld(

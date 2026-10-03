@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import dev.wasmo.brevity.kotlin.generator.lowerSnakeCase
 import okio.Buffer
@@ -9,7 +10,7 @@ import okio.BufferedSink
 val List<SampleType>.testFunctions: List<TestFunction>
   get() = buildList {
     for (type in this@testFunctions) {
-      for (orientation in Orientation.entries) {
+      for (orientation in type.orientations) {
         for (callingMechanism in type.callingMechanisms) {
           if (callingMechanism is CallingMechanism.Sync) {
             add(TestFunction(PassingMechanism.Parameter(), callingMechanism, orientation, type))
@@ -55,6 +56,22 @@ data class TestFunction(
 
   val padding: Int
     get() = (passingMechanism as? PassingMechanism.Parameter)?.padding ?: 0
+
+  private val indexToValueFunction: TestFunction
+    get() = TestFunction(
+      PassingMechanism.Return,
+      CallingMechanism.Sync,
+      Orientation.Export,
+      type,
+    )
+
+  private val valueToIndexFunction: TestFunction
+    get() = TestFunction(
+      PassingMechanism.Parameter(),
+      CallingMechanism.Sync,
+      Orientation.Export,
+      type,
+    )
 
   override fun toString() = identifier.name
 
@@ -106,6 +123,56 @@ data class TestFunction(
         |
         """.trimMargin(),
       )
+    }
+  }
+
+
+  fun BufferedSink.rustDeclareGuestFunctions() {
+    when (orientation) {
+      Orientation.Export -> rustDeclare()
+      Orientation.Import -> rustDeclareTrampoline()
+    }
+  }
+
+  fun BufferedSink.rustDeclareTrampoline() {
+    val modifiers = when (callingMechanism) {
+      is CallingMechanism.Async -> "async "
+      CallingMechanism.Sync -> ""
+    }
+
+    writeUtf8(
+      """
+      |    ${modifiers}fn ${identifier.lowerSnakeCase}_trampoline(index: i32) -> i32 {
+      |
+      """.trimMargin(),
+    )
+
+    when (passingMechanism) {
+      is PassingMechanism.Parameter -> {
+        val value = indexToValueFunction.rustCall("Self", "index", "panic!()")
+        val call = rustCall("bindings", "panic!()", "value")
+        writeUtf8(
+          """
+          |        let value = ${value.replace("\n", "\n        ")};
+          |        ${call.replace("\n", "\n        ")}
+          |    }
+          |
+          """.trimMargin(),
+        )
+      }
+
+      PassingMechanism.Return -> {
+        val call = rustCall("bindings", "index", "panic!()")
+        val resultIndex = valueToIndexFunction.rustCall("Self", "panic!()", "value")
+        writeUtf8(
+          """
+          |        let value = ${call.replace("\n", "\n        ")};
+          |        ${resultIndex.replace("\n", "\n        ")}
+          |    }
+          |
+          """.trimMargin(),
+        )
+      }
     }
   }
 
@@ -242,13 +309,7 @@ data class TestFunction(
 
     when (passingMechanism) {
       is PassingMechanism.Parameter -> {
-        val getValueFunction = TestFunction(
-          PassingMechanism.Return,
-          CallingMechanism.Sync,
-          Orientation.Export,
-          type,
-        )
-        val value = getValueFunction.kotlinCall("this", "index", "Nothing")
+        val value = indexToValueFunction.kotlinCall("this", "index", "Nothing")
         val call = kotlinCall("BrevityTest.host", "Nothing", value)
         writeUtf8(
           """
@@ -261,13 +322,7 @@ data class TestFunction(
 
       PassingMechanism.Return -> {
         val call = kotlinCall("BrevityTest.host", "index", "Nothing")
-        val getIndexFunction = TestFunction(
-          PassingMechanism.Parameter(),
-          CallingMechanism.Sync,
-          Orientation.Export,
-          type,
-        )
-        val resultIndex = getIndexFunction.kotlinCall("this", "Nothing", "value")
+        val resultIndex = valueToIndexFunction.kotlinCall("this", "Nothing", "value")
         writeUtf8(
           """
           |    val value = ${call.replace("\n", "\n    ")}
@@ -442,6 +497,68 @@ data class TestFunction(
     return call.readUtf8()
   }
 
+  fun rustCall(
+    callTarget: String,
+    valueIndex: String,
+    value: String,
+  ): String {
+    val call = Buffer().apply {
+      writeUtf8(
+        """
+        |$callTarget::${identifier.lowerSnakeCase}(
+        |
+        """.trimMargin(),
+      )
+
+      for (i in 0 until padding) {
+        writeUtf8(
+          """
+          |    0,
+          |
+          """.trimMargin(),
+        )
+      }
+
+      when (passingMechanism) {
+        is PassingMechanism.Parameter -> {
+          writeUtf8(
+            """
+            |    ${value.replace("\n", "\n    ")},
+            |
+            """.trimMargin(),
+          )
+        }
+
+        PassingMechanism.Return -> {
+          writeUtf8(
+            """
+            |    ${valueIndex},
+            |
+            """.trimMargin(),
+          )
+        }
+      }
+      when (callingMechanism) {
+        is CallingMechanism.Async -> {
+          writeUtf8(
+            """
+            |).await
+            """.trimMargin(),
+          )
+        }
+
+        CallingMechanism.Sync -> {
+          writeUtf8(
+            """
+            |)
+            """.trimMargin(),
+          )
+        }
+      }
+    }
+    return call.readUtf8()
+  }
+
   fun kotlinCallTrampoline(
     callTarget: String,
     valueIndex: Int,
@@ -466,4 +583,10 @@ data class TestFunction(
       """.trimMargin(),
     )
   }
+
+  private val Orientation.keyword: String
+    get() = when (this) {
+      Orientation.Export -> "export"
+      Orientation.Import -> "import"
+    }
 }

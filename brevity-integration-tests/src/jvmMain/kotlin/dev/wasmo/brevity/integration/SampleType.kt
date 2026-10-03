@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.kotlin.generator.lowerSnakeCase
 import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 
@@ -16,6 +17,9 @@ data class SampleType(
   val callingMechanisms: List<CallingMechanism> = listOf(
     CallingMechanism.Sync,
     CallingMechanism.Async(),
+  ),
+  val orientations: List<Orientation> = listOf(
+    Orientation.Export,
   ),
   val futures: Boolean = false,
   val kotlinEqualityMethod: String? = null,

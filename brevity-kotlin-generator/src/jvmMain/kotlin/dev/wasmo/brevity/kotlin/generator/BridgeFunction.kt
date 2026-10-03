@@ -10,6 +10,7 @@ import com.squareup.kotlinpoet.TypeName as KtTypeName
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.KotlinMapper
@@ -634,11 +635,6 @@ class BridgeFunction private constructor(
     }
   }
 
-  enum class Orientation {
-    HostCallsGuest,
-    GuestCallsHost,
-  }
-
   class Factory(
     private val kotlinMapper: KotlinMapper,
     private val encoderFactory: EncoderFactory,
@@ -886,7 +882,7 @@ class BridgeFunction private constructor(
           result = result,
         )
 
-        orientation == Orientation.GuestCallsHost -> LoweredResult.PointerParameter(
+        orientation == Orientation.Import -> LoweredResult.PointerParameter(
           result = result,
           pointerParameter = ParameterSpec(
             nameAllocator.newName("resultParameter"),
