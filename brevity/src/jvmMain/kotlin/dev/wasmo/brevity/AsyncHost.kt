@@ -99,6 +99,20 @@ internal class BridgeAsync(
         },
       ),
     )
+    store.addFunction(
+      HostFunction(
+        $$"$root",
+        "[subtask-cancel]",
+        FunctionType.of(
+          listOf(ValType.I32),
+          listOf(ValType.I32),
+        ),
+        WasmFunctionHandle { instance, args ->
+          val subtaskStateOrNone = host.subtaskCancel(args[0].toInt())
+          longArrayOf(subtaskStateOrNone.toLong())
+        },
+      ),
+    )
   }
 
   private fun addContextFunctions(store: Store, index: Int) {

@@ -8,6 +8,7 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.ir.IrDeclaration
 import dev.wasmo.brevity.ir.IrEnum
 import dev.wasmo.brevity.ir.IrExternalApi
@@ -302,7 +303,7 @@ class ApiGenerator(
   private fun apiFunctionFactory(item: IrFunction) = ApiFunctionFactory(
     function = bridgeFunctionFactory.create(
       receiver = BridgeFunction.Receiver.OutboundInstance,
-      orientation = BridgeFunction.Orientation.GuestCallsHost,
+      orientation = Orientation.Import,
       value = item,
     ),
   )

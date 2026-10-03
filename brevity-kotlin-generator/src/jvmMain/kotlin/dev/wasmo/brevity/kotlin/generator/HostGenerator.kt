@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrExternalApi
@@ -19,9 +20,8 @@ import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.GuestCallsHost
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.HostCallsGuest
+import dev.wasmo.brevity.Orientation.Import
+import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 
 private val hostOptIns = setOf(
@@ -188,8 +188,8 @@ class HostGenerator(
             .addParameter("instance", Symbols.ChicoryRuntime.Instance)
             .apply {
               addStatement("this.%N.init(%N)", "bridge", "instance")
-              initExports(guestApis, HostCallsGuest)
-              initExports(hostApis, GuestCallsHost)
+              initExports(guestApis, Export)
+              initExports(hostApis, Import)
             }
             .build(),
         )
@@ -227,11 +227,7 @@ class HostGenerator(
         )
 
         if (guestApis != null) {
-          generateExternalApis(guestApis, HostCallsGuest)
-        }
-
-        if (hostApis != null) {
-          generateExternalApis(hostApis, GuestCallsHost)
+          generateExternalApis(guestApis, Export)
         }
       }
 
@@ -242,13 +238,13 @@ class HostGenerator(
               bridge = bridgeValue,
               function = bridgeFunctionFactory.create(
                 Receiver.OutboundInstance,
-                HostCallsGuest,
+                Export,
                 item,
               ),
             ),
           )
           builder.addProperties(
-            exportProperties(item, HostCallsGuest),
+            exportProperties(item, Export),
           )
         }
       }
@@ -373,7 +369,7 @@ class HostGenerator(
             bridge = bridge,
             function = bridgeFunctionFactory.create(
               Receiver.OutboundInstance,
-              HostCallsGuest,
+              Export,
               item,
             ),
           ),
@@ -390,13 +386,13 @@ class HostGenerator(
     orientation: Orientation,
   ) {
     when (orientation) {
-      GuestCallsHost -> {
+      Import -> {
         if (item.async) {
           saveExport(owner, instance, FunctionName.TaskReturn(item.functionName))
         }
       }
 
-      HostCallsGuest -> {
+      Export -> {
         if (item.async) {
           saveExport(owner, instance, FunctionName.AsyncLift(item.functionName))
           saveExport(owner, instance, FunctionName.AsyncLiftCallback(item.functionName))
@@ -439,7 +435,7 @@ class HostGenerator(
   ): List<PropertySpec> {
     return buildList {
       when (orientation) {
-        HostCallsGuest -> {
+        Export -> {
           if (item.async) {
             add(exportProperty(FunctionName.AsyncLift(item.functionName)))
             add(exportProperty(FunctionName.AsyncLiftCallback(item.functionName)))
@@ -448,7 +444,7 @@ class HostGenerator(
           }
         }
 
-        GuestCallsHost -> {
+        Import -> {
           if (item.async) {
             add(exportProperty(FunctionName.TaskReturn(item.functionName)))
           }
@@ -481,7 +477,7 @@ class HostGenerator(
                 store = store,
                 function = bridgeFunctionFactory.create(
                   receiver = id,
-                  orientation = GuestCallsHost,
+                  orientation = Import,
                   value = function,
                 ),
               ),
@@ -492,7 +488,7 @@ class HostGenerator(
                 store = store,
                 function = bridgeFunctionFactory.asyncCallback(
                   receiver = id,
-                  orientation = GuestCallsHost,
+                  orientation = Import,
                   value = function,
                 ),
               )
@@ -519,7 +515,7 @@ class HostGenerator(
               store = store,
               function = bridgeFunctionFactory.create(
                 receiver = hostInstance,
-                orientation = GuestCallsHost,
+                orientation = Import,
                 value = item,
               ),
             ),
@@ -531,7 +527,7 @@ class HostGenerator(
                 store = store,
                 function = bridgeFunctionFactory.asyncCallback(
                   receiver = hostInstance,
-                  orientation = GuestCallsHost,
+                  orientation = Import,
                   value = item,
                 ),
               ),
@@ -551,7 +547,7 @@ class HostGenerator(
                 store = store,
                 function = bridgeFunctionFactory.create(
                   receiver = inboundInstance,
-                  orientation = GuestCallsHost,
+                  orientation = Import,
                   value = function,
                 ),
               ),
@@ -563,7 +559,7 @@ class HostGenerator(
                   store = store,
                   function = bridgeFunctionFactory.asyncCallback(
                     receiver = inboundInstance,
-                    orientation = GuestCallsHost,
+                    orientation = Import,
                     value = function,
                   ),
                 ),

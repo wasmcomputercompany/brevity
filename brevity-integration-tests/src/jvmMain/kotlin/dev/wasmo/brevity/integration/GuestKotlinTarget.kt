@@ -52,7 +52,7 @@ class GuestKotlinTarget(
     )
     for (testFunction in types.testFunctions) {
       with(testFunction) {
-        kotlinDeclare()
+        kotlinDeclareGuestFunctions()
       }
     }
     writeUtf8(

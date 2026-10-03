@@ -274,12 +274,6 @@ class KotlinGeneratorTest {
             return liftedResult
           }
         }
-
-        internal class BridgeHost(
-          private val bridge: HostBridge,
-        ) : Time.Host {
-          override val types: BridgeTypes = BridgeTypes(bridge)
-        }
       }
 
       """.trimIndent(),
