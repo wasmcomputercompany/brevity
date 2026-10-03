@@ -10,14 +10,17 @@ import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
+@BrevityInternalApi
 object GuestBridge {
   private val idToResource = mutableMapOf<Int, Resource>()
   private var nextId = 4_040_000
 
   private var taskResult: Any? = null
 
-  private val brevityDispatcher = BrevityDispatcher()
-  private val brevityScope = CoroutineScope(brevityDispatcher)
+  val brevityDispatcher = BrevityDispatcher()
+
+  private val brevityScope: CoroutineScope
+    get() = brevityDispatcher.scope
 
   // Prevent kotlinx-coroutines DefaultExecutor from registering a hook when exported functions
   // exit. That hook is particularly problematic for `cabi_realloc`, because it prevents that
@@ -36,12 +39,10 @@ object GuestBridge {
     return constructor(id)
   }
 
-  @BrevityInternalApi
   fun taskReturn(value: Any? = Unit) {
     this.taskResult = value
   }
 
-  @BrevityInternalApi
   fun launchTask(block: suspend () -> Unit): PackedAsyncResult {
     brevityScope.launch {
       block()
@@ -50,25 +51,26 @@ object GuestBridge {
     return PackedAsyncResult(CallbackCode.Exit)
   }
 
-  @BrevityInternalApi
   fun resumeTask(eventCode: Int, p1: Int, p2: Int): PackedAsyncResult {
     return PackedAsyncResult(CallbackCode.Exit)
   }
 
-  @BrevityInternalApi
   suspend fun <T> awaitTaskResult(): T {
     return taskResult as T
   }
 }
 
+@BrevityInternalApi
 fun Pointer.loadPointer(): Pointer {
   return Pointer(loadInt().toUInt())
 }
 
+@BrevityInternalApi
 fun Pointer.loadString(byteCount: Int): String {
   return loadByteArray(byteCount).decodeToString()
 }
 
+@BrevityInternalApi
 fun Pointer.loadByteArray(byteCount: Int): ByteArray {
   val result = ByteArray(byteCount)
   for (i in 0 until byteCount) {
@@ -77,11 +79,13 @@ fun Pointer.loadByteArray(byteCount: Int): ByteArray {
   return result
 }
 
+@BrevityInternalApi
 fun Pointer.storeString(value: String) {
   val byteArray = value.encodeToByteArray()
   storeByteArray(byteArray)
 }
 
+@BrevityInternalApi
 fun Pointer.storeByteArray(value: ByteArray) {
   for ((i, element) in value.withIndex()) {
     (this + i).storeByte(element)

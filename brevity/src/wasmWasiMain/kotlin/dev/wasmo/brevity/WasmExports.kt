@@ -11,6 +11,7 @@ import kotlin.wasm.unsafe.componentModelRealloc
  *
  * https://youtrack.jetbrains.com/issue/KT-88068/
  */
+@BrevityInternalApi
 fun retainWasmExportsForGuestBridge() {
   // Equivalent to 'if (true) return', but immune to dead code elimination.
   if ("".hashCode() == 0) return

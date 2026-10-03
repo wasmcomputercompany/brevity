@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.wasi.p2
 
+import kotlin.time.TimeSource
 import wit.wasi.cli.v0_2_0.Environment
 import wit.wasi.cli.v0_2_0.Exit
 import wit.wasi.cli.v0_2_0.Imports
@@ -27,7 +28,9 @@ import wit.wasi.sockets.v0_2_0.UdpCreateSocket
  *
  * Note: when Rust panics, it checks [environment] for `RUST_BACKTRACE=1`.
  */
-class RealWasiP2Host : Imports.Host {
+class RealWasiP2Host(
+  monotonicTimeSource: TimeSource.WithComparableMarks = TimeSource.Monotonic,
+) : Imports.Host {
   override val environment: Environment = RealEnvironment()
   override val exit: Exit
     get() = TODO("Not yet implemented")
@@ -45,8 +48,7 @@ class RealWasiP2Host : Imports.Host {
     get() = TODO("Not yet implemented")
   override val terminalStderr: TerminalStderr
     get() = TODO("Not yet implemented")
-  override val monotonicClock: MonotonicClock
-    get() = TODO("Not yet implemented")
+  override val monotonicClock: MonotonicClock = RealMonotonicClock(monotonicTimeSource)
   override val wallClock: WallClock
     get() = TODO("Not yet implemented")
   override val types: Types

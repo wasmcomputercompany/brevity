@@ -7,7 +7,6 @@ import com.dylibso.chicory.runtime.WasmFunctionHandle
 import com.dylibso.chicory.wasm.types.FunctionType
 import com.dylibso.chicory.wasm.types.ValType
 import dev.wasmo.brevity.World
-import kotlin.random.Random
 import okio.Buffer
 
 fun Wasi.World(
@@ -38,7 +37,9 @@ internal class BridgeWasi(
           val buffer = args[0].toInt()
           val bufferLength = args[1].toInt()
           val memory = instance.memory()
-          memory.write(buffer, randomGet(bufferLength))
+          val randomBytes = host.randomGet(bufferLength)
+          check(randomBytes.size == bufferLength)
+          memory.write(buffer, randomBytes)
           longArrayOf(Errno.success.ordinal.toLong())
         },
       ),
@@ -92,7 +93,8 @@ internal class BridgeWasi(
           listOf(),
         ),
         WasmFunctionHandle { instance, args ->
-          error("unexpected call to proc_exit, code=${args[0].toInt()}")
+          host.procExit(args[0].toInt())
+          longArrayOf()
         },
       ),
     )
@@ -130,8 +132,6 @@ internal class BridgeWasi(
       ),
     )
   }
-
-  private fun randomGet(bufferLength: Int): ByteArray = Random.nextBytes(bufferLength)
 
   private fun fdWrite(
     instance: Instance,

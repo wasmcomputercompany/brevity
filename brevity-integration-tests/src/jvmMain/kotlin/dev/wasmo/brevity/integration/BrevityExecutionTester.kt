@@ -41,6 +41,7 @@ class BrevityExecutionTester(
   val rawWit: String = "",
   val extraFiles: Map<Path, String> = mapOf(),
   val types: List<SampleType>,
+  val sleep: Boolean = false,
 ) {
   private val layout = ProjectLayout(
     path = "build/BrevityExecutionTester/$name".toPath(),
@@ -67,7 +68,7 @@ class BrevityExecutionTester(
       }
 
       val hostKt = launch {
-        HostKotlinTarget(name, fileSystem, layout, types).generate()
+        HostKotlinTarget(name, fileSystem, layout, types, sleep).generate()
       }
       val hostKtJar = async {
         brevityKt.join()
@@ -78,7 +79,7 @@ class BrevityExecutionTester(
       }
 
       val guestKt = launch {
-        GuestKotlinTarget(name, fileSystem, layout, types).generate()
+        GuestKotlinTarget(name, fileSystem, layout, types, sleep).generate()
       }
       val guestKtWasm = async {
         // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
@@ -96,7 +97,7 @@ class BrevityExecutionTester(
         generateGuestAppRustCargoToml()
       }
       val guestRs = launch {
-        GuestRustTarget(name, fileSystem, layout, types).generate()
+        GuestRustTarget(name, fileSystem, layout, types, sleep).generate()
       }
       val guestRsWasm = async {
         guestRs.join()
@@ -337,6 +338,7 @@ class BrevityExecutionTester(
           |  - dev.wasmo.brevity:brevity-wasi:0-testing
           |  - dev.wasmo.brevity:brevity:0-testing
           |  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2
+          |  - org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2
           |
           """.trimMargin(),
         )

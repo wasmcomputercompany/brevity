@@ -1,15 +1,7 @@
-@file:OptIn(InternalCoroutinesApi::class)
-
 package dev.wasmo.brevity
 
 import dev.wasmo.brevity.CallbackCode.entries
-import kotlin.coroutines.CoroutineContext
 import kotlin.jvm.JvmInline
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Delay
-import kotlinx.coroutines.InternalCoroutinesApi
-import kotlinx.coroutines.Runnable
 
 @BrevityInternalApi
 interface WaitableSet : Resource {
@@ -101,35 +93,5 @@ value class PackedAsyncResult(val value: UInt) {
   companion object {
     private val CallbackCodeValues = entries.toTypedArray()
     private val MaxWaitableSetIndex = 1 shl 28
-  }
-}
-
-/**
- * This coroutines dispatcher uses the Wasm component model for async features, instead of the
- * kotlinx-coroutines dispatchers which uses WASIp1 APIs.
- */
-@BrevityInternalApi
-class BrevityDispatcher : CoroutineDispatcher(), Delay {
-  private val queue = ArrayDeque<Pair<CoroutineContext, Runnable>>()
-
-  fun runUntilIdle() {
-    while (true) {
-      val (context, runnable) = queue.removeFirstOrNull() ?: break
-      runnable.run()
-    }
-  }
-
-  override fun dispatch(
-    context: CoroutineContext,
-    block: Runnable,
-  ) {
-    queue += context to block
-  }
-
-  override fun scheduleResumeAfterDelay(
-    timeMillis: Long,
-    continuation: CancellableContinuation<Unit>,
-  ) {
-    error("scheduleResumeAfterDelay not yet implemented")
   }
 }

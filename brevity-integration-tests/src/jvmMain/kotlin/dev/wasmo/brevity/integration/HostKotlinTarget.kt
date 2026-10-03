@@ -3,6 +3,7 @@ package dev.wasmo.brevity.integration
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okio.Buffer
 import okio.BufferedSink
 import okio.FileSystem
 
@@ -11,13 +12,14 @@ class HostKotlinTarget(
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val types: List<SampleType>,
+  private val sleep: Boolean,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("HostKotlinTarget")) {
-      val path =
-        layout.hostSrc / "dev/wasmo/brevity/integration/Host${name.replaceFirstChar { it.uppercase() }}Main.kt"
-      fileSystem.createDirectories(path.parent!!)
-      fileSystem.write(path) { writeKotlin() }
+      val packagePath = layout.hostSrc / "dev/wasmo/brevity/integration"
+      val mainPath = packagePath / "Host${name.replaceFirstChar { it.uppercase() }}Main.kt"
+      fileSystem.createDirectories(packagePath)
+      fileSystem.write(mainPath) { writeKotlin() }
     }
   }
 
@@ -30,6 +32,7 @@ class HostKotlinTarget(
       |
       |import assertk.assertThat
       |import assertk.assertions.isEqualTo
+      |import assertk.assertions.isGreaterThanOrEqualTo
       |import dev.wasmo.brevity.Async
       |import dev.wasmo.brevity.RealAsyncHost
       |import dev.wasmo.brevity.WasmInstance
@@ -37,14 +40,16 @@ class HostKotlinTarget(
       |import dev.wasmo.brevity.integration.isEqualTo
       |import dev.wasmo.brevity.wasi.p1.RealWasiP1Host
       |import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
-      |import kotlinx.coroutines.runBlocking
+      |import kotlin.time.Duration.Companion.milliseconds
+      |import kotlin.time.measureTime
+      |import kotlinx.coroutines.test.runTest
       |import okio.Path.Companion.toPath
       |import wit.brevity.testing.BrevityTest
       |import wit.brevity.testing.World
       |import wit.wasi.cli.v0_2_0.World
       |import wit.wasi.v0_1.World
       |
-      |fun main(vararg args: String) = runBlocking {
+      |fun main(vararg args: String) = runTest {
       |  val world = BrevityTest.World { }
       |  WasmInstance(
       |    path = args[0].toPath(),
@@ -117,39 +122,41 @@ class HostKotlinTarget(
     padding: Int = 0,
     async: Boolean = false,
   ) {
-    val paddingSuffix = when {
-      padding > 0 -> "P$padding"
-      else -> ""
-    }
-    val asyncSuffix = when {
-      async -> "Async"
-      else -> ""
-    }
+    maybeWriteSleep(async) {
+      val paddingSuffix = when {
+        padding > 0 -> "P$padding"
+        else -> ""
+      }
+      val asyncSuffix = when {
+        async -> "Async"
+        else -> ""
+      }
 
-    writeUtf8(
-      """
+      writeUtf8(
+        """
       |  assertThat(
       |    world.guest.passAsParameter${type.idUpperCamel}$paddingSuffix$asyncSuffix(
       |
       """.trimMargin(),
-    )
-    for (i in 0 until padding) {
-      writeUtf8(
-        """
+      )
+      for (i in 0 until padding) {
+        writeUtf8(
+          """
         |      p$i = 0,
         |
         """.trimMargin(),
-      )
-    }
-    writeUtf8(
-      """
+        )
+      }
+      writeUtf8(
+        """
       |      v = ${value.kotlin},
       |    ),
       |    "${type.id}.$index.parameter.p$padding",
       |  ).isEqualTo($index)
       |
       """.trimMargin(),
-    )
+      )
+    }
   }
 
   private fun BufferedSink.callPassAsReturnValue(
@@ -158,13 +165,15 @@ class HostKotlinTarget(
     value: SampleValue,
     async: Boolean = false,
   ) {
-    val asyncSuffix = when {
-      async -> "Async"
-      else -> ""
-    }
-    if (type.compareAsString) {
-      writeUtf8(
-        """
+    maybeWriteSleep(async) {
+      val asyncSuffix = when {
+        async -> "Async"
+        else -> ""
+      }
+
+      if (type.compareAsString) {
+        writeUtf8(
+          """
         |  assertThat(
         |    world.guest.passAsReturnValue${type.idUpperCamel}$asyncSuffix($index).toString(),
         |    "${type.id}.$index.return",
@@ -172,10 +181,10 @@ class HostKotlinTarget(
         |
         |
         """.trimMargin(),
-      )
-    } else {
-      writeUtf8(
-        """
+        )
+      } else {
+        writeUtf8(
+          """
         |  assertThat(
         |    world.guest.passAsReturnValue${type.idUpperCamel}$asyncSuffix($index),
         |    "${type.id}.$index.return",
@@ -183,7 +192,34 @@ class HostKotlinTarget(
         |
         |
         """.trimMargin(),
-      )
+        )
+      }
     }
+  }
+
+  private fun BufferedSink.maybeWriteSleep(
+    async: Boolean,
+    block: BufferedSink.() -> Unit,
+  ) {
+    val blockContent = Buffer()
+      .apply {
+        block()
+      }
+
+    if (!async || !sleep) {
+      writeAll(blockContent)
+      return
+    }
+
+    writeUtf8(
+      """
+      |  assertThat(
+      |    measureTime {
+      |      ${blockContent.readUtf8().replace("\n", "\n  ")}
+      |    }
+      |  ).isGreaterThanOrEqualTo(100.milliseconds)
+      |
+      """.trimMargin(),
+    )
   }
 }
