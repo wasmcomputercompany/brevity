@@ -3,7 +3,6 @@ package dev.wasmo.brevity.integration
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okio.Buffer
 import okio.BufferedSink
 import okio.FileSystem
 
@@ -12,7 +11,6 @@ class HostKotlinTarget(
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val types: List<SampleType>,
-  private val sleep: Boolean,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("HostKotlinTarget")) {
@@ -64,160 +62,20 @@ class HostKotlinTarget(
       |
       """.trimMargin(),
     )
-    for (type in types) {
-      for ((index, value) in type.values.withIndex()) {
-        callPassAsParameter(
-          type = type,
-          value = value,
-          index = index,
-        )
-        callPassAsParameter(
-          type = type,
-          value = value,
-          index = index,
-          padding = 16,
-        )
-        callPassAsReturnValue(
-          type = type,
-          index = index,
-          value = value,
-        )
-        if (type.async) {
-          callPassAsParameter(
-            type = type,
-            index = index,
-            value = value,
-            async = true,
-          )
-          callPassAsParameter(
-            type = type,
-            index = index,
-            padding = 4,
-            value = value,
-            async = true,
-          )
-          callPassAsReturnValue(
-            type = type,
-            index = index,
-            value = value,
-            async = true,
-          )
+
+    for (testFunction in types.testFunctions) {
+      for (testCase in testFunction.testCases) {
+        with(testCase) {
+          kotlinCall("world.guest")
         }
       }
     }
+
     writeUtf8(
       """
       |}
       |
       |fun assertk.Assert<BooleanArray>.isEqualTo(expected: BooleanArray) = transform { it.toList() }.isEqualTo(expected.toList())
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.callPassAsParameter(
-    type: SampleType,
-    value: SampleValue,
-    index: Int,
-    padding: Int = 0,
-    async: Boolean = false,
-  ) {
-    maybeWriteSleep(async) {
-      val paddingSuffix = when {
-        padding > 0 -> "P$padding"
-        else -> ""
-      }
-      val asyncSuffix = when {
-        async -> "Async"
-        else -> ""
-      }
-
-      writeUtf8(
-        """
-      |  assertThat(
-      |    world.guest.passAsParameter${type.idUpperCamel}$paddingSuffix$asyncSuffix(
-      |
-      """.trimMargin(),
-      )
-      for (i in 0 until padding) {
-        writeUtf8(
-          """
-        |      p$i = 0,
-        |
-        """.trimMargin(),
-        )
-      }
-      writeUtf8(
-        """
-      |      v = ${value.kotlin},
-      |    ),
-      |    "${type.id}.$index.parameter.p$padding",
-      |  ).isEqualTo($index)
-      |
-      """.trimMargin(),
-      )
-    }
-  }
-
-  private fun BufferedSink.callPassAsReturnValue(
-    type: SampleType,
-    index: Int,
-    value: SampleValue,
-    async: Boolean = false,
-  ) {
-    maybeWriteSleep(async) {
-      val asyncSuffix = when {
-        async -> "Async"
-        else -> ""
-      }
-
-      if (type.compareAsString) {
-        writeUtf8(
-          """
-        |  assertThat(
-        |    world.guest.passAsReturnValue${type.idUpperCamel}$asyncSuffix($index).toString(),
-        |    "${type.id}.$index.return",
-        |  ).isEqualTo((${value.kotlin}).toString())
-        |
-        |
-        """.trimMargin(),
-        )
-      } else {
-        writeUtf8(
-          """
-        |  assertThat(
-        |    world.guest.passAsReturnValue${type.idUpperCamel}$asyncSuffix($index),
-        |    "${type.id}.$index.return",
-        |  ).isEqualTo(${value.kotlin})
-        |
-        |
-        """.trimMargin(),
-        )
-      }
-    }
-  }
-
-  private fun BufferedSink.maybeWriteSleep(
-    async: Boolean,
-    block: BufferedSink.() -> Unit,
-  ) {
-    val blockContent = Buffer()
-      .apply {
-        block()
-      }
-
-    if (!async || !sleep) {
-      writeAll(blockContent)
-      return
-    }
-
-    writeUtf8(
-      """
-      |  assertThat(
-      |    measureTime {
-      |      ${blockContent.readUtf8().replace("\n", "\n  ")}
-      |    }
-      |  ).isGreaterThanOrEqualTo(100.milliseconds)
       |
       """.trimMargin(),
     )

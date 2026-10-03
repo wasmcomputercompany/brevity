@@ -11,7 +11,6 @@ class GuestKotlinTarget(
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val types: List<SampleType>,
-  private val sleep: Boolean,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("GuestKotlinTarget")) {
@@ -51,201 +50,14 @@ class GuestKotlinTarget(
       |
       """.trimMargin(),
     )
-    for (type in types) {
-      passAsParameter(
-        type = type,
-      )
-      passAsParameter(
-        type = type,
-        padding = 16,
-      )
-      passAsReturnValue(
-        type = type,
-      )
-      if (type.async) {
-        passAsParameter(
-          type = type,
-          async = true,
-        )
-        passAsParameter(
-          type = type,
-          padding = 4,
-          async = true,
-        )
-        passAsReturnValue(
-          type = type,
-          async = true,
-        )
-      }
-      if (type.futures) {
-        asyncFutureReturnValue(type)
-        futureReturnValue(type)
+    for (testFunction in types.testFunctions) {
+      with(testFunction) {
+        kotlinDeclare()
       }
     }
     writeUtf8(
       """
       |}
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.passAsParameter(
-    type: SampleType,
-    padding: Int = 0,
-    async: Boolean = false,
-  ) {
-    val paddingSuffix = when {
-      padding > 0 -> "P$padding"
-      else -> ""
-    }
-    val asyncSuffix = when {
-      async -> "Async"
-      else -> ""
-    }
-
-    val modifiers = when {
-      async -> " suspend"
-      else -> ""
-    }
-
-    writeUtf8(
-      """
-      |  override$modifiers fun passAsParameter${type.idUpperCamel}$paddingSuffix$asyncSuffix(
-      |
-      """.trimMargin(),
-    )
-    for (i in 0 until padding) {
-      writeUtf8(
-        """
-        |    p$i: Int,
-        |
-        """.trimMargin(),
-      )
-    }
-    writeUtf8(
-      """
-      |    v: ${type.kotlinType},
-      |  ): Int {
-      |
-      """.trimMargin(),
-    )
-    maybeWriteSleep(async)
-    if (type.compareAsString) {
-      writeUtf8(
-        """
-        |    val v_str = v.toString()
-        |
-        """.trimMargin(),
-      )
-      for ((index, value) in type.values.withIndex()) {
-        writeUtf8(
-          """
-          |    if (v_str == (${value.kotlin}).toString()) { return $index }
-          |
-          """.trimMargin(),
-        )
-      }
-    } else {
-      for ((index, value) in type.values.withIndex()) {
-        if (type.kotlinEqualityMethod == null) {
-          writeUtf8(
-            """
-            |    if (v == ${value.kotlin}) { return $index }
-            |
-            """.trimMargin(),
-          )
-        } else {
-          writeUtf8(
-            """
-            |    if (v.${type.kotlinEqualityMethod}(${value.kotlin})) { return $index }
-            |
-            """.trimMargin(),
-          )
-        }
-      }
-    }
-    writeUtf8(
-      """
-      |    return -1
-      |  }
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.passAsReturnValue(
-    type: SampleType,
-    async: Boolean = false,
-  ) {
-    val asyncSuffix = when {
-      async -> "Async"
-      else -> ""
-    }
-
-    val modifiers = when {
-      async -> " suspend"
-      else -> ""
-    }
-
-    writeUtf8(
-      """
-      |  override$modifiers fun passAsReturnValue${type.idUpperCamel}$asyncSuffix(index: Int): ${type.kotlinType} {
-      |
-      """.trimMargin(),
-    )
-    maybeWriteSleep(async)
-    writeUtf8(
-      """
-      |    return when (index) {
-      |
-      """.trimMargin(),
-    )
-    for ((index, value) in type.values.withIndex()) {
-      writeUtf8(
-        """
-        |      $index -> ${value.kotlin}
-        |
-        """.trimMargin(),
-      )
-    }
-    writeUtf8(
-      $$"""
-      |      else -> error("unexpected index: $index")
-      |    }
-      |  }
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.asyncFutureReturnValue(type: SampleType) {
-    writeUtf8(
-      """
-      |  override suspend fun asyncFutureReturnValue${type.idUpperCamel}(index: Int): Deferred<${type.kotlinType}> {
-      |    return CompletableDeferred(passAsReturnValue${type.idUpperCamel}(index))
-      |  }
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.futureReturnValue(type: SampleType) {
-    writeUtf8(
-      """
-      |  override fun futureReturnValue${type.idUpperCamel}(index: Int): Deferred<${type.kotlinType}> {
-      |    return CompletableDeferred(passAsReturnValue${type.idUpperCamel}(index))
-      |  }
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.maybeWriteSleep(async: Boolean) {
-    if (!async || !sleep) return
-    writeUtf8(
-      """
-      |    delay(100.milliseconds)
       |
       """.trimMargin(),
     )
