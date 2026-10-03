@@ -27,9 +27,9 @@ data class TestCase(
   private fun BufferedSink.callAssertEquals(
     actual: String,
   ) {
-    val valueSuffix = when {
-      passingMechanism == Return && type.compareAsString -> ".toString()"
-      else -> ""
+    val (valuePrefix, valueSuffix) = when {
+      passingMechanism == Return && type.compareAsString -> "(" to ").toString()"
+      else -> "" to ""
     }
 
     val expected = when {
@@ -40,9 +40,9 @@ data class TestCase(
     writeUtf8(
       """
       |  assertThat(
-      |    ${actual.replace("\n", "\n    ")}$valueSuffix,
+      |    $valuePrefix${actual.replace("\n", "\n    ")}$valueSuffix,
       |    "${this@TestCase}",
-      |  ).isEqualTo($expected$valueSuffix)
+      |  ).isEqualTo($valuePrefix$expected$valueSuffix)
       |
       """.trimMargin(),
     )

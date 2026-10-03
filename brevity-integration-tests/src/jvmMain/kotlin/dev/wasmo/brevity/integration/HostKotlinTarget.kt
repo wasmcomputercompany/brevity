@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.Orientation
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -47,20 +48,39 @@ class HostKotlinTarget(
       |import wit.wasi.cli.v0_2_0.World
       |import wit.wasi.v0_1.World
       |
-      |object RealHost : BrevityTest.Host {
-      |
       """.trimMargin(),
     )
-    for (testFunction in types.testFunctions) {
-      with(testFunction) {
-        kotlinDeclareHostFunctions()
+    if (types.testFunctions.any { it.orientation == Orientation.Import }) {
+      writeUtf8(
+        """
+        |val world = BrevityTest.World { RealHost }
+        |
+        |object RealHost : BrevityTest.Host {
+        |
+        """.trimMargin(),
+      )
+      for (testFunction in types.testFunctions) {
+        with(testFunction) {
+          kotlinDeclareHostFunctions()
+        }
       }
+      writeUtf8(
+        """
+        |}
+        |
+        """.trimMargin(),
+      )
+    } else {
+      writeUtf8(
+        """
+        |val world = BrevityTest.World { }
+        |
+        """.trimMargin(),
+      )
     }
+
     writeUtf8(
       """
-      |}
-      |
-      |val world = BrevityTest.World { RealHost }
       |
       |fun main(vararg args: String) = runTest {
       |  WasmInstance(

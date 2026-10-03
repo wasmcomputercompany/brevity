@@ -40,7 +40,6 @@ class GuestKotlinTarget(
       |import kotlinx.coroutines.delay
       |import wit.brevity.testing.BrevityTest
       |import wit.brevity.testing.guest
-      |import wit.brevity.testing.host
       |
       |@EagerInitialization
       |val actuallyInitialize = run {
