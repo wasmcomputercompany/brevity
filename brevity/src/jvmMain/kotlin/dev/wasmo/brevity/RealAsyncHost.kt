@@ -21,4 +21,8 @@ class RealAsyncHost : Async.Host {
   override fun taskCancel() {
     TODO("Not yet implemented")
   }
+
+  override fun subtaskCancel(subtask: Int): Int {
+    TODO("Not yet implemented")
+  }
 }

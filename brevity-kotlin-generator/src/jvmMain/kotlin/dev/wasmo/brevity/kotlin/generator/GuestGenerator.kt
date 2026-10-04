@@ -16,8 +16,8 @@ import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.GuestCallsHost
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Orientation.HostCallsGuest
+import dev.wasmo.brevity.Orientation.Import
+import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.kotlin.generator.BridgeFunction.Receiver
 
 private val guestOptIns = setOf(
@@ -137,7 +137,7 @@ class GuestGenerator(
         collector += guestFunctionFactory.wasmExport(
           bridgeFunctionFactory.create(
             receiver,
-            HostCallsGuest,
+            Export,
             function,
           ),
         )
@@ -145,7 +145,7 @@ class GuestGenerator(
           collector += guestFunctionFactory.wasmExport(
             bridgeFunctionFactory.asyncCallback(
               receiver,
-              HostCallsGuest,
+              Export,
               function,
             ),
           )
@@ -179,11 +179,11 @@ class GuestGenerator(
         if (!function.isSupported) continue // TODO
         handleBuilder.addFunction(
           guestFunctionFactory.callHost(
-            bridgeFunctionFactory.create(receiver, GuestCallsHost, function),
+            bridgeFunctionFactory.create(receiver, Import, function),
           ),
         )
         collector += guestFunctionFactory.wasmImport(
-          bridgeFunctionFactory.create(receiver, GuestCallsHost, function),
+          bridgeFunctionFactory.create(receiver, Import, function),
         )
       }
 
@@ -199,11 +199,11 @@ class GuestGenerator(
   private fun addExternalFunctions(value: IrWorld) {
     for ((function, receiver) in guestFunctions(value)) {
       collector += guestFunctionFactory.wasmExport(
-        bridgeFunctionFactory.create(receiver, HostCallsGuest, function),
+        bridgeFunctionFactory.create(receiver, Export, function),
       )
       if (supportAsync && function.async) {
         collector += guestFunctionFactory.wasmExport(
-          bridgeFunctionFactory.asyncCallback(receiver, HostCallsGuest, function),
+          bridgeFunctionFactory.asyncCallback(receiver, Export, function),
         )
         collector += guestFunctionFactory.wasmImport(
           bridgeFunctionFactory.taskReturn(receiver, function),
@@ -265,14 +265,14 @@ class GuestGenerator(
           addStatement(
             "%L",
             guestFunctionFactory.callWasmExportFunctionWithPlaceholders(
-              bridgeFunctionFactory.create(receiver, HostCallsGuest, function)
+              bridgeFunctionFactory.create(receiver, Export, function)
             ),
           )
           if (function.async) {
             addStatement(
               "%L",
               guestFunctionFactory.callWasmExportFunctionWithPlaceholders(
-                bridgeFunctionFactory.asyncCallback(receiver, HostCallsGuest, function),
+                bridgeFunctionFactory.asyncCallback(receiver, Export, function),
               )
             )
           }

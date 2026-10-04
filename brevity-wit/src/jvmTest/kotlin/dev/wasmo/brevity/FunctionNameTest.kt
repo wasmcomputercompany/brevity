@@ -9,6 +9,7 @@ class FunctionNameTest {
   @Test
   fun `function on world`() {
     val function = FunctionNameWorld(
+      orientation = Orientation.Export,
       name = "sum",
     )
     assertThat(function.moduleName).isNull()

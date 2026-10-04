@@ -1,7 +1,8 @@
 package dev.wasmo.brevity.integration
 
-import dev.wasmo.brevity.integration.PassingMechanism.PassAsParameter
-import dev.wasmo.brevity.integration.PassingMechanism.PassAsReturnValue
+import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.integration.PassingMechanism.Parameter
+import dev.wasmo.brevity.integration.PassingMechanism.Return
 import okio.Buffer
 import okio.BufferedSink
 
@@ -13,6 +14,8 @@ data class TestCase(
     get() = function.passingMechanism
   val callingMechanism: CallingMechanism
     get() = function.callingMechanism
+  val orientation: Orientation
+    get() = function.orientation
   val type: SampleType
     get() = function.type
 
@@ -22,76 +25,36 @@ data class TestCase(
   override fun toString() = "$function.$valueIndex"
 
   private fun BufferedSink.callAssertEquals(
-    actual: BufferedSink.() -> Unit,
+    actual: String,
   ) {
-    val valueSuffix = when {
-      passingMechanism == PassAsReturnValue && type.compareAsString -> ".toString()"
-      else -> ""
+    val (valuePrefix, valueSuffix) = when {
+      passingMechanism == Return && type.compareAsString -> "(" to ").toString()"
+      else -> "" to ""
+    }
+
+    val expected = when {
+      passingMechanism is Parameter || orientation == Orientation.Import -> valueIndex
+      else -> value.kotlin
     }
 
     writeUtf8(
       """
       |  assertThat(
-      |
-      """.trimMargin(),
-    )
-    actual()
-
-    val expected = when (passingMechanism) {
-      is PassAsParameter -> valueIndex
-      PassAsReturnValue -> value.kotlin
-    }
-    writeUtf8(
-      """
-      |$valueSuffix,
+      |    $valuePrefix${actual.replace("\n", "\n    ")}$valueSuffix,
       |    "${this@TestCase}",
-      |  ).isEqualTo($expected$valueSuffix)
+      |  ).isEqualTo($valuePrefix$expected$valueSuffix)
       |
       """.trimMargin(),
     )
   }
 
-  fun BufferedSink.kotlinCall(callTarget: String) {
+  fun BufferedSink.kotlinCallAndAssert(callTarget: String) {
     callMeasureTime {
-      callAssertEquals(
-        actual = {
-          writeUtf8(
-            """
-            |    $callTarget.${function.kotlinFunctionName}(
-            |
-            """.trimMargin(),
-          )
-
-          for (i in 0 until function.padding) {
-            writeUtf8(
-              """
-              |      p$i = 0,
-              |
-              """.trimMargin(),
-            )
-          }
-
-          when (passingMechanism) {
-            is PassAsParameter -> {
-              writeUtf8(
-                """
-                |      v = ${value.kotlin},
-                |    )
-                """.trimMargin(),
-              )
-            }
-
-            PassAsReturnValue -> {
-              writeUtf8(
-                """
-                |      index = ${valueIndex},
-                |    )
-                """.trimMargin(),
-              )
-            }
-          }
-        },
-      )
+      val call = when (function.orientation) {
+        Orientation.Import -> function.kotlinCallTrampoline(callTarget, valueIndex)
+        Orientation.Export -> function.kotlinCall(callTarget, "$valueIndex", value.kotlin)
+      }
+      callAssertEquals(call)
     }
   }
 

@@ -31,6 +31,10 @@ private object AsyncHost : Async.Host {
   override fun taskCancel() {
     taskCancel_export()
   }
+
+  override fun subtaskCancel(subtask: Int): Int {
+    return subtaskCancel_export(subtask)
+  }
 }
 
 @BrevityInternalApi
@@ -76,3 +80,6 @@ internal external fun contextSet1_export(type: Int, value: Int)
 
 @WasmImport(module = $$"[export]$root", name = "[task-cancel]")
 internal external fun taskCancel_export()
+
+@WasmImport(module = $$"$root", name = "[subtask-cancel]")
+internal external fun subtaskCancel_export(subtask: Int): Int

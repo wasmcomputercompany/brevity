@@ -70,10 +70,14 @@ sealed class FunctionName {
   }
 
   data class World(
+    val orientation: Orientation,
     val name: Identifier,
   ) : FunctionName() {
     override val moduleName: String?
-      get() = null
+      get() = when (orientation) {
+        Orientation.Export -> null
+        Orientation.Import -> $$"$root"
+      }
 
     override val abiName: String
       get() = name.name
