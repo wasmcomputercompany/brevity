@@ -1,6 +1,14 @@
 Change Log
 ==========
 
+## Version 0.5.0
+
+_2026-10-06_
+
+ * Fix: Allocate memory consistently when lifting and lowering parameters.
+ * New: Publish `.wit` files to a registry.
+
+
 ## Version 0.4.0
 
 _2026-09-16_
