@@ -352,6 +352,66 @@ class WitSyntaxReaderTest {
   }
 
   @Test
+  fun `readIdentifier keyword failures`() {
+    val baseLocation = location.at(1, 1)
+
+    fun assertKeywordCollision(keyword: String) = collectNoIssuesOrThrow {
+      val e = assertFailsWith<WitException> {
+        WitSyntaxReader(baseLocation, keyword).readIdentifier()
+      }
+
+      assertThat(e.issue).isEqualTo((
+        Issue("expected an identifier, but read keyword $keyword", baseLocation)),
+      )
+    }
+
+    // Generated directly from:
+    // https://github.com/WebAssembly/component-model/blob/d6a17ea9f828f44c4659d70c35822ab53d2a8a1d/design/mvp/WIT.md?plain=1#L1058
+    assertKeywordCollision("as")
+    assertKeywordCollision("async")
+    assertKeywordCollision("bool")
+    assertKeywordCollision("borrow")
+    assertKeywordCollision("char")
+    assertKeywordCollision("constructor")
+    assertKeywordCollision("enum")
+    assertKeywordCollision("export")
+    assertKeywordCollision("f32")
+    assertKeywordCollision("f64")
+    assertKeywordCollision("flags")
+    assertKeywordCollision("from")
+    assertKeywordCollision("func")
+    assertKeywordCollision("future")
+    assertKeywordCollision("import")
+    assertKeywordCollision("include")
+    assertKeywordCollision("interface")
+    assertKeywordCollision("list")
+    assertKeywordCollision("map")
+    assertKeywordCollision("option")
+    assertKeywordCollision("own")
+    assertKeywordCollision("package")
+    assertKeywordCollision("record")
+    assertKeywordCollision("resource")
+    assertKeywordCollision("result")
+    assertKeywordCollision("s16")
+    assertKeywordCollision("s32")
+    assertKeywordCollision("s64")
+    assertKeywordCollision("s8")
+    assertKeywordCollision("static")
+    assertKeywordCollision("stream")
+    assertKeywordCollision("string")
+    assertKeywordCollision("tuple")
+    assertKeywordCollision("type")
+    assertKeywordCollision("u16")
+    assertKeywordCollision("u32")
+    assertKeywordCollision("u64")
+    assertKeywordCollision("u8")
+    assertKeywordCollision("use")
+    assertKeywordCollision("variant")
+    assertKeywordCollision("with")
+    assertKeywordCollision("world")
+  }
+
+  @Test
   fun `readIdentifier crash`() {
     assertFailsWith<WitException> {
       " ".toIdentifier()
