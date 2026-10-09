@@ -5,15 +5,16 @@ package dev.wasmo.brevity.io
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Identifier.Companion.deprecated
+import dev.wasmo.brevity.Identifier.Companion.feature
+import dev.wasmo.brevity.Identifier.Companion.since
+import dev.wasmo.brevity.Identifier.Companion.unstable
+import dev.wasmo.brevity.Identifier.Companion.version
 import dev.wasmo.brevity.IssueCollector
+import dev.wasmo.brevity.Keyword
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.SemVer
 import dev.wasmo.brevity.WitCoreInternalApi
-import dev.wasmo.brevity.io.Keywords.deprecated
-import dev.wasmo.brevity.io.Keywords.feature
-import dev.wasmo.brevity.io.Keywords.since
-import dev.wasmo.brevity.io.Keywords.unstable
-import dev.wasmo.brevity.io.Keywords.version
 
 context(issueCollector: IssueCollector)
 fun String.toWitFile(location: Location): IoWitFile = WitFileReader(location, this).read()
@@ -40,8 +41,8 @@ internal class WitFileReader(
       val documentation = source.takeDocumentation()
       val location = source.location
 
-      when (val identifier = source.readIdentifier()) {
-        Keywords.`package` -> {
+      when (val identifier = source.readKeyword()) {
+        Keyword.`package` -> {
           val (value, kind) = readPackage(documentation, gate, location)
           when (kind) {
             PackageKind.Identifier -> {
@@ -57,15 +58,15 @@ internal class WitFileReader(
           }
         }
 
-        Keywords.`interface` -> {
+        Keyword.`interface` -> {
           items += readInterface(documentation, gate, location)
         }
 
-        Keywords.use -> {
+        Keyword.use -> {
           items += readTopLevelUse(documentation, gate, location)
         }
 
-        Keywords.world -> {
+        Keyword.world -> {
           items += readWorld(documentation, gate, location)
         }
 
@@ -114,10 +115,10 @@ internal class WitFileReader(
           val nestedDocumentation = source.takeDocumentation()
           val nestedLocation = source.location
 
-          declarations += when (val identifier = source.readIdentifier()) {
-            Keywords.`interface` -> readInterface(nestedDocumentation, nestedGate, nestedLocation)
-            Keywords.use -> readTopLevelUse(nestedDocumentation, nestedGate, nestedLocation)
-            Keywords.world -> readWorld(nestedDocumentation, nestedGate, nestedLocation)
+          declarations += when (val identifier = source.readKeyword()) {
+            Keyword.`interface` -> readInterface(nestedDocumentation, nestedGate, nestedLocation)
+            Keyword.use -> readTopLevelUse(nestedDocumentation, nestedGate, nestedLocation)
+            Keyword.world -> readWorld(nestedDocumentation, nestedGate, nestedLocation)
             else -> errorWit(nestedLocation, "unexpected identifier: $identifier")
           }
         }
@@ -208,15 +209,18 @@ internal class WitFileReader(
     val documentation = source.takeDocumentation()
     val location = source.location
 
-    return when (val identifier = source.readIdentifier()) {
-      Keywords.enum -> readEnum(documentation, gate, location)
-      Keywords.flags -> readFlags(documentation, gate, location)
-      Keywords.record -> readRecord(documentation, gate, location)
-      Keywords.resource -> readResource(documentation, gate, location)
-      Keywords.variant -> readVariant(documentation, gate, location)
-      Keywords.type -> readTypeAlias(documentation, gate, location)
-      Keywords.use -> readUse(documentation, gate, location)
-      else -> readFuncItem(documentation, gate, location, identifier)
+    val identifier = source.readIdentifierOrKeyword()
+
+    return when (identifier){
+      Keyword.enum -> readEnum(documentation, gate, location)
+      Keyword.flags -> readFlags(documentation, gate, location)
+      Keyword.record -> readRecord(documentation, gate, location)
+      Keyword.resource -> readResource(documentation, gate, location)
+      Keyword.variant -> readVariant(documentation, gate, location)
+      Keyword.type -> readTypeAlias(documentation, gate, location)
+      Keyword.use -> readUse(documentation, gate, location)
+      is Keyword -> errorWit(location, "unescaped keyword used as interface item: $identifier")
+      is Identifier -> readFuncItem(documentation, gate, location, identifier)
     }
   }
 
@@ -356,8 +360,10 @@ internal class WitFileReader(
         val functionDocumentation = source.takeDocumentation()
         val functionLocation = source.location
 
-        when (val identifier = source.readIdentifier()) {
-          Keywords.constructor -> {
+        val identifier = source.readIdentifierOrKeyword()
+
+        when (identifier) {
+          Keyword.constructor -> {
             val parameters = readParameterList()
             source.skipWhitespace()
             source.readLiteral(';')
@@ -366,12 +372,14 @@ internal class WitFileReader(
               gate = functionGate,
               location = functionLocation,
               constructor = true,
-              name = identifier,
+              name = Identifier(Keyword.constructor.name),
               parameters = parameters,
             )
           }
 
-          else -> {
+          is Keyword -> errorWit(location, "unescaped keyword used as resource item: $identifier")
+
+          is Identifier -> {
             declarations += readFuncItem(
               documentation = functionDocumentation,
               gate = functionGate,
@@ -622,11 +630,11 @@ internal class WitFileReader(
 
     while (true) {
       source.skipWhitespace()
-      when (val modifier = source.readIdentifier()) {
-        Keywords.async -> async = true
-        Keywords.static -> static = true
-        Keywords.func -> break
-        else -> errorWit(location, "unexpected identifier: $modifier")
+      when (val modifier = source.readKeyword()) {
+        Keyword.async -> async = true
+        Keyword.static -> static = true
+        Keyword.func -> break
+        else -> errorWit(location, "unexpected keyword: $modifier")
       }
     }
 
@@ -744,18 +752,18 @@ internal class WitFileReader(
       val itemGate = readGateOrNull()
       val itemDocumentation = source.takeDocumentation()
       val itemLocation = source.location
-      when (val identifier = source.readIdentifier()) {
-        Keywords.enum -> items += readEnum(itemDocumentation, itemGate, itemLocation)
-        Keywords.export -> exports += readWorldApi(itemDocumentation, itemGate, itemLocation)
-        Keywords.flags -> items += readFlags(itemDocumentation, itemGate, itemLocation)
-        Keywords.import -> imports += readWorldApi(itemDocumentation, itemGate, itemLocation)
-        Keywords.include -> items += readInclude(itemDocumentation, itemGate, itemLocation)
-        Keywords.record -> items += readRecord(itemDocumentation, itemGate, itemLocation)
-        Keywords.resource -> items += readResource(itemDocumentation, itemGate, itemLocation)
-        Keywords.type -> items += readTypeAlias(itemDocumentation, itemGate, itemLocation)
-        Keywords.use -> items += readUse(itemDocumentation, itemGate, itemLocation)
-        Keywords.variant -> items += readVariant(itemDocumentation, itemGate, itemLocation)
-        else -> errorWit(location, "unexpected identifier: $identifier")
+      when (val identifier = source.readKeyword()) {
+        Keyword.enum -> items += readEnum(itemDocumentation, itemGate, itemLocation)
+        Keyword.export -> exports += readWorldApi(itemDocumentation, itemGate, itemLocation)
+        Keyword.flags -> items += readFlags(itemDocumentation, itemGate, itemLocation)
+        Keyword.import -> imports += readWorldApi(itemDocumentation, itemGate, itemLocation)
+        Keyword.include -> items += readInclude(itemDocumentation, itemGate, itemLocation)
+        Keyword.record -> items += readRecord(itemDocumentation, itemGate, itemLocation)
+        Keyword.resource -> items += readResource(itemDocumentation, itemGate, itemLocation)
+        Keyword.type -> items += readTypeAlias(itemDocumentation, itemGate, itemLocation)
+        Keyword.use -> items += readUse(itemDocumentation, itemGate, itemLocation)
+        Keyword.variant -> items += readVariant(itemDocumentation, itemGate, itemLocation)
+        else -> errorWit(location, "unexpected keyword: $identifier")
       }
     }
 
@@ -879,7 +887,9 @@ internal class WitFileReader(
           val itemGate = readGateOrNull()
           val itemDocumentation = source.takeDocumentation()
           val itemLocation = source.location
-          val type = IoTypeName.Declared(source.readIdentifier())
+          val type = IoTypeName.Declared(
+            source.readIdentifier()
+          )
 
           source.skipWhitespace()
           source.readLiteral("as")
@@ -941,7 +951,7 @@ internal class WitFileReader(
       source.readLiteral('(')
 
       source.skipWhitespace()
-      val fieldName = source.readIdentifier()
+      val fieldName = source.readIdentifier(unescaped = true)
 
       source.skipWhitespace()
       source.readLiteral('=')
@@ -979,48 +989,3 @@ internal class WitFileReader(
   }
 }
 
-internal object Keywords {
-  val `interface` = Identifier("interface")
-  val `package` = Identifier("package")
-  val async = Identifier("async")
-  val bool = Identifier("bool")
-  val borrow = Identifier("borrow")
-  val char = Identifier("char")
-  val constructor = Identifier("constructor")
-  val deprecated = Identifier("deprecated")
-  val enum = Identifier("enum")
-  val export = Identifier("export")
-  val f32 = Identifier("f32")
-  val f64 = Identifier("f64")
-  val feature = Identifier("feature")
-  val flags = Identifier("flags")
-  val func = Identifier("func")
-  val future = Identifier("future")
-  val import = Identifier("import")
-  val include = Identifier("include")
-  val list = Identifier("list")
-  val map = Identifier("map")
-  val option = Identifier("option")
-  val record = Identifier("record")
-  val resource = Identifier("resource")
-  val result = Identifier("result")
-  val s16 = Identifier("s16")
-  val s32 = Identifier("s32")
-  val s64 = Identifier("s64")
-  val s8 = Identifier("s8")
-  val since = Identifier("since")
-  val static = Identifier("static")
-  val stream = Identifier("stream")
-  val string = Identifier("string")
-  val tuple = Identifier("tuple")
-  val type = Identifier("type")
-  val u16 = Identifier("u16")
-  val u32 = Identifier("u32")
-  val u64 = Identifier("u64")
-  val u8 = Identifier("u8")
-  val unstable = Identifier("unstable")
-  val use = Identifier("use")
-  val variant = Identifier("variant")
-  val version = Identifier("version")
-  val world = Identifier("world")
-}
