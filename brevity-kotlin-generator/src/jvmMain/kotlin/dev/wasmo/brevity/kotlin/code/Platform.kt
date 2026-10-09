@@ -2,13 +2,15 @@ package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
-import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.encoders.integerType
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction
+import dev.wasmo.brevity.kotlin.expressions.AbiFunction
+import dev.wasmo.brevity.kotlin.expressions.FunctionParent
+import dev.wasmo.brevity.kotlin.expressions.KtExpression
+import dev.wasmo.brevity.kotlin.expressions.KtFunction
 
 /**
  * Abstracts over the differences in Wasm APIs like Kotlin/Wasm and Chicory.
@@ -43,6 +45,12 @@ interface Platform {
   /** Convert a Resource instance to an ID. */
   context(codeBuilder: CodeBuilder)
   fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared): CodeBlock
+
+  /** Returns an expression to get an instance of [parent]. */
+  fun getParent(parent: FunctionParent.World): KtExpression
+
+  /** Returns an expression to get an instance of [parent]. */
+  fun getParent(parent: FunctionParent.Interface): KtExpression
 
   /** Frees any memory no longer necessary after lifting parameters. */
   context(codeBuilder: CodeBuilder)
@@ -102,10 +110,5 @@ interface Platform {
     value: CodeBlock,
   )
 
-  context(codeBuilder: CodeBuilder)
-  fun invokeLowered(
-    name: FunctionName,
-    parameterValues: List<CodeBlock>,
-    result: BridgeFunction.Result? = null,
-  )
+  fun createLowered(abiFunction: AbiFunction): KtFunction
 }

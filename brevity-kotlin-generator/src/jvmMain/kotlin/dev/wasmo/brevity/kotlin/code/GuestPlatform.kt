@@ -2,14 +2,18 @@ package dev.wasmo.brevity.kotlin.code
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
-import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
-import dev.wasmo.brevity.kotlin.generator.BridgeFunction
+import dev.wasmo.brevity.kotlin.expressions.AbiFunction
+import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
+import dev.wasmo.brevity.kotlin.expressions.FunctionParent
+import dev.wasmo.brevity.kotlin.expressions.KtExpression
+import dev.wasmo.brevity.kotlin.expressions.KtFunction
+import dev.wasmo.brevity.kotlin.expressions.WasmImportFunction
 import dev.wasmo.brevity.kotlin.generator.Symbols
-import dev.wasmo.brevity.kotlin.generator.importFunctionName
+import dev.wasmo.brevity.kotlin.generator.handleName
 import dev.wasmo.brevity.kotlin.generator.plus
 
 class GuestPlatform(
@@ -49,13 +53,14 @@ class GuestPlatform(
     CodeBlock.of("%L.address.toInt()", address)
 
   context(codeBuilder: CodeBuilder)
-  override fun liftResource(id: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of(
+  override fun liftResource(id: CodeBlock, handleType: TypeName.Declared): CodeBlock {
+    return CodeBlock.of(
       "%L.fromId(%L, ::%T)",
       codeBuilder.bridge,
       id,
-      kotlinMapper.getHandleName(handleType),
+      handleType.handleName,
     )
+  }
 
   context(codeBuilder: CodeBuilder)
   override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =
@@ -65,6 +70,24 @@ class GuestPlatform(
       kotlinMapper.getAbiClassName(handleType),
       resource,
     )
+
+  override fun getParent(parent: FunctionParent.World): KtExpression {
+    return CodeBlockExpression(
+      type = parent.type,
+      nameHint = "guest",
+      code = CodeBlock.of("%N_", "guest"),
+      immediate = true,
+    )
+  }
+
+  override fun getParent(parent: FunctionParent.Interface): KtExpression {
+    return CodeBlockExpression(
+      type = parent.type,
+      nameHint = parent.instanceName,
+      code = CodeBlock.of("%N_.%N", "guest", parent.instanceName),
+      immediate = true,
+    )
+  }
 
   context(codeBuilder: CodeBuilder)
   override fun afterLiftParameters() {
@@ -160,24 +183,8 @@ class GuestPlatform(
     )
   }
 
-  context(codeBuilder: CodeBuilder)
-  override fun invokeLowered(
-    name: FunctionName,
-    parameterValues: List<CodeBlock>,
-    result: BridgeFunction.Result?,
-  ) {
-    if (result != null) {
-      codeBuilder.add("val %N = ", result.loweredName)
-    }
-    codeBuilder.add("%N(⇥", name.importFunctionName)
-    if (parameterValues.isNotEmpty()) {
-      codeBuilder.add("\n")
-    }
-    for (parameterValue in parameterValues) {
-      codeBuilder.add("%L,\n", parameterValue)
-    }
-    codeBuilder.add("⇤)\n")
-  }
+  override fun createLowered(abiFunction: AbiFunction): KtFunction =
+    WasmImportFunction(abiFunction)
 
   private class GuestMemoryAllocator(
     override val name: String,

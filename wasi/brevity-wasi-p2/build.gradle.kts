@@ -33,7 +33,6 @@ brevity {
   )
   worlds.addAll(
     "wasi:cli/imports",
-    "wasi:http/proxy",
   )
   customTypeMappings.put("wasi:clocks/wall-clock.datetime@0.2.0", "kotlin.time.Instant")
   customTypeMappings.put("wasi:clocks/monotonic-clock.duration@0.2.0", "kotlin.time.Duration")

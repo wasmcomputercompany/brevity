@@ -13,6 +13,12 @@ import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.kotlin.expressions.AbiFunction
+import dev.wasmo.brevity.kotlin.expressions.AbiInterface
+import dev.wasmo.brevity.kotlin.expressions.AbiResource
+import dev.wasmo.brevity.kotlin.expressions.AbiWorld
+import dev.wasmo.brevity.kotlin.expressions.ApiFunctionFactory
+import dev.wasmo.brevity.kotlin.expressions.PlatformFunctionFactory
 import okio.FileSystem
 import okio.Path
 
@@ -82,72 +88,169 @@ class WitBridgeGenerator private constructor(
           typeName to ktTypeName
         },
       )
-      val guestPlatform = GuestPlatform(kotlinMapper)
-      val hostPlatform = HostPlatform(kotlinMapper)
-
       validations.forEach { it.validate(declarationIndex) }
+      val apiFunctionFactory = ApiFunctionFactory()
 
-      val guestEncoderFactory = EncoderFactory(
+      val guestGenerator = guestGenerator(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        platform = guestPlatform,
-      )
-      val guestBridgeFunctionFactory = BridgeFunction.Factory(
-        kotlinMapper = kotlinMapper,
-        encoderFactory = guestEncoderFactory,
-        supportAsync = supportAsync,
-      )
-      val guestGenerator = GuestGenerator(
-        kotlinMapper = kotlinMapper,
-        guestFunctionFactory = GuestFunctionFactory(
-          guestPlatform = guestPlatform,
-        ),
-        declarationIndex = declarationIndex,
-        declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
-          encoderFactory = guestEncoderFactory,
-          platform = guestPlatform,
-        ),
-        bridgeFunctionFactory = guestBridgeFunctionFactory,
         roleTracker = roleTracker,
-        packages = irPackages,
-        supportAsync = supportAsync,
+        irPackages = irPackages,
+        apiFunctionFactory = apiFunctionFactory,
       )
-
-      val hostEncoderFactory = EncoderFactory(
+      val hostGenerator = hostGenerator(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        platform = hostPlatform,
-      )
-      val hostBridgeFunctionFactory = BridgeFunction.Factory(
-        kotlinMapper = kotlinMapper,
-        encoderFactory = hostEncoderFactory,
-        supportAsync = supportAsync,
-      )
-      val hostGenerator = HostGenerator(
-        hostFunctionFactory = HostFunctionFactory(
-          hostPlatform = hostPlatform,
-        ),
-        bridgeFunctionFactory = hostBridgeFunctionFactory,
-        declarationIndex = declarationIndex,
-        declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
-          encoderFactory = hostEncoderFactory,
-          platform = hostPlatform,
-        ),
         roleTracker = roleTracker,
-        packages = irPackages,
-        supportAsync = supportAsync,
+        irPackages = irPackages,
+        apiFunctionFactory = apiFunctionFactory,
       )
-      val apiGenerator = ApiGenerator(
+      val apiGenerator = apiGenerator(
         kotlinMapper = kotlinMapper,
-        bridgeFunctionFactory = guestBridgeFunctionFactory, // either will work.
-        packages = irPackages,
+        declarationIndex = declarationIndex,
+        roleTracker = roleTracker,
+        irPackages = irPackages,
+        apiFunctionFactory = apiFunctionFactory,
       )
-
       WitBridgeGenerator(
         guest = guestGenerator,
         host = hostGenerator,
         api = apiGenerator,
         roleTracker = roleTracker,
+      )
+    }
+
+    private fun hostGenerator(
+      kotlinMapper: KotlinMapper,
+      declarationIndex: DeclarationIndex,
+      roleTracker: RoleTracker,
+      irPackages: List<IrWitPackage>,
+      apiFunctionFactory: ApiFunctionFactory,
+    ): HostGenerator {
+      val platform = HostPlatform(kotlinMapper)
+      val encoderFactory = EncoderFactory(
+        kotlinMapper = kotlinMapper,
+        declarationIndex = declarationIndex,
+        platform = platform,
+      )
+      val abiFunctionFactory = AbiFunction.Factory(
+        kotlinMapper = kotlinMapper,
+        encoderFactory = encoderFactory,
+      )
+      val abiInterfaceFactory = AbiInterface.Factory(
+        declarationIndex = declarationIndex,
+        abiFunctionFactory = abiFunctionFactory,
+      )
+      val abiWorldFactory = AbiWorld.Factory(
+        abiFunctionFactory = abiFunctionFactory,
+        abiInterfaceFactory = abiInterfaceFactory,
+      )
+      val abiResourceFactory = AbiResource.Factory(
+        kotlinMapper = kotlinMapper,
+        abiFunctionFactory = abiFunctionFactory,
+        roleTracker = roleTracker,
+      )
+      val worlds = abiWorldFactory.createAll(irPackages)
+      val resources = abiResourceFactory.createAll(irPackages)
+      val platformFunctionFactory = PlatformFunctionFactory(
+        apiFunctionFactory = apiFunctionFactory,
+        platform = platform,
+      )
+      val declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
+        encoderFactory = encoderFactory,
+        platform = platform,
+      )
+      return HostGenerator(
+        platformFunctionFactory = platformFunctionFactory,
+        hostPlatform = platform,
+        declaredTypeEncodersGenerator = declaredTypeEncodersGenerator,
+        roleTracker = roleTracker,
+        packages = irPackages,
+        worlds = worlds,
+        resources = resources,
+      )
+    }
+
+    private fun guestGenerator(
+      kotlinMapper: KotlinMapper,
+      declarationIndex: DeclarationIndex,
+      roleTracker: RoleTracker,
+      irPackages: List<IrWitPackage>,
+      apiFunctionFactory: ApiFunctionFactory,
+    ): GuestGenerator {
+      val platform = GuestPlatform(kotlinMapper)
+      val encoderFactory = EncoderFactory(
+        kotlinMapper = kotlinMapper,
+        declarationIndex = declarationIndex,
+        platform = platform,
+      )
+      val abiFunctionFactory = AbiFunction.Factory(
+        kotlinMapper = kotlinMapper,
+        encoderFactory = encoderFactory,
+      )
+      val abiInterfaceFactory = AbiInterface.Factory(
+        declarationIndex = declarationIndex,
+        abiFunctionFactory = abiFunctionFactory,
+      )
+      val abiWorldFactory = AbiWorld.Factory(
+        abiFunctionFactory = abiFunctionFactory,
+        abiInterfaceFactory = abiInterfaceFactory,
+      )
+      val abiResourceFactory = AbiResource.Factory(
+        kotlinMapper = kotlinMapper,
+        abiFunctionFactory = abiFunctionFactory,
+        roleTracker = roleTracker,
+      )
+      val worlds = abiWorldFactory.createAll(irPackages)
+      val resources = abiResourceFactory.createAll(irPackages)
+      val platformFunctionFactory = PlatformFunctionFactory(
+        apiFunctionFactory = apiFunctionFactory,
+        platform = platform,
+      )
+      val declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
+        encoderFactory = encoderFactory,
+        platform = platform,
+      )
+      return GuestGenerator(
+        platform = platform,
+        platformFunctionFactory = platformFunctionFactory,
+        declaredTypeEncodersGenerator = declaredTypeEncodersGenerator,
+        roleTracker = roleTracker,
+        packages = irPackages,
+        worlds = worlds,
+        resources = resources,
+      )
+    }
+
+    private fun apiGenerator(
+      kotlinMapper: KotlinMapper,
+      declarationIndex: DeclarationIndex,
+      roleTracker: RoleTracker,
+      irPackages: List<IrWitPackage>,
+      apiFunctionFactory: ApiFunctionFactory,
+    ): ApiGenerator {
+      val platform = HostPlatform(kotlinMapper)
+      val encoderFactory = EncoderFactory(
+        kotlinMapper = kotlinMapper,
+        declarationIndex = declarationIndex,
+        platform = platform,
+      )
+      val abiFunctionFactory = AbiFunction.Factory(
+        kotlinMapper = kotlinMapper,
+        encoderFactory = encoderFactory,
+      )
+      val abiResourceFactory = AbiResource.Factory(
+        kotlinMapper = kotlinMapper,
+        abiFunctionFactory = abiFunctionFactory,
+        roleTracker = roleTracker,
+      )
+      val resources = abiResourceFactory.createAll(irPackages)
+      return ApiGenerator(
+        kotlinMapper = kotlinMapper,
+        packages = irPackages,
+        abiFunctionFactory = abiFunctionFactory,
+        apiFunctionFactory = apiFunctionFactory,
+        resources = resources,
       )
     }
   }

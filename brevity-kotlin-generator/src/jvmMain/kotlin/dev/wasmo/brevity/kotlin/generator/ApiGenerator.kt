@@ -22,11 +22,17 @@ import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
+import dev.wasmo.brevity.kotlin.expressions.AbiFunction
+import dev.wasmo.brevity.kotlin.expressions.AbiResource
+import dev.wasmo.brevity.kotlin.expressions.ApiFunctionFactory
+import dev.wasmo.brevity.kotlin.expressions.FunctionParent
 
 class ApiGenerator(
   private val kotlinMapper: KotlinMapper,
-  private val bridgeFunctionFactory: BridgeFunction.Factory,
+  private val abiFunctionFactory: AbiFunction.Factory,
+  private val apiFunctionFactory: ApiFunctionFactory,
   private val packages: List<IrWitPackage>,
+  private val resources: List<AbiResource>,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
@@ -40,6 +46,18 @@ class ApiGenerator(
         fileName = serviceName.simpleName,
       ) {
         generateApi(service)
+      }
+    }
+    for (resource in resources) {
+      if (resource.orientation != Orientation.Export) continue // Either one, but only once.
+      val resourceName = resource.apiClassName
+      result.collect(
+        sourceSet = QualifiedSpec.SourceSet.CommonMain,
+        locations = setOf(resource.location),
+        packageName = resourceName.packageName,
+        fileName = resourceName.simpleName,
+      ) {
+        generateResource(resource)
       }
     }
 
@@ -90,19 +108,19 @@ class ApiGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateResource(value: IrResource) {
+  private fun generateResource(value: AbiResource) {
     val className = kotlinMapper.getAbiClassName(value.type)
     collector.addType(
       className = className,
       type = TypeSpec.interfaceBuilder(className)
-        .setDeclaration(value)
+        .setDeclaration(value.irResource)
         .addSuperinterface(Symbols.Brevity.Resource)
         .apply {
           for (function in value.functions) {
             if (!function.isSupported) continue
             // Don't override close(), it's inherited from the 'Resource' supertype.
-            if (function.functionName is FunctionName.ResourceDrop) continue
-            addFunction(apiFunctionFactory(function).api())
+            if (function.name is FunctionName.ResourceDrop) continue
+            addFunction(apiFunctionFactory.create(function))
           }
         }
         .build(),
@@ -255,7 +273,7 @@ class ApiGenerator(
         is IrEnum -> generateEnum(type)
         is IrFlags -> generateFlags(type)
         is IrRecord -> generateRecord(type)
-        is IrResource -> generateResource(type)
+        is IrResource -> {} // Handled by generateResource().
         is IrTypeAlias -> generateTypeAlias(type)
         is IrVariant -> generateVariant(type)
       }
@@ -263,20 +281,32 @@ class ApiGenerator(
 
     when (value) {
       is IrInterface -> {
+        val parent = FunctionParent.Interface(
+          orientation = Orientation.Export,
+          serviceName = value.serviceName,
+          instanceName = "null", // Declare only.
+        )
         for (function in value.functions) {
-          builder.addFunction(apiFunctionFactory(function).api())
+          val abiFunction = abiFunctionFactory.create(parent, function)
+          builder.addFunction(apiFunctionFactory.create(abiFunction))
         }
       }
 
       is IrWorld -> {
-        val guestApis = value.guestApis
-        if (guestApis != null) {
-          generateExternalApis(guestApis)
-        }
-        val hostApis = value.hostApis
-        if (hostApis != null) {
-          generateExternalApis(hostApis)
-        }
+        generateExternalApis(
+          parent = FunctionParent.World(
+            orientation = Orientation.Export,
+            serviceName = value.serviceName,
+          ),
+          value = value.guestApis,
+        )
+        generateExternalApis(
+          parent = FunctionParent.World(
+            orientation = Orientation.Import,
+            serviceName = value.serviceName,
+          ),
+          value = value.hostApis,
+        )
       }
     }
 
@@ -284,7 +314,10 @@ class ApiGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateExternalApis(value: ExternalApis) {
+  private fun generateExternalApis(
+    parent: FunctionParent,
+    value: ExternalApis,
+  ) {
     collector.addType(
       className = value.type,
       type = TypeSpec.interfaceBuilder(value.type)
@@ -292,19 +325,14 @@ class ApiGenerator(
           for (item in value.items) {
             when (item) {
               is IrExternalApi -> addProperty(item.instanceName, item.serviceName.kotlinApi)
-              is IrFunction -> addFunction(apiFunctionFactory(item).api())
+              is IrFunction -> {
+                val abiFunction = abiFunctionFactory.create(parent, item)
+                addFunction(apiFunctionFactory.create(abiFunction))
+              }
             }
           }
         }
         .build(),
     )
   }
-
-  private fun apiFunctionFactory(item: IrFunction) = ApiFunctionFactory(
-    function = bridgeFunctionFactory.create(
-      receiver = BridgeFunction.Receiver.OutboundInstance,
-      orientation = Orientation.Import,
-      value = item,
-    ),
-  )
 }
