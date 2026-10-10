@@ -11,41 +11,50 @@ import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.ir.IrDeclaration
 import dev.wasmo.brevity.ir.IrEnum
-import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrFlags
-import dev.wasmo.brevity.ir.IrFunction
-import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrRecord
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrVariant
-import dev.wasmo.brevity.ir.IrWitPackage
-import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
-import dev.wasmo.brevity.kotlin.expressions.AbiFunction
+import dev.wasmo.brevity.kotlin.expressions.AbiInterface
 import dev.wasmo.brevity.kotlin.expressions.AbiResource
+import dev.wasmo.brevity.kotlin.expressions.AbiService
+import dev.wasmo.brevity.kotlin.expressions.AbiWorld
 import dev.wasmo.brevity.kotlin.expressions.ApiFunctionFactory
-import dev.wasmo.brevity.kotlin.expressions.FunctionParent
 
 class ApiGenerator(
   private val kotlinMapper: KotlinMapper,
-  private val abiFunctionFactory: AbiFunction.Factory,
   private val apiFunctionFactory: ApiFunctionFactory,
-  private val packages: List<IrWitPackage>,
+  private val worlds: List<AbiWorld>,
+  private val interfaces: List<AbiInterface>,
   private val resources: List<AbiResource>,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
 
-    for (service in packages.flatMap { it.services }) {
-      val serviceName = service.serviceName.kotlinApi
+    for (world in worlds) {
+      val apiClassName = world.apiClassName
       result.collect(
         sourceSet = QualifiedSpec.SourceSet.CommonMain,
-        locations = setOf(service.location),
-        packageName = serviceName.packageName,
-        fileName = serviceName.simpleName,
+        locations = setOf(world.location),
+        packageName = apiClassName.packageName,
+        fileName = apiClassName.simpleName,
       ) {
-        generateApi(service)
+        generateServiceInterface(world)
+        generateWorldInterface(world, Orientation.Export)
+        generateWorldInterface(world, Orientation.Import)
+      }
+    }
+    for (abiInterface in interfaces) {
+      val apiClassName = abiInterface.apiClassName
+      result.collect(
+        sourceSet = QualifiedSpec.SourceSet.CommonMain,
+        locations = setOf(abiInterface.location),
+        packageName = apiClassName.packageName,
+        fileName = apiClassName.simpleName,
+      ) {
+        generateServiceInterface(abiInterface)
       }
     }
     for (resource in resources) {
@@ -66,27 +75,18 @@ class ApiGenerator(
     return result
   }
 
-  private fun <T : Documentable.Builder<*>> T.setDeclaration(
-    declaration: IrDeclaration? = null,
-  ): T = apply {
-    val documentation = declaration?.documentation
-    if (documentation != null) {
-      addKdoc(documentation.content.trimIndent())
-    }
-  }
-
   context(collector: QualifiedSpecCollector)
-  private fun generateRecord(value: IrRecord) {
-    val className = kotlinMapper.getAbiClassName(value.type)
+  private fun generateRecord(irRecord: IrRecord) {
+    val className = kotlinMapper.getAbiClassName(irRecord.type)
     collector.addType(
       className = className,
       type = TypeSpec.classBuilder(className)
         .addModifiers(KModifier.DATA)
-        .setDeclaration(value)
+        .setDeclaration(irRecord)
         .apply {
           val constructorBuilder = FunSpec.constructorBuilder()
 
-          for (field in value.fields) {
+          for (field in irRecord.fields) {
             val name = field.kotlinName
             val fieldType = kotlinMapper.get(field.type)
             val parameter = ParameterSpec.builder(name, fieldType)
@@ -108,15 +108,15 @@ class ApiGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateResource(value: AbiResource) {
-    val className = kotlinMapper.getAbiClassName(value.type)
+  private fun generateResource(abiResource: AbiResource) {
+    val className = kotlinMapper.getAbiClassName(abiResource.type)
     collector.addType(
       className = className,
       type = TypeSpec.interfaceBuilder(className)
-        .setDeclaration(value.irResource)
+        .setDeclaration(abiResource.irResource)
         .addSuperinterface(Symbols.Brevity.Resource)
         .apply {
-          for (function in value.functions) {
+          for (function in abiResource.functions) {
             if (!function.isSupported) continue
             // Don't override close(), it's inherited from the 'Resource' supertype.
             if (function.name is FunctionName.ResourceDrop) continue
@@ -128,15 +128,15 @@ class ApiGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateVariant(value: IrVariant) {
-    val className = kotlinMapper.getAbiClassName(value.type)
+  private fun generateVariant(irVariant: IrVariant) {
+    val className = kotlinMapper.getAbiClassName(irVariant.type)
     collector.addType(
       className,
       TypeSpec.interfaceBuilder(className)
         .addModifiers(KModifier.SEALED)
-        .setDeclaration(value)
+        .setDeclaration(irVariant)
         .apply {
-          for (case in value.cases) {
+          for (case in irVariant.cases) {
             val type = case.type
             if (type != null) {
               val caseType = kotlinMapper.get(type)
@@ -174,14 +174,14 @@ class ApiGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateEnum(value: IrEnum) {
-    val className = kotlinMapper.getAbiClassName(value.type)
+  private fun generateEnum(irEnum: IrEnum) {
+    val className = kotlinMapper.getAbiClassName(irEnum.type)
     collector.addType(
       className = className,
       type = TypeSpec.enumBuilder(className)
-        .setDeclaration(value)
+        .setDeclaration(irEnum)
         .apply {
-          for (case in value.cases) {
+          for (case in irEnum.cases) {
             addEnumConstant(
               case.kotlinName,
               TypeSpec.anonymousClassBuilder()
@@ -195,16 +195,16 @@ class ApiGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateTypeAlias(value: IrTypeAlias) {
-    val className = kotlinMapper.getAbiClassName(value.type)
+  private fun generateTypeAlias(irTypeAlias: IrTypeAlias) {
+    val className = kotlinMapper.getAbiClassName(irTypeAlias.type)
     collector.addType(
       className = className,
       type = TypeSpec.classBuilder(className)
         .addModifiers(KModifier.VALUE)
         .addAnnotation(JvmInline::class)
-        .setDeclaration(value)
+        .setDeclaration(irTypeAlias)
         .apply {
-          val targetType = kotlinMapper.get(value.target)
+          val targetType = kotlinMapper.get(irTypeAlias.target)
           val parameter = ParameterSpec.builder("value", targetType)
             .build()
 
@@ -225,17 +225,17 @@ class ApiGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateFlags(value: IrFlags) {
-    val className = kotlinMapper.getAbiClassName(value.type)
+  private fun generateFlags(irFlags: IrFlags) {
+    val className = kotlinMapper.getAbiClassName(irFlags.type)
     collector.addType(
       className = className,
       type = TypeSpec.classBuilder(className)
         .addModifiers(KModifier.DATA)
-        .setDeclaration(value)
+        .setDeclaration(irFlags)
         .apply {
           val constructorBuilder = FunSpec.constructorBuilder()
 
-          for (field in value.flags) {
+          for (field in irFlags.flags) {
             val parameter = ParameterSpec.builder(field.kotlinName, BOOLEAN)
               .build()
             constructorBuilder.addParameter(parameter)
@@ -254,21 +254,18 @@ class ApiGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateApi(value: IrWitPackage.Service) {
-    if (!value.hasInstanceMembers && value.types.isEmpty()) return
-
-    val typeName = value.serviceName.kotlinApi
-
-    val builder = when {
-      !value.hasInstanceMembers || value is IrWorld -> TypeSpec.objectBuilder(typeName)
+  private fun generateServiceInterface(abiService: AbiService) {
+    val typeName = abiService.apiClassName
+    val typeSpecBuilder = when {
+      !abiService.hasInstanceMembers || abiService is AbiWorld -> TypeSpec.objectBuilder(typeName)
       else -> TypeSpec.interfaceBuilder(typeName)
     }
 
-    value.documentation?.let {
-      builder.addKdoc(it.content.trimIndent())
+    abiService.documentation?.let {
+      typeSpecBuilder.addKdoc(it.content.trimIndent())
     }
 
-    for (type in value.types) {
+    for (type in abiService.types) {
       when (type) {
         is IrEnum -> generateEnum(type)
         is IrFlags -> generateFlags(type)
@@ -279,60 +276,41 @@ class ApiGenerator(
       }
     }
 
-    when (value) {
-      is IrInterface -> {
-        val parent = FunctionParent.Interface(
-          orientation = Orientation.Export,
-          serviceName = value.serviceName,
-          instanceName = "null", // Declare only.
-        )
-        for (function in value.functions) {
-          val abiFunction = abiFunctionFactory.create(parent, function)
-          builder.addFunction(apiFunctionFactory.create(abiFunction))
-        }
-      }
-
-      is IrWorld -> {
-        generateExternalApis(
-          parent = FunctionParent.World(
-            orientation = Orientation.Export,
-            serviceName = value.serviceName,
-          ),
-          value = value.guestApis,
-        )
-        generateExternalApis(
-          parent = FunctionParent.World(
-            orientation = Orientation.Import,
-            serviceName = value.serviceName,
-          ),
-          value = value.hostApis,
-        )
+    if (abiService is AbiInterface) {
+      for (function in abiService.functions) {
+        typeSpecBuilder.addFunction(apiFunctionFactory.create(function))
       }
     }
 
-    collector.addType(typeName, builder.build())
+    collector.addType(typeName, typeSpecBuilder.build())
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateExternalApis(
-    parent: FunctionParent,
-    value: ExternalApis,
-  ) {
+  private fun generateWorldInterface(abiWorld: AbiWorld, orientation: Orientation) {
+    val type = abiWorld.interfaceName(orientation)
     collector.addType(
-      className = value.type,
-      type = TypeSpec.interfaceBuilder(value.type)
+      className = type,
+      type = TypeSpec.interfaceBuilder(type)
         .apply {
-          for (item in value.items) {
-            when (item) {
-              is IrExternalApi -> addProperty(item.instanceName, item.serviceName.kotlinApi)
-              is IrFunction -> {
-                val abiFunction = abiFunctionFactory.create(parent, item)
-                addFunction(apiFunctionFactory.create(abiFunction))
-              }
-            }
+          for (abiInterface in abiWorld.interfaces) {
+            if (abiInterface.orientation != orientation) continue
+            addProperty(abiInterface.instanceName, abiInterface.apiClassName)
+          }
+          for (abiFunction in abiWorld.functions) {
+            if (abiFunction.orientation != orientation) continue
+            addFunction(apiFunctionFactory.create(abiFunction))
           }
         }
         .build(),
     )
+  }
+
+  private fun <T : Documentable.Builder<*>> T.setDeclaration(
+    declaration: IrDeclaration? = null,
+  ): T = apply {
+    val documentation = declaration?.documentation
+    if (documentation != null) {
+      addKdoc(documentation.content.trimIndent())
+    }
   }
 }

@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.expressions
 
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
@@ -13,6 +14,7 @@ import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrResource
+import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
@@ -21,6 +23,7 @@ import dev.wasmo.brevity.kotlin.generator.handleName
 import dev.wasmo.brevity.kotlin.generator.hostApis
 import dev.wasmo.brevity.kotlin.generator.instanceName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
+import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 
 data class AbiWorld(
   val irWorld: IrWorld,
@@ -33,6 +36,12 @@ data class AbiWorld(
     get() = irWorld.location
   override val guestServiceClassName: ClassName
     get() = apiClassName.peerClass("Guest${apiClassName.simpleName}")
+  override val hasInstanceMembers: Boolean
+    get() = interfaces.isNotEmpty() || functions.isNotEmpty()
+  override val types: List<IrTypeDeclaration>
+    get() = irWorld.types
+  override val documentation: Documentation?
+    get() = irWorld.documentation
 
   override fun interfaceName(orientation: Orientation): ClassName =
     when (orientation) {
@@ -106,6 +115,12 @@ data class AbiInterface(
     get() = irInterface.location
   override val guestServiceClassName: ClassName
     get() = ClassName(worldServiceName.kotlinApi.packageName, "Guest${apiClassName.simpleName}")
+  override val hasInstanceMembers: Boolean
+    get() = functions.isNotEmpty()
+  override val types: List<IrTypeDeclaration>
+    get() = irInterface.types
+  override val documentation: Documentation?
+    get() = irInterface.documentation
 
   override fun interfaceName(orientation: Orientation) = apiClassName
 
@@ -132,6 +147,23 @@ data class AbiInterface(
         functions = abiFunctionFactory.createAll(parent, irInterface.functions),
       )
     }
+
+    fun createForCommonInterfaces(
+      irInterface: IrInterface,
+    ): AbiInterface {
+      val parent = FunctionParent.Interface(
+        orientation = Import,
+        serviceName = irInterface.serviceName,
+        instanceName = irInterface.serviceName.name.lowerCamelCase,
+      )
+      return AbiInterface(
+        irInterface = irInterface,
+        orientation = parent.orientation,
+        worldServiceName = irInterface.serviceName,
+        instanceName = parent.instanceName,
+        functions = abiFunctionFactory.createAll(parent, irInterface.functions),
+      )
+    }
   }
 }
 
@@ -147,6 +179,12 @@ data class AbiResource(
     get() = irResource.location
   override val guestServiceClassName: ClassName
     get() = type.handleName
+  override val hasInstanceMembers: Boolean
+    get() = functions.isNotEmpty()
+  override val types: List<IrTypeDeclaration>
+    get() = listOf()
+  override val documentation: Documentation?
+    get() = irResource.documentation
 
   override fun interfaceName(orientation: Orientation) = apiClassName
 
@@ -199,6 +237,9 @@ sealed interface AbiService {
   val apiClassName: ClassName
   val location: Location
   val guestServiceClassName: ClassName
+  val hasInstanceMembers: Boolean
+  val types: List<IrTypeDeclaration>
+  val documentation: Documentation?
 
   fun memberFunctions(orientation: Orientation) = functions
     .filter { it.orientation == orientation }

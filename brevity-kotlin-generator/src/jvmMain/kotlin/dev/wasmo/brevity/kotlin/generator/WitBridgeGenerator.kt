@@ -7,6 +7,7 @@ import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.io.validation.buildSymbolTable
+import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.kotlin.KotlinMapper
@@ -244,12 +245,24 @@ class WitBridgeGenerator private constructor(
         abiFunctionFactory = abiFunctionFactory,
         roleTracker = roleTracker,
       )
+      val abiInterfaceFactory = AbiInterface.Factory(
+        declarationIndex = declarationIndex,
+        abiFunctionFactory = abiFunctionFactory,
+      )
+      val abiWorldFactory = AbiWorld.Factory(
+        abiFunctionFactory = abiFunctionFactory,
+        abiInterfaceFactory = abiInterfaceFactory,
+      )
+      val worlds = abiWorldFactory.createAll(irPackages)
+      val interfaces = irPackages.flatMap { it.services }
+        .filterIsInstance<IrInterface>()
+        .map { abiInterfaceFactory.createForCommonInterfaces(it) }
       val resources = abiResourceFactory.createAll(irPackages)
       return ApiGenerator(
         kotlinMapper = kotlinMapper,
-        packages = irPackages,
-        abiFunctionFactory = abiFunctionFactory,
         apiFunctionFactory = apiFunctionFactory,
+        worlds = worlds,
+        interfaces = interfaces,
         resources = resources,
       )
     }
