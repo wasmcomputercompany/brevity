@@ -2,7 +2,6 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
-import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 object Symbols {
   object Kotlin {

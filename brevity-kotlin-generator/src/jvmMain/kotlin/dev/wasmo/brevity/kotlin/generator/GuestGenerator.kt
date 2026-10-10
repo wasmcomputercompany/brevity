@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.kotlin.generator
 
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.DOUBLE
 import com.squareup.kotlinpoet.FLOAT
@@ -11,7 +12,7 @@ import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
-import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.ir.IrWitPackage
@@ -72,10 +73,10 @@ class GuestGenerator(
         fileName = "${className.simpleName}Guest",
       ) {
         generateWorldEntryPoint(world)
-        generateServiceClass(world, className.packageName)
+        generateServiceClass(world)
         generateServiceFunctions(world)
         for (abiInterface in world.interfaces) {
-          generateServiceClass(abiInterface, className.packageName)
+          generateServiceClass(abiInterface)
           generateServiceFunctions(abiInterface)
         }
         retainWasmExportsFunction(world)
@@ -90,7 +91,7 @@ class GuestGenerator(
         optIns = guestOptIns,
         fileName = "${className.simpleName}Guest",
       ) {
-        generateServiceClass(abiResource, className.packageName)
+        generateServiceClass(abiResource)
         generateServiceFunctions(abiResource)
       }
     }
@@ -99,7 +100,7 @@ class GuestGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateServiceClass(abiService: AbiService, worldPackageName: String) {
+  private fun generateServiceClass(abiService: AbiService) {
     when (abiService) {
       is AbiInterface -> if (abiService.orientation != Import) return
       is AbiResource -> if (abiService.orientation != Import) return
@@ -109,7 +110,7 @@ class GuestGenerator(
     val className = abiService.guestServiceClassName
     val classBuilder = TypeSpec.classBuilder(className)
       .addModifiers(KModifier.INTERNAL)
-      .addSuperinterface(abiService.interfaceName(Import))
+      .addSuperinterface(abiService.apiInterfaceName(Import))
     val implementationConstructor = FunSpec.constructorBuilder()
 
     when (abiService) {
@@ -160,25 +161,26 @@ class GuestGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateWorldEntryPoint(abiWorld: AbiWorld) {
-    val guestApis = abiWorld.irWorld.guestApis
-    collector += PropertySpec.builder("${guestApis.instanceName}_", guestApis.type)
+    val guestApisType = abiWorld.apiInterfaceName(Export)
+    val guestApisInstanceName = "guest"
+    collector += PropertySpec.builder("${guestApisInstanceName}_", guestApisType)
       .addModifiers(KModifier.INTERNAL, KModifier.LATEINIT)
       .mutable(true)
       .build()
-    collector += PropertySpec.builder(guestApis.instanceName, guestApis.type)
-      .receiver(abiWorld.irWorld.serviceName.kotlinApi)
+    collector += PropertySpec.builder(guestApisInstanceName, guestApisType)
+      .receiver(abiWorld.apiClassName)
       .mutable(true)
       .getter(
         FunSpec.getterBuilder()
-          .addCode("return %N", "${guestApis.instanceName}_")
+          .addCode("return %N", "${guestApisInstanceName}_")
           .build(),
       )
       .setter(
         FunSpec.setterBuilder()
-          .addParameter("value", guestApis.type)
+          .addParameter("value", guestApisType)
           .addStatement("%M()", Symbols.Brevity.RetainWasmExportsForGuestBridge)
           .addStatement("%N()", abiWorld.retainWasmExportsFunctionName)
-          .addCode("%N = %N", "${guestApis.instanceName}_", "value")
+          .addCode("%N = %N", "${guestApisInstanceName}_", "value")
           .build(),
       )
       .build()
@@ -189,14 +191,17 @@ class GuestGenerator(
     for (abiFunction in abiService.functions) {
       if (!abiFunction.isSupported) continue
       collector += when (abiFunction.orientation) {
-        Orientation.Export -> wasmExport(abiFunction)
+        Export -> wasmExport(abiService, abiFunction)
         Import -> wasmImport(abiFunction)
       }
     }
   }
 
   /** Returns the `@WasmExport`-annotated function. It must be added directly to a file. */
-  private fun wasmExport(abiFunction: AbiFunction): FunSpec {
+  private fun wasmExport(
+    parentService: AbiService,
+    abiFunction: AbiFunction,
+  ): FunSpec {
     val codeBuilder = CodeBuilder(
       bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
       platform = platform,
@@ -212,8 +217,9 @@ class GuestGenerator(
       .apply {
         context(codeBuilder) {
           val function = AbiLift(
-            abiFunction,
-            CallLifted(platform, abiFunction),
+            parentService = parentService,
+            abiFunction = abiFunction,
+            liftedFunction = CallLifted(platform, abiFunction),
           )
           val resultExpression = function.call(
             receiver = null,
@@ -275,10 +281,10 @@ class GuestGenerator(
   }
 
   private fun FunSpec.Builder.callWasmExportFunctionsWithPlaceholders(service: AbiService) {
-    val packageName = service.interfaceName(Import).packageName
+    val packageName = service.apiInterfaceName(Import).packageName
     for (abiFunction in service.functions) {
       if (!abiFunction.isSupported) continue
-      if (abiFunction.orientation != Orientation.Export) continue
+      if (abiFunction.orientation != Export) continue
       val memberName = MemberName(packageName, abiFunction.name.exportFunctionName)
       addCode("%M(", memberName)
       for ((index, spec) in abiFunction.loweredParameterSpecs.withIndex()) {
@@ -301,3 +307,13 @@ class GuestGenerator(
 
 val AbiWorld.retainWasmExportsFunctionName: String
   get() = "retainWasmExportsFor${apiClassName.simpleName}"
+
+val AbiService.guestServiceClassName: ClassName
+  get() = when (this) {
+    is AbiWorld -> apiClassName.peerClass("Guest${apiClassName.simpleName}")
+    is AbiInterface -> ClassName(
+      worldServiceName.kotlinApi.packageName,
+      "Guest${apiClassName.simpleName}",
+    )
+    is AbiResource -> type.handleName
+  }

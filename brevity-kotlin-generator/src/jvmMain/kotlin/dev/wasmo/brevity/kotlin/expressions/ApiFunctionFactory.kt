@@ -7,6 +7,12 @@ import com.squareup.kotlinpoet.KModifier
 class ApiFunctionFactory {
   fun create(abiFunction: AbiFunction) = builder(abiFunction)
     .addModifiers(KModifier.ABSTRACT)
+    .apply {
+      val documentation = abiFunction.documentation
+      if (documentation != null) {
+        addKdoc(documentation.trimIndent())
+      }
+    }
     .build()
 
   fun builder(abiFunction: AbiFunction): FunSpec.Builder {

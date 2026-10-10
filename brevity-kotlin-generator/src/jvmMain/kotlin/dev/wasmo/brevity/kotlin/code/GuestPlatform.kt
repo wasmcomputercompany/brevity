@@ -7,8 +7,9 @@ import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.expressions.AbiFunction
+import dev.wasmo.brevity.kotlin.expressions.AbiInterface
+import dev.wasmo.brevity.kotlin.expressions.AbiWorld
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
-import dev.wasmo.brevity.kotlin.expressions.FunctionParent
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
 import dev.wasmo.brevity.kotlin.expressions.WasmImportFunction
@@ -71,18 +72,18 @@ class GuestPlatform(
       resource,
     )
 
-  override fun getParent(parent: FunctionParent.World): KtExpression {
+  override fun getParent(parent: AbiWorld): KtExpression {
     return CodeBlockExpression(
-      type = parent.type,
+      type = parent.apiClassName,
       nameHint = "guest",
       code = CodeBlock.of("%N_", "guest"),
       immediate = true,
     )
   }
 
-  override fun getParent(parent: FunctionParent.Interface): KtExpression {
+  override fun getParent(parent: AbiInterface): KtExpression {
     return CodeBlockExpression(
-      type = parent.type,
+      type = parent.apiClassName,
       nameHint = parent.instanceName,
       code = CodeBlock.of("%N_.%N", "guest", parent.instanceName),
       immediate = true,

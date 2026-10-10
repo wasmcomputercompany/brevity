@@ -13,6 +13,7 @@ import dev.wasmo.brevity.kotlin.expressions.AbiFunction.Result.Void
 import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 
 class AbiLift(
+  private val parentService: AbiService,
   private val abiFunction: AbiFunction,
   private val liftedFunction: KtFunction,
 ) : KtFunction {
@@ -24,7 +25,7 @@ class AbiLift(
     check(receiver == null)
 
     val p = parameters.iterator()
-    val liftedReceiverValue = abiFunction.liftReceiver(p)
+    val liftedReceiverValue = parentService.liftReceiver(p)
     val liftedParametersValues = abiFunction.liftParameters(p)
     val liftedPointerParameterValue = abiFunction.liftPointerParameter(p)
 
@@ -44,23 +45,22 @@ class AbiLift(
 }
 
 context(codeBuilder: CodeBuilder)
-private fun AbiFunction.liftReceiver(
+private fun AbiService.liftReceiver(
   p: Iterator<KtExpression>,
 ): KtExpression {
-  val receiverValue = when (parent) {
-    is FunctionParent.Resource -> {
+  val receiverValue = when (this) {
+    is AbiWorld -> codeBuilder.platform.getParent(this)
+    is AbiInterface -> codeBuilder.platform.getParent(this)
+    is AbiResource -> {
       CodeBlockExpression(
-        type = parent.kotlinType,
+        type = this.apiClassName,
         nameHint = "receiver",
         code = codeBuilder.platform.liftResource(
           id = p.next().code,
-          handleType = parent.type,
+          handleType = this.type,
         ),
       )
     }
-
-    is FunctionParent.Interface -> codeBuilder.platform.getParent(parent)
-    is FunctionParent.World -> codeBuilder.platform.getParent(parent)
   }
 
   return receiverValue.makeImmediate()

@@ -44,7 +44,7 @@ class HostGenerator(
   private val packages: List<IrWitPackage>,
   private val worlds: List<AbiWorld>,
   private val resources: List<AbiResource>,
-  private val guestResourcesSupported: Boolean = false
+  private val guestResourcesSupported: Boolean = false,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
@@ -86,21 +86,21 @@ class HostGenerator(
   private fun generateWorldFactoryFunction(value: AbiWorld) {
     // The implemented World interface uses the interface types; everything else uses the
     // implementation types.
-    val guestApis = value.irWorld.guestApis
-    val hostApis = value.irWorld.hostApis
-    val worldType = Symbols.Brevity.World.parameterizedBy(hostApis.type, guestApis.type)
+    val guestApisType = value.apiInterfaceName(Export)
+    val hostApisType = value.apiInterfaceName(Import)
+    val worldType = Symbols.Brevity.World.parameterizedBy(hostApisType, guestApisType)
 
     val hostFactory = ParameterSpec.builder(
       "hostFactory",
       LambdaTypeName.get(
-        parameters = listOf(ParameterSpec.unnamed(guestApis.type)),
-        returnType = hostApis.type,
+        parameters = listOf(ParameterSpec.unnamed(guestApisType)),
+        returnType = hostApisType,
       ),
     ).defaultValue(defaultHostFactory(value))
       .build()
 
     collector += FunSpec.builder("World")
-      .receiver(value.irWorld.serviceName.kotlinApi)
+      .receiver(value.apiClassName)
       .addParameter(hostFactory)
       .returns(worldType)
       .apply {
@@ -131,7 +131,12 @@ class HostGenerator(
     val className = abiWorld.hostClassName
     val builder = TypeSpec.classBuilder(className)
       .addModifiers(KModifier.INTERNAL)
-      .addSuperinterface(abiWorld.irWorld.apiType)
+      .addSuperinterface(
+        Symbols.Brevity.World.parameterizedBy(
+          abiWorld.apiInterfaceName(Import),
+          abiWorld.apiInterfaceName(Export),
+        ),
+      )
 
     val constructor = FunSpec.constructorBuilder()
 
@@ -143,7 +148,7 @@ class HostGenerator(
         .build(),
     )
 
-    val importInterfaceName = abiWorld.interfaceName(Import)
+    val importInterfaceName = abiWorld.apiInterfaceName(Import)
     builder.addProperty(
       PropertySpec.builder("host", importInterfaceName)
         .addModifiers(KModifier.LATEINIT, KModifier.OVERRIDE)
@@ -163,19 +168,19 @@ class HostGenerator(
 
     run {
       builder.addProperty(
-        PropertySpec.builder("guest", abiWorld.interfaceName(Export))
+        PropertySpec.builder("guest", abiWorld.apiInterfaceName(Export))
           .addModifiers(KModifier.OVERRIDE)
           .initializer("%T()", className.nestedClass(abiWorld.implementationName))
           .build(),
       )
       initExports(initExportsBuilder, builder, abiWorld.functions)
-      initImports(initImportsBuilder, bridgeValue, abiWorld.functions)
+      initImports(initImportsBuilder, bridgeValue, abiWorld)
       builder.addType(generateExportsImplementation(abiWorld))
     }
 
     for (abiInterface in abiWorld.interfaces) {
       initExports(initExportsBuilder, builder, abiInterface.functions)
-      initImports(initImportsBuilder, bridgeValue, abiInterface.functions)
+      initImports(initImportsBuilder, bridgeValue, abiInterface)
       if (abiInterface.orientation == Export) {
         builder.addType(generateExportsImplementation(abiInterface))
       }
@@ -185,7 +190,7 @@ class HostGenerator(
       if (guestResourcesSupported) {
         initExports(initExportsBuilder, builder, abiResource.functions)
       }
-      initImports(initImportsBuilder, bridgeValue, abiResource.functions)
+      initImports(initImportsBuilder, bridgeValue, abiResource)
       if (guestResourcesSupported) {
         if (abiResource.orientation == Export) {
           builder.addType(generateExportsImplementation(abiResource))
@@ -233,16 +238,17 @@ class HostGenerator(
   private fun initImports(
     initImportsBuilder: FunSpec.Builder,
     bridgeValue: CodeBlock,
-    memberFunctions: List<AbiFunction>,
+    parentService: AbiService,
   ) {
     val store = CodeBlock.of("%N", "store")
-    for (abiFunction in memberFunctions) {
+    for (abiFunction in parentService.functions) {
       if (!abiFunction.isSupported) continue
       if (abiFunction.orientation != Import) continue
       initImportsBuilder.addCode(
         declareHost(
           bridge = bridgeValue,
           store = store,
+          parentService = parentService,
           abiFunction = abiFunction,
         ),
       )
@@ -255,7 +261,7 @@ class HostGenerator(
   ): TypeSpec {
     return TypeSpec.classBuilder(abiService.implementationName)
       .addModifiers(KModifier.INTERNAL, KModifier.INNER)
-      .addSuperinterface(abiService.interfaceName(Export))
+      .addSuperinterface(abiService.apiInterfaceName(Export))
       .primaryConstructor(
         FunSpec.constructorBuilder()
           .apply {
@@ -304,6 +310,7 @@ class HostGenerator(
   private fun declareHost(
     bridge: CodeBlock,
     store: CodeBlock,
+    parentService: AbiService,
     abiFunction: AbiFunction,
   ): CodeBlock {
     val codeBuilder = CodeBuilder(
@@ -316,11 +323,9 @@ class HostGenerator(
       val function = ChicoryImportFunction(
         abiFunction,
         AbiLift(
-          abiFunction,
-          CallLifted(
-            hostPlatform,
-            abiFunction,
-          ),
+          parentService = parentService,
+          abiFunction = abiFunction,
+          liftedFunction = CallLifted(hostPlatform, abiFunction),
         ),
       )
       val args = CodeBlockExpression(
@@ -379,13 +384,13 @@ class HostGenerator(
     )
   }
 
-  private fun defaultHostFactory(abiService: AbiWorld): CodeBlock? {
-    if (abiService.hasMembers(Import)) return null
+  private fun defaultHostFactory(abiWorld: AbiWorld): CodeBlock? {
+    if (abiWorld.hasMembers(Import)) return null
 
     return CodeBlock.of(
       "{ %N -> object : %T {} }",
       "guest",
-      abiService.irWorld.hostApis.type,
+      abiWorld.apiInterfaceName(Import),
     )
   }
 
@@ -394,7 +399,7 @@ class HostGenerator(
 }
 
 private val AbiWorld.hostClassName: ClassName
-  get() = irWorld.serviceName.kotlinApi.wrap(prefix = "Host")
+  get() = apiClassName.wrap(prefix = "Host")
 
 /** Returns a name for the generated implementation of this service. */
 private val AbiService.implementationName: String

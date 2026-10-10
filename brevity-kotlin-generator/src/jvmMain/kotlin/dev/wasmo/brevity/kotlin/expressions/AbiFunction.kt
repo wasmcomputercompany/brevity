@@ -23,9 +23,10 @@ import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 
 /**
  * Describes a function from the perspective of the ABI.
+ *
+ * This function knows if it's imported or exported, and can compute call structure based on that.
  */
 data class AbiFunction(
-  val parent: FunctionParent,
   val name: FunctionName,
   val kotlinIdentifier: Identifier,
   val documentation: String? = null,
@@ -33,18 +34,19 @@ data class AbiFunction(
   val result: Result = Result.Void,
   val async: Boolean = false,
   val isSupported: Boolean,
+  val orientation: Orientation,
+  /** True if this function has an implicit `id` parameter. */
+  val isResource: Boolean,
   private val nameAllocator: NameAllocator,
 ) {
   val kotlinName: String
     get() = kotlinIdentifier.lowerCamelCase
-  val orientation: Orientation
-    get() = parent.orientation
 
   fun newNameAllocator() = nameAllocator.copy()
 
   val loweredParameterSpecs: List<ParameterSpec>
     get() = buildList {
-      if (parent is FunctionParent.Resource) {
+      if (isResource) {
         add(ParameterSpec.builder("id", INT).build())
       }
 
@@ -67,7 +69,7 @@ data class AbiFunction(
 
   val loweredParameterTypes: List<CoreType>
     get() = buildList {
-      if (parent is FunctionParent.Resource) {
+      if (isResource) {
         add(CoreType.I32)
       }
 
@@ -174,13 +176,15 @@ data class AbiFunction(
     private val encoderFactory: EncoderFactory,
   ) {
     fun createAll(
-      parent: FunctionParent,
       functions: List<IrFunction>,
-    ): List<AbiFunction> = functions.map { function -> create(parent, function) }
+      orientation: Orientation,
+      isResource: Boolean = false,
+    ): List<AbiFunction> = functions.map { function -> create(function, orientation, isResource) }
 
     fun create(
-      parent: FunctionParent,
       irFunction: IrFunction,
+      orientation: Orientation,
+      isResource: Boolean,
     ): AbiFunction {
       val nameAllocator = NameAllocator()
       val flatParameters = irFunction.parameters.map { parameter ->
@@ -188,21 +192,23 @@ data class AbiFunction(
       }
 
       return AbiFunction(
-        parent = parent,
         name = irFunction.functionName,
         kotlinIdentifier = irFunction.functionName.kotlinIdentifier,
         documentation = documentation(irFunction, flatParameters),
         parameters = parameters(flatParameters, nameAllocator),
-        result = result(nameAllocator, irFunction, parent.orientation),
+        result = result(nameAllocator, irFunction, orientation),
         async = irFunction.async,
         isSupported = irFunction.isSupported,
+        orientation = orientation,
+        isResource = isResource,
         nameAllocator = nameAllocator,
       )
     }
 
     fun asyncCallback(
-      parent: FunctionParent,
       irFunction: IrFunction,
+      orientation: Orientation,
+      isResource: Boolean,
     ): AbiFunction {
       val nameAllocator = NameAllocator()
       val flatParameters = listOf(
@@ -212,18 +218,20 @@ data class AbiFunction(
       )
 
       return AbiFunction(
-        parent = parent,
         name = FunctionName.AsyncLiftCallback(irFunction.functionName),
         kotlinIdentifier = irFunction.functionName.kotlinIdentifier,
         parameters = parameters(flatParameters, nameAllocator),
         nameAllocator = nameAllocator,
+        orientation = orientation,
+        isResource = isResource,
         isSupported = irFunction.isSupported,
       )
     }
 
     fun taskReturn(
-      parent: FunctionParent,
       irFunction: IrFunction,
+      orientation: Orientation,
+      isResource: Boolean,
     ): AbiFunction {
       val nameAllocator = NameAllocator()
       val flatParameters = buildList {
@@ -240,12 +248,13 @@ data class AbiFunction(
       }
 
       return AbiFunction(
-        parent = parent,
         name = FunctionName.TaskReturn(irFunction.functionName),
         kotlinIdentifier = irFunction.functionName.kotlinIdentifier,
         parameters = parameters(flatParameters, nameAllocator),
         nameAllocator = nameAllocator,
         isSupported = irFunction.isSupported,
+        orientation = orientation,
+        isResource = isResource,
       )
     }
 

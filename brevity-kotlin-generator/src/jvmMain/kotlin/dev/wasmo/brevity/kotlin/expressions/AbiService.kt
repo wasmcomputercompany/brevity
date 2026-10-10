@@ -10,6 +10,7 @@ import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.ir.IrDeclaration
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrInterface
@@ -18,35 +19,44 @@ import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
-import dev.wasmo.brevity.kotlin.generator.guestApis
-import dev.wasmo.brevity.kotlin.generator.handleName
-import dev.wasmo.brevity.kotlin.generator.hostApis
 import dev.wasmo.brevity.kotlin.generator.instanceName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 
+sealed interface AbiService {
+  val irDeclaration: IrDeclaration
+  val functions: List<AbiFunction>
+  val apiClassName: ClassName
+  val hasInstanceMembers: Boolean
+  val types: List<IrTypeDeclaration>
+
+  val documentation: Documentation?
+    get() = irDeclaration.documentation
+  val location: Location
+    get() = irDeclaration.location
+
+  fun memberFunctions(orientation: Orientation) = functions
+    .filter { it.orientation == orientation }
+
+  fun apiInterfaceName(orientation: Orientation): ClassName = apiClassName
+}
+
 data class AbiWorld(
-  val irWorld: IrWorld,
+  override val irDeclaration: IrWorld,
   val interfaces: List<AbiInterface>,
   override val functions: List<AbiFunction>,
 ) : AbiService {
   override val apiClassName: ClassName
-    get() = irWorld.serviceName.kotlinApi
-  override val location: Location
-    get() = irWorld.location
-  override val guestServiceClassName: ClassName
-    get() = apiClassName.peerClass("Guest${apiClassName.simpleName}")
+    get() = irDeclaration.serviceName.kotlinApi
   override val hasInstanceMembers: Boolean
     get() = interfaces.isNotEmpty() || functions.isNotEmpty()
   override val types: List<IrTypeDeclaration>
-    get() = irWorld.types
-  override val documentation: Documentation?
-    get() = irWorld.documentation
+    get() = irDeclaration.types
 
-  override fun interfaceName(orientation: Orientation): ClassName =
+  override fun apiInterfaceName(orientation: Orientation): ClassName =
     when (orientation) {
-      Import -> irWorld.hostApis.type
-      Export -> irWorld.guestApis.type
+      Import -> apiClassName.nestedClass("Host")
+      Export -> apiClassName.nestedClass("Guest")
     }
 
   fun interfaces(orientation: Orientation): List<AbiInterface> =
@@ -63,36 +73,41 @@ data class AbiWorld(
     }
 
     private fun createWorld(world: IrWorld): AbiWorld {
-      check(world.types.filterIsInstance<IrResource>().isEmpty()) {
-        "not implemented: worlds with resource members - is this allowed?!"
-      }
-
       val abiInterfaces = mutableListOf<AbiInterface>()
       val abiFunctions = mutableListOf<AbiFunction>()
 
-      val exportParent = FunctionParent.World(Export, world.serviceName)
       for (api in world.exports) {
         when (api) {
-          is IrExternalApi -> abiInterfaces.add(
-            abiInterfaceFactory.create(world.serviceName, api, Export),
+          is IrExternalApi -> abiInterfaces += abiInterfaceFactory.create(
+            worldServiceName = world.serviceName,
+            externalApi = api,
+            orientation = Export,
           )
 
-          is IrFunction -> abiFunctions.add(abiFunctionFactory.create(exportParent, api))
+          is IrFunction -> abiFunctions += abiFunctionFactory.create(
+            irFunction = api,
+            orientation = Export,
+            isResource = false,
+          )
         }
       }
-      val importParent = FunctionParent.World(Import, world.serviceName)
       for (api in world.imports) {
         when (api) {
-          is IrExternalApi -> abiInterfaces.add(
-            abiInterfaceFactory.create(world.serviceName, api, Import),
+          is IrExternalApi -> abiInterfaces += abiInterfaceFactory.create(
+            worldServiceName = world.serviceName,
+            externalApi = api,
+            orientation = Import,
           )
-
-          is IrFunction -> abiFunctions.add(abiFunctionFactory.create(importParent, api))
+          is IrFunction -> abiFunctions += abiFunctionFactory.create(
+            irFunction = api,
+            orientation = Import,
+            isResource = false,
+          )
         }
       }
 
       return AbiWorld(
-        irWorld = world,
+        irDeclaration = world,
         interfaces = abiInterfaces,
         functions = abiFunctions,
       )
@@ -100,29 +115,25 @@ data class AbiWorld(
   }
 }
 
+/**
+ * An interface that's imported or exported by a particular world, possibly with a custom plain
+ * name.
+ */
 data class AbiInterface(
-  val irInterface: IrInterface,
+  override val irDeclaration: IrInterface,
   val orientation: Orientation,
   val worldServiceName: ServiceName,
   val instanceName: String,
   override val functions: List<AbiFunction>,
 ) : AbiService {
   val serviceName: ServiceName
-    get() = irInterface.serviceName
+    get() = irDeclaration.serviceName
   override val apiClassName: ClassName
     get() = serviceName.kotlinApi
-  override val location: Location
-    get() = irInterface.location
-  override val guestServiceClassName: ClassName
-    get() = ClassName(worldServiceName.kotlinApi.packageName, "Guest${apiClassName.simpleName}")
   override val hasInstanceMembers: Boolean
     get() = functions.isNotEmpty()
   override val types: List<IrTypeDeclaration>
-    get() = irInterface.types
-  override val documentation: Documentation?
-    get() = irInterface.documentation
-
-  override fun interfaceName(orientation: Orientation) = apiClassName
+    get() = irDeclaration.types
 
   class Factory(
     private val declarationIndex: DeclarationIndex,
@@ -134,59 +145,43 @@ data class AbiInterface(
       orientation: Orientation,
     ): AbiInterface {
       val irInterface = declarationIndex[externalApi.serviceName] as IrInterface
-      val parent = FunctionParent.Interface(
-        orientation = orientation,
-        serviceName = externalApi.serviceName,
-        instanceName = externalApi.instanceName,
-      )
       return AbiInterface(
-        irInterface = irInterface,
-        orientation = parent.orientation,
+        irDeclaration = irInterface,
+        orientation = orientation,
         worldServiceName = worldServiceName,
-        instanceName = parent.instanceName,
-        functions = abiFunctionFactory.createAll(parent, irInterface.functions),
+        instanceName = externalApi.instanceName,
+        functions = abiFunctionFactory.createAll(
+          functions = irInterface.functions,
+          orientation = orientation,
+        ),
       )
     }
 
-    fun createForCommonInterfaces(
-      irInterface: IrInterface,
-    ): AbiInterface {
-      val parent = FunctionParent.Interface(
+    /** Creates an interface that doesn't know if it's imported or exported, or by which world. */
+    fun createForApiOnly(irInterface: IrInterface) = AbiInterface(
+      irDeclaration = irInterface,
+      orientation = Import, // Arbitrary.
+      worldServiceName = irInterface.serviceName,
+      instanceName = irInterface.serviceName.name.lowerCamelCase,
+      functions = abiFunctionFactory.createAll(
+        functions = irInterface.functions,
         orientation = Import,
-        serviceName = irInterface.serviceName,
-        instanceName = irInterface.serviceName.name.lowerCamelCase,
-      )
-      return AbiInterface(
-        irInterface = irInterface,
-        orientation = parent.orientation,
-        worldServiceName = irInterface.serviceName,
-        instanceName = parent.instanceName,
-        functions = abiFunctionFactory.createAll(parent, irInterface.functions),
-      )
-    }
+      ),
+    )
   }
 }
 
 data class AbiResource(
-  val irResource: IrResource,
+  override val irDeclaration: IrResource,
   val orientation: Orientation,
   val type: TypeName.Declared,
   override val apiClassName: ClassName,
-  val handleType: ClassName,
   override val functions: List<AbiFunction>,
 ) : AbiService {
-  override val location: Location
-    get() = irResource.location
-  override val guestServiceClassName: ClassName
-    get() = type.handleName
   override val hasInstanceMembers: Boolean
     get() = functions.isNotEmpty()
   override val types: List<IrTypeDeclaration>
     get() = listOf()
-  override val documentation: Documentation?
-    get() = irResource.documentation
-
-  override fun interfaceName(orientation: Orientation) = apiClassName
 
   class Factory(
     private val kotlinMapper: KotlinMapper,
@@ -210,39 +205,16 @@ data class AbiResource(
       }
     }
 
-    private fun create(resource: IrResource, orientation: Orientation): AbiResource {
-      val parent = FunctionParent.Resource(
+    private fun create(resource: IrResource, orientation: Orientation) = AbiResource(
+      irDeclaration = resource,
+      orientation = orientation,
+      type = resource.type,
+      apiClassName = kotlinMapper.getAbiClassName(resource.type),
+      functions = abiFunctionFactory.createAll(
+        functions = resource.functions,
         orientation = orientation,
-        type = resource.type,
-        kotlinType = kotlinMapper.getAbiClassName(resource.type),
-        handleType = resource.type.handleName,
-      )
-      return AbiResource(
-        irResource = resource,
-        orientation = parent.orientation,
-        type = parent.type,
-        apiClassName = parent.kotlinType,
-        handleType = parent.handleType,
-        functions = abiFunctionFactory.createAll(
-          parent = parent,
-          functions = resource.functions,
-        ),
-      )
-    }
+        isResource = true,
+      ),
+    )
   }
-}
-
-sealed interface AbiService {
-  val functions: List<AbiFunction>
-  val apiClassName: ClassName
-  val location: Location
-  val guestServiceClassName: ClassName
-  val hasInstanceMembers: Boolean
-  val types: List<IrTypeDeclaration>
-  val documentation: Documentation?
-
-  fun memberFunctions(orientation: Orientation) = functions
-    .filter { it.orientation == orientation }
-
-  fun interfaceName(orientation: Orientation): ClassName
 }

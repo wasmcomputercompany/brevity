@@ -6,14 +6,16 @@ import com.squareup.kotlinpoet.FLOAT
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.expressions.AbiFunction
+import dev.wasmo.brevity.kotlin.expressions.AbiInterface
+import dev.wasmo.brevity.kotlin.expressions.AbiWorld
 import dev.wasmo.brevity.kotlin.expressions.ChicoryExportFunction
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
-import dev.wasmo.brevity.kotlin.expressions.FunctionParent
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
 import dev.wasmo.brevity.kotlin.generator.Symbols
@@ -72,18 +74,18 @@ class HostPlatform(
       resource,
     )
 
-  override fun getParent(parent: FunctionParent.World): KtExpression {
+  override fun getParent(parent: AbiWorld): KtExpression {
     return CodeBlockExpression(
-      type = parent.type,
+      type = parent.apiInterfaceName(Orientation.Import),
       nameHint = "host",
       code = CodeBlock.of("%N", "host"),
       immediate = true,
     )
   }
 
-  override fun getParent(parent: FunctionParent.Interface): KtExpression {
+  override fun getParent(parent: AbiInterface): KtExpression {
     return CodeBlockExpression(
-      type = parent.type,
+      type = parent.apiClassName,
       nameHint = "host",
       code = CodeBlock.of("%N.%N", "host", parent.instanceName),
       immediate = true,

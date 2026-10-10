@@ -43,7 +43,7 @@ private fun AbiFunction.lowerParameterValues(
   parameterValues: List<KtExpression>,
   memoryAllocator: MemoryAllocator?,
 ) = buildList {
-  if (parent is FunctionParent.Resource) {
+  if (isResource) {
     add(
       CodeBlockExpression(
         type = CoreType.I32.kotlinCoreType,

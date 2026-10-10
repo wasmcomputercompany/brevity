@@ -256,7 +256,7 @@ class WitBridgeGenerator private constructor(
       val worlds = abiWorldFactory.createAll(irPackages)
       val interfaces = irPackages.flatMap { it.services }
         .filterIsInstance<IrInterface>()
-        .map { abiInterfaceFactory.createForCommonInterfaces(it) }
+        .map { abiInterfaceFactory.createForApiOnly(it) }
       val resources = abiResourceFactory.createAll(irPackages)
       return ApiGenerator(
         kotlinMapper = kotlinMapper,

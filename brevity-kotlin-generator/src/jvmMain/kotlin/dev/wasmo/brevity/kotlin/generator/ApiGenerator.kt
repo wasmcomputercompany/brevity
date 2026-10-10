@@ -113,7 +113,7 @@ class ApiGenerator(
     collector.addType(
       className = className,
       type = TypeSpec.interfaceBuilder(className)
-        .setDeclaration(abiResource.irResource)
+        .setDeclaration(abiResource.irDeclaration)
         .addSuperinterface(Symbols.Brevity.Resource)
         .apply {
           for (function in abiResource.functions) {
@@ -287,7 +287,7 @@ class ApiGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun generateWorldInterface(abiWorld: AbiWorld, orientation: Orientation) {
-    val type = abiWorld.interfaceName(orientation)
+    val type = abiWorld.apiInterfaceName(orientation)
     collector.addType(
       className = type,
       type = TypeSpec.interfaceBuilder(type)

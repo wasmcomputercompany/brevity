@@ -8,7 +8,8 @@ import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.encoders.integerType
 import dev.wasmo.brevity.kotlin.expressions.AbiFunction
-import dev.wasmo.brevity.kotlin.expressions.FunctionParent
+import dev.wasmo.brevity.kotlin.expressions.AbiInterface
+import dev.wasmo.brevity.kotlin.expressions.AbiWorld
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
 
@@ -47,10 +48,10 @@ interface Platform {
   fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared): CodeBlock
 
   /** Returns an expression to get an instance of [parent]. */
-  fun getParent(parent: FunctionParent.World): KtExpression
+  fun getParent(parent: AbiWorld): KtExpression
 
   /** Returns an expression to get an instance of [parent]. */
-  fun getParent(parent: FunctionParent.Interface): KtExpression
+  fun getParent(parent: AbiInterface): KtExpression
 
   /** Frees any memory no longer necessary after lifting parameters. */
   context(codeBuilder: CodeBuilder)
