@@ -4,12 +4,12 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.abi.AbiFunction
+import dev.wasmo.brevity.kotlin.abi.AbiInterface
+import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.encoders.integerType
-import dev.wasmo.brevity.kotlin.expressions.AbiFunction
-import dev.wasmo.brevity.kotlin.expressions.AbiInterface
-import dev.wasmo.brevity.kotlin.expressions.AbiWorld
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
 

@@ -11,15 +11,13 @@ import dev.wasmo.brevity.ir.IrInterface
 import dev.wasmo.brevity.ir.IrMapper
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.kotlin.KotlinMapper
+import dev.wasmo.brevity.kotlin.abi.AbiFunction
+import dev.wasmo.brevity.kotlin.abi.AbiInterface
+import dev.wasmo.brevity.kotlin.abi.AbiResource
+import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
-import dev.wasmo.brevity.kotlin.expressions.AbiFunction
-import dev.wasmo.brevity.kotlin.expressions.AbiInterface
-import dev.wasmo.brevity.kotlin.expressions.AbiResource
-import dev.wasmo.brevity.kotlin.expressions.AbiWorld
-import dev.wasmo.brevity.kotlin.expressions.ApiFunctionFactory
-import dev.wasmo.brevity.kotlin.expressions.PlatformFunctionFactory
 import okio.FileSystem
 import okio.Path
 

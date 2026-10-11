@@ -1,4 +1,4 @@
-package dev.wasmo.brevity.kotlin.expressions
+package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.DeclarationIndex

@@ -1,17 +1,21 @@
-package dev.wasmo.brevity.kotlin.expressions
+package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.INT
 import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.kotlin.abi.AbiFunction.Parameters.Flattened
+import dev.wasmo.brevity.kotlin.abi.AbiFunction.Parameters.Stored
+import dev.wasmo.brevity.kotlin.abi.AbiFunction.Result.PointerParameter
+import dev.wasmo.brevity.kotlin.abi.AbiFunction.Result.PointerReturn
+import dev.wasmo.brevity.kotlin.abi.AbiFunction.Result.SingleCoreValueReturn
+import dev.wasmo.brevity.kotlin.abi.AbiFunction.Result.Void
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.withMemoryAllocator
 import dev.wasmo.brevity.kotlin.encoders.CoreType
-import dev.wasmo.brevity.kotlin.expressions.AbiFunction.Parameters.Flattened
-import dev.wasmo.brevity.kotlin.expressions.AbiFunction.Parameters.Stored
-import dev.wasmo.brevity.kotlin.expressions.AbiFunction.Result.PointerParameter
-import dev.wasmo.brevity.kotlin.expressions.AbiFunction.Result.PointerReturn
-import dev.wasmo.brevity.kotlin.expressions.AbiFunction.Result.SingleCoreValueReturn
-import dev.wasmo.brevity.kotlin.expressions.AbiFunction.Result.Void
+import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
+import dev.wasmo.brevity.kotlin.expressions.KtExpression
+import dev.wasmo.brevity.kotlin.expressions.KtFunction
+import dev.wasmo.brevity.kotlin.expressions.makeImmediate
 import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 
 context(codeBuilder: CodeBuilder)
@@ -23,7 +27,7 @@ fun AbiLift(
     abiFunction.result is AbiFunction.Result.AsyncLift -> AbiAsyncLift(
       parentService = parentService,
       abiFunction = abiFunction,
-      liftedFunction = CallLifted(codeBuilder.platform, abiFunction),
+      liftedFunction = CallLifted(abiFunction),
     )
 
     abiFunction.name is FunctionName.AsyncLiftCallback -> object : KtFunction {
@@ -45,7 +49,7 @@ fun AbiLift(
     else -> AbiSyncLift(
       parentService = parentService,
       abiFunction = abiFunction,
-      liftedFunction = CallLifted(codeBuilder.platform, abiFunction),
+      liftedFunction = CallLifted(abiFunction),
     )
   }
 }

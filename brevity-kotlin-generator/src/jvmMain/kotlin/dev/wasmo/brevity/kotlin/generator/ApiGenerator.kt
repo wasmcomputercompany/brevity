@@ -17,11 +17,10 @@ import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.kotlin.KotlinMapper
-import dev.wasmo.brevity.kotlin.expressions.AbiInterface
-import dev.wasmo.brevity.kotlin.expressions.AbiResource
-import dev.wasmo.brevity.kotlin.expressions.AbiService
-import dev.wasmo.brevity.kotlin.expressions.AbiWorld
-import dev.wasmo.brevity.kotlin.expressions.ApiFunctionFactory
+import dev.wasmo.brevity.kotlin.abi.AbiInterface
+import dev.wasmo.brevity.kotlin.abi.AbiResource
+import dev.wasmo.brevity.kotlin.abi.AbiService
+import dev.wasmo.brevity.kotlin.abi.AbiWorld
 
 class ApiGenerator(
   private val kotlinMapper: KotlinMapper,

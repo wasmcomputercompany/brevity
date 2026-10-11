@@ -1,4 +1,4 @@
-package dev.wasmo.brevity.kotlin.expressions
+package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.DOUBLE
@@ -9,6 +9,10 @@ import com.squareup.kotlinpoet.LONG_ARRAY
 import com.squareup.kotlinpoet.TypeName
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
+import dev.wasmo.brevity.kotlin.expressions.KtExpression
+import dev.wasmo.brevity.kotlin.expressions.KtFunction
+import dev.wasmo.brevity.kotlin.expressions.makeImmediate
 import dev.wasmo.brevity.kotlin.generator.exportFunctionName
 import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 

@@ -1,11 +1,12 @@
-package dev.wasmo.brevity.kotlin.expressions
+package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
-import dev.wasmo.brevity.kotlin.code.Platform
+import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
+import dev.wasmo.brevity.kotlin.expressions.KtExpression
+import dev.wasmo.brevity.kotlin.expressions.KtFunction
 
 class CallLifted(
-  val platform: Platform,
   val abiFunction: AbiFunction,
 ) : KtFunction {
   context(codeBuilder: CodeBuilder)

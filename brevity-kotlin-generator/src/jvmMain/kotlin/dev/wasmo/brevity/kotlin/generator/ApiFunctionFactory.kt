@@ -1,7 +1,8 @@
-package dev.wasmo.brevity.kotlin.expressions
+package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
+import dev.wasmo.brevity.kotlin.abi.AbiFunction
 
 /** The Kotlin public API of a WIT function. */
 class ApiFunctionFactory {

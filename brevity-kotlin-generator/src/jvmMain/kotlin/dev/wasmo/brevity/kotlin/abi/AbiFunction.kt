@@ -1,4 +1,4 @@
-package dev.wasmo.brevity.kotlin.expressions
+package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.INT
@@ -25,6 +25,14 @@ import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
  * Describes a function from the perspective of the ABI.
  *
  * This function knows if it's imported or exported, and can compute call structure based on that.
+ *
+ * Each [IrFunction] corresponds to one or more instances of this class:
+ *
+ *  * Synchronous calls are mapped to a single instance.
+ *
+ *  * Async calls are mapped to two instances in the same orientation: [FunctionName.AsyncLift] and
+ *    [FunctionName.AsyncLiftCallback], and one instance in the mirror orientation,
+ *    [FunctionName.TaskReturn].
  */
 data class AbiFunction(
   val name: FunctionName,

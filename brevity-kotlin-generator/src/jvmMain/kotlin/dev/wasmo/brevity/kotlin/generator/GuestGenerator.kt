@@ -17,15 +17,14 @@ import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.ir.IrWitPackage
+import dev.wasmo.brevity.kotlin.abi.AbiFunction
+import dev.wasmo.brevity.kotlin.abi.AbiInterface
+import dev.wasmo.brevity.kotlin.abi.AbiLift
+import dev.wasmo.brevity.kotlin.abi.AbiResource
+import dev.wasmo.brevity.kotlin.abi.AbiService
+import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
-import dev.wasmo.brevity.kotlin.expressions.AbiFunction
-import dev.wasmo.brevity.kotlin.expressions.AbiInterface
-import dev.wasmo.brevity.kotlin.expressions.AbiLift
-import dev.wasmo.brevity.kotlin.expressions.AbiResource
-import dev.wasmo.brevity.kotlin.expressions.AbiService
-import dev.wasmo.brevity.kotlin.expressions.AbiWorld
-import dev.wasmo.brevity.kotlin.expressions.PlatformFunctionFactory
 import dev.wasmo.brevity.kotlin.expressions.valueExpression
 
 private val guestOptIns = setOf(

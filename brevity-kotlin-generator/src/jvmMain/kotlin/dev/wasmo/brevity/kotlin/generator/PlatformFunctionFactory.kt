@@ -1,15 +1,19 @@
-package dev.wasmo.brevity.kotlin.expressions
+package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
+import dev.wasmo.brevity.kotlin.abi.AbiFunction
+import dev.wasmo.brevity.kotlin.abi.AbiLower
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.Platform
 import dev.wasmo.brevity.kotlin.encoders.CoreType
-import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
+import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
+import dev.wasmo.brevity.kotlin.expressions.valueExpression
 
 /**
- * The Kotlin implementation of a WIT function.
+ * The Kotlin implementation of a WIT function. These functions implement the interface generated
+ * by [ApiFunctionFactory].
  */
 class PlatformFunctionFactory(
   private val apiFunctionFactory: ApiFunctionFactory,

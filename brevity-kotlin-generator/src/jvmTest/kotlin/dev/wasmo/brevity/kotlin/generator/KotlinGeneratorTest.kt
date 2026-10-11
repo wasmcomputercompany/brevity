@@ -202,8 +202,6 @@ class KotlinGeneratorTest {
         // Equivalent to 'if (true) return', but immune to dead code elimination.
         if ("".hashCode() == 0) return
         run_export(0, 0)
-        types_pollable_ready_export(0)
-        types_pollable_close_export(0)
       }
 
       """.trimIndent(),
@@ -1219,7 +1217,6 @@ class KotlinGeneratorTest {
       import kotlin.Int
       import kotlin.OptIn
       import kotlin.wasm.ExperimentalWasmInterop
-      import kotlin.wasm.WasmExport
       import kotlin.wasm.WasmImport
       import kotlin.wasm.unsafe.ComponentModelInternalApi
       import kotlin.wasm.unsafe.Pointer
@@ -1239,21 +1236,6 @@ class KotlinGeneratorTest {
       public fun load_Types_Pollable_guest(bridge: GuestBridge, address: Pointer): Pollable = bridge.fromId((address).loadInt(), ::TypesPollableHandle)
 
       public fun liftFlat_Types_Pollable_guest(bridge: GuestBridge, value_: Int): Pollable = bridge.fromId(value_, ::TypesPollableHandle)
-
-      @WasmExport("wasi:clocks/types@0.2.12#[method]pollable.ready")
-      internal fun types_pollable_ready_export(id: Int): Int {
-        val receiver_ = GuestBridge.fromId(id, ::TypesPollableHandle)
-        freeAllComponentModelReallocAllocatedMemory()
-        val result = receiver_.ready()
-        return (if (result) 1 else 0)
-      }
-
-      @WasmExport("wasi:clocks/types@0.2.12#[resource-drop]pollable")
-      internal fun types_pollable_close_export(id: Int) {
-        val receiver_ = GuestBridge.fromId(id, ::TypesPollableHandle)
-        freeAllComponentModelReallocAllocatedMemory()
-        receiver_.close()
-      }
 
       internal class TypesPollableHandle(
         private val id: Int,
