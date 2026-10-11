@@ -151,7 +151,10 @@ class KotlinGeneratorTest {
           guest_ = `value`
         }
 
-      internal class GuestTime() : Time.Host {
+      public val Time.host: Time.Host
+        get() = TimeBridge
+
+      internal object TimeBridge : Time.Host {
         override val types: Types = GuestTypes()
       }
 
@@ -172,7 +175,7 @@ class KotlinGeneratorTest {
         return result
       }
 
-      internal class GuestTypes() : Types {
+      internal class GuestTypes : Types {
         override fun now(): Datetime {
           val result = withScopedMemoryAllocator { memoryAllocator ->
             val resultParameter = memoryAllocator.allocate(12)

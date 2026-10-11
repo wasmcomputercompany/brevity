@@ -73,10 +73,10 @@ class GuestGenerator(
         fileName = "${className.simpleName}Guest",
       ) {
         generateWorldEntryPoint(world)
-        generateServiceClass(world)
+        generateAbiWorldClass(world)
         generateServiceFunctions(world)
         for (abiInterface in world.interfaces) {
-          generateServiceClass(abiInterface)
+          generateAbiInterfaceClass(abiInterface)
           generateServiceFunctions(abiInterface)
         }
         retainWasmExportsFunction(world)
@@ -91,73 +91,12 @@ class GuestGenerator(
         optIns = guestOptIns,
         fileName = "${className.simpleName}Guest",
       ) {
-        generateServiceClass(abiResource)
+        generateAbiResourceClass(abiResource)
         generateServiceFunctions(abiResource)
       }
     }
 
     return result
-  }
-
-  context(collector: QualifiedSpecCollector)
-  private fun generateServiceClass(abiService: AbiService) {
-    when (abiService) {
-      is AbiInterface -> if (abiService.orientation != Import) return
-      is AbiResource -> if (abiService.orientation != Import) return
-      is AbiWorld -> {}
-    }
-
-    val className = abiService.guestServiceClassName
-    val classBuilder = TypeSpec.classBuilder(className)
-      .addModifiers(KModifier.INTERNAL)
-      .addSuperinterface(abiService.apiInterfaceName(Import))
-    val implementationConstructor = FunSpec.constructorBuilder()
-
-    when (abiService) {
-      is AbiWorld -> {
-        for (abiInterface in abiService.interfaces(Import)) {
-          classBuilder.addProperty(
-            PropertySpec.builder(abiInterface.instanceName, abiInterface.apiClassName)
-              .addModifiers(KModifier.OVERRIDE)
-              .initializer("%T()", abiInterface.guestServiceClassName)
-              .build(),
-          )
-        }
-      }
-
-      is AbiInterface -> {
-      }
-
-      is AbiResource -> {
-        implementationConstructor.addParameter("id", INT)
-        classBuilder.addProperty(
-          PropertySpec.builder("id", INT)
-            .addModifiers(KModifier.PRIVATE)
-            .initializer("id")
-            .build(),
-        )
-      }
-    }
-
-    val bridgeValue = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
-    for (abiFunction in abiService.functions) {
-      if (!abiFunction.isSupported) continue
-      if (abiFunction.orientation != Import) continue
-      if (abiFunction.isSynthetic) continue
-      classBuilder.addFunction(
-        platformFunctionFactory.create(
-          bridgeValue,
-          abiFunction,
-        ),
-      )
-    }
-
-    collector.addType(
-      className,
-      classBuilder
-        .primaryConstructor(implementationConstructor.build())
-        .build(),
-    )
   }
 
   context(collector: QualifiedSpecCollector)
@@ -185,6 +124,93 @@ class GuestGenerator(
           .build(),
       )
       .build()
+
+    val hostApisInstanceName = "host"
+    collector += PropertySpec.builder(hostApisInstanceName, abiWorld.apiInterfaceName(Import))
+      .receiver(abiWorld.apiClassName)
+      .getter(
+        FunSpec.getterBuilder()
+          .addCode("return %T", abiWorld.guestServiceClassName)
+          .build(),
+      )
+      .build()
+  }
+
+  context(collector: QualifiedSpecCollector)
+  private fun generateAbiWorldClass(abiService: AbiWorld) {
+    val className = abiService.guestServiceClassName
+    collector.addType(
+      className,
+      TypeSpec.objectBuilder(className)
+        .addModifiers(KModifier.INTERNAL)
+        .addSuperinterface(abiService.apiInterfaceName(Import))
+        .apply {
+          for (abiInterface in abiService.interfaces(Import)) {
+            addProperty(
+              PropertySpec.builder(abiInterface.instanceName, abiInterface.apiClassName)
+                .addModifiers(KModifier.OVERRIDE)
+                .initializer("%T()", abiInterface.guestServiceClassName)
+                .build(),
+            )
+          }
+        }
+        .declareServiceClassFunctions(abiService)
+        .build(),
+    )
+  }
+
+  context(collector: QualifiedSpecCollector)
+  private fun generateAbiInterfaceClass(abiService: AbiInterface) {
+    if (abiService.orientation != Import) return
+    val className = abiService.guestServiceClassName
+    collector.addType(
+      className,
+      TypeSpec.classBuilder(className)
+        .addModifiers(KModifier.INTERNAL)
+        .addSuperinterface(abiService.apiInterfaceName(Import))
+        .declareServiceClassFunctions(abiService)
+        .build(),
+    )
+  }
+
+  context(collector: QualifiedSpecCollector)
+  private fun generateAbiResourceClass(abiService: AbiResource) {
+    if (abiService.orientation != Import) return
+    val className = abiService.guestServiceClassName
+    collector.addType(
+      className,
+      TypeSpec.classBuilder(className)
+        .addModifiers(KModifier.INTERNAL)
+        .addSuperinterface(abiService.apiInterfaceName(Import))
+        .addProperty(
+          PropertySpec.builder("id", INT)
+            .addModifiers(KModifier.PRIVATE)
+            .initializer("id")
+            .build(),
+        )
+        .primaryConstructor(
+          FunSpec.constructorBuilder()
+            .addParameter("id", INT)
+            .build(),
+        )
+        .declareServiceClassFunctions(abiService)
+        .build(),
+    )
+  }
+
+  private fun TypeSpec.Builder.declareServiceClassFunctions(abiService: AbiService) = apply {
+    val bridgeValue = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
+    for (abiFunction in abiService.functions) {
+      if (!abiFunction.isSupported) continue
+      if (abiFunction.orientation != Import) continue
+      if (abiFunction.isSynthetic) continue
+      addFunction(
+        platformFunctionFactory.create(
+          bridgeValue,
+          abiFunction,
+        ),
+      )
+    }
   }
 
   context(collector: QualifiedSpecCollector)
@@ -330,7 +356,7 @@ val AbiWorld.retainWasmExportsFunctionName: String
 
 val AbiService.guestServiceClassName: ClassName
   get() = when (this) {
-    is AbiWorld -> apiClassName.peerClass("Guest${apiClassName.simpleName}")
+    is AbiWorld -> apiClassName.peerClass("${apiClassName.simpleName}Bridge")
     is AbiInterface -> ClassName(
       worldServiceName.kotlinApi.packageName,
       "Guest${apiClassName.simpleName}",
