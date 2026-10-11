@@ -125,6 +125,7 @@ class KotlinGeneratorTest {
       package wit.wasi.clocks.v0_2_12
 
       import dev.wasmo.brevity.BrevityInternalApi
+      import dev.wasmo.brevity.GuestBridge
       import dev.wasmo.brevity.loadString
       import dev.wasmo.brevity.retainWasmExportsForGuestBridge
       import kotlin.Int
@@ -133,12 +134,14 @@ class KotlinGeneratorTest {
       import kotlin.collections.List
       import kotlin.wasm.ExperimentalWasmInterop
       import kotlin.wasm.WasmExport
+      import kotlin.wasm.WasmImport
       import kotlin.wasm.unsafe.ComponentModelInternalApi
       import kotlin.wasm.unsafe.Pointer
       import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
       import kotlin.wasm.unsafe.freeAllComponentModelReallocAllocatedMemory
+      import kotlin.wasm.unsafe.withScopedMemoryAllocator
 
-      private lateinit var guest_: Time.Guest
+      internal lateinit var guest_: Time.Guest
 
       public var Time.guest: Time.Guest
         get() = guest_
@@ -147,6 +150,47 @@ class KotlinGeneratorTest {
           retainWasmExportsForTime()
           guest_ = `value`
         }
+
+      internal class GuestTime() : Time.Host {
+        override val types: Types = GuestTypes()
+      }
+
+      @WasmExport("run")
+      internal fun run_export(argsAddress: Int, argsSize: Int): Int {
+        val listAddress = Pointer(argsAddress.toUInt())
+        val length = argsSize
+        val list = List<String>(length) { i ->
+          val elementAddress = listAddress + i * 8
+          val stringAddress = (elementAddress).loadInt()
+          val stringByteCount = (elementAddress + 4).loadInt()
+          Pointer(stringAddress.toUInt()).loadString(stringByteCount)
+        }
+        freeAllComponentModelReallocAllocatedMemory()
+        val result = guest_.run(
+          args = list,
+        )
+        return result
+      }
+
+      internal class GuestTypes() : Types {
+        override fun now(): Datetime {
+          val result = withScopedMemoryAllocator { memoryAllocator ->
+            val resultParameter = memoryAllocator.allocate(12)
+            val result = types_now_import(
+              resultParameter.address.toInt(),
+            )
+            load_Types_Datetime_guest(GuestBridge, resultParameter)
+          }
+          freeAllComponentModelReallocAllocatedMemory()
+          return result
+        }
+      }
+
+      @WasmImport(
+        module = "wasi:clocks/types@0.2.12",
+        name = "now",
+      )
+      private external fun types_now_import(resultParameter: Int)
 
       /**
        * This function does nothing. But by calling it the compiler retains exported symbols that
@@ -158,24 +202,8 @@ class KotlinGeneratorTest {
         // Equivalent to 'if (true) return', but immune to dead code elimination.
         if ("".hashCode() == 0) return
         run_export(0, 0)
-      }
-
-      @WasmExport("run")
-      private fun run_export(argsAddress: Int, argsSize: Int): Int {
-        val listAddress = Pointer(argsAddress.toUInt())
-        val length = argsSize
-        val list = List<String>(length) { i ->
-          val elementAddress = listAddress + i * 8
-          val stringAddress = (elementAddress).loadInt()
-          val stringByteCount = (elementAddress + 4).loadInt()
-          Pointer(stringAddress.toUInt()).loadString(stringByteCount)
-        }
-        freeAllComponentModelReallocAllocatedMemory()
-        val self = guest_
-        val result = self.run(
-          args = list,
-        )
-        return result
+        types_pollable_ready_export(0)
+        types_pollable_close_export(0)
       }
 
       """.trimIndent(),
@@ -202,6 +230,7 @@ class KotlinGeneratorTest {
       import dev.wasmo.brevity.BrevityInternalApi
       import dev.wasmo.brevity.HostBridge
       import dev.wasmo.brevity.World
+      import dev.wasmo.brevity.`get`
       import kotlin.Int
       import kotlin.OptIn
       import kotlin.String
@@ -209,20 +238,23 @@ class KotlinGeneratorTest {
       import kotlin.text.encodeToByteArray
 
       public fun Time.World(hostFactory: (Time.Guest) -> Time.Host): World<Time.Host, Time.Guest> {
-        val bridge = HostBridge()
-        val guest = BridgeTime.BridgeGuest(bridge)
-        val host = hostFactory(guest)
-        return BridgeTime(bridge, guest, host)
+        val world = HostTime()
+        world.host = hostFactory(world.guest)
+        return world
       }
 
-      internal class BridgeTime(
-        private val bridge: HostBridge,
-        override val guest: BridgeGuest,
-        override val host: Time.Host,
-      ) : World<Time.Host, Time.Guest> {
+      internal class HostTime() : World<Time.Host, Time.Guest> {
+        private val bridge: HostBridge = HostBridge()
+
+        override lateinit var host: Time.Host
+
+        override val guest: Time.Guest = RealGuest()
+
+        internal lateinit var run_export: ExportFunction
+
         override fun initExports(instance: Instance) {
           this.bridge.init(instance)
-          guest.run = instance.export("run")
+          this.run_export = instance.export("run")
         }
 
         override fun initImports(store: Store) {
@@ -236,22 +268,45 @@ class KotlinGeneratorTest {
               ),
               WasmFunctionHandle { instance, args ->
                 val resultParameter = args[0].toInt()
-                val self = host.types
-                val result = self.now()
+                val result = host.types.now()
                 store_Types_Datetime_host(bridge, resultParameter, result)
-                return@WasmFunctionHandle longArrayOf()
-              },
+                return@WasmFunctionHandle longArrayOf()    },
+            )
+          )
+          store.addFunction(
+            HostFunction(
+              "wasi:clocks/types@0.2.12",
+              "[method]pollable.ready",
+              FunctionType.of(
+                listOf(ValType.I32),
+                listOf(ValType.I32),
+              ),
+              WasmFunctionHandle { instance, args ->
+                val receiver_ = bridge.`get`<Pollable>(args[0].toInt())
+                val result = receiver_.ready()
+                val result_ = (if (result) 1 else 0)
+                return@WasmFunctionHandle longArrayOf(result_.toLong())    },
+            )
+          )
+          store.addFunction(
+            HostFunction(
+              "wasi:clocks/types@0.2.12",
+              "[resource-drop]pollable",
+              FunctionType.of(
+                listOf(ValType.I32),
+                listOf(),
+              ),
+              WasmFunctionHandle { instance, args ->
+                val receiver_ = bridge.`get`<Pollable>(args[0].toInt())
+                receiver_.close()
+                return@WasmFunctionHandle longArrayOf()    },
             )
           )
         }
 
-        internal class BridgeGuest(
-          private val bridge: HostBridge,
-        ) : Time.Guest {
-          internal lateinit var run: ExportFunction
-
+        internal inner class RealGuest() : Time.Guest {
           override fun run(args: List<String>): Int {
-            val result_ = bridge.memoryAllocator.let { memoryAllocator ->
+            val result = bridge.memoryAllocator.let { memoryAllocator ->
               val listAddress = memoryAllocator.allocate(args.size * 8)
               for (i in args.indices) {
                 val elementAddress = listAddress + i * 8
@@ -263,15 +318,13 @@ class KotlinGeneratorTest {
                 bridge.memory.writeI32(elementAddress, stringAddress_)
                 bridge.memory.writeI32(elementAddress + 4, stringByteCount)
               }
-              val resultArray = run.apply(
+              val resultArray = run_export.apply(
                 listAddress.toLong(),
                 args.size.toLong(),
               )
-              val result = resultArray[0]
-              result.toInt()
+              resultArray[0].toInt()
             }
-            val liftedResult = result_
-            return liftedResult
+            return result
           }
         }
       }
@@ -288,7 +341,6 @@ class KotlinGeneratorTest {
       //   clock.wit
       package wit.wasi.clocks.v0_2_12
 
-      import dev.wasmo.brevity.Resource
       import kotlin.Boolean
       import kotlin.String
       import kotlin.UInt
@@ -308,16 +360,6 @@ class KotlinGeneratorTest {
          */
         public val nanoseconds: UInt,
       )
-
-      /**
-       * `pollable` represents a single I/O event which may be ready, or not.
-       */
-      public interface Pollable : Resource {
-        /**
-         * Return the readiness of a pollable. This function never blocks.
-         */
-        public fun ready(): Boolean
-      }
 
       /**
        * Lookup error codes.
@@ -958,39 +1000,6 @@ class KotlinGeneratorTest {
   }
 
   @Test
-  fun `interface host`() {
-    assertThat(tester()["wit/wasi/clocks/v0_2_12/TypesHost.kt".toPath()]).isEqualTo(
-      """
-      // Generated by Brevity. Do not edit.
-      //   clock.wit
-      @file:OptIn(BrevityInternalApi::class)
-
-      package wit.wasi.clocks.v0_2_12
-
-      import com.dylibso.chicory.runtime.ExportFunction
-      import dev.wasmo.brevity.BrevityInternalApi
-      import dev.wasmo.brevity.HostBridge
-      import kotlin.OptIn
-
-      internal class BridgeTypes(
-        private val bridge: HostBridge,
-      ) : Types {
-        internal lateinit var now: ExportFunction
-
-        override fun now(): Datetime {
-          val resultArray = now.apply(
-          )
-          val result = resultArray[0]
-          val liftedResult = load_Types_Datetime_host(bridge, result.toInt())
-          return liftedResult
-        }
-      }
-
-      """.trimIndent(),
-    )
-  }
-
-  @Test
   fun `type alias guest`() {
     assertThat(tester()["wit/wasi/clocks/v0_2_12/InstantGuest.kt".toPath()]).isEqualTo(
       """
@@ -1217,53 +1226,6 @@ class KotlinGeneratorTest {
       import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
       import kotlin.wasm.unsafe.freeAllComponentModelReallocAllocatedMemory
 
-      @WasmExport("wasi:clocks/types@0.2.12#[method]pollable.ready")
-      private fun types_pollable_ready_export(self: Int): Int {
-        freeAllComponentModelReallocAllocatedMemory()
-        val self_ = GuestBridge.fromId(self, ::TypesPollableHandle)
-        val result = self_.ready()
-        return (if (result) 1 else 0)
-      }
-
-      @WasmExport("wasi:clocks/types@0.2.12#[resource-drop]pollable")
-      private fun types_pollable_close_export(self: Int) {
-        freeAllComponentModelReallocAllocatedMemory()
-        val self_ = GuestBridge.fromId(self, ::TypesPollableHandle)
-        self_.close()
-      }
-
-      @WasmImport(
-        module = "wasi:clocks/types@0.2.12",
-        name = "[method]pollable.ready",
-      )
-      private external fun types_pollable_ready_import(self: Int): Int
-
-      @WasmImport(
-        module = "wasi:clocks/types@0.2.12",
-        name = "[resource-drop]pollable",
-      )
-      private external fun types_pollable_close_import(self: Int)
-
-      internal class TypesPollableHandle(
-        private val id: Int,
-      ) : Pollable {
-        override fun ready(): Boolean {
-          val result = types_pollable_ready_import(
-            this.id,
-          )
-          val liftedResult = (result != 0)
-          freeAllComponentModelReallocAllocatedMemory()
-          return liftedResult
-        }
-
-        override fun close() {
-          types_pollable_close_import(
-            this.id,
-          )
-          freeAllComponentModelReallocAllocatedMemory()
-        }
-      }
-
       public fun store_Types_Pollable_guest(
         bridge: GuestBridge,
         address: Pointer,
@@ -1277,6 +1239,52 @@ class KotlinGeneratorTest {
       public fun load_Types_Pollable_guest(bridge: GuestBridge, address: Pointer): Pollable = bridge.fromId((address).loadInt(), ::TypesPollableHandle)
 
       public fun liftFlat_Types_Pollable_guest(bridge: GuestBridge, value_: Int): Pollable = bridge.fromId(value_, ::TypesPollableHandle)
+
+      @WasmExport("wasi:clocks/types@0.2.12#[method]pollable.ready")
+      internal fun types_pollable_ready_export(id: Int): Int {
+        val receiver_ = GuestBridge.fromId(id, ::TypesPollableHandle)
+        freeAllComponentModelReallocAllocatedMemory()
+        val result = receiver_.ready()
+        return (if (result) 1 else 0)
+      }
+
+      @WasmExport("wasi:clocks/types@0.2.12#[resource-drop]pollable")
+      internal fun types_pollable_close_export(id: Int) {
+        val receiver_ = GuestBridge.fromId(id, ::TypesPollableHandle)
+        freeAllComponentModelReallocAllocatedMemory()
+        receiver_.close()
+      }
+
+      internal class TypesPollableHandle(
+        private val id: Int,
+      ) : Pollable {
+        override fun ready(): Boolean {
+          val result = types_pollable_ready_import(
+            this.id,
+          )
+          freeAllComponentModelReallocAllocatedMemory()
+          return (result != 0)
+        }
+
+        override fun close() {
+          types_pollable_close_import(
+            this.id,
+          )
+          freeAllComponentModelReallocAllocatedMemory()
+        }
+      }
+
+      @WasmImport(
+        module = "wasi:clocks/types@0.2.12",
+        name = "[method]pollable.ready",
+      )
+      private external fun types_pollable_ready_import(id: Int): Int
+
+      @WasmImport(
+        module = "wasi:clocks/types@0.2.12",
+        name = "[resource-drop]pollable",
+      )
+      private external fun types_pollable_close_import(id: Int)
 
       """.trimIndent(),
     )
@@ -1311,6 +1319,31 @@ class KotlinGeneratorTest {
       public fun load_Types_Pollable_host(bridge: HostBridge, address: Int): Pollable = bridge.`get`<Pollable>(bridge.memory.readInt(address))
 
       public fun liftFlat_Types_Pollable_host(bridge: HostBridge, value_: Int): Pollable = bridge.`get`<Pollable>(value_)
+
+      """.trimIndent(),
+    )
+  }
+
+  @Test
+  fun `resource api`() {
+    assertThat(tester()["wit/wasi/clocks/v0_2_12/Pollable.kt".toPath()]).isEqualTo(
+      """
+      // Generated by Brevity. Do not edit.
+      //   clock.wit
+      package wit.wasi.clocks.v0_2_12
+
+      import dev.wasmo.brevity.Resource
+      import kotlin.Boolean
+
+      /**
+       * `pollable` represents a single I/O event which may be ready, or not.
+       */
+      public interface Pollable : Resource {
+        /**
+         * Return the readiness of a pollable. This function never blocks.
+         */
+        public fun ready(): Boolean
+      }
 
       """.trimIndent(),
     )

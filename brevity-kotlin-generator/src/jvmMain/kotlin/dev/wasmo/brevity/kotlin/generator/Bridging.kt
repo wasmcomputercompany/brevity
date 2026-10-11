@@ -8,7 +8,7 @@ import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.ServiceName
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrField
@@ -31,10 +31,7 @@ val IrField.kotlinName: String
 val IrFlag.kotlinName: String
   get() = name.lowerCamelCase
 
-val FunctionName.kotlinName: String
-  get() = kotlinIdentifier.lowerCamelCase
-
-private val FunctionName.kotlinIdentifier: Identifier
+val FunctionName.kotlinIdentifier: Identifier
   get() {
     return when (this) {
       is FunctionName.ResourceDrop -> dropFunctionName
@@ -53,12 +50,6 @@ private val FunctionName.kotlinIdentifier: Identifier
 val IrExternalApi.instanceName: String
   get() = (plainName ?: serviceName.name).lowerCamelCase
 
-val ServiceName.bridgeType: ClassName
-  get() = ClassName(
-    kotlinApi.packageName,
-    "Bridge${name.upperCamelCase}",
-  )
-
 val CoreType.kotlinCoreType: KtTypeName
   get() = when (this) {
     CoreType.I32 -> INT
@@ -75,3 +66,10 @@ val IrFunction.isSupported: Boolean
     is FunctionName.Static -> false
     else -> true
   }
+
+/** Assuming this is a resource, this returns the handle implementation class. */
+val TypeName.Declared.handleName: ClassName
+  get() = ClassName(
+    serviceName.packageName.kotlinApi,
+    "${serviceName.name.upperCamelCase}${name.upperCamelCase}Handle",
+  )

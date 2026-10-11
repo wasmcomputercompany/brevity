@@ -73,7 +73,7 @@ class HostKotlinTarget(
     } else {
       writeUtf8(
         """
-        |val world = BrevityTest.World { }
+        |val world = BrevityTest.World()
         |
         """.trimMargin(),
       )
