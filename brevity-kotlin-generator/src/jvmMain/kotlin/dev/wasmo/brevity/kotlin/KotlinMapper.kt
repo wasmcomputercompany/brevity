@@ -62,13 +62,6 @@ class KotlinMapper(
     }
   }
 
-  fun getHandleName(name: TypeName.Declared): ClassName {
-    return ClassName(
-      name.serviceName.packageName.kotlinApi,
-      "${name.serviceName.upperCamelCase}${name.upperCamelCase}Handle",
-    )
-  }
-
   /** Map WIT types to Kotlin types. */
   fun get(name: TypeName): KtTypeName {
     val mapping = customTypeMappings[name]

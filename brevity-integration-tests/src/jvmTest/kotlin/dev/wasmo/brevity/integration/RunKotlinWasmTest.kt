@@ -24,7 +24,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call function declared on world`() = runTest {
-    val world = WasmoTesting.World { }
+    val world = WasmoTesting.World()
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -40,7 +40,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call function declared on interface`() = runTest {
-    val world = WasmoTesting.World { }
+    val world = WasmoTesting.World()
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -56,7 +56,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call concatenate`() = runTest {
-    val world = WasmoTesting.World { }
+    val world = WasmoTesting.World()
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -82,7 +82,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call inline concatenate`() = runTest {
-    val world = WasmoTesting.World { }
+    val world = WasmoTesting.World()
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -102,7 +102,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call printGreeting`() = runTest {
-    val world = WasmoTesting.World { }
+    val world = WasmoTesting.World()
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -120,7 +120,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call printError`() = runTest {
-    val world = WasmoTesting.World { }
+    val world = WasmoTesting.World()
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -138,7 +138,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `parallel sleep`() = runTest {
-    val world = WasmoTesting.World { }
+    val world = WasmoTesting.World()
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,

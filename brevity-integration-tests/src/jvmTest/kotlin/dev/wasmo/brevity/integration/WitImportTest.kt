@@ -2,7 +2,6 @@ package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation
-import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 
@@ -29,7 +28,6 @@ class WitImportTest {
   )
 
   @Test
-  @Ignore("not working on Kotlin yet")
   fun happyPath() = runTest {
     val test = BrevityExecutionTester(
       name = "importHappyPath",
