@@ -5,8 +5,11 @@ package dev.wasmo.brevity.io
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Identifier.Companion.toIdentifierOrNull
+import dev.wasmo.brevity.IdentifierOrKeyword
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
+import dev.wasmo.brevity.Keyword
+import dev.wasmo.brevity.Keyword.Companion.keywordFor
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.SemVer
@@ -93,32 +96,76 @@ class WitSyntaxReader(
   }
 
   /**
-   * Reads a well-formed identifier and returns it. If the input file contains an identifier that
-   * is not well-formed (such as 'incomingHandler' that mixes case in a single segment), this
-   * function reports and error and returns a placeholder.
+   * Reads a keyword and returns it. Keyword validation is performed by callers.
    */
   context(issueCollector: IssueCollector)
-  fun readIdentifier(): Identifier {
+  fun readKeyword(): Keyword =
+    readIdentifierOrKeywordInternal(Keyword::class.java)
+
+
+  /**
+   * Reads a well-formed identifier and returns it. If the input file contains an identifier that
+   * is not well-formed (such as 'incomingHandler' that mixes case in a single segment), this
+   * function reports an error and returns a placeholder.
+   *
+   * If any keyword is read, [readIdentifier] will immediately raise a [WitException] and stop
+   * the parse.
+   *
+   * @param unescaped If set to true, will report an issue if escaping is present.
+   */
+  context(issueCollector: IssueCollector)
+  fun readIdentifier(unescaped: Boolean = false): Identifier =
+    readIdentifierOrKeywordInternal(
+      expectedType = Identifier::class.java,
+      unescaped = unescaped,
+    )
+
+  /**
+   * Reads a well-formed identifier or keyword instance and returns it. If the input file contains
+   * an identifier that is not well-formed (such as 'incomingHandler' that mixes case in a single
+   * segment), this function reports an error and returns a placeholder.
+   */
+  context(issueCollector: IssueCollector)
+  fun readIdentifierOrKeyword(): IdentifierOrKeyword =
+    readIdentifierOrKeywordInternal(IdentifierOrKeyword::class.java)
+
+  context(issueCollector: IssueCollector)
+  private fun <T: IdentifierOrKeyword> readIdentifierOrKeywordInternal(
+    expectedType: Class<T>,
+    unescaped: Boolean = false,
+  ): T {
+    val expected = when (expectedType) {
+      Identifier::class.java -> "expected an identifier"
+      Keyword::class.java -> "expected a keyword"
+      else -> "expected an identifier or keyword"
+    }
+
     checkWit(!exhausted) {
-      "expected an identifier"
+      expected
     }
 
     val wordStart = when (chars[pos]) {
-      '%' -> pos + 1
+      '%' -> {
+        if (unescaped) {
+          issueCollector.report(
+            Issue("unexpected escape character: '%'", location)
+          )
+        }
+        pos + 1
+      }
       else -> pos
     }
 
     val end = chars.indexOfNextNonMatch(wordStart, Char::isWordCharacter)
     checkWit(wordStart < end) {
-      "expected an identifier"
+      expected
     }
 
     val resultLocation = location
 
     val result = String(chars, pos, end - pos)
-    pos = end
 
-    return result.toIdentifierOrNull()
+    val identifier = (result.toIdentifierOrNull()
       ?: run {
         issueCollector.report(
           Issue(
@@ -127,7 +174,23 @@ class WitSyntaxReader(
           ),
         )
         Identifier("PLACEHOLDER")
+      })
+
+
+    // Using result to preserve escaping
+    val parsed = keywordFor(result) ?: identifier
+
+    checkWit(expectedType.isInstance(parsed)) {
+      when (expectedType) {
+        Identifier::class.java -> "expected an identifier, but read keyword $result"
+        else -> "expected a keyword, but read $result"
       }
+    }
+
+    pos = end
+
+    @Suppress("UNCHECKED_CAST")
+    return parsed as T
   }
 
   fun readSemVer(): SemVer {
@@ -169,8 +232,13 @@ class WitSyntaxReader(
   fun readAnnotationOrNull(): Identifier? {
     if (peek() != '@') return null
     pos++ // Consume '@'.
+    val location = location
 
-    return readIdentifier()
+    return readIdentifier(unescaped = true).also {
+      if (!setOf(Identifier.deprecated, Identifier.since, Identifier.unstable).contains(it)) {
+        errorWit(location, "unexpected gate annotation: $it")
+      }
+    }
   }
 
   private fun peek(): Char = when {
@@ -196,8 +264,8 @@ class WitSyntaxReader(
   fun readLiteral(literal: Char) {
     checkWit(tryReadLiteral(literal)) {
       when {
-        exhausted -> "expected $literal but was EOF"
-        else -> "expected $literal but was '${chars[pos]}'"
+        exhausted -> "expected '$literal' but was EOF"
+        else -> "expected '$literal' but was '${chars[pos]}'"
       }
     }
   }
@@ -259,9 +327,9 @@ class WitSyntaxReader(
    */
   context(issueCollector: IssueCollector)
   fun readTypeName(): IoTypeName {
-    return when (val identifier = readIdentifier()) {
-      Keywords.tuple -> IoTypeName.Tuple(readTypeList("tuple", min = 1, max = Int.MAX_VALUE))
-      Keywords.list -> {
+    return when (val identifier = readIdentifierOrKeyword()) {
+      Keyword.tuple -> IoTypeName.Tuple(readTypeList("tuple", min = 1, max = Int.MAX_VALUE))
+      Keyword.list -> {
         readLiteral('<')
         skipWhitespace()
         val type = readTypeName()
@@ -279,8 +347,8 @@ class WitSyntaxReader(
         IoTypeName.List(type, size)
       }
 
-      Keywords.option -> IoTypeName.Option(readTypeList("option", min = 1, max = 1).single())
-      Keywords.result -> {
+      Keyword.option -> IoTypeName.Option(readTypeList("option", min = 1, max = 1).single())
+      Keyword.result -> {
         if (tryReadLiteral('<')) {
           skipWhitespace()
           val ok = when {
@@ -304,28 +372,29 @@ class WitSyntaxReader(
         }
       }
 
-      Keywords.map -> {
+      Keyword.map -> {
         val (key, value) = readTypeList("map", min = 2, max = 2)
         IoTypeName.Map(key, value)
       }
 
-      Keywords.borrow -> IoTypeName.Borrow(readTypeList("borrow", min = 1, max = 1).single())
-      Keywords.future -> IoTypeName.Future(readTypeList("future", min = 0, max = 1).singleOrNull())
-      Keywords.stream -> IoTypeName.Stream(readTypeList("stream", min = 0, max = 1).singleOrNull())
-      Keywords.bool -> IoTypeName.Bool
-      Keywords.s8 -> IoTypeName.S8
-      Keywords.s16 -> IoTypeName.S16
-      Keywords.s32 -> IoTypeName.S32
-      Keywords.s64 -> IoTypeName.S64
-      Keywords.u8 -> IoTypeName.U8
-      Keywords.u16 -> IoTypeName.U16
-      Keywords.u32 -> IoTypeName.U32
-      Keywords.u64 -> IoTypeName.U64
-      Keywords.f32 -> IoTypeName.F32
-      Keywords.f64 -> IoTypeName.F64
-      Keywords.char -> IoTypeName.Char
-      Keywords.string -> IoTypeName.String
-      else -> IoTypeName.Declared(identifier)
+      Keyword.borrow -> IoTypeName.Borrow(readTypeList("borrow", min = 1, max = 1).single())
+      Keyword.future -> IoTypeName.Future(readTypeList("future", min = 0, max = 1).singleOrNull())
+      Keyword.stream -> IoTypeName.Stream(readTypeList("stream", min = 0, max = 1).singleOrNull())
+      Keyword.bool -> IoTypeName.Bool
+      Keyword.s8 -> IoTypeName.S8
+      Keyword.s16 -> IoTypeName.S16
+      Keyword.s32 -> IoTypeName.S32
+      Keyword.s64 -> IoTypeName.S64
+      Keyword.u8 -> IoTypeName.U8
+      Keyword.u16 -> IoTypeName.U16
+      Keyword.u32 -> IoTypeName.U32
+      Keyword.u64 -> IoTypeName.U64
+      Keyword.f32 -> IoTypeName.F32
+      Keyword.f64 -> IoTypeName.F64
+      Keyword.char -> IoTypeName.Char
+      Keyword.string -> IoTypeName.String
+      is Keyword -> errorWit(location, "unexpected keyword: $identifier")
+      is Identifier -> IoTypeName.Declared(identifier)
     }
   }
 

@@ -1,13 +1,16 @@
 package dev.wasmo.brevity.io
 
 import assertk.assertThat
+import assertk.assertions.containsExactly
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.WitException
+import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.toPackageName
 import kotlin.test.Test
@@ -210,6 +213,21 @@ class WitFileReaderTest {
   }
 
   @Test
+  fun `escaped async, static, or func throws issue`() = collectNoIssuesOrThrow {
+    val e = assertFailsWith<WitException> {
+      """
+      |interface foo {
+      |  async-print: %async %static %func();
+      |}
+      """.trimMargin().toWitFile(location)
+    }
+
+    assertThat(e.issue).isEqualTo(
+      Issue("expected a keyword, but read %async", location.at(2, 16)),
+    )
+  }
+
+  @Test
   fun `readInterface with functions`() = collectNoIssuesOrThrow {
     val wit = """
       |interface foo {
@@ -253,6 +271,26 @@ class WitFileReaderTest {
         ),
         location = location,
       ),
+    )
+  }
+
+  @Test
+  fun `escaped interface item keywords are treated as func items`() = collectNoIssuesOrThrow {
+    val e = assertFailsWith<WitException> {
+      """
+      |package wasi:clocks@0.2.9;
+      |
+      |interface wall-clock {
+      |  %record datetime {
+      |    seconds: u64,
+      |    nanoseconds: u32,
+      |  }
+      |}
+      """.trimMargin().toWitFile(location)
+    }
+
+    assertThat(e.issue).isEqualTo(
+      Issue("expected ':' but was 'd'", location.at(4, 11)),
     )
   }
 
@@ -582,6 +620,43 @@ class WitFileReaderTest {
   }
 
   @Test
+  fun `resource escaped constructor`() = collectNoIssuesOrThrow {
+    val e = assertFailsWith<WitException> {
+      """
+      |interface db {
+      |  resource blob {
+      |    %constructor(init: list<u8>);
+      |
+      |  }
+      |}
+      """.trimMargin().toWitFile(location)
+    }
+
+    assertThat(e.issue).isEqualTo(
+      Issue("expected ':' but was '('", location.at(3, 17))
+    )
+  }
+
+  @Test
+  fun `keywords as resource func names fail`() = collectNoIssuesOrThrow {
+    val e = assertFailsWith<WitException> {
+      """
+      |interface db {
+      |  resource blob {
+      |    package: func(bytes: list<u8>);
+      |
+      |    interface: func(n: u32) -> list<u8>;
+      |  }
+      |}
+      """.trimMargin().toWitFile(location)
+    }
+
+    assertThat(e.issue).isEqualTo(
+      Issue("unescaped keyword used as resource item: package", location.at(2, 3)),
+    )
+  }
+
+  @Test
   fun `empty resource`() = collectNoIssuesOrThrow {
     val wit = """
       |interface db {
@@ -841,7 +916,7 @@ class WitFileReaderTest {
       |interface db {
       |  /// Four values.
       |  @since(version = 1.0)
-      |  use an-interface.{a, list, of, names};
+      |  use an-interface.{a, %list, of, names};
       |  /// One aliased value.
       |  @since(version = 2.0)
       |  use my:dependency/the-interface@3.0.{
@@ -866,8 +941,8 @@ class WitFileReaderTest {
                 items = listOf(
                   IoUseItem(location = location.at(4, 21), type = "a"),
                   IoUseItem(location = location.at(4, 24), type = "list"),
-                  IoUseItem(location = location.at(4, 30), type = "of"),
-                  IoUseItem(location = location.at(4, 34), type = "names"),
+                  IoUseItem(location = location.at(4, 31), type = "of"),
+                  IoUseItem(location = location.at(4, 35), type = "names"),
                 ),
               ),
               IoUse(
@@ -916,6 +991,20 @@ class WitFileReaderTest {
         ),
         location = location,
       ),
+    )
+  }
+
+  @Test
+  fun `toplevel items escaped should fail`() = collectNoIssuesOrThrow {
+    val e = assertFailsWith<WitException>() {
+      """
+      |%package my:pkg;
+      |}
+      """.trimMargin().toWitFile(location)
+    }
+
+    assertThat(e.issue).isEqualTo(
+      Issue("expected a keyword, but read %package", location.at(1, 1)),
     )
   }
 
@@ -1389,6 +1478,23 @@ class WitFileReaderTest {
   }
 
   @Test
+  fun `escape chars in nested package`() = collectNoIssuesOrThrow {
+    val e = assertFailsWith<WitException>() {
+      """
+      |package local:a {
+      |  /// Use the Wasi HTTP types.
+      |  @since(version = 1.0)
+      |  %use wasi:http/types@1.0.0;
+      |}
+      """.trimMargin().toWitFile(location)
+    }
+    assertThat(e.issue).isEqualTo(
+      Issue("expected a keyword, but read %use", location.at(4, 3))
+    )
+  }
+
+
+  @Test
   fun `top level use in nested package`() = collectNoIssuesOrThrow {
     val wit = """
       |package local:a {
@@ -1446,6 +1552,24 @@ class WitFileReaderTest {
         ),
         location = location,
       ),
+    )
+  }
+
+  @Test
+  fun `escaped keywords in world`() = collectNoIssuesOrThrow {
+    val e = assertFailsWith<WitException> {
+        """
+        |world multi-function-device {
+        |  %record datetime {
+        |    seconds: u64,
+        |    nanoseconds: u32,
+        |  }
+        |}
+        """.trimMargin().toWitFile(location)
+    }
+
+    assertThat(e.issue).isEqualTo(
+      Issue("expected a keyword, but read %record", location.at(2, 3))
     )
   }
 
@@ -1663,7 +1787,7 @@ class WitFileReaderTest {
   fun `use in world`() = collectNoIssuesOrThrow {
     val wit = """
       |world multi-function-device {
-      |  use an-interface.{a, list, of, names};
+      |  use an-interface.{a, %list, of, names};
       |}
       """.trimMargin().toWitFile(location)
     assertThat(wit).isEqualTo(
@@ -1679,8 +1803,8 @@ class WitFileReaderTest {
                 items = listOf(
                   IoUseItem(location = location.at(2, 21), type = "a"),
                   IoUseItem(location = location.at(2, 24), type = "list"),
-                  IoUseItem(location = location.at(2, 30), type = "of"),
-                  IoUseItem(location = location.at(2, 34), type = "names"),
+                  IoUseItem(location = location.at(2, 31), type = "of"),
+                  IoUseItem(location = location.at(2, 35), type = "names"),
                 ),
               ),
             ),

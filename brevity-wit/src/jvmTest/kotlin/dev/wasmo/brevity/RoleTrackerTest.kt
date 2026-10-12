@@ -32,7 +32,7 @@ class RoleTrackerTest {
         |  }
         |
         |  record measurement {
-        |    type: string,
+        |    %type: string,
         |    amount: f64,
         |  }
         |

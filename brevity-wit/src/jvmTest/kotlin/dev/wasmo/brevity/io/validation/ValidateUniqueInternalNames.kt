@@ -82,7 +82,7 @@ class ValidateUniqueInternalNames {
     assertItemProducesIssues(
       IoInclude(
         location = cliLocation.at(1, 2),
-        path = "interface".toUsePath(),
+        path = "my-interface".toUsePath(),
         items = listOf(
           IoInclude.Item(
             location = cliLocation.at(2, 1),
@@ -207,7 +207,7 @@ class ValidateUniqueInternalNames {
     assertItemProducesIssues(
       IoUse(
         location = cliLocation.at(1, 2),
-        path = "use".toUsePath(),
+        path = "a-use".toUsePath(),
         items = listOf(
           IoUse.Item(
             location = cliLocation.at(2, 1),
