@@ -10,7 +10,7 @@ class GuestRustTarget(
   private val name: String,
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
-  private val types: List<SampleType>,
+  private val testFunctions: List<TestFunction>,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("GuestRustTarget")) {
@@ -21,7 +21,13 @@ class GuestRustTarget(
   }
 
   private fun BufferedSink.writeRust() {
-    if (types.any { it.futures }) {
+    writeUtf8(
+      """
+      |#![allow(unused_imports)]
+      |
+      """.trimMargin(),
+    )
+    if (testFunctions.any { it.futures }) {
       writeUtf8(
         """
         |use crate::bindings::wit_future::FuturePayload;
@@ -57,7 +63,7 @@ class GuestRustTarget(
       """.trimMargin(),
     )
 
-    for (testFunction in types.testFunctions) {
+    for (testFunction in testFunctions) {
       with(testFunction) {
         rustDeclareGuestFunctions()
       }

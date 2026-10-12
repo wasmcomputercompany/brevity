@@ -7,25 +7,6 @@ import dev.wasmo.brevity.kotlin.generator.lowerSnakeCase
 import okio.Buffer
 import okio.BufferedSink
 
-val List<SampleType>.testFunctions: List<TestFunction>
-  get() = buildList {
-    for (type in this@testFunctions) {
-      for (orientation in type.orientations) {
-        for (callingMechanism in type.callingMechanisms) {
-          if (callingMechanism is CallingMechanism.Sync) {
-            add(TestFunction(PassingMechanism.Parameter(), callingMechanism, orientation, type))
-            add(TestFunction(PassingMechanism.Parameter(16), callingMechanism, orientation, type))
-            add(TestFunction(PassingMechanism.Return, callingMechanism, orientation, type))
-          } else {
-            add(TestFunction(PassingMechanism.Parameter(), callingMechanism, orientation, type))
-            add(TestFunction(PassingMechanism.Parameter(4), callingMechanism, orientation, type))
-            add(TestFunction(PassingMechanism.Return, callingMechanism, orientation, type))
-          }
-        }
-      }
-    }
-  }
-
 data class TestFunction(
   val passingMechanism: PassingMechanism,
   val callingMechanism: CallingMechanism,
@@ -34,6 +15,11 @@ data class TestFunction(
 ) {
   val testCases: List<TestCase>
     get() = type.values.indices.map { TestCase(this, it) }
+
+  val futures: Boolean
+    get() = false
+  val sleep: Boolean
+    get() = false
 
   val identifier = Identifier(
     buildList {
@@ -48,7 +34,7 @@ data class TestFunction(
       if (padding > 0) {
         add("p$padding")
       }
-      if (callingMechanism is CallingMechanism.Async) {
+      if (callingMechanism == CallingMechanism.Async) {
         add("async")
       }
     }.joinToString(separator = "-"),
@@ -77,7 +63,7 @@ data class TestFunction(
 
   fun BufferedSink.witDeclare() {
     val modifiers = when (callingMechanism) {
-      is CallingMechanism.Async -> " async"
+      CallingMechanism.Async -> " async"
       CallingMechanism.Sync -> ""
     }
 
@@ -136,7 +122,7 @@ data class TestFunction(
 
   fun BufferedSink.rustDeclareTrampoline() {
     val modifiers = when (callingMechanism) {
-      is CallingMechanism.Async -> "async "
+      CallingMechanism.Async -> "async "
       CallingMechanism.Sync -> ""
     }
 
@@ -178,7 +164,7 @@ data class TestFunction(
 
   fun BufferedSink.rustDeclare() {
     val modifiers = when (callingMechanism) {
-      is CallingMechanism.Async -> "async "
+      CallingMechanism.Async -> "async "
       CallingMechanism.Sync -> ""
     }
 
@@ -296,7 +282,7 @@ data class TestFunction(
 
   fun BufferedSink.kotlinDeclareTrampoline() {
     val modifiers = when (callingMechanism) {
-      is CallingMechanism.Async -> " suspend"
+      CallingMechanism.Async -> " suspend"
       CallingMechanism.Sync -> ""
     }
 
@@ -337,7 +323,7 @@ data class TestFunction(
 
   fun BufferedSink.kotlinDeclare() {
     val modifiers = when (callingMechanism) {
-      is CallingMechanism.Async -> " suspend"
+      CallingMechanism.Async -> " suspend"
       CallingMechanism.Sync -> ""
     }
 
@@ -519,11 +505,18 @@ data class TestFunction(
         )
       }
 
+      val transformedValue = when {
+        orientation == Orientation.Import && callingMechanism == CallingMechanism.Sync ->
+          type.borrowRustValue(value)
+
+        else -> value
+      }
+
       when (passingMechanism) {
         is PassingMechanism.Parameter -> {
           writeUtf8(
             """
-            |    ${value.replace("\n", "\n    ")},
+            |    ${transformedValue.replace("\n", "\n    ")},
             |
             """.trimMargin(),
           )
@@ -539,7 +532,7 @@ data class TestFunction(
         }
       }
       when (callingMechanism) {
-        is CallingMechanism.Async -> {
+        CallingMechanism.Async -> {
           writeUtf8(
             """
             |).await
@@ -565,7 +558,7 @@ data class TestFunction(
   ) = "$callTarget.${identifier.lowerCamelCase}Trampoline($valueIndex)"
 
   private fun BufferedSink.maybeWriteSleepKotlin() {
-    if ((callingMechanism as? CallingMechanism.Async)?.sleep != true) return
+    if (!sleep) return
     writeUtf8(
       """
       |    delay(100.milliseconds)
@@ -575,7 +568,7 @@ data class TestFunction(
   }
 
   private fun BufferedSink.maybeWriteSleepRust() {
-    if ((callingMechanism as? CallingMechanism.Async)?.sleep != true) return
+    if (!sleep) return
     writeUtf8(
       """
       |        sleep(Duration::from_millis(4000));

@@ -1,7 +1,6 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Orientation
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 
@@ -11,13 +10,6 @@ class WitImportTest {
     witType = "s64",
     kotlinType = "Long",
     rustType = "i64",
-    callingMechanisms = listOf(
-      CallingMechanism.Sync,
-    ),
-    orientations = listOf(
-      Orientation.Export,
-      Orientation.Import,
-    ),
     values = listOf(
       SampleValue(kotlin = "0L", rust = "0"),
       SampleValue(kotlin = "5L", rust = "5"),

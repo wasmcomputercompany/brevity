@@ -11,7 +11,7 @@ class HostKotlinTarget(
   private val name: String,
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
-  private val types: List<SampleType>,
+  private val testFunctions: List<TestFunction>,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("HostKotlinTarget")) {
@@ -50,7 +50,7 @@ class HostKotlinTarget(
       |
       """.trimMargin(),
     )
-    if (types.testFunctions.any { it.orientation == Orientation.Import }) {
+    if (testFunctions.any { it.orientation == Orientation.Import }) {
       writeUtf8(
         """
         |val world = BrevityTest.World { RealHost }
@@ -59,7 +59,7 @@ class HostKotlinTarget(
         |
         """.trimMargin(),
       )
-      for (testFunction in types.testFunctions) {
+      for (testFunction in testFunctions) {
         with(testFunction) {
           kotlinDeclareHostFunctions()
         }
@@ -97,7 +97,7 @@ class HostKotlinTarget(
       """.trimMargin(),
     )
 
-    for (testFunction in types.testFunctions) {
+    for (testFunction in testFunctions) {
       for (testCase in testFunction.testCases) {
         with(testCase) {
           kotlinCallAndAssert("world.guest")

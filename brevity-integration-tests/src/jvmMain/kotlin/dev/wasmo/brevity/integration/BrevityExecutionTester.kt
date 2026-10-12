@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
 import kotlin.time.Duration.Companion.milliseconds
@@ -42,10 +43,29 @@ class BrevityExecutionTester(
   val extraFiles: Map<Path, String> = mapOf(),
   val types: List<SampleType>,
   val sleep: Boolean = false,
+  predicate: TestFunction.() -> Boolean = { true },
 ) {
   private val layout = ProjectLayout(
     path = "build/BrevityExecutionTester/$name".toPath(),
   )
+
+  private val testFunctions: List<TestFunction> = buildList {
+    for (type in types) {
+      for (orientation in Orientation.entries) {
+        for (callingMechanism in CallingMechanism.entries) {
+          if (callingMechanism == CallingMechanism.Sync) {
+            add(TestFunction(PassingMechanism.Parameter(), callingMechanism, orientation, type))
+            add(TestFunction(PassingMechanism.Parameter(16), callingMechanism, orientation, type))
+            add(TestFunction(PassingMechanism.Return, callingMechanism, orientation, type))
+          } else {
+            add(TestFunction(PassingMechanism.Parameter(), callingMechanism, orientation, type))
+            add(TestFunction(PassingMechanism.Parameter(4), callingMechanism, orientation, type))
+            add(TestFunction(PassingMechanism.Return, callingMechanism, orientation, type))
+          }
+        }
+      }
+    }
+  }.filter(predicate)
 
   suspend fun execute() {
     clean()
@@ -60,7 +80,7 @@ class BrevityExecutionTester(
       }
 
       val wit = launch {
-        WitTarget(name, fileSystem, layout, types, rawWit).generate()
+        WitTarget(name, fileSystem, layout, rawWit, testFunctions).generate()
       }
       val brevityKt = launch {
         wit.join()
@@ -68,7 +88,7 @@ class BrevityExecutionTester(
       }
 
       val hostKt = launch {
-        HostKotlinTarget(name, fileSystem, layout, types).generate()
+        HostKotlinTarget(name, fileSystem, layout, testFunctions).generate()
       }
       val hostKtJar = async {
         brevityKt.join()
@@ -79,7 +99,7 @@ class BrevityExecutionTester(
       }
 
       val guestKt = launch {
-        GuestKotlinTarget(name, fileSystem, layout, types).generate()
+        GuestKotlinTarget(name, fileSystem, layout, testFunctions).generate()
       }
       val guestKtWasm = async {
         // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
@@ -97,7 +117,7 @@ class BrevityExecutionTester(
         generateGuestAppRustCargoToml()
       }
       val guestRs = launch {
-        GuestRustTarget(name, fileSystem, layout, types).generate()
+        GuestRustTarget(name, fileSystem, layout, testFunctions).generate()
       }
       val guestRsWasm = async {
         guestRs.join()
@@ -286,7 +306,7 @@ class BrevityExecutionTester(
           |
           """.trimMargin(),
         )
-        if (types.any { it.futures }) {
+        if (testFunctions.any { it.futures }) {
           writeUtf8(
             """
             |futures = "0.3.34"

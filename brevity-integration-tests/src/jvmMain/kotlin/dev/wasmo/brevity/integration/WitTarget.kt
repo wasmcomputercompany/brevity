@@ -10,8 +10,8 @@ class WitTarget(
   private val name: String,
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
-  private val types: List<SampleType>,
   private val rawWit: String,
+  private val testFunctions: List<TestFunction>,
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("WitTarget")) {
@@ -30,7 +30,7 @@ class WitTarget(
       """.trimMargin(),
     )
 
-    for (testFunction in types.testFunctions) {
+    for (testFunction in testFunctions) {
       with(testFunction) {
         witDeclare()
       }
