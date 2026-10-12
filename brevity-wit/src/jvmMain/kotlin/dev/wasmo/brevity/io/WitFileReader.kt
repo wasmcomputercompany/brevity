@@ -41,7 +41,7 @@ internal class WitFileReader(
       val documentation = source.takeDocumentation()
       val location = source.location
 
-      when (val identifier = source.readKeyword()) {
+      when (val keyword = source.readKeyword()) {
         Keyword.`package` -> {
           val (value, kind) = readPackage(documentation, gate, location)
           when (kind) {
@@ -70,7 +70,7 @@ internal class WitFileReader(
           items += readWorld(documentation, gate, location)
         }
 
-        else -> errorWit(location, "unexpected identifier: $identifier")
+        else -> errorWit(location, "unexpected keyword: $keyword")
       }
     }
 
@@ -115,11 +115,11 @@ internal class WitFileReader(
           val nestedDocumentation = source.takeDocumentation()
           val nestedLocation = source.location
 
-          declarations += when (val identifier = source.readKeyword()) {
+          declarations += when (val keyword = source.readKeyword()) {
             Keyword.`interface` -> readInterface(nestedDocumentation, nestedGate, nestedLocation)
             Keyword.use -> readTopLevelUse(nestedDocumentation, nestedGate, nestedLocation)
             Keyword.world -> readWorld(nestedDocumentation, nestedGate, nestedLocation)
-            else -> errorWit(nestedLocation, "unexpected identifier: $identifier")
+            else -> errorWit(nestedLocation, "unexpected keyword: $keyword")
           }
         }
 
@@ -752,7 +752,7 @@ internal class WitFileReader(
       val itemGate = readGateOrNull()
       val itemDocumentation = source.takeDocumentation()
       val itemLocation = source.location
-      when (val identifier = source.readKeyword()) {
+      when (val keyword = source.readKeyword()) {
         Keyword.enum -> items += readEnum(itemDocumentation, itemGate, itemLocation)
         Keyword.export -> exports += readWorldApi(itemDocumentation, itemGate, itemLocation)
         Keyword.flags -> items += readFlags(itemDocumentation, itemGate, itemLocation)
@@ -763,7 +763,7 @@ internal class WitFileReader(
         Keyword.type -> items += readTypeAlias(itemDocumentation, itemGate, itemLocation)
         Keyword.use -> items += readUse(itemDocumentation, itemGate, itemLocation)
         Keyword.variant -> items += readVariant(itemDocumentation, itemGate, itemLocation)
-        else -> errorWit(location, "unexpected keyword: $identifier")
+        else -> errorWit(location, "unexpected keyword: $keyword")
       }
     }
 
