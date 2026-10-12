@@ -341,7 +341,7 @@ class HostGenerator(
       moduleName = abiFunction.name.moduleName,
       abiName = abiFunction.name.abiName,
       parameterTypes = abiFunction.loweredParameterTypes,
-      returnType = abiFunction.result.loweredType,
+      returnType = abiFunction.loweredReturnType,
       body = codeBuilder.build(),
     )
   }

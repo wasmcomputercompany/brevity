@@ -141,7 +141,7 @@ private fun AbiFunction.liftReturnValue(callResult: KtExpression): CodeBlock {
       CodeBlock.of("%N", result.parameter.name),
     )
 
-    is AbiFunction.Result.AsyncLift -> CodeBlock.of(
+    is AbiFunction.Result.CallTaskReturn -> CodeBlock.of(
       "%L.awaitTaskResult<%T>()",
       codeBuilder.bridge,
       result.value?.type ?: UNIT,

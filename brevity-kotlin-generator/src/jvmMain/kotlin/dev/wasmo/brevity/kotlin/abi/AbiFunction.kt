@@ -8,6 +8,8 @@ import com.squareup.kotlinpoet.TypeName
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.Orientation.Export
+import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.TypeName as WitTypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.kotlin.KotlinMapper
@@ -15,7 +17,6 @@ import dev.wasmo.brevity.kotlin.encoders.AbstractRecordEncoder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.Encoder
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
-import dev.wasmo.brevity.kotlin.encoders.MAX_FLAT_PARAMS
 import dev.wasmo.brevity.kotlin.generator.isSupported
 import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 import dev.wasmo.brevity.kotlin.generator.kotlinIdentifier
@@ -30,9 +31,11 @@ import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
  *
  *  * Synchronous calls are mapped to a single instance.
  *
- *  * Async calls are mapped to two instances in the same orientation: [FunctionName.AsyncLift] and
- *    [FunctionName.AsyncLiftCallback], and one instance in the mirror orientation,
- *    [FunctionName.TaskReturn].
+ *  * Exported async calls are mapped to two instances in the same orientation:
+ *    [FunctionName.AsyncExport] and [FunctionName.AsyncExportCallback], and one instance in the
+ *    mirror orientation, [FunctionName.TaskReturn].
+ *
+ *  * Imported async calls are mapped to an instance of [FunctionName.AsyncImport].
  */
 data class AbiFunction(
   val name: FunctionName,
@@ -50,9 +53,12 @@ data class AbiFunction(
     get() = kotlinIdentifier.lowerCamelCase
 
   val async: Boolean
-    get() = result is Result.AsyncLift
+    get() = name is FunctionName.AsyncExport || name is FunctionName.AsyncImport
+
+  /** Returns true if this function is not exposed to the application layer. */
   val isSynthetic: Boolean
-    get() = name is FunctionName.TaskReturn || name is FunctionName.AsyncLiftCallback
+    get() = name is FunctionName.TaskReturn || name is FunctionName.AsyncExportCallback
+
   val isResource: Boolean
     get() = loweredResourceIdParameterSpec != null
 
@@ -142,54 +148,56 @@ data class AbiFunction(
     }
   }
 
+  /**
+   * What the lowered function returns. For certain call encodings this is unrelated to what the
+   * lifted function returns.
+   */
+  val loweredReturnType: CoreType?
+    get() {
+      if (name is FunctionName.AsyncImport) return CoreType.I32
+      return when (result) {
+        is Result.CallTaskReturn -> CoreType.I32
+        is Result.PointerParameter -> null
+        is Result.PointerReturn -> CoreType.Pointer
+        is Result.SingleCoreValueReturn -> result.value.encoder.coreTypes.single()
+        Result.Void -> null
+      }
+    }
+
+  /** How the call result is transferred. */
   sealed interface Result {
     val value: Value?
-    val loweredType: CoreType?
 
     /** The function does not return a value. */
     object Void : Result {
       override val value: Value?
-        get() = null
-      override val loweredType: CoreType?
         get() = null
     }
 
     /** Encode the result as a single core value and return it. */
     data class SingleCoreValueReturn(
       override val value: Value,
-    ) : Result {
-      override val loweredType: CoreType
-        get() = value.encoder.coreTypes.single()
-    }
+    ) : Result
 
     /** The callee allocates memory, writes the result there, and returns the address. */
     data class PointerReturn(
       override val value: Value,
-    ) : Result {
-      override val loweredType: CoreType
-        get() = CoreType.Pointer
-    }
+    ) : Result
 
     /** The caller allocates memory, and passes the address as a parameter. */
     data class PointerParameter(
       override val value: Value,
       val parameter: ParameterSpec,
-    ) : Result {
-      override val loweredType: CoreType?
-        get() = null
-    }
+    ) : Result
 
     /**
      * Call a callback function to provide the result to the caller. The lowered function returns a
      * `PackedAsyncResult`
      */
-    data class AsyncLift(
+    data class CallTaskReturn(
       override val value: Value?,
       val taskReturn: AbiFunction,
-    ) : Result {
-      override val loweredType: CoreType
-        get() = CoreType.I32
-    }
+    ) : Result
 
     data class Value(
       val encoder: Encoder,
@@ -226,7 +234,7 @@ data class AbiFunction(
       includeSyntheticFunctions: Boolean = true,
     ) {
       when {
-        irFunction.async -> {
+        irFunction.async && orientation == Export -> {
           val taskReturn = taskReturn(
             irFunction = irFunction,
             orientation = orientation.mirror,
@@ -258,18 +266,25 @@ data class AbiFunction(
       isResource: Boolean,
       taskReturn: AbiFunction? = null,
     ): AbiFunction {
+      check(taskReturn == null || orientation == Export)
+
       val nameAllocator = NameAllocator()
       val flatParameters = irFunction.parameters.map { parameter ->
         flatParameter(parameter.type, parameter.name, nameAllocator)
       }
+      val name = when {
+        irFunction.async -> when (orientation) {
+          Export -> FunctionName.AsyncExport(irFunction.functionName)
+          Import -> FunctionName.AsyncImport(irFunction.functionName)
+        }
+
+        else -> irFunction.functionName
+      }
       return AbiFunction(
-        name = when {
-          irFunction.async -> FunctionName.AsyncLift(irFunction.functionName)
-          else -> irFunction.functionName
-        },
+        name = name,
         kotlinIdentifier = irFunction.functionName.kotlinIdentifier,
         documentation = documentation(irFunction, flatParameters),
-        parameters = parameters(flatParameters, nameAllocator),
+        parameters = parameters(flatParameters, nameAllocator, name),
         result = result(nameAllocator, irFunction, orientation, taskReturn),
         isSupported = irFunction.isSupported,
         orientation = orientation,
@@ -290,10 +305,11 @@ data class AbiFunction(
         flatParameter(WitTypeName.U32, Identifier("p2"), nameAllocator),
       )
 
+      val name = FunctionName.AsyncExportCallback(irFunction.functionName)
       return AbiFunction(
-        name = FunctionName.AsyncLiftCallback(irFunction.functionName),
+        name = name,
         kotlinIdentifier = irFunction.functionName.kotlinIdentifier,
-        parameters = parameters(flatParameters, nameAllocator),
+        parameters = parameters(flatParameters, nameAllocator, name),
         nameAllocator = nameAllocator,
         orientation = orientation,
         loweredResourceIdParameterSpec = loweredResourceIdParameterSpec(isResource),
@@ -320,10 +336,11 @@ data class AbiFunction(
         }
       }
 
+      val name = FunctionName.TaskReturn(irFunction.functionName)
       return AbiFunction(
-        name = FunctionName.TaskReturn(irFunction.functionName),
+        name = name,
         kotlinIdentifier = irFunction.functionName.kotlinIdentifier,
-        parameters = parameters(flatParameters, nameAllocator),
+        parameters = parameters(flatParameters, nameAllocator, name),
         nameAllocator = nameAllocator,
         isSupported = irFunction.isSupported,
         orientation = orientation,
@@ -371,9 +388,14 @@ data class AbiFunction(
     private fun parameters(
       flatParameters: List<Parameters.FlatParameter>,
       nameAllocator: NameAllocator,
+      name: FunctionName,
     ): Parameters {
+      val maxFlatParameters = when {
+        name is FunctionName.AsyncImport -> 4
+        else -> 16
+      }
       return when {
-        flatParameters.sumOf { it.loweredSpecs.size } <= MAX_FLAT_PARAMS ->
+        flatParameters.sumOf { it.loweredSpecs.size } <= maxFlatParameters ->
           Parameters.Flattened(flatParameters)
 
         else -> Parameters.Stored(
@@ -402,20 +424,23 @@ data class AbiFunction(
         )
       }
 
-      return when {
-        taskReturn != null -> Result.AsyncLift(value, taskReturn)
-        value == null -> Result.Void
-        value.encoder.coreTypes.size == 1 -> Result.SingleCoreValueReturn(value)
-        orientation == Orientation.Import -> Result.PointerParameter(
-          value,
-          ParameterSpec(
-            nameAllocator.newName("resultParameter"),
-            CoreType.Pointer.kotlinCoreType,
-          ),
-        )
-
-        else -> Result.PointerReturn(value)
+      if (taskReturn != null) {
+        return Result.CallTaskReturn(value, taskReturn)
       }
+      if (value == null) {
+        return Result.Void
+      }
+      if (!irFunction.async) {
+        if (value.encoder.coreTypes.size == 1) return Result.SingleCoreValueReturn(value)
+        if (orientation == Export) return Result.PointerReturn(value)
+      }
+      return Result.PointerParameter(
+        value,
+        ParameterSpec(
+          nameAllocator.newName("resultParameter"),
+          CoreType.Pointer.kotlinCoreType,
+        ),
+      )
     }
 
     private fun documentation(

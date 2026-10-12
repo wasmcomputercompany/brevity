@@ -45,7 +45,7 @@ class ChicoryImportFunction(
 
     val resultValue = abiLift.call(null, coreValues).makeImmediate()
 
-    if (abiFunction.result.loweredType == null) {
+    if (abiFunction.loweredReturnType == null) {
       return CodeBlockExpression(
         type = LONG_ARRAY,
         nameHint = "resultArray",
@@ -78,7 +78,7 @@ class ChicoryExportFunction(
     check(receiver == null)
 
     val arrayName = codeBuilder.newName("resultArray")
-    if (abiFunction.result != AbiFunction.Result.Void && abiFunction.name !is FunctionName.AsyncLift) {
+    if (abiFunction.result != AbiFunction.Result.Void && abiFunction.name !is FunctionName.AsyncExport) {
       codeBuilder.add("val %N = ", arrayName)
     }
 
@@ -89,11 +89,11 @@ class ChicoryExportFunction(
     codeBuilder.add("⇤)\n")
 
     val resultValue = abiFunction.result.value
-    val resultLoweredType = abiFunction.result.loweredType
+    val loweredReturnType = abiFunction.loweredReturnType
 
     if (resultValue == null
-      || abiFunction.name is FunctionName.AsyncLift
-      || resultLoweredType == null
+      || abiFunction.name is FunctionName.AsyncExport
+      || loweredReturnType == null
     ) {
       return KtExpression.Unit
     }
@@ -101,7 +101,7 @@ class ChicoryExportFunction(
     return CodeBlockExpression(
       type = resultValue.type,
       nameHint = "result",
-      code = CodeBlock.of("%N[%L]", arrayName, 0).longToCoreValue(resultLoweredType.kotlinCoreType),
+      code = CodeBlock.of("%N[%L]", arrayName, 0).longToCoreValue(loweredReturnType.kotlinCoreType),
       immediate = true,
     )
   }

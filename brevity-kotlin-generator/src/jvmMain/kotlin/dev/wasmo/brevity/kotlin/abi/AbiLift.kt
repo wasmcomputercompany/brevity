@@ -24,13 +24,19 @@ fun AbiLift(
   abiFunction: AbiFunction,
 ): KtFunction {
   return when {
-    abiFunction.result is AbiFunction.Result.AsyncLift -> AbiAsyncLift(
+    abiFunction.name is FunctionName.AsyncExport -> AbiLiftAsyncExport(
       parentService = parentService,
       abiFunction = abiFunction,
       liftedFunction = CallLifted(abiFunction),
     )
 
-    abiFunction.name is FunctionName.AsyncLiftCallback -> object : KtFunction {
+    abiFunction.name is FunctionName.AsyncImport -> AbiLiftAsyncImport(
+      parentService = parentService,
+      abiFunction = abiFunction,
+      liftedFunction = CallLifted(abiFunction),
+    )
+
+    abiFunction.name is FunctionName.AsyncExportCallback -> object : KtFunction {
       context(codeBuilder: CodeBuilder)
       override fun call(
         receiver: KtExpression?,
@@ -112,14 +118,15 @@ private class AbiTaskReturnLift(
   }
 }
 
-private class AbiAsyncLift(
+/** The function returns a `PackedAsyncResult`. */
+private class AbiLiftAsyncExport(
   private val parentService: AbiService,
   private val abiFunction: AbiFunction,
   private val liftedFunction: KtFunction,
 ) : KtFunction {
   init {
-    require(abiFunction.name is FunctionName.AsyncLift)
-    require(abiFunction.result is AbiFunction.Result.AsyncLift)
+    require(abiFunction.name is FunctionName.AsyncExport)
+    require(abiFunction.result is AbiFunction.Result.CallTaskReturn)
   }
 
   context(codeBuilder: CodeBuilder)
@@ -165,7 +172,7 @@ private class AbiAsyncLift(
       }
 
       val taskReturn = AbiLower(
-        abiFunction = (abiFunction.result as AbiFunction.Result.AsyncLift).taskReturn,
+        abiFunction = (abiFunction.result as AbiFunction.Result.CallTaskReturn).taskReturn,
         resourceId = resourceId,
       )
       taskReturn.call(
@@ -181,7 +188,58 @@ private class AbiAsyncLift(
     return CodeBlockExpression(
       type = CoreType.I32.kotlinCoreType,
       nameHint = "packedAsyncResult",
-      code = CodeBlock.of("%N.value.toInt()", "packedAsyncResult"),
+      code = CodeBlock.of("%N.value.toInt()", packedAsyncResultName),
+      immediate = true,
+    )
+  }
+}
+
+/** The function returns a `PackedSubtaskResult`. */
+private class AbiLiftAsyncImport(
+  private val parentService: AbiService,
+  private val abiFunction: AbiFunction,
+  private val liftedFunction: KtFunction,
+) : KtFunction {
+  init {
+    require(abiFunction.name is FunctionName.AsyncImport)
+  }
+
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    check(receiver == null)
+
+    val packedSubtaskResultName = codeBuilder.newName("packedSubtaskResult")
+    codeBuilder.controlFlow(
+      "val %N = %L.launchSubtask",
+      packedSubtaskResultName,
+      codeBuilder.bridge,
+    ) {
+      val p = parameters.iterator()
+      val liftedReceiverValue = parentService.liftReceiver(p)
+      val liftedParametersValues = abiFunction.liftParameters(p)
+      val liftedPointerParameterValue = abiFunction.liftPointerParameter(p)
+
+      check(!p.hasNext()) {
+        "unexpected parameter count"
+      }
+
+      codeBuilder.platform.afterLiftParameters()
+
+      val resultValue = liftedFunction.call(
+        liftedReceiverValue,
+        liftedParametersValues,
+      ).makeImmediate()
+
+      abiFunction.lowerResult(resultValue, liftedPointerParameterValue)
+    }
+
+    return CodeBlockExpression(
+      type = CoreType.I32.kotlinCoreType,
+      nameHint = "packedSubtaskResult",
+      code = CodeBlock.of("%N.value.toInt()", packedSubtaskResultName),
       immediate = true,
     )
   }
@@ -265,7 +323,7 @@ private fun AbiFunction.lowerResult(
         lowerAllocates = result.value.encoder.lowerAllocates,
       ) { memoryAllocator ->
         CodeBlockExpression(
-          type = result.loweredType.kotlinCoreType,
+          type = result.value.encoder.coreTypes.single().kotlinCoreType,
           nameHint = "result",
           code = result.value.encoder.lowerFlat(
             memoryAllocator = memoryAllocator,
@@ -313,6 +371,6 @@ private fun AbiFunction.lowerResult(
       }
     }
 
-    is AbiFunction.Result.AsyncLift -> error("unexpected call")
+    is AbiFunction.Result.CallTaskReturn -> error("unexpected call")
   }
 }

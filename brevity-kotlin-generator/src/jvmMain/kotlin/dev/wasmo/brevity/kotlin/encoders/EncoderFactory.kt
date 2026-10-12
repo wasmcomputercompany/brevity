@@ -26,9 +26,6 @@ import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 
-val MAX_FLAT_PARAMS = 16
-val MAX_FLAT_RESULTS = 1
-
 class EncoderFactory(
   private val kotlinMapper: KotlinMapper,
   private val declarationIndex: DeclarationIndex,

@@ -26,12 +26,14 @@ private fun FunctionName.segments(): List<Identifier> {
     is FunctionName.Static -> listOf(serviceName.name, resourceName, name)
     is FunctionName.World -> listOf(name)
     is FunctionName.TaskReturn -> original.segments() + taskReturnSuffix
-    is FunctionName.AsyncLift -> original.segments() + asyncLiftSuffix
-    is FunctionName.AsyncLiftCallback -> original.segments() + asyncLiftCallbackSuffix
+    is FunctionName.AsyncExport -> original.segments() + asyncLiftSuffix
+    is FunctionName.AsyncExportCallback -> original.segments() + asyncLiftCallbackSuffix
+    is FunctionName.AsyncImport -> original.segments() + asyncLowerSuffix
   }
 }
 
 val dropFunctionName = Identifier("close")
 val taskReturnSuffix = Identifier("task-return")
-val asyncLiftSuffix = Identifier("async")
+val asyncLiftSuffix = Identifier("async-lift")
+val asyncLowerSuffix = Identifier("async-lower")
 val asyncLiftCallbackSuffix = Identifier("async-callback")

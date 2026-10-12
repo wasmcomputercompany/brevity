@@ -113,6 +113,20 @@ internal class BridgeAsync(
         },
       ),
     )
+    store.addFunction(
+      HostFunction(
+        $$"$root",
+        "[subtask-drop]",
+        FunctionType.of(
+          listOf(ValType.I32),
+          listOf(),
+        ),
+        WasmFunctionHandle { instance, args ->
+          host.subtaskDrop(args[0].toInt())
+          longArrayOf()
+        },
+      ),
+    )
   }
 
   private fun addContextFunctions(store: Store, index: Int) {

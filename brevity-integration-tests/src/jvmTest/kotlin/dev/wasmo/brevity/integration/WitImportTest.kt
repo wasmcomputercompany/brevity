@@ -11,7 +11,6 @@ class WitImportTest {
     witType = "s64",
     kotlinType = "Long",
     rustType = "i64",
-    // Async isn't implemented correctly yet on the host.
     callingMechanisms = listOf(
       CallingMechanism.Sync,
     ),
