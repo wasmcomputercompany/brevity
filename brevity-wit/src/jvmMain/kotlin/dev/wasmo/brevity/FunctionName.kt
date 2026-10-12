@@ -108,8 +108,8 @@ sealed class FunctionName {
     override fun toString() = super.toString()
   }
 
-  /** The callee's name of an async function. */
-  data class AsyncLift(val original: FunctionName) : FunctionName() {
+  /** Implements async-lift. */
+  data class AsyncExport(val original: FunctionName) : FunctionName() {
     override val moduleName: String?
       get() = original.moduleName
     override val abiName: String
@@ -118,12 +118,21 @@ sealed class FunctionName {
     override fun toString() = super.toString()
   }
 
-  /** The callee's name of an async function's callback. */
-  data class AsyncLiftCallback(val original: FunctionName) : FunctionName() {
+  data class AsyncExportCallback(val original: FunctionName) : FunctionName() {
     override val moduleName: String?
       get() = original.moduleName
     override val abiName: String
       get() = "[callback][async-lift]${original.abiName}"
+
+    override fun toString() = super.toString()
+  }
+
+  /** Implements async-lower. */
+  data class AsyncImport(val original: FunctionName) : FunctionName() {
+    override val moduleName: String
+      get() = $$"$root"
+    override val abiName: String
+      get() = "[async-lower]${original.abiName}"
 
     override fun toString() = super.toString()
   }

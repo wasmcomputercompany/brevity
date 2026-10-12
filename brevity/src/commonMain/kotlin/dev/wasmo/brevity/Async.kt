@@ -1,6 +1,5 @@
 package dev.wasmo.brevity
 
-import dev.wasmo.brevity.CallbackCode.entries
 import kotlin.jvm.JvmInline
 
 @BrevityInternalApi
@@ -45,6 +44,11 @@ object Async {
      * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-subtaskcancel
      */
     fun subtaskCancel(subtask: Int): Int
+
+    /**
+     * https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#-canon-subtaskdrop
+     */
+    fun subtaskDrop(subtask: Int)
   }
 }
 
@@ -96,7 +100,43 @@ value class PackedAsyncResult(val value: UInt) {
   }
 
   companion object {
-    private val CallbackCodeValues = entries.toTypedArray()
+    private val CallbackCodeValues = CallbackCode.entries.toTypedArray()
     private val MaxWaitableSetIndex = 1 shl 28
+  }
+}
+
+@BrevityInternalApi
+enum class SubtaskState {
+  Starting,
+  Started,
+  Returned,
+  CanceledBeforeStarted,
+  CanceledBeforeReturned,
+}
+
+/**
+ * https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#canon-lower
+ */
+@BrevityInternalApi
+@JvmInline
+value class PackedSubtaskResult(val value: UInt) {
+  init {
+    require((value.toInt() and 0xf) < SubtaskStateValues.size)
+  }
+
+  val subtaskState: SubtaskState
+    get() = SubtaskStateValues[value.toInt() and 0xf]
+
+  val subtaskIndex: Int
+    get() = value.toInt() ushr 4
+
+  constructor(subtaskState: SubtaskState, subtaskIndex: Int = 0)
+    : this((subtaskState.ordinal or (subtaskIndex shl 4)).toUInt()) {
+    require(subtaskIndex < MaxSubtaskIndex)
+  }
+
+  companion object {
+    private val SubtaskStateValues = SubtaskState.entries.toTypedArray()
+    private val MaxSubtaskIndex = 1 shl 28
   }
 }

@@ -41,9 +41,10 @@ val FunctionName.kotlinIdentifier: Identifier
       is FunctionName.Static -> name
       is FunctionName.World -> name
       is FunctionName.TaskReturn -> Identifier("${original.kotlinIdentifier}-$taskReturnSuffix")
-      is FunctionName.AsyncLift -> original.kotlinIdentifier
-      is FunctionName.AsyncLiftCallback ->
+      is FunctionName.AsyncExport -> original.kotlinIdentifier
+      is FunctionName.AsyncExportCallback ->
         Identifier("${original.kotlinIdentifier}-$asyncLiftCallbackSuffix")
+      is FunctionName.AsyncImport -> original.kotlinIdentifier
     }
   }
 

@@ -259,9 +259,9 @@ class GuestGenerator(
             parameters = loweredParameterSpecs.map { it.valueExpression },
           )
 
-          val returnType = abiFunction.result.loweredType?.kotlinCoreType
-          if (returnType != null) {
-            returns(returnType)
+          val loweredReturnType = abiFunction.loweredReturnType
+          if (loweredReturnType != null) {
+            returns(loweredReturnType.kotlinCoreType)
             codeBuilder.addStatement("return %L", resultExpression.code)
           }
         }
@@ -277,7 +277,7 @@ class GuestGenerator(
       .addModifiers(KModifier.PRIVATE, KModifier.EXTERNAL)
       .apply {
         addParameters(abiFunction.loweredParameterSpecs)
-        val loweredReturnType = abiFunction.result.loweredType
+        val loweredReturnType = abiFunction.loweredReturnType
         if (loweredReturnType != null) {
           returns(loweredReturnType.kotlinCoreType)
         }

@@ -3,6 +3,7 @@ package dev.wasmo.brevity
 import com.dylibso.chicory.runtime.ExportFunction
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
+import kotlinx.coroutines.runBlocking
 
 @BrevityInternalApi
 class HostBridge {
@@ -41,12 +42,11 @@ class HostBridge {
     return idToResource.remove(id)
   }
 
-  fun launchTask(block: suspend () -> Unit): PackedAsyncResult {
-    return PackedAsyncResult(CallbackCode.Exit)
-  }
-
-  fun resumeTask(eventCode: Int, p1: Int, p2: Int): PackedAsyncResult {
-    return PackedAsyncResult(CallbackCode.Exit)
+  fun launchSubtask(block: suspend () -> Unit): PackedSubtaskResult {
+    runBlocking {
+      block()
+    }
+    return PackedSubtaskResult(SubtaskState.Returned)
   }
 
   fun taskReturn(value: Any? = Unit) {
