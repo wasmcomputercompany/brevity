@@ -3,6 +3,7 @@ package dev.wasmo.brevity.integration
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.integration.PassingMechanism.Parameter
 import dev.wasmo.brevity.integration.PassingMechanism.Return
+import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import okio.Buffer
 import okio.BufferedSink
 
@@ -46,7 +47,12 @@ data class TestCase(
     )
   }
 
-  fun BufferedSink.kotlinCallAndAssert(callTarget: String) {
+  fun BufferedSink.kotlinCallAndAssert() {
+    val callTarget = when (function.functionParent) {
+      FunctionParent.World -> "world.guest"
+      FunctionParent.Interface -> "world.guest.${function.functionParent.identifier.lowerCamelCase}"
+    }
+
     callMeasureTime {
       val call = when (function.orientation) {
         Orientation.Import -> function.kotlinCallTrampoline(callTarget, valueIndex)

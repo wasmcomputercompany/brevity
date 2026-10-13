@@ -1,5 +1,7 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
+import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -38,29 +40,68 @@ class GuestKotlinTarget(
       |import kotlinx.coroutines.CompletableDeferred
       |import kotlinx.coroutines.Deferred
       |import kotlinx.coroutines.delay
-      |import wit.brevity.testing.BrevityTest
+      |import wit.brevity.testing.TestWorld
       |import wit.brevity.testing.guest
       |import wit.brevity.testing.host
       |
       |@EagerInitialization
       |val actuallyInitialize = run {
-      |  BrevityTest.guest = GuestImplementation
+      |  TestWorld.guest = TestWorldGuestImplementation
       |}
       |
-      |object GuestImplementation : BrevityTest.Guest {
       |
       """.trimMargin(),
     )
-    for (testFunction in testFunctions) {
-      with(testFunction) {
-        kotlinDeclareGuestFunctions()
+
+    val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
+    for ((parent, childFunctions) in parentToTestFunctions) {
+      when (parent) {
+        FunctionParent.World -> {
+          writeUtf8(
+            """
+            |object TestWorldGuestImplementation : TestWorld.Guest {
+            |
+            """.trimMargin(),
+          )
+
+          for (memberService in parentToTestFunctions.keys) {
+            when (memberService) {
+              FunctionParent.World -> {}
+              FunctionParent.Interface -> {
+                writeUtf8(
+                  """
+                  |  override val ${memberService.identifier.lowerCamelCase} = ${memberService.identifier.upperCamelCase}Implementation
+                  |
+                  """.trimMargin(),
+                )
+              }
+            }
+          }
+        }
+
+        FunctionParent.Interface -> {
+          writeUtf8(
+            """
+            |object ${parent.identifier.upperCamelCase}Implementation : wit.brevity.testing.${parent.identifier.upperCamelCase} {
+            |
+            """.trimMargin(),
+          )
+        }
       }
+
+      for (testFunction in childFunctions) {
+        with(testFunction) {
+          kotlinDeclareGuestFunctions()
+        }
+      }
+
+      writeUtf8(
+        """
+        |}
+        |
+        |
+        """.trimMargin(),
+      )
     }
-    writeUtf8(
-      """
-      |}
-      |
-      """.trimMargin(),
-    )
   }
 }

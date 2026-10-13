@@ -199,6 +199,7 @@ class BridgeEveryTypeTest {
     val test = BrevityExecutionTester(
       name = "enums",
       rawWit = """
+        |interface types {
         |  enum shaker {
         |    salt,
         |    pepper,
@@ -209,7 +210,13 @@ class BridgeEveryTypeTest {
         |  enum min-short-enum {
         |    ${List(257) { "v$it" }.joinToString(separator = ",")}
         |  }
-        |""".trimMargin(),
+        |}
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{shaker, max-byte-enum, min-short-enum};
+        |
+        """.trimMargin(),
       types = listOf(
         SampleType(
           id = Identifier("shaker"),
@@ -252,9 +259,6 @@ class BridgeEveryTypeTest {
   fun options() = runTest {
     val test = BrevityExecutionTester(
       name = "options",
-      rawWit = """
-        |
-        |""".trimMargin(),
       types = listOf(
         SampleType(
           id = Identifier("option-bool"),
@@ -680,7 +684,7 @@ class BridgeEveryTypeTest {
             ),
             SampleValue(
               kotlin = "listOf(kotlin.Double.POSITIVE_INFINITY, kotlin.Double.NEGATIVE_INFINITY)",
-              rust = "[std::f64::INFINITY, std::f64::NEG_INFINITY]"
+              rust = "[std::f64::INFINITY, std::f64::NEG_INFINITY]",
             ),
           ),
         ),
@@ -741,15 +745,27 @@ class BridgeEveryTypeTest {
       17, // min int
       32, // max int
     )
+    val allFlagsDeclarations = enumSizes.joinToString(separator = "\n") { story ->
+      """
+      |  flags elevator-${story}-story {
+      |    ${List(story) { "floor-${it + 1}-chosen" }.joinToString(separator = ",")}
+      |  }
+      |
+      """.trimMargin()
+    }
     val test = BrevityExecutionTester(
       name = "flags",
-      rawWit = enumSizes.joinToString(separator = "\n") { story ->
+      rawWit =
         """
-        |  flags elevator-${story}-story {
-        |    ${List(story) { "floor-${it + 1}-chosen" }.joinToString(separator = ",")}
-        |  }
-        |""".trimMargin()
-      },
+        |interface types {
+        |$allFlagsDeclarations
+        |}
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{${enumSizes.joinToString { "elevator-$it-story" }}};
+        |
+        """.trimMargin(),
       types = enumSizes.map { i ->
         SampleType(
           id = Identifier("elevator-$i-story"),
@@ -814,8 +830,15 @@ class BridgeEveryTypeTest {
     val test = BrevityExecutionTester(
       name = "typeAliases",
       rawWit = """
+        |interface types {
         |  type email-address = string;
-        |""".trimMargin(),
+        |}
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{email-address};
+        |
+        """.trimMargin(),
       types = listOf(
         SampleType(
           id = Identifier("email-address"),
@@ -845,12 +868,19 @@ class BridgeEveryTypeTest {
     val test = BrevityExecutionTester(
       name = "tuples",
       rawWit = """
+        |interface types {
         |  enum colour-space {
         |    srgb,
         |    linear-srgb,
         |    display-p3,
         |  }
-        |""".trimMargin(),
+        |}
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{colour-space};
+        |
+        """.trimMargin(),
       types = listOf(
         SampleType(
           id = Identifier("pair-s8-bool"),

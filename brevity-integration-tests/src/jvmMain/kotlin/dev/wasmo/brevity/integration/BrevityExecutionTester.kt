@@ -40,6 +40,7 @@ class BrevityExecutionTester(
   val fileSystem: FileSystem = FileSystem.SYSTEM,
   val name: String,
   val rawWit: String = "",
+  val rawWitUseStatements: String = "",
   val extraFiles: Map<Path, String> = mapOf(),
   val types: List<SampleType>,
   val sleep: Boolean = false,
@@ -50,17 +51,21 @@ class BrevityExecutionTester(
   )
 
   private val testFunctions: List<TestFunction> = buildList {
-    for (type in types) {
-      for (orientation in Orientation.entries) {
-        for (callingMechanism in CallingMechanism.entries) {
-          if (callingMechanism == CallingMechanism.Sync) {
-            add(TestFunction(PassingMechanism.Parameter(), callingMechanism, orientation, type))
-            add(TestFunction(PassingMechanism.Parameter(16), callingMechanism, orientation, type))
-            add(TestFunction(PassingMechanism.Return, callingMechanism, orientation, type))
-          } else {
-            add(TestFunction(PassingMechanism.Parameter(), callingMechanism, orientation, type))
-            add(TestFunction(PassingMechanism.Parameter(4), callingMechanism, orientation, type))
-            add(TestFunction(PassingMechanism.Return, callingMechanism, orientation, type))
+    for (functionParent in FunctionParent.entries) {
+      for (type in types) {
+        for (orientation in Orientation.entries) {
+          for (callingMechanism in CallingMechanism.entries) {
+            for (passingMechanism in callingMechanism.passingMechanisms) {
+              add(
+                TestFunction(
+                  functionParent = functionParent,
+                  passingMechanism = passingMechanism,
+                  callingMechanism = callingMechanism,
+                  orientation = orientation,
+                  type = type,
+                ),
+              )
+            }
           }
         }
       }
@@ -80,7 +85,7 @@ class BrevityExecutionTester(
       }
 
       val wit = launch {
-        WitTarget(name, fileSystem, layout, rawWit, testFunctions).generate()
+        WitTarget(name, fileSystem, layout, rawWit, rawWitUseStatements, testFunctions).generate()
       }
       val brevityKt = launch {
         wit.join()
@@ -177,7 +182,7 @@ class BrevityExecutionTester(
           packageDirectories = listOf(layout.wit),
           customTypeMappings = types
             .filter { it.kotlinTypeMapping }
-            .associate { "brevity:testing/brevity-test.${it.witType}" to it.kotlinType },
+            .associate { "brevity:testing/types.${it.witType}" to it.kotlinType },
           supportAsync = true,
         ) ?: return@collectNoIssuesOrThrow
 

@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 import okio.Path.Companion.toPath
@@ -11,7 +12,13 @@ class WitAdapterTest {
     val test = BrevityExecutionTester(
       name = "witAdapterHappyPath",
       rawWit = """
+        |interface types {
         |  type datetime = s64;
+        |}
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{datetime};
         |
         """.trimMargin(),
       extraFiles = mapOf(
@@ -20,15 +27,15 @@ class WitAdapterTest {
           |
           |import dev.wasmo.brevity.WitAdapter
           |import kotlin.time.Instant
-          |import wit.brevity.testing.Adapters.BrevityTestDatetime
+          |import wit.brevity.testing.Adapters.TypesDatetime
           |
           |internal object RealAdapters : Adapters {
-          |  override val brevityTestDatetime = object : WitAdapter<BrevityTestDatetime, Instant> {
-          |    override fun fromWit(wit: BrevityTestDatetime) =
+          |  override val typesDatetime = object : WitAdapter<TypesDatetime, Instant> {
+          |    override fun fromWit(wit: TypesDatetime) =
           |      Instant.fromEpochMilliseconds(wit.value)
           |
           |    override fun toWit(value: Instant) =
-          |      BrevityTestDatetime(value.toEpochMilliseconds())
+          |      TypesDatetime(value.toEpochMilliseconds())
           |  }
           |}
           |

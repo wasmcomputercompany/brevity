@@ -101,7 +101,7 @@ sealed class FunctionName {
   /** The caller's function to accept the lowered result. */
   data class TaskReturn(val original: FunctionName) : FunctionName() {
     override val moduleName: String
-      get() = $$"[export]$root"
+      get() = "[export]${(original.moduleName ?: $$"$root")}"
     override val abiName: String
       get() = "[task-return]${original.abiName}"
 
@@ -111,18 +111,24 @@ sealed class FunctionName {
   /** Implements async-lift. */
   data class AsyncExport(val original: FunctionName) : FunctionName() {
     override val moduleName: String?
-      get() = original.moduleName
+      get() = original.moduleName?.let { "[async-lift]$it" }
     override val abiName: String
-      get() = "[async-lift]${original.abiName}"
+      get() = when {
+        original.moduleName != null -> original.abiName
+        else -> "[async-lift]${original.abiName}"
+      }
 
     override fun toString() = super.toString()
   }
 
   data class AsyncExportCallback(val original: FunctionName) : FunctionName() {
     override val moduleName: String?
-      get() = original.moduleName
+      get() = original.moduleName?.let { "[callback][async-lift]$it" }
     override val abiName: String
-      get() = "[callback][async-lift]${original.abiName}"
+      get() = when {
+        original.moduleName != null -> original.abiName
+        else -> "[callback][async-lift]${original.abiName}"
+      }
 
     override fun toString() = super.toString()
   }
@@ -130,7 +136,7 @@ sealed class FunctionName {
   /** Implements async-lower. */
   data class AsyncImport(val original: FunctionName) : FunctionName() {
     override val moduleName: String
-      get() = $$"$root"
+      get() = original.moduleName ?: $$"$root"
     override val abiName: String
       get() = "[async-lower]${original.abiName}"
 
