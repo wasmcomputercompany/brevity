@@ -1,3 +1,5 @@
+@file:Suppress("EnumEntryName")
+
 package dev.wasmo.brevity
 
 sealed interface IdentifierOrKeyword
@@ -42,114 +44,60 @@ value class Identifier(
 
 
 
-@JvmInline
-value class Keyword private constructor(
-  val name: String,
-): IdentifierOrKeyword {
+enum class Keyword: IdentifierOrKeyword {
+  `as`,
+  from,
+  own,
+  with,
+  `interface`,
+  `package`,
+  async,
+  bool,
+  borrow,
+  char,
+  `constructor`,
+  `enum`,
+  export,
+  f32,
+  f64,
+  flags,
+  func,
+  future,
+  import,
+  include,
+  list,
+  map,
+  option,
+  record,
+  resource,
+  result,
+  s16,
+  s32,
+  s64,
+  s8,
+  static,
+  stream,
+  string,
+  tuple,
+  type,
+  u16,
+  u32,
+  u64,
+  u8,
+  use,
+  variant,
+  world,
+  ;
+
   override fun toString() = name
 
   companion object {
-    // Taken from:
-    // https://github.com/WebAssembly/component-model/blob/d6a17ea9f828f44c4659d70c35822ab53d2a8a1d/design/mvp/WIT.md?plain=1#L1058C1-L1099C20
-    private val keywordEbnf = """
-      ||keyword ::= 'as'
-      ||           | 'async'
-      ||           | 'bool'
-      ||           | 'borrow'
-      ||           | 'char'
-      ||           | 'constructor'
-      ||           | 'enum'
-      ||           | 'export'
-      ||           | 'f32'
-      ||           | 'f64'
-      ||           | 'flags'
-      ||           | 'from'
-      ||           | 'func'
-      ||           | 'future'
-      ||           | 'import'
-      ||           | 'include'
-      ||           | 'interface'
-      ||           | 'list'
-      ||           | 'map'
-      ||           | 'option'
-      ||           | 'own'
-      ||           | 'package'
-      ||           | 'record'
-      ||           | 'resource'
-      ||           | 'result'
-      ||           | 's16'
-      ||           | 's32'
-      ||           | 's64'
-      ||           | 's8'
-      ||           | 'static'
-      ||           | 'stream'
-      ||           | 'string'
-      ||           | 'tuple'
-      ||           | 'type'
-      ||           | 'u16'
-      ||           | 'u32'
-      ||           | 'u64'
-      ||           | 'u8'
-      ||           | 'use'
-      ||           | 'variant'
-      ||           | 'with'
-      ||           | 'world'
-    """.trimMargin(marginPrefix = "||")
-    private val masterKeywordMap = run {
-      keywordEbnf.replace(Regex("keyword ::= | |'|[|]"), "")
-        .split("\n")
-        .associateWith { Keyword(it) }
-    }
+    private val keywordMap = Keyword.values().associateBy { it.name }
 
     /**
      * Produce the Keyword instance for a given name, or nothing if there is none.
      */
-    fun keywordFor(name: String): Keyword? = masterKeywordMap[name]
-
-    // Text taken from:
-    // https://github.com/WebAssembly/component-model/blob/d6a17ea9f828f44c4659d70c35822ab53d2a8a1d/design/mvp/WIT.md?plain=1#L1058
-    val `as` = keywordFor("as")!!
-    val from = keywordFor("from")!!
-    val own = keywordFor("own")!!
-    val with = keywordFor("with")!!
-    val `interface` = keywordFor("interface")!!
-    val `package` = keywordFor("package")!!
-    val async = keywordFor("async")!!
-    val bool = keywordFor("bool")!!
-    val borrow = keywordFor("borrow")!!
-    val char = keywordFor("char")!!
-    val constructor = keywordFor("constructor")!!
-    val enum = keywordFor("enum")!!
-    val export = keywordFor("export")!!
-    val f32 = keywordFor("f32")!!
-    val f64 = keywordFor("f64")!!
-    val flags = keywordFor("flags")!!
-    val func = keywordFor("func")!!
-    val future = keywordFor("future")!!
-    val import = keywordFor("import")!!
-    val include = keywordFor("include")!!
-    val list = keywordFor("list")!!
-    val map = keywordFor("map")!!
-    val option = keywordFor("option")!!
-    val record = keywordFor("record")!!
-    val resource = keywordFor("resource")!!
-    val result = keywordFor("result")!!
-    val s16 = keywordFor("s16")!!
-    val s32 = keywordFor("s32")!!
-    val s64 = keywordFor("s64")!!
-    val s8 = keywordFor("s8")!!
-    val static = keywordFor("static")!!
-    val stream = keywordFor("stream")!!
-    val string = keywordFor("string")!!
-    val tuple = keywordFor("tuple")!!
-    val type = keywordFor("type")!!
-    val u16 = keywordFor("u16")!!
-    val u32 = keywordFor("u32")!!
-    val u64 = keywordFor("u64")!!
-    val u8 = keywordFor("u8")!!
-    val use = keywordFor("use")!!
-    val variant = keywordFor("variant")!!
-    val world = keywordFor("world")!!
+    fun keywordFor(name: String): Keyword? = keywordMap[name]
 
     /**
      * Set of type name keywords as a set of strings for validation
