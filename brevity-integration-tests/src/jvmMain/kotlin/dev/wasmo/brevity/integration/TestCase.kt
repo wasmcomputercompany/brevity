@@ -12,8 +12,6 @@ data class TestCase(
 ) {
   val passingMechanism: PassingMechanism
     get() = function.passingMechanism
-  val callingMechanism: CallingMechanism
-    get() = function.callingMechanism
   val orientation: Orientation
     get() = function.orientation
   val type: SampleType
@@ -66,7 +64,7 @@ data class TestCase(
         block()
       }
 
-    if ((callingMechanism as? CallingMechanism.Async)?.sleep != true) {
+    if (!function.sleep) {
       writeAll(blockContent)
       return
     }

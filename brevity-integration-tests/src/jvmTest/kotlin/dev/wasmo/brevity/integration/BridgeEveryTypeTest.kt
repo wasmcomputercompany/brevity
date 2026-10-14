@@ -1,6 +1,9 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation.Import
+import dev.wasmo.brevity.integration.CallingMechanism.Async
+import dev.wasmo.brevity.integration.PassingMechanism.Parameter
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 
@@ -173,6 +176,7 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "\"abc\\u0000def\"", rust = "\"abc\\u{0000}def\""),
             SampleValue(kotlin = "\"\uD83C\uDF69\"", rust = "\"\uD83C\uDF69\""),
           ),
+          borrowRustValue = { "($it).as_str()" },
         ),
         SampleType(
           id = Identifier("char"),
@@ -344,6 +348,7 @@ class BridgeEveryTypeTest {
           ),
         ),
       ),
+      predicate = ::expectedWorkingTests,
     )
 
     test.execute()
@@ -535,6 +540,7 @@ class BridgeEveryTypeTest {
           ),
         ),
       ),
+      predicate = ::expectedWorkingTests,
     )
 
     test.execute()
@@ -678,11 +684,8 @@ class BridgeEveryTypeTest {
             ),
           ),
         ),
-        // Async is disabled here because of a bug in wit-bindgen
-        // https://github.com/bytecodealliance/wit-bindgen/issues/1728
         SampleType(
           id = Identifier("sized-list-string"),
-          callingMechanisms = listOf(CallingMechanism.Sync),
           witType = "list<string, 2>",
           kotlinType = "List<String>",
           rustType = "[String; 2]",
@@ -711,6 +714,18 @@ class BridgeEveryTypeTest {
           ),
         ),
       ),
+      predicate = {
+        when {
+          // Async is disabled here because of a bug in wit-bindgen
+          // https://github.com/bytecodealliance/wit-bindgen/issues/1728
+          callingMechanism == Async && type.id == Identifier("sized-list-string") -> false
+          orientation == Import && type.id == Identifier("sized-list-string") -> false
+          // wit-bindgen panics on sized-lists + async + import.
+          // https://github.com/bytecodealliance/wit-bindgen/issues/1744
+          callingMechanism == Async && orientation == Import -> false
+          else -> true
+        }
+      },
     )
 
     test.execute()
@@ -819,6 +834,7 @@ class BridgeEveryTypeTest {
           ),
         ),
       ),
+      predicate = ::expectedWorkingTests,
     )
 
     test.execute()
@@ -842,8 +858,8 @@ class BridgeEveryTypeTest {
           kotlinType = "Pair<Byte, Boolean>",
           rustType = "(i8, bool)",
           values = listOf(
-            SampleValue( kotlin = "Pair(0.toByte(), false)", rust = "(0, false)",),
-            SampleValue( kotlin = "Pair(5.toByte(), false)", rust = "(5, false)",),
+            SampleValue(kotlin = "Pair(0.toByte(), false)", rust = "(0, false)"),
+            SampleValue(kotlin = "Pair(5.toByte(), false)", rust = "(5, false)"),
             SampleValue(kotlin = "Pair(kotlin.Byte.MIN_VALUE, true)", rust = "(-128, true)"),
             SampleValue(kotlin = "Pair(kotlin.Byte.MAX_VALUE, true)", rust = "(127, true)"),
           ),
@@ -854,8 +870,8 @@ class BridgeEveryTypeTest {
           kotlinType = "Triple<Int, ULong, Int>",
           rustType = "(i32, u64, char)",
           values = listOf(
-            SampleValue( kotlin = "Triple(0, 0UL, 'a'.code)", rust = "(0, 0, 'a')",),
-            SampleValue( kotlin = "Triple(5, 5UL, 'b'.code)", rust = "(5, 5, 'b')",),
+            SampleValue(kotlin = "Triple(0, 0UL, 'a'.code)", rust = "(0, 0, 'a')"),
+            SampleValue(kotlin = "Triple(5, 5UL, 'b'.code)", rust = "(5, 5, 'b')"),
             SampleValue(
               kotlin = "Triple(kotlin.Int.MIN_VALUE, kotlin.ULong.MIN_VALUE, 'c'.code)",
               rust = "(-2147483648, 0, 'c')",
@@ -872,8 +888,8 @@ class BridgeEveryTypeTest {
           kotlinType = "dev.wasmo.brevity.Quad<String, Double, Double, Double>",
           rustType = "(String, f64, f64, f64)",
           values = listOf(
-            SampleValue( kotlin = "dev.wasmo.brevity.Quad(\"Origin\", 0.0, 0.0, 0.0)", rust = "(\"Origin\".to_string(), 0.0, 0.0, 0.0)",),
-            SampleValue( kotlin = "dev.wasmo.brevity.Quad(\"\uD83D\uDCC8\", 0.5, 0.5, 0.5)", rust = "(\"\uD83D\uDCC8\".to_string(), 0.5, 0.5, 0.5)",),
+            SampleValue(kotlin = "dev.wasmo.brevity.Quad(\"Origin\", 0.0, 0.0, 0.0)", rust = "(\"Origin\".to_string(), 0.0, 0.0, 0.0)"),
+            SampleValue(kotlin = "dev.wasmo.brevity.Quad(\"\uD83D\uDCC8\", 0.5, 0.5, 0.5)", rust = "(\"\uD83D\uDCC8\".to_string(), 0.5, 0.5, 0.5)"),
             SampleValue(
               kotlin = "dev.wasmo.brevity.Quad(\"To the\\u0000 fences\", 2.2250738585072014e-308, kotlin.Double.MIN_VALUE, kotlin.Double.MAX_VALUE)",
               rust = "(\"To the\\u{0000} fences\".to_string(), 2.2250738585072014e-308, 4.9E-324, 1.7976931348623157E308)",
@@ -905,8 +921,18 @@ class BridgeEveryTypeTest {
           ),
         ),
       ),
+      predicate = ::expectedWorkingTests,
     )
 
     test.execute()
+  }
+
+  private fun expectedWorkingTests(
+    testFunction: TestFunction,
+  ): Boolean = when {
+    // Skip tests that don't compile because Rust uses `String` in some cases and `&str` in others,
+    // and we don't generate smart-enough code to convert between them.
+    testFunction.orientation == Import && testFunction.passingMechanism is Parameter -> false
+    else -> true
   }
 }
