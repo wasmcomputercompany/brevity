@@ -64,7 +64,6 @@ class GuestRustTarget(
 
     val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
     for ((parent, childFunctions) in parentToTestFunctions) {
-
       when (parent) {
         FunctionParent.World -> {
           writeUtf8(

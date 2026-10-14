@@ -60,13 +60,10 @@ class WitTarget(
         }
       }
 
-      for ((_, overloads) in childFunctions.groupBy { it.identifier }) {
-        with(overloads.first()) {
+      for (function in childFunctions) {
+        with(function) {
           witDeclare()
-        }
-        val import = overloads.firstOrNull { it.orientation == Orientation.Import }
-        if (import != null) {
-          with(import) {
+          if (function.orientation == Orientation.Import) {
             witDeclareTrampoline()
           }
         }
