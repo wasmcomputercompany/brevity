@@ -3,6 +3,7 @@ package dev.wasmo.brevity.integration
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.integration.CallingMechanism.Async
+import dev.wasmo.brevity.integration.FunctionParent.World
 import dev.wasmo.brevity.integration.PassingMechanism.Parameter
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
@@ -477,8 +478,9 @@ class BridgeEveryTypeTest {
       ),
       predicate = {
         when {
-          // Async is disabled here because of a bug in wit-bindgen
+          // Several cases are disabled here due to a bug in wit-bindgen
           // https://github.com/bytecodealliance/wit-bindgen/issues/1728
+          functionParent != World -> false
           callingMechanism == Async && type.id == Identifier("sized-list-string") -> false
           orientation == Import && type.id == Identifier("sized-list-string") -> false
           // wit-bindgen panics on sized-lists + async + import.
