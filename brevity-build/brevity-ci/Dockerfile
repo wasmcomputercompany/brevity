@@ -46,7 +46,7 @@ RUN apk add --no-cache \
 ENV RUSTUP_HOME="/usr/local/rustup"
 ENV CARGO_HOME="/usr/local/cargo"
 ENV PATH="/usr/local/cargo/bin:$PATH"
-ENV RUST_VERSION="1.96.0"
+ENV RUST_VERSION="1.99.0"
 RUN set -eux; \
     \
     arch="$(apk --print-arch)"; \
@@ -166,7 +166,7 @@ RUN --mount=type=cache,target=/downloads,rw \
 
 # Kotlin toolchain.
 # We run '--version' because it downloads its dependencies on the first run.
-ENV KOTLIN_CLI_VERSION="0.12.0"
+ENV KOTLIN_CLI_VERSION="0.13.0"
 ENV KOTLIN_CLI_HOME="/root/.local/bin"
 ENV KOTLIN_CLI_JAVA_HOME="$JAVA_HOME"
 ENV KOTLIN_CLI_NO_WELCOME_BANNER="1"
@@ -177,6 +177,6 @@ RUN echo "Installing Kotlin toolchain" \
     && cd "$KOTLIN_CLI_HOME" \
     && kotlin update --target-version "$KOTLIN_CLI_VERSION" --create \
     && kotlin --version \
-    && cd / \
+    && cd /
 
 CMD ["gradle"]
