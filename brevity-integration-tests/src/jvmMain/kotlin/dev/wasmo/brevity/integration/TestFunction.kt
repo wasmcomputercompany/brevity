@@ -8,6 +8,7 @@ import okio.Buffer
 import okio.BufferedSink
 
 data class TestFunction(
+  val functionParent: FunctionParent,
   val passingMechanism: PassingMechanism,
   val callingMechanism: CallingMechanism,
   val orientation: Orientation,
@@ -44,32 +45,35 @@ data class TestFunction(
     get() = (passingMechanism as? PassingMechanism.Parameter)?.padding ?: 0
 
   private val indexToValueFunction: TestFunction
-    get() = TestFunction(
-      PassingMechanism.Return,
-      CallingMechanism.Sync,
-      Orientation.Export,
-      type,
+    get() = copy(
+      passingMechanism = PassingMechanism.Return,
+      callingMechanism = CallingMechanism.Sync,
+      orientation = Orientation.Export,
     )
 
   private val valueToIndexFunction: TestFunction
-    get() = TestFunction(
-      PassingMechanism.Parameter(),
-      CallingMechanism.Sync,
-      Orientation.Export,
-      type,
+    get() = copy(
+      passingMechanism = PassingMechanism.Parameter(),
+      callingMechanism = CallingMechanism.Sync,
+      orientation = Orientation.Export,
     )
 
   override fun toString() = identifier.name
 
   fun BufferedSink.witDeclare() {
-    val modifiers = when (callingMechanism) {
+    val orientationModifier = when {
+      functionParent == FunctionParent.World -> "${orientation.keyword} "
+      else -> ""
+    }
+
+    val syncModifier = when (callingMechanism) {
       CallingMechanism.Async -> " async"
       CallingMechanism.Sync -> ""
     }
 
     writeUtf8(
       """
-      |  ${orientation.keyword} $identifier:$modifiers func(
+      |  $orientationModifier$identifier:$syncModifier func(
       |
       """.trimMargin(),
     )
@@ -102,21 +106,37 @@ data class TestFunction(
         )
       }
     }
-    if (orientation == Orientation.Import) {
-      writeUtf8(
-        """
-        |  export $identifier-trampoline:$modifiers func(index: s32) -> s32;
-        |
-        """.trimMargin(),
-      )
-    }
   }
 
+  fun BufferedSink.witDeclareTrampoline() {
+    val syncModifier = when (callingMechanism) {
+      CallingMechanism.Async -> " async"
+      CallingMechanism.Sync -> ""
+    }
+    val orientationModifier = when {
+      functionParent == FunctionParent.World -> "export "
+      else -> ""
+    }
+    writeUtf8(
+      """
+      |  $orientationModifier$identifier-trampoline:$syncModifier func(index: s32) -> s32;
+      |
+      """.trimMargin(),
+    )
+  }
 
   fun BufferedSink.rustDeclareGuestFunctions() {
     when (orientation) {
-      Orientation.Export -> rustDeclare()
-      Orientation.Import -> rustDeclareTrampoline()
+      Orientation.Export -> {
+        rustDeclare()
+      }
+
+      Orientation.Import -> {
+        if (functionParent != FunctionParent.World) {
+          rustDeclareFunctionStub()
+        }
+        rustDeclareTrampoline()
+      }
     }
   }
 
@@ -133,10 +153,15 @@ data class TestFunction(
       """.trimMargin(),
     )
 
+    val callTarget = when (functionParent) {
+      FunctionParent.World -> "bindings"
+      else -> "bindings::brevity::testing::${functionParent.identifier.lowerSnakeCase}"
+    }
+
     when (passingMechanism) {
       is PassingMechanism.Parameter -> {
         val value = indexToValueFunction.rustCall("Self", "index", "panic!()")
-        val call = rustCall("bindings", "panic!()", "value")
+        val call = rustCall(callTarget, "panic!()", "value")
         writeUtf8(
           """
           |        let value = ${value.replace("\n", "\n        ")};
@@ -148,7 +173,7 @@ data class TestFunction(
       }
 
       PassingMechanism.Return -> {
-        val call = rustCall("bindings", "index", "panic!()")
+        val call = rustCall(callTarget, "index", "panic!()")
         val resultIndex = valueToIndexFunction.rustCall("Self", "panic!()", "value")
         writeUtf8(
           """
@@ -162,7 +187,89 @@ data class TestFunction(
     }
   }
 
-  fun BufferedSink.rustDeclare() {
+  private fun BufferedSink.rustDeclare() {
+    rustDeclareWithSignature {
+      maybeWriteSleepRust()
+
+      when (passingMechanism) {
+        is PassingMechanism.Parameter -> {
+          if (type.compareAsString) {
+            writeUtf8(
+              """
+              |let v_str = v.to_string();
+              |
+              """.trimMargin(),
+            )
+            for ((index, value) in type.values.withIndex()) {
+              writeUtf8(
+                """
+                |if v_str == (${value.rust}).to_string() { return $index }
+                |
+                """.trimMargin(),
+              )
+            }
+          } else {
+            for ((index, value) in type.values.withIndex()) {
+              writeUtf8(
+                """
+                |if v == ${value.rust} { return $index }
+                |
+                """.trimMargin(),
+              )
+            }
+          }
+          writeUtf8(
+            """
+            |panic!("unexpected value")
+            |
+            """.trimMargin(),
+          )
+        }
+
+        PassingMechanism.Return -> {
+          writeUtf8(
+            """
+            |match index {
+            |
+            """.trimMargin(),
+          )
+          for ((index, value) in type.values.withIndex()) {
+            writeUtf8(
+              """
+              |    $index => (${value.rust}).to_owned(),
+              |
+              """.trimMargin(),
+            )
+          }
+          writeUtf8(
+            """
+            |    _ => panic!("unexpected index {}", index)
+            |}
+            |
+            """.trimMargin(),
+          )
+        }
+      }
+    }
+  }
+
+  private fun BufferedSink.rustDeclareFunctionStub() {
+    rustDeclareWithSignature {
+      writeUtf8(
+        """
+        |panic!("unexpected call")
+        |
+        """.trimMargin(),
+      )
+    }
+  }
+
+  private fun BufferedSink.rustDeclareWithSignature(body: BufferedSink.() -> Unit) {
+    val bodyString = Buffer().run {
+      body()
+      readUtf8()
+    }
+
     val modifiers = when (callingMechanism) {
       CallingMechanism.Async -> "async "
       CallingMechanism.Sync -> ""
@@ -192,41 +299,6 @@ data class TestFunction(
           |
           """.trimMargin(),
         )
-
-        maybeWriteSleepRust()
-
-        if (type.compareAsString) {
-          writeUtf8(
-            """
-            |        let v_str = v.to_string();
-            |
-            """.trimMargin(),
-          )
-          for ((index, value) in type.values.withIndex()) {
-            writeUtf8(
-              """
-              |        if v_str == (${value.rust}).to_string() { return $index }
-              |
-              """.trimMargin(),
-            )
-          }
-        } else {
-          for ((index, value) in type.values.withIndex()) {
-            writeUtf8(
-              """
-              |        if v == ${value.rust} { return $index }
-              |
-              """.trimMargin(),
-            )
-          }
-        }
-        writeUtf8(
-          """
-          |        panic!("unexpected value")
-          |    }
-          |
-          """.trimMargin(),
-        )
       }
 
       PassingMechanism.Return -> {
@@ -237,46 +309,45 @@ data class TestFunction(
           |
           """.trimMargin(),
         )
-
-        maybeWriteSleepRust()
-
-        writeUtf8(
-          """
-          |        match index {
-          |
-          """.trimMargin(),
-        )
-        for ((index, value) in type.values.withIndex()) {
-          writeUtf8(
-            """
-            |            $index => (${value.rust}).to_owned(),
-            |
-            """.trimMargin(),
-          )
-        }
-        writeUtf8(
-          """
-          |            _ => panic!("unexpected index {}", index)
-          |        }
-          |    }
-          |
-          """.trimMargin(),
-        )
       }
     }
+
+    writeUtf8(
+      """
+      |        ${bodyString.replace("\n", "\n        ")}
+      |    }
+      |
+      """.trimMargin(),
+    )
   }
 
   fun BufferedSink.kotlinDeclareGuestFunctions() {
     when (orientation) {
-      Orientation.Export -> kotlinDeclare()
-      Orientation.Import -> kotlinDeclareTrampoline()
+      Orientation.Export -> {
+        kotlinDeclare()
+      }
+
+      Orientation.Import -> {
+        if (functionParent != FunctionParent.World) {
+          kotlinDeclareFunctionStub()
+        }
+        kotlinDeclareTrampoline()
+      }
     }
   }
 
   fun BufferedSink.kotlinDeclareHostFunctions() {
     when (orientation) {
-      Orientation.Export -> {}
-      Orientation.Import -> kotlinDeclare()
+      Orientation.Export -> {
+        if (functionParent != FunctionParent.World) {
+          kotlinDeclareFunctionStub()
+        }
+      }
+
+      Orientation.Import -> {
+        kotlinDeclare()
+        kotlinDeclareTrampolineStub()
+      }
     }
   }
 
@@ -293,10 +364,15 @@ data class TestFunction(
       """.trimMargin(),
     )
 
+    val callTarget = when (functionParent) {
+      FunctionParent.World -> "TestWorld.host"
+      FunctionParent.Interface -> "TestWorld.host.testInterface"
+    }
+
     when (passingMechanism) {
       is PassingMechanism.Parameter -> {
         val value = indexToValueFunction.kotlinCall("this", "index", "Nothing")
-        val call = kotlinCall("BrevityTest.host", "Nothing", value)
+        val call = kotlinCall(callTarget, "Nothing", value)
         writeUtf8(
           """
           |    return ${call.replace("\n", "\n    ")}
@@ -307,7 +383,7 @@ data class TestFunction(
       }
 
       PassingMechanism.Return -> {
-        val call = kotlinCall("BrevityTest.host", "index", "Nothing")
+        val call = kotlinCall(callTarget, "index", "Nothing")
         val resultIndex = valueToIndexFunction.kotlinCall("this", "Nothing", "value")
         writeUtf8(
           """
@@ -321,7 +397,113 @@ data class TestFunction(
     }
   }
 
-  fun BufferedSink.kotlinDeclare() {
+  fun BufferedSink.kotlinDeclareTrampolineStub() {
+    // We don't declare export functions on the world.
+    if (functionParent == FunctionParent.World) return
+
+    val modifiers = when (callingMechanism) {
+      CallingMechanism.Async -> " suspend"
+      CallingMechanism.Sync -> ""
+    }
+
+    writeUtf8(
+      """
+      |  override$modifiers fun ${identifier.lowerCamelCase}Trampoline(index: Int): Int = error("unexpected call")
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.kotlinDeclare() {
+    kotlinDeclareWithSignature {
+      maybeWriteSleepKotlin()
+
+      when (passingMechanism) {
+        is PassingMechanism.Parameter -> {
+          if (type.compareAsString) {
+            writeUtf8(
+              """
+              |val v_str = v.toString()
+              |
+              """.trimMargin(),
+            )
+            for ((index, value) in type.values.withIndex()) {
+              writeUtf8(
+                """
+                |if (v_str == (${value.kotlin}).toString()) { return $index }
+                |
+                """.trimMargin(),
+              )
+            }
+          } else {
+            for ((index, value) in type.values.withIndex()) {
+              if (type.kotlinEqualityMethod == null) {
+                writeUtf8(
+                  """
+                  |if (v == ${value.kotlin}) { return $index }
+                  |
+                  """.trimMargin(),
+                )
+              } else {
+                writeUtf8(
+                  """
+                  |if (v.${type.kotlinEqualityMethod}(${value.kotlin})) { return $index }
+                  |
+                  """.trimMargin(),
+                )
+              }
+            }
+          }
+          writeUtf8(
+            """
+            |return -1
+            """.trimMargin(),
+          )
+        }
+
+        PassingMechanism.Return -> {
+          writeUtf8(
+            """
+            |return when (index) {
+            |
+            """.trimMargin(),
+          )
+          for ((index, value) in type.values.withIndex()) {
+            writeUtf8(
+              """
+              |  $index -> ${value.kotlin}
+              |
+              """.trimMargin(),
+            )
+          }
+          writeUtf8(
+            $$"""
+            |  else -> error("unexpected index: $index")
+            |}
+            |
+            """.trimMargin(),
+          )
+        }
+      }
+    }
+  }
+
+  private fun BufferedSink.kotlinDeclareFunctionStub() {
+    kotlinDeclareWithSignature {
+      writeUtf8(
+        """
+        |error("unexpected call")
+        """.trimMargin(),
+      )
+    }
+  }
+
+  private fun BufferedSink.kotlinDeclareWithSignature(body: BufferedSink.() -> Unit) {
+    val bodyString = Buffer().run {
+      body()
+      readUtf8()
+    }
+
     val modifiers = when (callingMechanism) {
       CallingMechanism.Async -> " suspend"
       CallingMechanism.Sync -> ""
@@ -353,49 +535,6 @@ data class TestFunction(
           |
           """.trimMargin(),
         )
-        maybeWriteSleepKotlin()
-
-        if (type.compareAsString) {
-          writeUtf8(
-            """
-            |    val v_str = v.toString()
-            |
-            """.trimMargin(),
-          )
-          for ((index, value) in type.values.withIndex()) {
-            writeUtf8(
-              """
-              |    if (v_str == (${value.kotlin}).toString()) { return $index }
-              |
-              """.trimMargin(),
-            )
-          }
-        } else {
-          for ((index, value) in type.values.withIndex()) {
-            if (type.kotlinEqualityMethod == null) {
-              writeUtf8(
-                """
-                |    if (v == ${value.kotlin}) { return $index }
-                |
-                """.trimMargin(),
-              )
-            } else {
-              writeUtf8(
-                """
-                |    if (v.${type.kotlinEqualityMethod}(${value.kotlin})) { return $index }
-                |
-                """.trimMargin(),
-              )
-            }
-          }
-        }
-        writeUtf8(
-          """
-          |    return -1
-          |  }
-          |
-          """.trimMargin(),
-        )
       }
 
       PassingMechanism.Return -> {
@@ -406,31 +545,16 @@ data class TestFunction(
           |
           """.trimMargin(),
         )
-        maybeWriteSleepKotlin()
-        writeUtf8(
-          """
-          |    return when (index) {
-          |
-          """.trimMargin(),
-        )
-        for ((index, value) in type.values.withIndex()) {
-          writeUtf8(
-            """
-            |      $index -> ${value.kotlin}
-            |
-            """.trimMargin(),
-          )
-        }
-        writeUtf8(
-          $$"""
-          |      else -> error("unexpected index: $index")
-          |    }
-          |  }
-          |
-          """.trimMargin(),
-        )
       }
     }
+
+    writeUtf8(
+      """
+      |    ${bodyString.replace("\n", "\n    ")}
+      |  }
+      |
+      """.trimMargin(),
+    )
   }
 
   fun kotlinCall(

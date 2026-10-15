@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.integration
 
-import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
+import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -43,37 +44,62 @@ class HostKotlinTarget(
       |import kotlin.time.measureTime
       |import kotlinx.coroutines.test.runTest
       |import okio.Path.Companion.toPath
-      |import wit.brevity.testing.BrevityTest
+      |import wit.brevity.testing.TestWorld
       |import wit.brevity.testing.World
       |import wit.wasi.cli.v0_2_0.World
       |import wit.wasi.v0_1.World
       |
+      |val world = TestWorld.World { TestWorldHostImplementation }
+      |
+      |
       """.trimMargin(),
     )
-    if (testFunctions.any { it.orientation == Orientation.Import }) {
-      writeUtf8(
-        """
-        |val world = BrevityTest.World { RealHost }
-        |
-        |object RealHost : BrevityTest.Host {
-        |
-        """.trimMargin(),
-      )
-      for (testFunction in testFunctions) {
+
+    val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
+    for ((parent, childFunctions) in parentToTestFunctions) {
+      when (parent) {
+        FunctionParent.World -> {
+          writeUtf8(
+            """
+            |object TestWorldHostImplementation : TestWorld.Host {
+            |
+            """.trimMargin(),
+          )
+          for (memberService in parentToTestFunctions.keys) {
+            when (memberService) {
+              FunctionParent.World -> {}
+              FunctionParent.Interface -> {
+                writeUtf8(
+                  """
+                  |  override val ${memberService.identifier.lowerCamelCase} = ${memberService.identifier.upperCamelCase}HostImplementation
+                  |
+                  """.trimMargin(),
+                )
+              }
+            }
+          }
+        }
+
+        FunctionParent.Interface -> {
+          writeUtf8(
+            """
+            |object ${parent.identifier.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.identifier.upperCamelCase} {
+            |
+            """.trimMargin(),
+          )
+        }
+      }
+
+      for (testFunction in childFunctions) {
         with(testFunction) {
           kotlinDeclareHostFunctions()
         }
       }
+
       writeUtf8(
         """
         |}
         |
-        """.trimMargin(),
-      )
-    } else {
-      writeUtf8(
-        """
-        |val world = BrevityTest.World()
         |
         """.trimMargin(),
       )
@@ -100,7 +126,7 @@ class HostKotlinTarget(
     for (testFunction in testFunctions) {
       for (testCase in testFunction.testCases) {
         with(testCase) {
-          kotlinCallAndAssert("world.guest")
+          kotlinCallAndAssert()
         }
       }
     }

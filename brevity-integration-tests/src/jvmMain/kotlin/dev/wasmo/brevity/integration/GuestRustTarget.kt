@@ -58,20 +58,45 @@ class GuestRustTarget(
       |
       |struct BrevityTesting;
       |
-      |impl bindings::Guest for BrevityTesting {
       |
       """.trimMargin(),
     )
 
-    for (testFunction in testFunctions) {
-      with(testFunction) {
-        rustDeclareGuestFunctions()
+    val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
+    for ((parent, childFunctions) in parentToTestFunctions) {
+      when (parent) {
+        FunctionParent.World -> {
+          writeUtf8(
+            """
+            |impl bindings::Guest for BrevityTesting {
+            |
+            """.trimMargin(),
+          )
+        }
+
+        FunctionParent.Interface -> {
+          writeUtf8(
+            """
+            |impl bindings::exports::brevity::testing::test_interface::Guest for BrevityTesting {
+            |
+            """.trimMargin(),
+          )
+        }
       }
+
+      for (testFunction in childFunctions) {
+        with(testFunction) {
+          rustDeclareGuestFunctions()
+        }
+      }
+
+      writeUtf8(
+        """
+        |}
+        |
+        |
+        """.trimMargin(),
+      )
     }
-    writeUtf8(
-      """
-      |}
-      """.trimMargin(),
-    )
   }
 }

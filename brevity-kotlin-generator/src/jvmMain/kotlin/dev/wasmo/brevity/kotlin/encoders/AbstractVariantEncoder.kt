@@ -62,11 +62,17 @@ abstract class AbstractVariantEncoder(
     offset: Int,
   ): CodeBlock {
     val variantName = codeBuilder.newName(instanceNameHint)
+    val toUnsigned = when (discriminant) {
+      IntegerType.S8 -> "toUByte().toInt()"
+      IntegerType.S16 -> "toUShort().toInt()"
+      else -> "toInt()"
+    }
 
     codeBuilder.controlFlow(
-      "val %N = when (%L.toInt()) {",
+      "val %N = when (%L.%L) {",
       variantName,
       codeBuilder.platform.load(baseAddress, offset, discriminant),
+      toUnsigned,
     ) {
       for ((index, caseEncoder) in caseEncoders.withIndex()) {
         codeBuilder.controlFlow("%L ->", index) {
@@ -100,9 +106,8 @@ abstract class AbstractVariantEncoder(
     val variantName = codeBuilder.newName(instanceNameHint)
     val discriminatorName = codeBuilder.newName("${instanceNameHint}Discriminator")
     codeBuilder.controlFlow(
-      "val %N: %T = when (val %N = %L)",
+      "val %N = when (val %N = %L)",
       discriminatorName,
-      discriminant.kotlinType,
       variantName,
       value,
     ) {
@@ -119,11 +124,16 @@ abstract class AbstractVariantEncoder(
         }
       }
     }
+    val discriminatorValue = when (discriminant) {
+      IntegerType.S8 -> CodeBlock.of("%N.toByte()", discriminatorName)
+      IntegerType.S16 -> CodeBlock.of("%N.toShort()", discriminatorName)
+      else -> CodeBlock.of("%N", discriminatorName)
+    }
     codeBuilder.platform.store(
       baseAddress,
       offset,
       discriminant,
-      CodeBlock.of("%N", discriminatorName),
+      discriminatorValue,
     )
   }
 

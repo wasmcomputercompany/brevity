@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.Orientation
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -11,6 +12,7 @@ class WitTarget(
   private val fileSystem: FileSystem,
   private val layout: ProjectLayout,
   private val rawWit: String,
+  private val rawWitUseStatements: String,
   private val testFunctions: List<TestFunction>,
 ) {
   suspend fun generate() {
@@ -25,24 +27,64 @@ class WitTarget(
       """
       |package brevity:testing;
       |
-      |world brevity-test {
       |
       """.trimMargin(),
     )
 
-    for (testFunction in testFunctions) {
-      with(testFunction) {
-        witDeclare()
+    val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
+    for ((parent, childFunctions) in parentToTestFunctions) {
+      writeUtf8(
+        """
+        |${parent.keyword} ${parent.identifier} {
+        |  ${rawWitUseStatements.replace("\n", "\n  ")}
+        |
+        """.trimMargin(),
+      )
+
+      // The 'World' is the main parent.
+      if (parent == FunctionParent.World) {
+        for (memberService in parentToTestFunctions.keys) {
+          when (memberService) {
+            FunctionParent.World -> {}
+            FunctionParent.Interface -> {
+              writeUtf8(
+                """
+                |  import ${memberService.identifier};
+                |  export ${memberService.identifier};
+                |
+                |
+                """.trimMargin(),
+              )
+            }
+          }
+        }
       }
+
+      for (function in childFunctions) {
+        with(function) {
+          witDeclare()
+          if (function.orientation == Orientation.Import) {
+            witDeclareTrampoline()
+          }
+        }
+      }
+
+      writeUtf8(
+        """
+        |}
+        |
+        |
+        """.trimMargin(),
+      )
     }
 
-    writeUtf8(
-      """
-      |$rawWit
-      |
-      |}
-      |
-      """.trimMargin(),
-    )
+    if (rawWit.isNotEmpty()) {
+      writeUtf8(
+        """
+        |$rawWit
+        |
+        """.trimMargin(),
+      )
+    }
   }
 }

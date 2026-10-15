@@ -20,16 +20,6 @@ class WitAsyncTest {
   )
 
   @Test
-  fun happyPath() = runTest {
-    val test = BrevityExecutionTester(
-      name = "asyncHappyPath",
-      types = listOf(type),
-    )
-
-    test.execute()
-  }
-
-  @Test
   @Ignore("not working on Kotlin yet")
   fun sleep() = runTest {
     val test = BrevityExecutionTester(

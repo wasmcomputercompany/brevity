@@ -43,8 +43,8 @@ enum class IntegerType {
   companion object {
     fun discriminant(caseCount: Int): IntegerType {
       return when {
-        caseCount <= UByte.MAX_VALUE.toInt() -> S8
-        caseCount <= UShort.MAX_VALUE.toInt() -> S16
+        caseCount <= 256 -> S8
+        caseCount <= 65_536 -> S16
         else -> S32
       }
     }

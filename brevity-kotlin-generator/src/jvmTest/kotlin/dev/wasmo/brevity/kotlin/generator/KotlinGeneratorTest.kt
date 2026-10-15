@@ -438,7 +438,6 @@ class KotlinGeneratorTest {
 
       import dev.wasmo.brevity.BrevityInternalApi
       import dev.wasmo.brevity.GuestBridge
-      import kotlin.Byte
       import kotlin.Int
       import kotlin.OptIn
       import kotlin.wasm.ExperimentalWasmInterop
@@ -451,7 +450,7 @@ class KotlinGeneratorTest {
         address: Pointer,
         value_: Advice,
       ) {
-        val adviceDiscriminator: Byte = when (val advice = value_) {
+        val adviceDiscriminator = when (val advice = value_) {
           Advice.Normal -> {
             0
           }
@@ -459,7 +458,7 @@ class KotlinGeneratorTest {
             1
           }
         }
-        (address).storeByte(adviceDiscriminator)
+        (address).storeByte(adviceDiscriminator.toByte())
       }
 
       public fun lowerFlat_Types_Advice_guest(bridge: GuestBridge, value_: Advice): Int {
@@ -476,7 +475,7 @@ class KotlinGeneratorTest {
       }
 
       public fun load_Types_Advice_guest(bridge: GuestBridge, address: Pointer): Advice {
-        val advice = when ((address).loadByte().toInt()) {
+        val advice = when ((address).loadByte().toUByte().toInt()) {
           0 -> {
             Advice.Normal
           }
@@ -517,7 +516,6 @@ class KotlinGeneratorTest {
 
       import dev.wasmo.brevity.BrevityInternalApi
       import dev.wasmo.brevity.HostBridge
-      import kotlin.Byte
       import kotlin.Int
       import kotlin.OptIn
 
@@ -526,7 +524,7 @@ class KotlinGeneratorTest {
         address: Int,
         value_: Advice,
       ) {
-        val adviceDiscriminator: Byte = when (val advice = value_) {
+        val adviceDiscriminator = when (val advice = value_) {
           Advice.Normal -> {
             0
           }
@@ -534,7 +532,7 @@ class KotlinGeneratorTest {
             1
           }
         }
-        bridge.memory.writeByte(address, adviceDiscriminator)
+        bridge.memory.writeByte(address, adviceDiscriminator.toByte())
       }
 
       public fun lowerFlat_Types_Advice_host(bridge: HostBridge, value_: Advice): Int {
@@ -551,7 +549,7 @@ class KotlinGeneratorTest {
       }
 
       public fun load_Types_Advice_host(bridge: HostBridge, address: Int): Advice {
-        val advice = when (bridge.memory.read(address).toInt()) {
+        val advice = when (bridge.memory.read(address).toUByte().toInt()) {
           0 -> {
             Advice.Normal
           }
@@ -707,7 +705,6 @@ class KotlinGeneratorTest {
       import dev.wasmo.brevity.GuestBridge
       import dev.wasmo.brevity.loadString
       import dev.wasmo.brevity.storeByteArray
-      import kotlin.Byte
       import kotlin.Int
       import kotlin.OptIn
       import kotlin.text.encodeToByteArray
@@ -723,12 +720,12 @@ class KotlinGeneratorTest {
         address: Pointer,
         value_: ErrorCode,
       ) {
-        val errorCodeDiscriminator: Byte = when (val errorCode = value_) {
+        val errorCodeDiscriminator = when (val errorCode = value_) {
           ErrorCode.AccessDenied -> {
             0
           }
           is ErrorCode.Other -> {
-            val optionalDiscriminator: Byte = when (val optional = errorCode.value) {
+            val optionalDiscriminator = when (val optional = errorCode.value) {
               null -> {
                 0
               }
@@ -743,11 +740,11 @@ class KotlinGeneratorTest {
                 1
               }
             }
-            (address + 4).storeByte(optionalDiscriminator)
+            (address + 4).storeByte(optionalDiscriminator.toByte())
             1
           }
         }
-        (address).storeByte(errorCodeDiscriminator)
+        (address).storeByte(errorCodeDiscriminator.toByte())
       }
 
       public fun lowerFlat_Types_ErrorCode_guest(
@@ -794,12 +791,12 @@ class KotlinGeneratorTest {
       }
 
       public fun load_Types_ErrorCode_guest(bridge: GuestBridge, address: Pointer): ErrorCode {
-        val errorCode = when ((address).loadByte().toInt()) {
+        val errorCode = when ((address).loadByte().toUByte().toInt()) {
           0 -> {
             ErrorCode.AccessDenied
           }
           1 -> {
-            val optional = when ((address + 4).loadByte().toInt()) {
+            val optional = when ((address + 4).loadByte().toUByte().toInt()) {
               0 -> {
                 null
               }
@@ -863,7 +860,6 @@ class KotlinGeneratorTest {
       import dev.wasmo.brevity.CallBuilder
       import dev.wasmo.brevity.HostBridge
       import dev.wasmo.brevity.MemoryAllocator
-      import kotlin.Byte
       import kotlin.Int
       import kotlin.OptIn
       import kotlin.text.encodeToByteArray
@@ -874,12 +870,12 @@ class KotlinGeneratorTest {
         address: Int,
         value_: ErrorCode,
       ) {
-        val errorCodeDiscriminator: Byte = when (val errorCode = value_) {
+        val errorCodeDiscriminator = when (val errorCode = value_) {
           ErrorCode.AccessDenied -> {
             0
           }
           is ErrorCode.Other -> {
-            val optionalDiscriminator: Byte = when (val optional = errorCode.value) {
+            val optionalDiscriminator = when (val optional = errorCode.value) {
               null -> {
                 0
               }
@@ -894,11 +890,11 @@ class KotlinGeneratorTest {
                 1
               }
             }
-            bridge.memory.writeByte(address + 4, optionalDiscriminator)
+            bridge.memory.writeByte(address + 4, optionalDiscriminator.toByte())
             1
           }
         }
-        bridge.memory.writeByte(address, errorCodeDiscriminator)
+        bridge.memory.writeByte(address, errorCodeDiscriminator.toByte())
       }
 
       public fun lowerFlat_Types_ErrorCode_host(
@@ -945,12 +941,12 @@ class KotlinGeneratorTest {
       }
 
       public fun load_Types_ErrorCode_host(bridge: HostBridge, address: Int): ErrorCode {
-        val errorCode = when (bridge.memory.read(address).toInt()) {
+        val errorCode = when (bridge.memory.read(address).toUByte().toInt()) {
           0 -> {
             ErrorCode.AccessDenied
           }
           1 -> {
-            val optional = when (bridge.memory.read(address + 4).toInt()) {
+            val optional = when (bridge.memory.read(address + 4).toUByte().toInt()) {
               0 -> {
                 null
               }

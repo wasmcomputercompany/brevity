@@ -3,6 +3,7 @@ package dev.wasmo.brevity.integration
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.integration.CallingMechanism.Async
+import dev.wasmo.brevity.integration.FunctionParent.World
 import dev.wasmo.brevity.integration.PassingMechanism.Parameter
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
@@ -16,9 +17,9 @@ import kotlinx.coroutines.test.runTest
  */
 class BridgeEveryTypeTest {
   @Test
-  fun primitives() = runTest {
+  fun booleans() = runTest {
     val test = BrevityExecutionTester(
-      name = "primitives",
+      name = "booleans",
       types = listOf(
         SampleType(
           id = Identifier("bool"),
@@ -30,6 +31,17 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "true", rust = "true"),
           ),
         ),
+      ),
+    )
+
+    test.execute()
+  }
+
+  @Test
+  fun integerTypes() = runTest {
+    val test = BrevityExecutionTester(
+      name = "integers",
+      types = listOf(
         SampleType(
           id = Identifier("s8"),
           witType = "s8",
@@ -120,6 +132,17 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "kotlin.ULong.MAX_VALUE", rust = "18446744073709551615"),
           ),
         ),
+      ),
+    )
+
+    test.execute()
+  }
+
+  @Test
+  fun floatingPointTypes() = runTest {
+    val test = BrevityExecutionTester(
+      name = "floatingPoints",
+      types = listOf(
         SampleType(
           id = Identifier("f32"),
           compareAsString = true,
@@ -165,6 +188,17 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "kotlin.Double.NaN", rust = "std::f64::NAN"),
           ),
         ),
+      ),
+    )
+
+    test.execute()
+  }
+
+  @Test
+  fun characterTypes() = runTest {
+    val test = BrevityExecutionTester(
+      name = "characterTypes",
+      types = listOf(
         SampleType(
           id = Identifier("string"),
           witType = "string",
@@ -199,6 +233,7 @@ class BridgeEveryTypeTest {
     val test = BrevityExecutionTester(
       name = "enums",
       rawWit = """
+        |interface types {
         |  enum shaker {
         |    salt,
         |    pepper,
@@ -209,37 +244,43 @@ class BridgeEveryTypeTest {
         |  enum min-short-enum {
         |    ${List(257) { "v$it" }.joinToString(separator = ",")}
         |  }
-        |""".trimMargin(),
+        |}
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{shaker, max-byte-enum, min-short-enum};
+        |
+        """.trimMargin(),
       types = listOf(
         SampleType(
           id = Identifier("shaker"),
           witType = "shaker",
-          kotlinType = "BrevityTest.Shaker",
+          kotlinType = "wit.brevity.testing.Shaker",
           rustType = "bindings::Shaker",
           values = listOf(
-            SampleValue(kotlin = "BrevityTest.Shaker.Salt", rust = "bindings::Shaker::Salt"),
-            SampleValue(kotlin = "BrevityTest.Shaker.Pepper", rust = "bindings::Shaker::Pepper"),
+            SampleValue(kotlin = "wit.brevity.testing.Shaker.Salt", rust = "bindings::Shaker::Salt"),
+            SampleValue(kotlin = "wit.brevity.testing.Shaker.Pepper", rust = "bindings::Shaker::Pepper"),
           ),
         ),
         SampleType(
           id = Identifier("max-byte-enum"),
           witType = "max-byte-enum",
-          kotlinType = "BrevityTest.MaxByteEnum",
+          kotlinType = "wit.brevity.testing.MaxByteEnum",
           rustType = "bindings::MaxByteEnum",
           values = listOf(
-            SampleValue(kotlin = "BrevityTest.MaxByteEnum.V0", rust = "bindings::MaxByteEnum::V0"),
-            SampleValue(kotlin = "BrevityTest.MaxByteEnum.V255", rust = "bindings::MaxByteEnum::V255"),
+            SampleValue(kotlin = "wit.brevity.testing.MaxByteEnum.V0", rust = "bindings::MaxByteEnum::V0"),
+            SampleValue(kotlin = "wit.brevity.testing.MaxByteEnum.V255", rust = "bindings::MaxByteEnum::V255"),
           ),
         ),
         SampleType(
           id = Identifier("min-short-enum"),
           witType = "min-short-enum",
-          kotlinType = "BrevityTest.MinShortEnum",
+          kotlinType = "wit.brevity.testing.MinShortEnum",
           rustType = "bindings::MinShortEnum",
           values = listOf(
-            SampleValue(kotlin = "BrevityTest.MinShortEnum.V0", rust = "bindings::MinShortEnum::V0"),
-            SampleValue(kotlin = "BrevityTest.MinShortEnum.V255", rust = "bindings::MinShortEnum::V255"),
-            SampleValue(kotlin = "BrevityTest.MinShortEnum.V256", rust = "bindings::MinShortEnum::V256"),
+            SampleValue(kotlin = "wit.brevity.testing.MinShortEnum.V0", rust = "bindings::MinShortEnum::V0"),
+            SampleValue(kotlin = "wit.brevity.testing.MinShortEnum.V255", rust = "bindings::MinShortEnum::V255"),
+            SampleValue(kotlin = "wit.brevity.testing.MinShortEnum.V256", rust = "bindings::MinShortEnum::V256"),
           ),
         ),
       ),
@@ -252,9 +293,6 @@ class BridgeEveryTypeTest {
   fun options() = runTest {
     val test = BrevityExecutionTester(
       name = "options",
-      rawWit = """
-        |
-        |""".trimMargin(),
       types = listOf(
         SampleType(
           id = Identifier("option-bool"),
@@ -265,43 +303,6 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "null", rust = "None"),
             SampleValue(kotlin = "false", rust = "Some(false)"),
             SampleValue(kotlin = "true", rust = "Some(true)"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("option-s8"),
-          witType = "option<s8>",
-          kotlinType = "Byte?",
-          rustType = "Option<i8>",
-          values = listOf(
-            SampleValue(kotlin = "null", rust = "None"),
-            SampleValue(kotlin = "0.toByte()", rust = "Some(0)"),
-            SampleValue(kotlin = "kotlin.Byte.MIN_VALUE", rust = "Some(-128)"),
-            SampleValue(kotlin = "kotlin.Byte.MAX_VALUE", rust = "Some(127)"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("option-s32"),
-          witType = "option<s32>",
-          kotlinType = "Int?",
-          rustType = "Option<i32>",
-          values = listOf(
-            SampleValue(kotlin = "null", rust = "None"),
-            SampleValue(kotlin = "0", rust = "Some(0)"),
-            SampleValue(kotlin = "5", rust = "Some(5)"),
-            SampleValue(kotlin = "kotlin.Int.MIN_VALUE", rust = "Some(-2147483648)"),
-            SampleValue(kotlin = "kotlin.Int.MAX_VALUE", rust = "Some(2147483647)"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("option-u64"),
-          witType = "option<u64>",
-          kotlinType = "ULong?",
-          rustType = "Option<u64>",
-          values = listOf(
-            SampleValue(kotlin = "null", rust = "None"),
-            SampleValue(kotlin = "5UL", rust = "Some(5)"),
-            SampleValue(kotlin = "kotlin.ULong.MIN_VALUE", rust = "Some(0)"),
-            SampleValue(kotlin = "kotlin.ULong.MAX_VALUE", rust = "Some(18446744073709551615)"),
           ),
         ),
         SampleType(
@@ -336,17 +337,6 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "\"\uD83C\uDF69\"", rust = "Some(\"\uD83C\uDF69\".to_string())"),
           ),
         ),
-        SampleType(
-          id = Identifier("option-char"),
-          witType = "option<char>",
-          kotlinType = "Int?",
-          rustType = "Option<char>",
-          values = listOf(
-            SampleValue(kotlin = "null", rust = "None"),
-            SampleValue(kotlin = "'a'.code", rust = "Some('a')"),
-            SampleValue(kotlin = "'b'.code", rust = "Some('b')"),
-          ),
-        ),
       ),
       predicate = ::expectedWorkingTests,
     )
@@ -373,30 +363,6 @@ class BridgeEveryTypeTest {
           ),
         ),
         SampleType(
-          id = Identifier("list-s8"),
-          witType = "list<s8>",
-          kotlinType = "okio.ByteString",
-          rustType = "Vec<i8>",
-          values = listOf(
-            SampleValue(kotlin = "okio.ByteString.of()", rust = "vec![]"),
-            SampleValue(kotlin = "okio.ByteString.of(0.toByte())", rust = "vec![0]"),
-            SampleValue(kotlin = "okio.ByteString.of(kotlin.Byte.MIN_VALUE, kotlin.Byte.MAX_VALUE)", rust = "vec![-128, 127]"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("list-s16"),
-          kotlinEqualityMethod = "contentEquals",
-          witType = "list<s16>",
-          kotlinType = "ShortArray",
-          rustType = "Vec<i16>",
-          values = listOf(
-            SampleValue(kotlin = "shortArrayOf()", rust = "vec![]"),
-            SampleValue(kotlin = "shortArrayOf(0.toShort(), 5.toShort())", rust = "vec![0, 5]"),
-            SampleValue(kotlin = "shortArrayOf(kotlin.Short.MIN_VALUE, kotlin.Short.MAX_VALUE)", rust = "vec![-32768, 32767]"),
-            SampleValue(kotlin = "ShortArray(100) { i -> i.toShort() }", rust = "((0..=99).collect::<Vec<i16>>())"),
-          ),
-        ),
-        SampleType(
           id = Identifier("list-s32"),
           kotlinEqualityMethod = "contentEquals",
           witType = "list<s32>",
@@ -420,79 +386,6 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "longArrayOf(0L, 5L)", rust = "vec![0, 5]"),
             SampleValue(kotlin = "longArrayOf(kotlin.Long.MIN_VALUE, kotlin.Long.MAX_VALUE)", rust = "vec![-9223372036854775808, 9223372036854775807]"),
             SampleValue(kotlin = "LongArray(100) { i -> i + 2147483647L }", rust = "((2147483647..=2147483746).collect::<Vec<i64>>())"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("list-u8"),
-          witType = "list<u8>",
-          kotlinType = "okio.ByteString",
-          rustType = "Vec<u8>",
-          values = listOf(
-            SampleValue(kotlin = "okio.ByteString.of()", rust = "vec![]"),
-            SampleValue(kotlin = "okio.ByteString.of(0.toUByte().toByte(), 5.toUByte().toByte())", rust = "vec![0, 5]"),
-            SampleValue(kotlin = "okio.ByteString.of(kotlin.UByte.MIN_VALUE.toByte(), kotlin.UByte.MAX_VALUE.toByte())", rust = "vec![0, 255]"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("list-u16"),
-          kotlinEqualityMethod = "contentEquals",
-          witType = "list<u16>",
-          kotlinType = "UShortArray",
-          rustType = "Vec<u16>",
-          values = listOf(
-            SampleValue(kotlin = "ushortArrayOf()", rust = "vec![]"),
-            SampleValue(kotlin = "ushortArrayOf(0.toUShort(), 5.toUShort())", rust = "vec![0, 5]"),
-            SampleValue(kotlin = "ushortArrayOf(kotlin.UShort.MIN_VALUE, kotlin.UShort.MAX_VALUE)", rust = "vec![0, 65535]"),
-            SampleValue(kotlin = "UShortArray(100) { i -> i.toUShort() }", rust = "((0..=99).collect::<Vec<u16>>())"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("list-u32"),
-          kotlinEqualityMethod = "contentEquals",
-          witType = "list<u32>",
-          kotlinType = "UIntArray",
-          rustType = "Vec<u32>",
-          values = listOf(
-            SampleValue(kotlin = "uintArrayOf()", rust = "vec![]"),
-            SampleValue(kotlin = "uintArrayOf(0U, 5U)", rust = "vec![0, 5]"),
-            SampleValue(kotlin = "uintArrayOf(kotlin.UInt.MIN_VALUE, kotlin.UInt.MAX_VALUE)", rust = "vec![0, 4294967295]"),
-            SampleValue(kotlin = "UIntArray(100) { i -> i.toUInt() + 65535U  }", rust = "((65535..=65634).collect::<Vec<u32>>())"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("list-u64"),
-          kotlinEqualityMethod = "contentEquals",
-          witType = "list<u64>",
-          kotlinType = "ULongArray",
-          rustType = "Vec<u64>",
-          values = listOf(
-            SampleValue(kotlin = "ulongArrayOf()", rust = "vec![]"),
-            SampleValue(kotlin = "ulongArrayOf(0UL, 5UL)", rust = "vec![0, 5]"),
-            SampleValue(kotlin = "ulongArrayOf(kotlin.ULong.MIN_VALUE, kotlin.ULong.MAX_VALUE)", rust = "vec![0, 18446744073709551615]"),
-            SampleValue(kotlin = "ULongArray(100) { i -> i.toULong() + 4294967295UL }", rust = "((4294967295..=4294967394).collect::<Vec<u64>>())"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("list-f32"),
-          kotlinEqualityMethod = "contentEquals",
-          witType = "list<f32>",
-          kotlinType = "FloatArray",
-          rustType = "Vec<f32>",
-          values = listOf(
-            SampleValue(kotlin = "floatArrayOf()", rust = "vec![]"),
-            SampleValue(kotlin = "floatArrayOf(0.0f, -0.0f, 0.5f)", rust = "vec![0.0, -0.0, 0.5]"),
-            SampleValue(
-              kotlin = "floatArrayOf(1.17549435E-38f)",
-              rust = "vec![0.000000000000000000000000000000000000011754944]",
-            ),
-            SampleValue(
-              kotlin = "floatArrayOf(kotlin.Float.MIN_VALUE, kotlin.Float.MAX_VALUE)",
-              rust = "vec![0.000000000000000000000000000000000000000000001, 3.4028235e38]",
-            ),
-            SampleValue(
-              kotlin = "floatArrayOf(kotlin.Float.POSITIVE_INFINITY, kotlin.Float.NEGATIVE_INFINITY)",
-              rust = "vec![std::f32::INFINITY, std::f32::NEG_INFINITY]"
-            ),
           ),
         ),
         SampleType(
@@ -529,16 +422,6 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "listOf(\"\", \"abc\\u0000def\", \"\uD83C\uDF69\")", rust = "[\"\", \"abc\\u{0000}def\", \"\uD83C\uDF69\"].map(String::from).to_vec()"),
           ),
         ),
-        SampleType(
-          id = Identifier("list-char"),
-          witType = "list<char>",
-          kotlinType = "List<Int>", // In Java/Kotlin char is an u16. In wit it's a u32.
-          rustType = "Vec<char>",
-          values = listOf(
-            SampleValue(kotlin = "listOf<Int>()", rust = "vec![]"),
-            SampleValue(kotlin = "listOf('a'.code, 'b'.code, 'c'.code)", rust = "vec!['a', 'b', 'c']"),
-          ),
-        ),
       ),
       predicate = ::expectedWorkingTests,
     )
@@ -563,66 +446,6 @@ class BridgeEveryTypeTest {
           ),
         ),
         SampleType(
-          id = Identifier("sized-list-s8"),
-          witType = "list<s8, 2>",
-          kotlinType = "List<Byte>",
-          rustType = "[i8; 2]",
-          values = listOf(
-            SampleValue(kotlin = "listOf(0.toByte(), 5.toByte())", rust = "[0, 5]"),
-            SampleValue(kotlin = "listOf(kotlin.Byte.MIN_VALUE, kotlin.Byte.MAX_VALUE)", rust = "[-128, 127]"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("sized-list-s16"),
-          witType = "list<s16, 2>",
-          kotlinType = "List<Short>",
-          rustType = "[i16; 2]",
-          values = listOf(
-            SampleValue(kotlin = "listOf(0.toShort(), 5.toShort())", rust = "[0, 5]"),
-            SampleValue(kotlin = "listOf(kotlin.Short.MIN_VALUE, kotlin.Short.MAX_VALUE)", rust = "[-32768, 32767]"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("sized-list-s32"),
-          witType = "list<s32, 2>",
-          kotlinType = "List<Int>",
-          rustType = "[i32; 2]",
-          values = listOf(
-            SampleValue(kotlin = "listOf(0, 5)", rust = "[0, 5]"),
-            SampleValue(kotlin = "listOf(kotlin.Int.MIN_VALUE, kotlin.Int.MAX_VALUE)", rust = "[-2147483648, 2147483647]"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("sized-list-s64"),
-          witType = "list<s64, 2>",
-          kotlinType = "List<Long>",
-          rustType = "[i64; 2]",
-          values = listOf(
-            SampleValue(kotlin = "listOf(0L, 5L)", rust = "[0, 5]"),
-            SampleValue(kotlin = "listOf(kotlin.Long.MIN_VALUE, kotlin.Long.MAX_VALUE)", rust = "[-9223372036854775808, 9223372036854775807]"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("sized-list-u8"),
-          witType = "list<u8, 2>",
-          kotlinType = "List<UByte>",
-          rustType = "[u8; 2]",
-          values = listOf(
-            SampleValue(kotlin = "listOf(0.toUByte(), 5.toUByte())", rust = "[0, 5]"),
-            SampleValue(kotlin = "listOf(kotlin.UByte.MIN_VALUE, kotlin.UByte.MAX_VALUE)", rust = "[0, 255]"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("sized-list-u16"),
-          witType = "list<u16, 2>",
-          kotlinType = "List<UShort>",
-          rustType = "[u16; 2]",
-          values = listOf(
-            SampleValue(kotlin = "listOf(0.toUShort(), 5.toUShort())", rust = "[0, 5]"),
-            SampleValue(kotlin = "listOf(kotlin.UShort.MIN_VALUE, kotlin.UShort.MAX_VALUE)", rust = "[0, 65535]"),
-          ),
-        ),
-        SampleType(
           id = Identifier("sized-list-u32"),
           witType = "list<u32, 2>",
           kotlinType = "List<UInt>",
@@ -630,58 +453,6 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "listOf(0U, 5U)", rust = "[0, 5]"),
             SampleValue(kotlin = "listOf(kotlin.UInt.MIN_VALUE, kotlin.UInt.MAX_VALUE)", rust = "[0, 4294967295]"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("sized-list-u64"),
-          witType = "list<u64, 2>",
-          kotlinType = "List<ULong>",
-          rustType = "[u64; 2]",
-          values = listOf(
-            SampleValue(kotlin = "listOf(0UL, 5UL)", rust = "[0, 5]"),
-            SampleValue(kotlin = "listOf(kotlin.ULong.MIN_VALUE, kotlin.ULong.MAX_VALUE)", rust = "[0, 18446744073709551615]"),
-          ),
-        ),
-        SampleType(
-          id = Identifier("sized-list-f32"),
-          witType = "list<f32, 2>",
-          kotlinType = "List<Float>",
-          rustType = "[f32; 2]",
-          values = listOf(
-            SampleValue(kotlin = "listOf(0.0f, 0.5f)", rust = "[0.0, 0.5]"),
-            SampleValue(
-              kotlin = "listOf(-0.0f, 1.17549435E-38f)",
-              rust = "[-0.0, 0.000000000000000000000000000000000000011754944]",
-            ),
-            SampleValue(
-              kotlin = "listOf(kotlin.Float.MIN_VALUE, kotlin.Float.MAX_VALUE)",
-              rust = "[0.000000000000000000000000000000000000000000001, 3.4028235e38]",
-            ),
-            SampleValue(
-              kotlin = "listOf(kotlin.Float.POSITIVE_INFINITY, kotlin.Float.NEGATIVE_INFINITY)",
-              rust = "[std::f32::INFINITY, std::f32::NEG_INFINITY]"
-            ),
-          ),
-        ),
-        SampleType(
-          id = Identifier("sized-list-f64"),
-          witType = "list<f64, 2>",
-          kotlinType = "List<Double>",
-          rustType = "[f64; 2]",
-          values = listOf(
-            SampleValue(kotlin = "listOf(0.0, 0.5)", rust = "[0.0, 0.5]"),
-            SampleValue(
-              kotlin = "listOf(-0.0, 2.2250738585072014e-308)",
-              rust = "[-0.0, 2.2250738585072014e-308]",
-            ),
-            SampleValue(
-              kotlin = "listOf(kotlin.Double.MIN_VALUE, kotlin.Double.MAX_VALUE)",
-              rust = "[4.9E-324, 1.7976931348623157E308]",
-            ),
-            SampleValue(
-              kotlin = "listOf(kotlin.Double.POSITIVE_INFINITY, kotlin.Double.NEGATIVE_INFINITY)",
-              rust = "[std::f64::INFINITY, std::f64::NEG_INFINITY]"
-            ),
           ),
         ),
         SampleType(
@@ -696,15 +467,6 @@ class BridgeEveryTypeTest {
           ),
         ),
         SampleType(
-          id = Identifier("sized-list-char"),
-          witType = "list<char, 2>",
-          kotlinType = "List<Int>", // In Java/Kotlin char is an u16. In wit it's a u32.
-          rustType = "[char; 2]",
-          values = listOf(
-            SampleValue(kotlin = "listOf('a'.code, 'b'.code)", rust = "['a', 'b']"),
-          ),
-        ),
-        SampleType(
           id = Identifier("large-sized-list-s32"),
           witType = "list<s32, 18>",
           kotlinType = "List<Int>",
@@ -716,8 +478,9 @@ class BridgeEveryTypeTest {
       ),
       predicate = {
         when {
-          // Async is disabled here because of a bug in wit-bindgen
+          // Several cases are disabled here due to a bug in wit-bindgen
           // https://github.com/bytecodealliance/wit-bindgen/issues/1728
+          functionParent != World -> false
           callingMechanism == Async && type.id == Identifier("sized-list-string") -> false
           orientation == Import && type.id == Identifier("sized-list-string") -> false
           // wit-bindgen panics on sized-lists + async + import.
@@ -741,26 +504,38 @@ class BridgeEveryTypeTest {
       17, // min int
       32, // max int
     )
+    val allFlagsDeclarations = enumSizes.joinToString(separator = "\n") { story ->
+      """
+      |  flags elevator-${story}-story {
+      |    ${List(story) { "floor-${it + 1}-chosen" }.joinToString(separator = ",")}
+      |  }
+      |
+      """.trimMargin()
+    }
     val test = BrevityExecutionTester(
       name = "flags",
-      rawWit = enumSizes.joinToString(separator = "\n") { story ->
+      rawWit =
         """
-        |  flags elevator-${story}-story {
-        |    ${List(story) { "floor-${it + 1}-chosen" }.joinToString(separator = ",")}
-        |  }
-        |""".trimMargin()
-      },
+        |interface types {
+        |$allFlagsDeclarations
+        |}
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{${enumSizes.joinToString { "elevator-$it-story" }}};
+        |
+        """.trimMargin(),
       types = enumSizes.map { i ->
         SampleType(
           id = Identifier("elevator-$i-story"),
           witType = "elevator-$i-story",
-          kotlinType = "BrevityTest.Elevator${i}Story",
+          kotlinType = "wit.brevity.testing.Elevator${i}Story",
           rustType = "bindings::Elevator${i}Story",
           values = buildList {
             // All `true`
             add(
               SampleValue(
-                kotlin = "BrevityTest.Elevator${i}Story(${
+                kotlin = "wit.brevity.testing.Elevator${i}Story(${
                   List(i) { "true" }.joinToString(separator = ",")
                 })",
                 rust = List(i) { floor -> "bindings::Elevator${i}Story::FLOOR_${floor + 1}_CHOSEN" }.joinToString(
@@ -771,7 +546,7 @@ class BridgeEveryTypeTest {
             // All `false`.
             add(
               SampleValue(
-                kotlin = "BrevityTest.Elevator${i}Story(${
+                kotlin = "wit.brevity.testing.Elevator${i}Story(${
                   List(i) { "false" }.joinToString(separator = ",")
                 })",
                 rust = "bindings::Elevator${i}Story::empty()",
@@ -781,7 +556,7 @@ class BridgeEveryTypeTest {
               // Even floors
               add(
                 SampleValue(
-                  kotlin = "BrevityTest.Elevator${i}Story(${
+                  kotlin = "wit.brevity.testing.Elevator${i}Story(${
                     List(i) { if (it % 2 == 1) "true" else "false" }.joinToString(separator = ",")
                   })",
                   rust = List(i / 2) { floor -> "bindings::Elevator${i}Story::FLOOR_${(floor + 1) * 2}_CHOSEN" }.joinToString(
@@ -792,7 +567,7 @@ class BridgeEveryTypeTest {
               // Odd floors
               add(
                 SampleValue(
-                  kotlin = "BrevityTest.Elevator${i}Story(${
+                  kotlin = "wit.brevity.testing.Elevator${i}Story(${
                     List(i) { if (it % 2 == 0) "true" else "false" }.joinToString(separator = ",")
                   })",
                   rust = List((i + 1) / 2) { floor -> "bindings::Elevator${i}Story::FLOOR_${((floor + 1) * 2) - 1}_CHOSEN" }.joinToString(
@@ -814,21 +589,28 @@ class BridgeEveryTypeTest {
     val test = BrevityExecutionTester(
       name = "typeAliases",
       rawWit = """
+        |interface types {
         |  type email-address = string;
-        |""".trimMargin(),
+        |}
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{email-address};
+        |
+        """.trimMargin(),
       types = listOf(
         SampleType(
           id = Identifier("email-address"),
           witType = "email-address",
-          kotlinType = "BrevityTest.EmailAddress",
+          kotlinType = "wit.brevity.testing.EmailAddress",
           rustType = "bindings::EmailAddress",
           values = listOf(
             SampleValue(
-              kotlin = "BrevityTest.EmailAddress(\"hello@wasmo.com\")",
+              kotlin = "wit.brevity.testing.EmailAddress(\"hello@wasmo.com\")",
               rust = "\"hello@wasmo.com\"",
             ),
             SampleValue(
-              kotlin = "BrevityTest.EmailAddress(\"noreply@wasmo.com\")",
+              kotlin = "wit.brevity.testing.EmailAddress(\"noreply@wasmo.com\")",
               rust = "\"noreply@wasmo.com\"",
             ),
           ),
@@ -845,12 +627,19 @@ class BridgeEveryTypeTest {
     val test = BrevityExecutionTester(
       name = "tuples",
       rawWit = """
+        |interface types {
         |  enum colour-space {
         |    srgb,
         |    linear-srgb,
         |    display-p3,
         |  }
-        |""".trimMargin(),
+        |}
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{colour-space};
+        |
+        """.trimMargin(),
       types = listOf(
         SampleType(
           id = Identifier("pair-s8-bool"),
@@ -907,15 +696,15 @@ class BridgeEveryTypeTest {
           rustType = "(u8, u8, u8, u8, bindings::ColourSpace)",
           values = listOf(
             SampleValue(
-              kotlin = "listOf(0.toUByte(), 0.toUByte(), 0.toUByte(), 255.toUByte(), BrevityTest.ColourSpace.Srgb)",
+              kotlin = "listOf(0.toUByte(), 0.toUByte(), 0.toUByte(), 255.toUByte(), wit.brevity.testing.ColourSpace.Srgb)",
               rust = "(0, 0, 0, 255, bindings::ColourSpace::Srgb)",
             ),
             SampleValue(
-              kotlin = "listOf(255.toUByte(), 255.toUByte(), 255.toUByte(), 255.toUByte(), BrevityTest.ColourSpace.LinearSrgb)",
+              kotlin = "listOf(255.toUByte(), 255.toUByte(), 255.toUByte(), 255.toUByte(), wit.brevity.testing.ColourSpace.LinearSrgb)",
               rust = "(255, 255, 255, 255, bindings::ColourSpace::LinearSrgb)",
             ),
             SampleValue(
-              kotlin = "listOf(128.toUByte(), 128.toUByte(), 0.toUByte(), 128.toUByte(), BrevityTest.ColourSpace.DisplayP3)",
+              kotlin = "listOf(128.toUByte(), 128.toUByte(), 0.toUByte(), 128.toUByte(), wit.brevity.testing.ColourSpace.DisplayP3)",
               rust = "(128, 128, 0, 128, bindings::ColourSpace::DisplayP3)",
             ),
           ),
