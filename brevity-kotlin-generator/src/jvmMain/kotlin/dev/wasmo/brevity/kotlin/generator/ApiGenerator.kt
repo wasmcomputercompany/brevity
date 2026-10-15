@@ -57,7 +57,6 @@ class ApiGenerator(
       }
     }
     for (resource in resources) {
-      if (resource.orientation != Orientation.Export) continue // Either one, but only once.
       val resourceName = resource.apiClassName
       result.collect(
         sourceSet = QualifiedSpec.SourceSet.CommonMain,

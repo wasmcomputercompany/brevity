@@ -55,25 +55,6 @@ class HostPlatform(
 
   override fun liftAddress(address: CodeBlock) = address
 
-  context(codeBuilder: CodeBuilder)
-  override fun liftResource(id: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of(
-      "%L.%M<%T>(%L)",
-      codeBuilder.bridge,
-      Symbols.Brevity.HostBridgeGet,
-      kotlinMapper.getAbiClassName(handleType),
-      id,
-    )
-
-  context(codeBuilder: CodeBuilder)
-  override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of(
-      "%L.toId<%T>(%L)",
-      codeBuilder.bridge,
-      kotlinMapper.getAbiClassName(handleType),
-      resource,
-    )
-
   override fun getParent(parent: AbiWorld): KtExpression {
     return CodeBlockExpression(
       type = parent.apiInterfaceName(Orientation.Import),

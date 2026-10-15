@@ -4,6 +4,7 @@ import dev.wasmo.brevity.Orientation
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okio.Buffer
 import okio.BufferedSink
 import okio.FileSystem
 
@@ -33,49 +34,7 @@ class WitTarget(
 
     val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
     for ((parent, childFunctions) in parentToTestFunctions) {
-      writeUtf8(
-        """
-        |${parent.keyword} ${parent.identifier} {
-        |  ${rawWitUseStatements.replace("\n", "\n  ")}
-        |
-        """.trimMargin(),
-      )
-
-      // The 'World' is the main parent.
-      if (parent == FunctionParent.World) {
-        for (memberService in parentToTestFunctions.keys) {
-          when (memberService) {
-            FunctionParent.World -> {}
-            FunctionParent.Interface -> {
-              writeUtf8(
-                """
-                |  import ${memberService.identifier};
-                |  export ${memberService.identifier};
-                |
-                |
-                """.trimMargin(),
-              )
-            }
-          }
-        }
-      }
-
-      for (function in childFunctions) {
-        with(function) {
-          witDeclare()
-          if (function.orientation == Orientation.Import) {
-            witDeclareTrampoline()
-          }
-        }
-      }
-
-      writeUtf8(
-        """
-        |}
-        |
-        |
-        """.trimMargin(),
-      )
+      writeService(parent, childFunctions, parentToTestFunctions)
     }
 
     if (rawWit.isNotEmpty()) {
@@ -85,6 +44,113 @@ class WitTarget(
         |
         """.trimMargin(),
       )
+    }
+  }
+
+  private fun BufferedSink.writeService(
+    parent: FunctionParent,
+    childFunctions: List<TestFunction>,
+    parentToTestFunctions: Map<FunctionParent, List<TestFunction>>,
+  ) {
+    when (parent) {
+      FunctionParent.World, FunctionParent.Interface -> {
+        writeWorldOrInterface(parent, childFunctions, parentToTestFunctions)
+      }
+
+      FunctionParent.Resource -> {
+        writeResource(parent, childFunctions)
+      }
+    }
+  }
+
+  private fun BufferedSink.writeWorldOrInterface(
+    parent: FunctionParent,
+    childFunctions: List<TestFunction>,
+    parentToTestFunctions: Map<FunctionParent, List<TestFunction>>,
+  ) {
+    val functionsString = Buffer().run {
+      writeFunctions(childFunctions)
+      readUtf8().trim()
+    }
+
+    writeUtf8(
+      """
+      |${parent.keyword} ${parent.identifier} {
+      |  ${rawWitUseStatements.replace("\n", "\n  ")}
+      |
+      """.trimMargin(),
+    )
+
+    // The 'World' is the main parent.
+    if (parent == FunctionParent.World) {
+      for (memberService in parentToTestFunctions.keys) {
+        when (memberService) {
+          FunctionParent.World -> {}
+          FunctionParent.Interface -> {
+            writeUtf8(
+              """
+              |  import ${memberService.identifier};
+              |  export ${memberService.identifier};
+              |
+              |
+              """.trimMargin(),
+            )
+          }
+
+          FunctionParent.Resource -> {
+            writeUtf8(
+              """
+              |  export exported-${memberService.identifier};
+              |
+              """.trimMargin(),
+            )
+          }
+        }
+      }
+    }
+
+    writeUtf8(
+      """
+      |  ${functionsString.replace("\n", "\n  ")}
+      |}
+      |
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.writeResource(
+    parent: FunctionParent,
+    childFunctions: List<TestFunction>,
+  ) {
+    val functionsString = Buffer().run {
+      writeFunctions(childFunctions)
+      readUtf8().trim()
+    }
+    writeUtf8(
+      """
+      |interface exported-${parent.identifier} {
+      |  ${rawWitUseStatements.replace("\n", "\n  ").trim()}
+      |
+      |  create: func() -> ${parent.identifier};
+      |
+      |  resource ${parent.identifier} {
+      |    ${functionsString.replace("\n", "\n    ")}
+      |  }
+      |}
+      |
+      """.trimMargin(),
+    )
+  }
+
+  private fun BufferedSink.writeFunctions(functions: List<TestFunction>) {
+    for (function in functions) {
+      with(function) {
+        witDeclare()
+        if (function.orientation == Orientation.Import) {
+          witDeclareTrampoline()
+        }
+      }
     }
   }
 }

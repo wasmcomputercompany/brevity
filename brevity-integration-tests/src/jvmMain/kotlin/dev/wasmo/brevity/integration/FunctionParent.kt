@@ -8,6 +8,7 @@ enum class FunctionParent(
   val identifier: Identifier,
 ) {
   World(Keyword.world, Identifier("test-world")),
-  Interface(Keyword.`interface`, Identifier("test-interface"));
-  // TODO: interfaces with plain names, and resources
+  Interface(Keyword.`interface`, Identifier("test-interface")),
+  Resource(Keyword.resource, Identifier("test-resource"));
+  // TODO: interfaces with plain names.
 }

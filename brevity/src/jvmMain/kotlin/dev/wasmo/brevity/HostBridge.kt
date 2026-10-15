@@ -3,10 +3,13 @@ package dev.wasmo.brevity
 import com.dylibso.chicory.runtime.ExportFunction
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
+import kotlin.reflect.KType
+import kotlin.reflect.typeOf
 import kotlinx.coroutines.runBlocking
 
 @BrevityInternalApi
 class HostBridge {
+  private val typeToResourceHandle = mutableMapOf<KType, (Int) -> Resource>()
   private val idToResource = mutableMapOf<Int, Resource>()
   private var nextId = 6_060_000
   private lateinit var _memory: Memory
@@ -26,14 +29,31 @@ class HostBridge {
     )
   }
 
+  inline fun <reified T : Resource> registerResourceHandle(
+    noinline constructor: (id: Int) -> T,
+  ) {
+    registerResourceHandle(typeOf<T>(), constructor)
+  }
+
+  @PublishedApi
+  internal fun registerResourceHandle(type: KType, createHandle: (id: Int) -> Resource) {
+    typeToResourceHandle[type] = createHandle
+  }
+
   fun <T : Resource> toId(resource: T): Int {
     val id = nextId++
     idToResource[id] = resource
     return id
   }
 
+  inline fun <reified T : Resource> fromId(id: Int): T {
+    return fromId(typeOf<T>(), id) as T
+  }
+
   @PublishedApi
-  internal fun getInternal(id: Int): Resource? {
+  internal fun fromId(type: KType, id: Int): Resource? {
+    val createHandle = typeToResourceHandle[type]
+    if (createHandle != null) return createHandle(id)
     return idToResource[id]
   }
 
@@ -56,11 +76,6 @@ class HostBridge {
   suspend fun <T> awaitTaskResult(): T {
     return taskResult as T
   }
-}
-
-@BrevityInternalApi
-inline operator fun <reified T : Resource> HostBridge.get(id: Int): T {
-  return getInternal(id) as T
 }
 
 @BrevityInternalApi

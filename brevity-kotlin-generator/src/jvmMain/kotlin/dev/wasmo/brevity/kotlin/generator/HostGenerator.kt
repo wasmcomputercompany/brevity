@@ -11,8 +11,8 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.buildCodeBlock
 import com.squareup.kotlinpoet.joinToCode
-import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
@@ -31,10 +31,6 @@ import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.valType
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 
-private val hostOptIns = setOf(
-  Symbols.Brevity.BrevityInternalApi,
-)
-
 class HostGenerator(
   private val platformFunctionFactory: PlatformFunctionFactory,
   private val hostPlatform: HostPlatform,
@@ -42,8 +38,6 @@ class HostGenerator(
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
   private val worlds: List<AbiWorld>,
-  private val resources: List<AbiResource>,
-  private val guestResourcesSupported: Boolean = false,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
@@ -143,7 +137,31 @@ class HostGenerator(
     builder.addProperty(
       PropertySpec.builder("bridge", Symbols.Brevity.HostBridge)
         .addModifiers(KModifier.PRIVATE)
-        .initializer("%T()", Symbols.Brevity.HostBridge)
+        .initializer(
+          buildCodeBlock {
+            add("%T()", Symbols.Brevity.HostBridge)
+            val allResources = (abiWorld.resources + abiWorld.interfaces.flatMap { it.resources })
+              .filter { it.orientation == Export }
+
+            if (allResources.isNotEmpty()) {
+              beginControlFlow(".apply")
+              for (abiResource in allResources) {
+                beginControlFlow(
+                  "registerResourceHandle<%T> { %N ->",
+                  abiResource.apiClassName,
+                  "id",
+                )
+                addStatement(
+                  "%T(%N)",
+                  className.nestedClass(abiResource.implementationName),
+                  "id",
+                )
+                endControlFlow()
+              }
+              endControlFlow()
+            }
+          },
+        )
         .build(),
     )
 
@@ -177,22 +195,30 @@ class HostGenerator(
       builder.addType(generateExportsImplementation(abiWorld))
     }
 
-    for (abiInterface in abiWorld.interfaces) {
+    fun generateResource(abiResource: AbiResource) {
+      initExports(initExportsBuilder, builder, abiResource.functions)
+      initImports(initImportsBuilder, bridgeValue, abiResource)
+      if (abiResource.orientation == Export) {
+        builder.addType(generateExportsImplementation(abiResource))
+      }
+    }
+
+    fun generateInterface(abiInterface: AbiInterface) {
       initExports(initExportsBuilder, builder, abiInterface.functions)
       initImports(initImportsBuilder, bridgeValue, abiInterface)
       if (abiInterface.orientation == Export) {
         builder.addType(generateExportsImplementation(abiInterface))
       }
+      for (abiResource in abiInterface.resources) {
+        generateResource(abiResource)
+      }
     }
 
-    for (abiResource in resources) {
-      initExports(initExportsBuilder, builder, abiResource.functions)
-      initImports(initImportsBuilder, bridgeValue, abiResource)
-      if (guestResourcesSupported) {
-        if (abiResource.orientation == Export) {
-          builder.addType(generateExportsImplementation(abiResource))
-        }
-      }
+    for (abiInterface in abiWorld.interfaces) {
+      generateInterface(abiInterface)
+    }
+    for (abiResource in abiWorld.resources) {
+      generateResource(abiResource)
     }
 
     collector.addType(
@@ -214,7 +240,6 @@ class HostGenerator(
     for (abiFunction in functions) {
       if (!abiFunction.isSupported) continue
       if (abiFunction.orientation != Export) continue
-      if (abiFunction.isResource && !guestResourcesSupported && abiFunction.name !is FunctionName.TaskReturn) continue
 
       val exportFunctionName = abiFunction.name.exportFunctionName
       worldBuilder.addProperty(
@@ -405,7 +430,7 @@ private val AbiService.implementationName: String
   get() {
     return when (this) {
       is AbiInterface -> "Real${serviceName.name.upperCamelCase}"
-      is AbiResource -> "Real${type.name.upperCamelCase}"
+      is AbiResource -> "${type.name.upperCamelCase}Handle"
       is AbiWorld -> "RealGuest"
     }
   }
@@ -414,3 +439,7 @@ private fun ClassName.wrap(
   prefix: Any = "",
   suffix: Any = "",
 ) = ClassName(packageName, "$prefix${simpleNames.joinToString(separator = "")}$suffix")
+
+private val hostOptIns = setOf(
+  Symbols.Brevity.BrevityInternalApi,
+)

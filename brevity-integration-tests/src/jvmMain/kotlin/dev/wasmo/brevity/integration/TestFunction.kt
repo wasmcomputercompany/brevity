@@ -73,14 +73,14 @@ data class TestFunction(
 
     writeUtf8(
       """
-      |  $orientationModifier$identifier:$syncModifier func(
+      |$orientationModifier$identifier:$syncModifier func(
       |
       """.trimMargin(),
     )
     for (i in 0 until padding) {
       writeUtf8(
         """
-        |    p$i: s32,
+        |  p$i: s32,
         |
         """.trimMargin(),
       )
@@ -89,8 +89,8 @@ data class TestFunction(
       is PassingMechanism.Parameter -> {
         writeUtf8(
           """
-          |    v: ${type.witType},
-          |  ) -> s32;
+          |  v: ${type.witType},
+          |) -> s32;
           |
           """.trimMargin(),
         )
@@ -99,8 +99,8 @@ data class TestFunction(
       PassingMechanism.Return -> {
         writeUtf8(
           """
-          |    index: s32,
-          |  ) -> ${type.witType};
+          |  index: s32,
+          |) -> ${type.witType};
           |
           """.trimMargin(),
         )
@@ -119,7 +119,7 @@ data class TestFunction(
     }
     writeUtf8(
       """
-      |  $orientationModifier$identifier-trampoline:$syncModifier func(index: s32) -> s32;
+      |$orientationModifier$identifier-trampoline:$syncModifier func(index: s32) -> s32;
       |
       """.trimMargin(),
     )
@@ -267,7 +267,7 @@ data class TestFunction(
   private fun BufferedSink.rustDeclareWithSignature(body: BufferedSink.() -> Unit) {
     val bodyString = Buffer().run {
       body()
-      readUtf8()
+      readUtf8().trim()
     }
 
     val modifiers = when (callingMechanism) {
@@ -366,7 +366,9 @@ data class TestFunction(
 
     val callTarget = when (functionParent) {
       FunctionParent.World -> "TestWorld.host"
-      FunctionParent.Interface -> "TestWorld.host.testInterface"
+      FunctionParent.Interface, FunctionParent.Resource -> {
+        "TestWorld.host.${functionParent.identifier.lowerCamelCase}"
+      }
     }
 
     when (passingMechanism) {
@@ -501,7 +503,7 @@ data class TestFunction(
   private fun BufferedSink.kotlinDeclareWithSignature(body: BufferedSink.() -> Unit) {
     val bodyString = Buffer().run {
       body()
-      readUtf8()
+      readUtf8().trim()
     }
 
     val modifiers = when (callingMechanism) {

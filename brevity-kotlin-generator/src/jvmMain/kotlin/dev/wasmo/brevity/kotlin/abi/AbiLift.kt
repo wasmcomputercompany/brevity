@@ -12,6 +12,8 @@ import dev.wasmo.brevity.kotlin.abi.AbiFunction.Result.Void
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.withMemoryAllocator
 import dev.wasmo.brevity.kotlin.encoders.CoreType
+import dev.wasmo.brevity.kotlin.encoders.liftResource
+import dev.wasmo.brevity.kotlin.encoders.lowerResource
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
@@ -161,9 +163,9 @@ private class AbiLiftAsyncExport(
         abiFunction.isResource -> CodeBlockExpression(
           type = INT,
           nameHint = "id",
-          code = codeBuilder.platform.lowerResource(
+          code = lowerResource(
             resource = liftedReceiverValue.code,
-            handleType = (parentService as AbiResource).type,
+            abiClassName = parentService.apiClassName,
           ),
           immediate = true,
         )
@@ -256,9 +258,9 @@ private fun AbiService.liftReceiver(
       CodeBlockExpression(
         type = this.apiClassName,
         nameHint = "receiver",
-        code = codeBuilder.platform.liftResource(
+        code = liftResource(
           id = p.next().code,
-          handleType = this.type,
+          abiClassName = apiClassName,
         ),
       )
     }

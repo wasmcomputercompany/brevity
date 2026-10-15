@@ -7,7 +7,6 @@ import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
-import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrDeclaration
@@ -25,6 +24,7 @@ import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 
 sealed interface AbiService {
   val irDeclaration: IrDeclaration
+  val resources: List<AbiResource>
   val functions: List<AbiFunction>
   val apiClassName: ClassName
   val types: List<IrTypeDeclaration>
@@ -40,6 +40,7 @@ sealed interface AbiService {
 data class AbiWorld(
   override val irDeclaration: IrWorld,
   val interfaces: List<AbiInterface>,
+  override val resources: List<AbiResource>,
   override val functions: List<AbiFunction>,
 ) : AbiService {
   override val apiClassName: ClassName
@@ -57,8 +58,9 @@ data class AbiWorld(
     interfaces.filter { it.orientation == orientation }
 
   class Factory(
-    private val abiFunctionFactory: AbiFunction.Factory,
     private val abiInterfaceFactory: AbiInterface.Factory,
+    private val abiResourceFactory: AbiResource.Factory,
+    private val abiFunctionFactory: AbiFunction.Factory,
   ) {
     fun createAll(packages: List<IrWitPackage>): List<AbiWorld> {
       return packages.flatMap { it.services }
@@ -66,14 +68,14 @@ data class AbiWorld(
         .map { createWorld(it) }
     }
 
-    private fun createWorld(world: IrWorld): AbiWorld {
+    private fun createWorld(irWorld: IrWorld): AbiWorld {
       val abiInterfaces = mutableListOf<AbiInterface>()
       val abiFunctions = mutableListOf<AbiFunction>()
 
-      for (api in world.exports) {
+      for (api in irWorld.exports) {
         when (api) {
           is IrExternalApi -> abiInterfaces += abiInterfaceFactory.create(
-            worldServiceName = world.serviceName,
+            worldServiceName = irWorld.serviceName,
             externalApi = api,
             orientation = Export,
           )
@@ -86,13 +88,14 @@ data class AbiWorld(
           )
         }
       }
-      for (api in world.imports) {
+      for (api in irWorld.imports) {
         when (api) {
           is IrExternalApi -> abiInterfaces += abiInterfaceFactory.create(
-            worldServiceName = world.serviceName,
+            worldServiceName = irWorld.serviceName,
             externalApi = api,
             orientation = Import,
           )
+
           is IrFunction -> abiFunctionFactory.collectAll(
             listBuilder = abiFunctions,
             irFunction = api,
@@ -103,8 +106,12 @@ data class AbiWorld(
       }
 
       return AbiWorld(
-        irDeclaration = world,
+        irDeclaration = irWorld,
         interfaces = abiInterfaces,
+        resources = abiResourceFactory.createAll(
+          types = irWorld.types,
+          orientation = Import, // World member resources are imported.
+        ),
         functions = abiFunctions,
       )
     }
@@ -120,6 +127,7 @@ data class AbiInterface(
   val orientation: Orientation,
   val worldServiceName: ServiceName,
   val instanceName: String,
+  override val resources: List<AbiResource>,
   override val functions: List<AbiFunction>,
 ) : AbiService {
   val serviceName: ServiceName
@@ -131,6 +139,7 @@ data class AbiInterface(
 
   class Factory(
     private val declarationIndex: DeclarationIndex,
+    private val abiResourceFactory: AbiResource.Factory,
     private val abiFunctionFactory: AbiFunction.Factory,
   ) {
     fun create(
@@ -144,6 +153,7 @@ data class AbiInterface(
         orientation = orientation,
         worldServiceName = worldServiceName,
         instanceName = externalApi.instanceName,
+        resources = abiResourceFactory.createAll(irInterface.types, orientation),
         functions = abiFunctionFactory.createAll(
           functions = irInterface.functions,
           orientation = orientation,
@@ -157,6 +167,10 @@ data class AbiInterface(
       orientation = Import, // Arbitrary.
       worldServiceName = irInterface.serviceName,
       instanceName = irInterface.serviceName.name.lowerCamelCase,
+      resources = abiResourceFactory.createAll(
+        types = irInterface.types,
+        orientation = Import, // Arbitrary.
+      ),
       functions = abiFunctionFactory.createAll(
         functions = irInterface.functions,
         orientation = Import,
@@ -175,26 +189,27 @@ data class AbiResource(
 ) : AbiService {
   override val types: List<IrTypeDeclaration>
     get() = listOf()
+  override val resources: List<AbiResource>
+    get() = listOf()
 
   class Factory(
     private val kotlinMapper: KotlinMapper,
     private val abiFunctionFactory: AbiFunction.Factory,
-    private val roleTracker: RoleTracker,
   ) {
-    fun createAll(packages: List<IrWitPackage>) = buildList {
-      val irResources = packages.flatMap { it.services }
-        .flatMap { it.types }
-        .filterIsInstance<IrResource>()
+    fun createForApiOnly(
+      packages: List<IrWitPackage>,
+    ) = createAll(
+      types = packages.flatMap { it.services }.flatMap { it.types },
+      orientation = Import, // Arbitrary.
+    )
 
+    fun createAll(
+      types: List<IrTypeDeclaration>,
+      orientation: Orientation,
+    ) = buildList {
+      val irResources = types.filterIsInstance<IrResource>()
       for (resource in irResources) {
-        // TODO: this is hacked because we don't also prune unreachable callsites.
-        val roles = (RoleTracker.Entry(true, true) ?: roleTracker[resource.type])!!
-        if (roles.guest) {
-          add(create(resource, Export))
-        }
-        if (roles.host) {
-          add(create(resource, Import))
-        }
+        add(create(resource, orientation))
       }
     }
 

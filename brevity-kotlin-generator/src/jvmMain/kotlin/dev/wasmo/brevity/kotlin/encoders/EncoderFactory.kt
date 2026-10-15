@@ -165,7 +165,7 @@ class EncoderFactory(
         fieldEncoders = type.fields.map { get(it.type) },
       )
 
-      is IrResource -> ResourceEncoder(type.type)
+      is IrResource -> ResourceEncoder(abiClassName = kotlinMapper.getAbiClassName(type.type))
       is IrTypeAlias -> TypeAliasEncoder(kotlinType, get(type.target))
       is IrVariant -> VariantEncoder(
         kotlinType = kotlinType,

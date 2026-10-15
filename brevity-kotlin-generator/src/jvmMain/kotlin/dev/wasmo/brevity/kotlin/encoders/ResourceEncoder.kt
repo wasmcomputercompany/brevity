@@ -1,12 +1,12 @@
 package dev.wasmo.brevity.kotlin.encoders
 
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 internal class ResourceEncoder(
-  private val type: TypeName.Declared,
+  private val abiClassName: ClassName,
 ) : Encoder() {
   override val coreTypes = listOf(CoreType.I32)
 
@@ -21,8 +21,7 @@ internal class ResourceEncoder(
     baseAddress: CodeBlock,
     offset: Int,
   ): CodeBlock {
-    val address = codeBuilder.platform.load(baseAddress, offset, CoreType.Pointer)
-    return codeBuilder.platform.liftResource(address, type)
+    return liftResource(codeBuilder.platform.load(baseAddress, offset, CoreType.Pointer))
   }
 
   context(codeBuilder: CodeBuilder)
@@ -32,13 +31,12 @@ internal class ResourceEncoder(
     offset: Int,
     value: CodeBlock,
   ) {
-    val address = codeBuilder.platform.lowerResource(value, type)
-    codeBuilder.platform.store(baseAddress, offset, CoreType.Pointer, address)
+    codeBuilder.platform.store(baseAddress, offset, CoreType.Pointer, lowerResource(value))
   }
 
   context(codeBuilder: CodeBuilder)
   override fun liftFlat(transformer: Transformer) {
-    transformer.put(codeBuilder.platform.liftResource(transformer.take(), type))
+    transformer.put(liftResource(transformer.take()))
   }
 
   context(codeBuilder: CodeBuilder)
@@ -46,6 +44,28 @@ internal class ResourceEncoder(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
   ) {
-    transformer.put(codeBuilder.platform.lowerResource(transformer.take(), type))
+    transformer.put(lowerResource(transformer.take()))
   }
+
+  context(codeBuilder: CodeBuilder)
+  fun liftResource(id: CodeBlock): CodeBlock = liftResource(id, abiClassName)
+
+  context(codeBuilder: CodeBuilder)
+  fun lowerResource(resource: CodeBlock) = lowerResource(resource, abiClassName)
 }
+
+context(codeBuilder: CodeBuilder)
+fun liftResource(id: CodeBlock, abiClassName: ClassName) = CodeBlock.of(
+  "%L.fromId<%T>(%L)",
+  codeBuilder.bridge,
+  abiClassName,
+  id,
+)
+
+context(codeBuilder: CodeBuilder)
+fun lowerResource(resource: CodeBlock, abiClassName: ClassName) = CodeBlock.of(
+  "%L.toId<%T>(%L)",
+  codeBuilder.bridge,
+  abiClassName,
+  resource,
+)

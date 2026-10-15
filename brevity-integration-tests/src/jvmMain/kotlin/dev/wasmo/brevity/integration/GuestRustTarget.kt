@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.kotlin.generator.lowerSnakeCase
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -74,10 +75,10 @@ class GuestRustTarget(
           )
         }
 
-        FunctionParent.Interface -> {
+        FunctionParent.Interface, FunctionParent.Resource -> {
           writeUtf8(
             """
-            |impl bindings::exports::brevity::testing::test_interface::Guest for BrevityTesting {
+            |impl bindings::exports::brevity::testing::${parent.identifier.lowerSnakeCase}::Guest for BrevityTesting {
             |
             """.trimMargin(),
           )

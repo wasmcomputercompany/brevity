@@ -12,7 +12,6 @@ import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
-import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.RoleTracker
@@ -27,13 +26,6 @@ import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.expressions.valueExpression
 
-private val guestOptIns = setOf(
-  Symbols.Brevity.BrevityInternalApi,
-  Symbols.KotlinWasm.ComponentModelInternalApi,
-  Symbols.KotlinWasm.ExperimentalWasmInterop,
-  Symbols.KotlinWasm.UnsafeWasmMemoryApi,
-)
-
 class GuestGenerator(
   private val platform: GuestPlatform,
   private val platformFunctionFactory: PlatformFunctionFactory,
@@ -41,8 +33,6 @@ class GuestGenerator(
   private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
   private val worlds: List<AbiWorld>,
-  private val resources: List<AbiResource>,
-  private val guestResourcesSupported: Boolean = false,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
@@ -63,36 +53,27 @@ class GuestGenerator(
       }
     }
 
-    for (world in worlds) {
-      val className = world.apiClassName
+    for (abiWorld in worlds) {
+      val className = abiWorld.apiClassName
       result.collect(
         sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
         packageName = className.packageName,
-        locations = setOf(world.location),
+        locations = setOf(abiWorld.location),
         optIns = guestOptIns,
         fileName = "${className.simpleName}Guest",
       ) {
-        generateWorldEntryPoint(world)
-        generateAbiWorldClass(world)
-        generateServiceFunctions(world)
-        for (abiInterface in world.interfaces) {
+        generateWorldEntryPoint(abiWorld)
+        generateAbiWorldClass(abiWorld)
+        for (abiInterface in abiWorld.interfaces) {
           generateAbiInterfaceClass(abiInterface)
-          generateServiceFunctions(abiInterface)
+          for (abiResource in abiInterface.resources) {
+            generateAbiResourceClass(abiResource)
+          }
         }
-        retainWasmExportsFunction(world)
-      }
-    }
-    for (abiResource in resources) {
-      val className = abiResource.apiClassName
-      result.collect(
-        sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
-        packageName = className.packageName,
-        locations = setOf(abiResource.location),
-        optIns = guestOptIns,
-        fileName = "${className.simpleName}Guest",
-      ) {
-        generateAbiResourceClass(abiResource)
-        generateServiceFunctions(abiResource)
+        for (abiResource in abiWorld.resources) {
+          generateAbiResourceClass(abiResource)
+        }
+        retainWasmExportsFunction(abiWorld)
       }
     }
 
@@ -137,15 +118,15 @@ class GuestGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateAbiWorldClass(abiService: AbiWorld) {
-    val className = abiService.guestServiceClassName
+  private fun generateAbiWorldClass(abiWorld: AbiWorld) {
+    val className = abiWorld.guestServiceClassName
     collector.addType(
       className,
       TypeSpec.objectBuilder(className)
         .addModifiers(KModifier.INTERNAL)
-        .addSuperinterface(abiService.apiInterfaceName(Import))
+        .addSuperinterface(abiWorld.apiInterfaceName(Import))
         .apply {
-          for (abiInterface in abiService.interfaces(Import)) {
+          for (abiInterface in abiWorld.interfaces(Import)) {
             addProperty(
               PropertySpec.builder(abiInterface.instanceName, abiInterface.apiClassName)
                 .addModifiers(KModifier.OVERRIDE)
@@ -154,48 +135,53 @@ class GuestGenerator(
             )
           }
         }
-        .declareServiceClassFunctions(abiService)
+        .declareServiceClassFunctions(abiWorld)
         .build(),
     )
+    generateServiceFunctions(abiWorld)
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateAbiInterfaceClass(abiService: AbiInterface) {
-    if (abiService.orientation != Import) return
-    val className = abiService.guestServiceClassName
-    collector.addType(
-      className,
-      TypeSpec.classBuilder(className)
-        .addModifiers(KModifier.INTERNAL)
-        .addSuperinterface(abiService.apiInterfaceName(Import))
-        .declareServiceClassFunctions(abiService)
-        .build(),
-    )
+  private fun generateAbiInterfaceClass(abiInterface: AbiInterface) {
+    if (abiInterface.orientation == Import) {
+      val className = abiInterface.guestServiceClassName
+      collector.addType(
+        className,
+        TypeSpec.classBuilder(className)
+          .addModifiers(KModifier.INTERNAL)
+          .addSuperinterface(abiInterface.apiInterfaceName(Import))
+          .declareServiceClassFunctions(abiInterface)
+          .build(),
+      )
+    }
+    generateServiceFunctions(abiInterface)
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateAbiResourceClass(abiService: AbiResource) {
-    if (abiService.orientation != Import) return
-    val className = abiService.guestServiceClassName
-    collector.addType(
-      className,
-      TypeSpec.classBuilder(className)
-        .addModifiers(KModifier.INTERNAL)
-        .addSuperinterface(abiService.apiInterfaceName(Import))
-        .addProperty(
-          PropertySpec.builder("id", INT)
-            .addModifiers(KModifier.PRIVATE)
-            .initializer("id")
-            .build(),
-        )
-        .primaryConstructor(
-          FunSpec.constructorBuilder()
-            .addParameter("id", INT)
-            .build(),
-        )
-        .declareServiceClassFunctions(abiService)
-        .build(),
-    )
+  private fun generateAbiResourceClass(abiResource: AbiResource) {
+    if (abiResource.orientation == Import) {
+      val className = abiResource.guestServiceClassName
+      collector.addType(
+        className,
+        TypeSpec.classBuilder(className)
+          .addModifiers(KModifier.INTERNAL)
+          .addSuperinterface(abiResource.apiInterfaceName(Import))
+          .addProperty(
+            PropertySpec.builder("id", INT)
+              .addModifiers(KModifier.PRIVATE)
+              .initializer("id")
+              .build(),
+          )
+          .primaryConstructor(
+            FunSpec.constructorBuilder()
+              .addParameter("id", INT)
+              .build(),
+          )
+          .declareServiceClassFunctions(abiResource)
+          .build(),
+      )
+    }
+    generateServiceFunctions(abiResource)
   }
 
   private fun TypeSpec.Builder.declareServiceClassFunctions(abiService: AbiService) = apply {
@@ -217,19 +203,12 @@ class GuestGenerator(
   private fun generateServiceFunctions(abiService: AbiService) {
     for (abiFunction in abiService.functions) {
       if (!abiFunction.isSupported) continue
-      if (abiFunction.isUnsupportedGuestResourceFunction) continue
       collector += when (abiFunction.orientation) {
         Export -> wasmExport(abiService, abiFunction)
         Import -> wasmImport(abiFunction)
       }
     }
   }
-
-  private val AbiFunction.isUnsupportedGuestResourceFunction: Boolean
-    get() = !guestResourcesSupported
-      && isResource
-      && orientation == Export
-      && name !is FunctionName.TaskReturn
 
   /** Returns the `@WasmExport`-annotated function. It must be added directly to a file. */
   private fun wasmExport(
@@ -287,9 +266,9 @@ class GuestGenerator(
 
   context(collector: QualifiedSpecCollector)
   private fun retainWasmExportsFunction(
-    world: AbiWorld,
+    abiWorld: AbiWorld,
   ) {
-    collector += FunSpec.builder(world.retainWasmExportsFunctionName)
+    collector += FunSpec.builder(abiWorld.retainWasmExportsFunctionName)
       .addModifiers(KModifier.PRIVATE)
       .addKdoc(
         """
@@ -302,18 +281,24 @@ class GuestGenerator(
       .addStatement("// Equivalent to 'if (true) return', but immune to dead code elimination.")
       .addStatement("if (%S.hashCode() == 0) return", "")
       .apply {
-        val packageName = world.apiClassName.packageName
+        val packageName = abiWorld.apiClassName.packageName
         callWasmExportFunctionsWithPlaceholders(
           packageName = packageName,
-          service = world,
+          service = abiWorld,
         )
-        for (abiInterface in world.interfaces) {
+        for (abiInterface in abiWorld.interfaces) {
           callWasmExportFunctionsWithPlaceholders(
             packageName = packageName,
             service = abiInterface,
           )
+          for (abiResource in abiInterface.resources) {
+            callWasmExportFunctionsWithPlaceholders(
+              packageName = abiResource.apiClassName.packageName,
+              service = abiResource,
+            )
+          }
         }
-        for (abiResource in resources) {
+        for (abiResource in abiWorld.resources) {
           callWasmExportFunctionsWithPlaceholders(
             packageName = abiResource.apiClassName.packageName,
             service = abiResource,
@@ -330,7 +315,6 @@ class GuestGenerator(
     for (abiFunction in service.functions) {
       if (!abiFunction.isSupported) continue
       if (abiFunction.orientation != Export) continue
-      if (abiFunction.isUnsupportedGuestResourceFunction) continue
       val memberName = MemberName(packageName, abiFunction.name.exportFunctionName)
       addCode("%M(", memberName)
       for ((index, spec) in abiFunction.loweredParameterSpecs.withIndex()) {
@@ -364,3 +348,10 @@ val AbiService.guestServiceClassName: ClassName
 
     is AbiResource -> type.handleName
   }
+
+private val guestOptIns = setOf(
+  Symbols.Brevity.BrevityInternalApi,
+  Symbols.KotlinWasm.ComponentModelInternalApi,
+  Symbols.KotlinWasm.ExperimentalWasmInterop,
+  Symbols.KotlinWasm.UnsafeWasmMemoryApi,
+)

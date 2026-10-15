@@ -68,6 +68,7 @@ class HostKotlinTarget(
           for (memberService in parentToTestFunctions.keys) {
             when (memberService) {
               FunctionParent.World -> {}
+              FunctionParent.Resource -> {}
               FunctionParent.Interface -> {
                 writeUtf8(
                   """
@@ -80,7 +81,7 @@ class HostKotlinTarget(
           }
         }
 
-        FunctionParent.Interface -> {
+        FunctionParent.Interface, FunctionParent.Resource -> {
           writeUtf8(
             """
             |object ${parent.identifier.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.identifier.upperCamelCase} {

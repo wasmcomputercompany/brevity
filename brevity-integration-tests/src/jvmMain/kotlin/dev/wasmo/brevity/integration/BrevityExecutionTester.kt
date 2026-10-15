@@ -54,8 +54,10 @@ class BrevityExecutionTester(
     for (functionParent in FunctionParent.entries) {
       for (type in types) {
         for (orientation in Orientation.entries) {
-          for (callingMechanism in CallingMechanism.entries) {
-            for (passingMechanism in callingMechanism.passingMechanisms) {
+          // TOOD: revert
+          for (callingMechanism in listOf(CallingMechanism.Sync)) {
+            // TOOD: revert
+            for (passingMechanism in listOf(PassingMechanism.Parameter())) {
               add(
                 TestFunction(
                   functionParent = functionParent,

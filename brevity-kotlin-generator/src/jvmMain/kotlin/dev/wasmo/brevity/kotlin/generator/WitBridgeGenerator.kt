@@ -56,7 +56,6 @@ class WitBridgeGenerator private constructor(
       irFilter: (List<IrWitPackage>) -> List<IrWitPackage> = { it },
       validations: List<Validation> = listOf(RecursionValidator()),
       customTypeMappings: Map<String, String> = mapOf(),
-      supportAsync: Boolean = true,
     ): WitBridgeGenerator? = with(issueCollector) {
 
       val packageReader = collectNoIssuesOrThrow { IoWitPackageReader(fileSystem) }
@@ -107,7 +106,6 @@ class WitBridgeGenerator private constructor(
       val apiGenerator = apiGenerator(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        roleTracker = roleTracker,
         irPackages = irPackages,
         apiFunctionFactory = apiFunctionFactory,
       )
@@ -136,21 +134,21 @@ class WitBridgeGenerator private constructor(
         kotlinMapper = kotlinMapper,
         encoderFactory = encoderFactory,
       )
-      val abiInterfaceFactory = AbiInterface.Factory(
-        declarationIndex = declarationIndex,
-        abiFunctionFactory = abiFunctionFactory,
-      )
-      val abiWorldFactory = AbiWorld.Factory(
-        abiFunctionFactory = abiFunctionFactory,
-        abiInterfaceFactory = abiInterfaceFactory,
-      )
       val abiResourceFactory = AbiResource.Factory(
         kotlinMapper = kotlinMapper,
         abiFunctionFactory = abiFunctionFactory,
-        roleTracker = roleTracker,
+      )
+      val abiInterfaceFactory = AbiInterface.Factory(
+        declarationIndex = declarationIndex,
+        abiResourceFactory = abiResourceFactory,
+        abiFunctionFactory = abiFunctionFactory,
+      )
+      val abiWorldFactory = AbiWorld.Factory(
+        abiInterfaceFactory = abiInterfaceFactory,
+        abiResourceFactory = abiResourceFactory,
+        abiFunctionFactory = abiFunctionFactory,
       )
       val worlds = abiWorldFactory.createAll(irPackages)
-      val resources = abiResourceFactory.createAll(irPackages)
       val platformFunctionFactory = PlatformFunctionFactory(
         apiFunctionFactory = apiFunctionFactory,
         platform = platform,
@@ -166,7 +164,6 @@ class WitBridgeGenerator private constructor(
         roleTracker = roleTracker,
         packages = irPackages,
         worlds = worlds,
-        resources = resources,
       )
     }
 
@@ -187,21 +184,21 @@ class WitBridgeGenerator private constructor(
         kotlinMapper = kotlinMapper,
         encoderFactory = encoderFactory,
       )
-      val abiInterfaceFactory = AbiInterface.Factory(
-        declarationIndex = declarationIndex,
-        abiFunctionFactory = abiFunctionFactory,
-      )
-      val abiWorldFactory = AbiWorld.Factory(
-        abiFunctionFactory = abiFunctionFactory,
-        abiInterfaceFactory = abiInterfaceFactory,
-      )
       val abiResourceFactory = AbiResource.Factory(
         kotlinMapper = kotlinMapper,
         abiFunctionFactory = abiFunctionFactory,
-        roleTracker = roleTracker,
+      )
+      val abiInterfaceFactory = AbiInterface.Factory(
+        declarationIndex = declarationIndex,
+        abiResourceFactory = abiResourceFactory,
+        abiFunctionFactory = abiFunctionFactory,
+      )
+      val abiWorldFactory = AbiWorld.Factory(
+        abiInterfaceFactory = abiInterfaceFactory,
+        abiResourceFactory = abiResourceFactory,
+        abiFunctionFactory = abiFunctionFactory,
       )
       val worlds = abiWorldFactory.createAll(irPackages)
-      val resources = abiResourceFactory.createAll(irPackages)
       val platformFunctionFactory = PlatformFunctionFactory(
         apiFunctionFactory = apiFunctionFactory,
         platform = platform,
@@ -217,14 +214,12 @@ class WitBridgeGenerator private constructor(
         roleTracker = roleTracker,
         packages = irPackages,
         worlds = worlds,
-        resources = resources,
       )
     }
 
     private fun apiGenerator(
       kotlinMapper: KotlinMapper,
       declarationIndex: DeclarationIndex,
-      roleTracker: RoleTracker,
       irPackages: List<IrWitPackage>,
       apiFunctionFactory: ApiFunctionFactory,
     ): ApiGenerator {
@@ -241,21 +236,22 @@ class WitBridgeGenerator private constructor(
       val abiResourceFactory = AbiResource.Factory(
         kotlinMapper = kotlinMapper,
         abiFunctionFactory = abiFunctionFactory,
-        roleTracker = roleTracker,
       )
       val abiInterfaceFactory = AbiInterface.Factory(
         declarationIndex = declarationIndex,
         abiFunctionFactory = abiFunctionFactory,
+        abiResourceFactory = abiResourceFactory,
       )
       val abiWorldFactory = AbiWorld.Factory(
-        abiFunctionFactory = abiFunctionFactory,
         abiInterfaceFactory = abiInterfaceFactory,
+        abiResourceFactory = abiResourceFactory,
+        abiFunctionFactory = abiFunctionFactory,
       )
       val worlds = abiWorldFactory.createAll(irPackages)
       val interfaces = irPackages.flatMap { it.services }
         .filterIsInstance<IrInterface>()
         .map { abiInterfaceFactory.createForApiOnly(it) }
-      val resources = abiResourceFactory.createAll(irPackages)
+      val resources = abiResourceFactory.createForApiOnly(irPackages)
       return ApiGenerator(
         kotlinMapper = kotlinMapper,
         apiFunctionFactory = apiFunctionFactory,

@@ -75,6 +75,9 @@ class GuestKotlinTarget(
                   """.trimMargin(),
                 )
               }
+
+              FunctionParent.Resource -> {
+              }
             }
           }
         }
@@ -86,6 +89,9 @@ class GuestKotlinTarget(
             |
             """.trimMargin(),
           )
+        }
+
+        FunctionParent.Resource -> {
         }
       }
 
