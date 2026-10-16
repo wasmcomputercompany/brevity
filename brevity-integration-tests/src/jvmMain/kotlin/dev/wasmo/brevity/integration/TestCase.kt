@@ -49,10 +49,8 @@ data class TestCase(
 
   fun BufferedSink.kotlinCallAndAssert() {
     val callTarget = when (function.functionParent) {
-      FunctionParent.World -> "world.guest"
-      FunctionParent.Interface, FunctionParent.Resource -> {
-        "world.guest.${function.functionParent.identifier.lowerCamelCase}"
-      }
+      FunctionParent.WorldExport -> { "world.guest" }
+      else -> "world.guest.${function.functionParent.identifier.lowerCamelCase}"
     }
 
     callMeasureTime {

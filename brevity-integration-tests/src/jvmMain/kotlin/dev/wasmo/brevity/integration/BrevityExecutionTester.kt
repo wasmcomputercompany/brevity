@@ -1,6 +1,5 @@
 package dev.wasmo.brevity.integration
 
-import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
 import kotlin.time.Duration.Companion.milliseconds
@@ -53,21 +52,18 @@ class BrevityExecutionTester(
   private val testFunctions: List<TestFunction> = buildList {
     for (functionParent in FunctionParent.entries) {
       for (type in types) {
-        for (orientation in Orientation.entries) {
-          // TOOD: revert
-          for (callingMechanism in listOf(CallingMechanism.Sync)) {
-            // TOOD: revert
-            for (passingMechanism in listOf(PassingMechanism.Parameter())) {
-              add(
-                TestFunction(
-                  functionParent = functionParent,
-                  passingMechanism = passingMechanism,
-                  callingMechanism = callingMechanism,
-                  orientation = orientation,
-                  type = type,
-                ),
-              )
-            }
+        // TODO: revert
+        for (callingMechanism in listOf(CallingMechanism.Sync)) {
+          // TODO: revert
+          for (passingMechanism in listOf(PassingMechanism.Parameter())) {
+            add(
+              TestFunction(
+                functionParent = functionParent,
+                passingMechanism = passingMechanism,
+                callingMechanism = callingMechanism,
+                type = type,
+              ),
+            )
           }
         }
       }
@@ -185,7 +181,6 @@ class BrevityExecutionTester(
           customTypeMappings = types
             .filter { it.kotlinTypeMapping }
             .associate { "brevity:testing/types.${it.witType}" to it.kotlinType },
-          supportAsync = true,
         ) ?: return@collectNoIssuesOrThrow
 
         val projectSpec = generator.generate()

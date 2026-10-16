@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.kotlin.generator.lowerSnakeCase
+import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -65,8 +66,9 @@ class GuestRustTarget(
 
     val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
     for ((parent, childFunctions) in parentToTestFunctions) {
+      val serviceName = parent.serviceName.lowerSnakeCase
       when (parent) {
-        FunctionParent.World -> {
+        FunctionParent.WorldExport -> {
           writeUtf8(
             """
             |impl bindings::Guest for BrevityTesting {
@@ -75,14 +77,37 @@ class GuestRustTarget(
           )
         }
 
-        FunctionParent.Interface, FunctionParent.Resource -> {
+        FunctionParent.InterfaceExport -> {
           writeUtf8(
             """
-            |impl bindings::exports::brevity::testing::${parent.identifier.lowerSnakeCase}::Guest for BrevityTesting {
+            |impl bindings::exports::brevity::testing::$serviceName::Guest for BrevityTesting {
             |
             """.trimMargin(),
           )
         }
+
+        FunctionParent.ResourceExport -> {
+          val resourceName = parent.identifier.upperCamelCase
+          writeUtf8(
+            """
+            |struct Real$resourceName {
+            |}
+            |
+            |impl bindings::exports::brevity::testing::$serviceName::Guest for BrevityTesting {
+            |    type $resourceName = Real$resourceName;
+            |
+            |    fn create() -> bindings::exports::brevity::testing::$serviceName::$resourceName {
+            |        bindings::exports::brevity::testing::$serviceName::$resourceName::new(Real$resourceName {})
+            |    }
+            |}
+            |
+            |impl bindings::exports::brevity::testing::$serviceName::Guest$resourceName for Real$resourceName {
+            |
+            """.trimMargin(),
+          )
+        }
+
+        else -> continue
       }
 
       for (testFunction in childFunctions) {

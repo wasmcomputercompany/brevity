@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 import kotlinx.coroutines.CoroutineName
@@ -58,7 +59,7 @@ class HostKotlinTarget(
     val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
     for ((parent, childFunctions) in parentToTestFunctions) {
       when (parent) {
-        FunctionParent.World -> {
+        FunctionParent.WorldImport -> {
           writeUtf8(
             """
             |object TestWorldHostImplementation : TestWorld.Host {
@@ -67,9 +68,7 @@ class HostKotlinTarget(
           )
           for (memberService in parentToTestFunctions.keys) {
             when (memberService) {
-              FunctionParent.World -> {}
-              FunctionParent.Resource -> {}
-              FunctionParent.Interface -> {
+              FunctionParent.InterfaceImport -> {
                 writeUtf8(
                   """
                   |  override val ${memberService.identifier.lowerCamelCase} = ${memberService.identifier.upperCamelCase}HostImplementation
@@ -77,11 +76,14 @@ class HostKotlinTarget(
                   """.trimMargin(),
                 )
               }
+
+              else -> {
+              }
             }
           }
         }
 
-        FunctionParent.Interface, FunctionParent.Resource -> {
+        FunctionParent.InterfaceImport -> {
           writeUtf8(
             """
             |object ${parent.identifier.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.identifier.upperCamelCase} {
@@ -89,11 +91,14 @@ class HostKotlinTarget(
             """.trimMargin(),
           )
         }
+
+        else -> {
+        }
       }
 
-      for (testFunction in childFunctions) {
+      for (testFunction in childFunctions.filter { it.orientation == Orientation.Import }) {
         with(testFunction) {
-          kotlinDeclareHostFunctions()
+          kotlinDeclare()
         }
       }
 

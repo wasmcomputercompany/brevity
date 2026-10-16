@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 import kotlinx.coroutines.CoroutineName
@@ -56,7 +57,7 @@ class GuestKotlinTarget(
     val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
     for ((parent, childFunctions) in parentToTestFunctions) {
       when (parent) {
-        FunctionParent.World -> {
+        FunctionParent.WorldExport -> {
           writeUtf8(
             """
             |object TestWorldGuestImplementation : TestWorld.Guest {
@@ -66,8 +67,7 @@ class GuestKotlinTarget(
 
           for (memberService in parentToTestFunctions.keys) {
             when (memberService) {
-              FunctionParent.World -> {}
-              FunctionParent.Interface -> {
+              FunctionParent.InterfaceExport -> {
                 writeUtf8(
                   """
                   |  override val ${memberService.identifier.lowerCamelCase} = ${memberService.identifier.upperCamelCase}Implementation
@@ -76,13 +76,13 @@ class GuestKotlinTarget(
                 )
               }
 
-              FunctionParent.Resource -> {
+              else -> {
               }
             }
           }
         }
 
-        FunctionParent.Interface -> {
+        FunctionParent.InterfaceExport -> {
           writeUtf8(
             """
             |object ${parent.identifier.upperCamelCase}Implementation : wit.brevity.testing.${parent.identifier.upperCamelCase} {
@@ -91,13 +91,13 @@ class GuestKotlinTarget(
           )
         }
 
-        FunctionParent.Resource -> {
+        else -> {
         }
       }
 
-      for (testFunction in childFunctions) {
+      for (testFunction in childFunctions.filter { it.orientation == Orientation.Export }) {
         with(testFunction) {
-          kotlinDeclareGuestFunctions()
+          kotlinDeclare()
         }
       }
 

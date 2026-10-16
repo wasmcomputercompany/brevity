@@ -1,6 +1,9 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.Keyword
 import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.Orientation.Export
+import dev.wasmo.brevity.Orientation.Import
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -32,7 +35,11 @@ class WitTarget(
       """.trimMargin(),
     )
 
-    val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
+    // Group functions into their declaring types. This puts all world functions together but
+    // separates interfaces and resources by orientation.
+    val parentToTestFunctions = testFunctions.groupBy { it.functionParent.identifier }
+      .map { (_, functions) -> functions.first().functionParent to functions }
+      .toMap()
     for ((parent, childFunctions) in parentToTestFunctions) {
       writeService(parent, childFunctions, parentToTestFunctions)
     }
@@ -52,12 +59,14 @@ class WitTarget(
     childFunctions: List<TestFunction>,
     parentToTestFunctions: Map<FunctionParent, List<TestFunction>>,
   ) {
-    when (parent) {
-      FunctionParent.World, FunctionParent.Interface -> {
-        writeWorldOrInterface(parent, childFunctions, parentToTestFunctions)
-      }
+    when (childFunctions.first().functionParent) {
+      FunctionParent.WorldExport,
+      FunctionParent.WorldImport,
+      FunctionParent.InterfaceExport,
+      FunctionParent.InterfaceImport,
+        -> writeWorldOrInterface(parent, childFunctions, parentToTestFunctions)
 
-      FunctionParent.Resource -> {
+      FunctionParent.ResourceExport, FunctionParent.ResourceImport -> {
         writeResource(parent, childFunctions)
       }
     }
@@ -76,37 +85,41 @@ class WitTarget(
     writeUtf8(
       """
       |${parent.keyword} ${parent.identifier} {
-      |  ${rawWitUseStatements.replace("\n", "\n  ")}
+      |  ${rawWitUseStatements.trim().replace("\n", "\n  ")}
+      |
       |
       """.trimMargin(),
     )
 
     // The 'World' is the main parent.
-    if (parent == FunctionParent.World) {
-      for (memberService in parentToTestFunctions.keys) {
-        when (memberService) {
-          FunctionParent.World -> {}
-          FunctionParent.Interface -> {
-            writeUtf8(
-              """
-              |  import ${memberService.identifier};
-              |  export ${memberService.identifier};
-              |
-              |
-              """.trimMargin(),
-            )
+    if (parent.isWorld) {
+      for ((memberService, memberServiceFunctions) in parentToTestFunctions) {
+        if (memberService.isWorld) continue
+        writeUtf8(
+          """
+          |  ${memberService.orientation.keyword} ${memberService.serviceName};
+          |
+          """.trimMargin(),
+        )
+        if (memberService.orientation == Import) {
+          val trampolinesString = Buffer().run {
+            writeTrampolines(memberServiceFunctions.filter { it.orientation == Import })
+            readUtf8().trim()
           }
-
-          FunctionParent.Resource -> {
-            writeUtf8(
-              """
-              |  export exported-${memberService.identifier};
-              |
-              """.trimMargin(),
-            )
-          }
+          writeUtf8(
+            """
+            |  ${trampolinesString.replace("\n", "\n  ")}
+            |
+            """.trimMargin(),
+          )
         }
       }
+      writeUtf8(
+        """
+        |
+        |
+        """.trimMargin(),
+      )
     }
 
     writeUtf8(
@@ -129,7 +142,7 @@ class WitTarget(
     }
     writeUtf8(
       """
-      |interface exported-${parent.identifier} {
+      |interface ${parent.serviceName} {
       |  ${rawWitUseStatements.replace("\n", "\n  ").trim()}
       |
       |  create: func() -> ${parent.identifier};
@@ -139,6 +152,7 @@ class WitTarget(
       |  }
       |}
       |
+      |
       """.trimMargin(),
     )
   }
@@ -147,10 +161,21 @@ class WitTarget(
     for (function in functions) {
       with(function) {
         witDeclare()
-        if (function.orientation == Orientation.Import) {
-          witDeclareTrampoline()
-        }
       }
     }
   }
+
+  private fun BufferedSink.writeTrampolines(functions: List<TestFunction>) {
+    for (function in functions) {
+      with(function) {
+        witDeclareTrampoline()
+      }
+    }
+  }
+
+  val Orientation.keyword: Keyword
+    get() = when (this) {
+      Export -> Keyword.export
+      Import -> Keyword.import
+    }
 }
