@@ -38,6 +38,11 @@ fun AbiLift(
       liftedFunction = CallLifted(abiFunction),
     )
 
+    abiFunction.name is FunctionName.ResourceNew -> AbiResourceNewLift(
+      parentService = parentService,
+      abiFunction = abiFunction,
+    )
+
     abiFunction.name is FunctionName.ResourceDrop -> AbiResourceDropLift(
       parentService = parentService,
       abiFunction = abiFunction,
@@ -125,6 +130,26 @@ private class AbiTaskReturnLift(
   }
 }
 
+private class AbiResourceNewLift(
+  private val parentService: AbiService,
+  private val abiFunction: AbiFunction,
+) : KtFunction {
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    check(receiver == null)
+    codeBuilder.platform.afterLiftParameters()
+    codeBuilder.addStatement("// TODO: AbiResourceNewLift")
+    return CodeBlockExpression(
+      INT,
+      "index",
+      CodeBlock.of("%L", 0),
+    )
+  }
+}
+
 private class AbiResourceDropLift(
   private val parentService: AbiService,
   private val abiFunction: AbiFunction,
@@ -195,6 +220,7 @@ private class AbiLiftAsyncExport(
       }
 
       val taskReturn = AbiLower(
+        abiService = parentService,
         abiFunction = (abiFunction.result as AbiFunction.Result.CallTaskReturn).taskReturn,
         resourceId = resourceId,
       )

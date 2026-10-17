@@ -124,7 +124,7 @@ class WitBridgeGenerator private constructor(
       irPackages: List<IrWitPackage>,
       apiFunctionFactory: ApiFunctionFactory,
     ): HostGenerator {
-      val platform = HostPlatform(kotlinMapper)
+      val platform = HostPlatform
       val encoderFactory = EncoderFactory(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
@@ -174,7 +174,7 @@ class WitBridgeGenerator private constructor(
       irPackages: List<IrWitPackage>,
       apiFunctionFactory: ApiFunctionFactory,
     ): GuestGenerator {
-      val platform = GuestPlatform(kotlinMapper)
+      val platform = GuestPlatform
       val encoderFactory = EncoderFactory(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
@@ -223,7 +223,7 @@ class WitBridgeGenerator private constructor(
       irPackages: List<IrWitPackage>,
       apiFunctionFactory: ApiFunctionFactory,
     ): ApiGenerator {
-      val platform = HostPlatform(kotlinMapper)
+      val platform = HostPlatform
       val encoderFactory = EncoderFactory(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,

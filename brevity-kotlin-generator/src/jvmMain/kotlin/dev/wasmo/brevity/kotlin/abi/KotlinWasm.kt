@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.MemberName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
@@ -8,6 +9,7 @@ import dev.wasmo.brevity.kotlin.expressions.KtFunction
 import dev.wasmo.brevity.kotlin.generator.importFunctionName
 
 class WasmImportFunction(
+  private val abiService: AbiService,
   private val abiFunction: AbiFunction,
 ) : KtFunction {
   context(codeBuilder: CodeBuilder)
@@ -28,7 +30,10 @@ class WasmImportFunction(
       codeBuilder.add("val %N = ", resultName)
     }
 
-    codeBuilder.add("%N(⇥", abiFunction.name.importFunctionName)
+    codeBuilder.add(
+      "%M(⇥",
+      MemberName(abiService.apiClassName.packageName, abiFunction.name.importFunctionName),
+    )
     if (parameters.isNotEmpty()) {
       codeBuilder.add("\n")
     }

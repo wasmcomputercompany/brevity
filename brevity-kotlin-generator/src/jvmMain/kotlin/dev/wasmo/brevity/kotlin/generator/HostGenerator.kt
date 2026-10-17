@@ -324,7 +324,13 @@ class HostGenerator(
           if (!abiFunction.isSupported) continue
           if (abiFunction.orientation != Export) continue
           if (abiFunction.isSynthetic) continue
-          addFunction(platformFunctionFactory.create(bridgeValue, abiFunction))
+          addFunction(
+            platformFunctionFactory.create(
+              bridge = bridgeValue,
+              abiService = abiService,
+              abiFunction = abiFunction,
+            ),
+          )
         }
       }
       .build()

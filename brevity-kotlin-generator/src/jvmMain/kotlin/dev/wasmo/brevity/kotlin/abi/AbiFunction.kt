@@ -374,7 +374,7 @@ data class AbiFunction(
 
       val nameAllocator = NameAllocator()
       val flatParameters = listOf(
-        flatParameter(WitTypeName.S32, Identifier("p1"), nameAllocator),
+        flatParameter(WitTypeName.S32, Identifier("rep"), nameAllocator),
       )
       val result = Result.SingleCoreValueReturn(
         Result.Value(
@@ -400,7 +400,7 @@ data class AbiFunction(
     ): AbiFunction {
       val nameAllocator = NameAllocator()
       val flatParameters = listOf(
-        flatParameter(WitTypeName.S32, Identifier("p1"), nameAllocator),
+        flatParameter(WitTypeName.S32, Identifier("index"), nameAllocator),
       )
       val name = FunctionName.ResourceDrop(orientation, resourceType)
       return AbiFunction(
