@@ -6,6 +6,7 @@ import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okio.Buffer
 import okio.BufferedSink
 import okio.FileSystem
 
@@ -58,6 +59,15 @@ class HostKotlinTarget(
 
     val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
     for ((parent, childFunctions) in parentToTestFunctions) {
+      val functionsString = Buffer().run {
+        for (testFunction in childFunctions.filter { it.orientation == Orientation.Import }) {
+          with(testFunction) {
+            kotlinDeclare()
+          }
+        }
+        readUtf8().trim()
+      }
+
       when (parent) {
         FunctionParent.WorldImport -> {
           writeUtf8(
@@ -68,10 +78,10 @@ class HostKotlinTarget(
           )
           for (memberService in parentToTestFunctions.keys) {
             when (memberService) {
-              FunctionParent.InterfaceImport -> {
+              FunctionParent.InterfaceImport, FunctionParent.ResourceImport -> {
                 writeUtf8(
                   """
-                  |  override val ${memberService.identifier.lowerCamelCase} = ${memberService.identifier.upperCamelCase}HostImplementation
+                  |  override val ${memberService.serviceName.lowerCamelCase} = ${memberService.serviceName.upperCamelCase}HostImplementation
                   |
                   """.trimMargin(),
                 )
@@ -81,34 +91,46 @@ class HostKotlinTarget(
               }
             }
           }
-        }
-
-        FunctionParent.InterfaceImport -> {
           writeUtf8(
             """
-            |object ${parent.identifier.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.identifier.upperCamelCase} {
+            |  ${functionsString.replace("\n", "\n  ")}
+            |}
+            |
             |
             """.trimMargin(),
           )
         }
 
-        else -> {
+        FunctionParent.InterfaceImport -> {
+          writeUtf8(
+            """
+            |object ${parent.serviceName.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.serviceName.upperCamelCase} {
+            |  ${functionsString.replace("\n", "\n  ")}
+            |}
+            |
+            |
+            """.trimMargin(),
+          )
         }
-      }
 
-      for (testFunction in childFunctions.filter { it.orientation == Orientation.Import }) {
-        with(testFunction) {
-          kotlinDeclare()
+        FunctionParent.ResourceImport -> {
+          writeUtf8(
+            """
+            |object ${parent.serviceName.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.serviceName.upperCamelCase} {
+            |  override fun create() = ${parent.identifier.upperCamelCase}HostImplementation
+            |}
+            |
+            |object ${parent.identifier.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.serviceName.upperCamelCase}.${parent.identifier.upperCamelCase} {
+            |  ${functionsString.replace("\n", "\n  ")}
+            |}
+            |
+            |
+            """.trimMargin(),
+          )
         }
-      }
 
-      writeUtf8(
-        """
-        |}
-        |
-        |
-        """.trimMargin(),
-      )
+        else -> continue
+      }
     }
 
     writeUtf8(

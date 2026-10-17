@@ -55,7 +55,7 @@ class BrevityExecutionTester(
         // TODO: revert
         for (callingMechanism in listOf(CallingMechanism.Sync)) {
           // TODO: revert
-          for (passingMechanism in listOf(PassingMechanism.Parameter())) {
+          for (passingMechanism in listOf(PassingMechanism.Parameter(), PassingMechanism.Return)) {
             add(
               TestFunction(
                 functionParent = functionParent,

@@ -128,47 +128,37 @@ data class TestFunction(
     )
   }
 
-  fun BufferedSink.rustDeclareGuestFunctions() {
-    when (orientation) {
-      Export -> {
-        rustDeclare()
-      }
-
-      Import -> {
-        if (!functionParent.isWorld) {
-          rustDeclareFunctionStub()
-        }
-        rustDeclareTrampoline()
-      }
-    }
-  }
-
   fun BufferedSink.rustDeclareTrampoline() {
     val modifiers = when (callingMechanism) {
       CallingMechanism.Async -> "async "
       CallingMechanism.Sync -> ""
     }
 
-    val selfParameter = when {
-      functionParent.isResource -> "&self, "
-      else -> ""
-    }
-
     writeUtf8(
       """
-      |    ${modifiers}fn ${trampolineIdentifier.lowerSnakeCase}(${selfParameter}index: i32) -> i32 {
+      |    ${modifiers}fn ${trampolineIdentifier.lowerSnakeCase}(index: i32) -> i32 {
       |
       """.trimMargin(),
     )
 
     val callTarget = when {
-      functionParent.isWorld -> "bindings"
-      else -> "bindings::brevity::testing::${functionParent.identifier.lowerSnakeCase}"
+      functionParent.isWorld -> "bindings::"
+      functionParent.isResource -> {
+        writeUtf8(
+          """
+          |        let resource = bindings::brevity::testing::${functionParent.serviceName.lowerSnakeCase}::create();
+          |
+          """.trimMargin(),
+        )
+        "resource."
+      }
+
+      else -> "bindings::brevity::testing::${functionParent.identifier.lowerSnakeCase}::"
     }
 
     when (passingMechanism) {
       is PassingMechanism.Parameter -> {
-        val value = indexToValueFunction.rustCall("Self", "index", "panic!()")
+        val value = indexToValueFunction.rustCall("Self::", "index", "panic!()")
         val call = rustCall(callTarget, "panic!()", "value")
         writeUtf8(
           """
@@ -182,7 +172,7 @@ data class TestFunction(
 
       PassingMechanism.Return -> {
         val call = rustCall(callTarget, "index", "panic!()")
-        val resultIndex = valueToIndexFunction.rustCall("Self", "panic!()", "value")
+        val resultIndex = valueToIndexFunction.rustCall("Self::", "panic!()", "value")
         writeUtf8(
           """
           |        let value = ${call.replace("\n", "\n        ")};
@@ -195,7 +185,7 @@ data class TestFunction(
     }
   }
 
-  private fun BufferedSink.rustDeclare() {
+  fun BufferedSink.rustDeclare() {
     rustDeclareWithSignature {
       maybeWriteSleepRust()
 
@@ -338,20 +328,6 @@ data class TestFunction(
     )
   }
 
-  fun BufferedSink.kotlinDeclareHostFunctions() {
-    when (orientation) {
-      Export -> {
-        if (!functionParent.isWorld) {
-          kotlinDeclareFunctionStub()
-        }
-      }
-
-      Import -> {
-        kotlinDeclare()
-      }
-    }
-  }
-
   fun BufferedSink.kotlinDeclareTrampoline() {
     val modifiers = when (callingMechanism) {
       CallingMechanism.Async -> " suspend"
@@ -360,16 +336,17 @@ data class TestFunction(
 
     writeUtf8(
       """
-      |  override$modifiers fun ${trampolineIdentifier.lowerCamelCase}(index: Int): Int {
+      |override$modifiers fun ${trampolineIdentifier.lowerCamelCase}(index: Int): Int {
       |
       """.trimMargin(),
     )
 
     val callTarget = when {
       functionParent.isWorld -> "TestWorld.host"
-      else -> {
-        "TestWorld.host.${functionParent.identifier.lowerCamelCase}"
-      }
+      functionParent.isResource ->
+        "TestWorld.host.${functionParent.serviceName.lowerCamelCase}.create()"
+
+      else -> "TestWorld.host.${functionParent.serviceName.lowerCamelCase}"
     }
 
     when (passingMechanism) {
@@ -378,8 +355,8 @@ data class TestFunction(
         val call = kotlinCall(callTarget, "Nothing", value)
         writeUtf8(
           """
-          |    return ${call.replace("\n", "\n    ")}
-          |  }
+          |  return ${call.replace("\n", "\n    ")}
+          |}
           |
           """.trimMargin(),
         )
@@ -390,9 +367,9 @@ data class TestFunction(
         val resultIndex = valueToIndexFunction.kotlinCall("this", "Nothing", "value")
         writeUtf8(
           """
-          |    val value = ${call.replace("\n", "\n    ")}
-          |    return ${resultIndex.replace("\n", "\n    ")}
-          |  }
+          |  val value = ${call.replace("\n", "\n    ")}
+          |  return ${resultIndex.replace("\n", "\n    ")}
+          |}
           |
           """.trimMargin(),
         )
@@ -471,16 +448,6 @@ data class TestFunction(
           )
         }
       }
-    }
-  }
-
-  private fun BufferedSink.kotlinDeclareFunctionStub() {
-    kotlinDeclareWithSignature {
-      writeUtf8(
-        """
-        |error("unexpected call")
-        """.trimMargin(),
-      )
     }
   }
 
@@ -601,7 +568,7 @@ data class TestFunction(
     val call = Buffer().apply {
       writeUtf8(
         """
-        |$callTarget::${identifier.lowerSnakeCase}(
+        |$callTarget${identifier.lowerSnakeCase}(
         |
         """.trimMargin(),
       )
@@ -665,7 +632,7 @@ data class TestFunction(
   fun kotlinCallTrampoline(
     callTarget: String,
     valueIndex: Int,
-  ) = "$callTarget.${identifier.lowerCamelCase}Trampoline($valueIndex)"
+  ) = "$callTarget.${trampolineIdentifier.lowerCamelCase}($valueIndex)"
 
   private fun BufferedSink.maybeWriteSleepKotlin() {
     if (!sleep) return

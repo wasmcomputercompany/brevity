@@ -37,9 +37,7 @@ class WitTarget(
 
     // Group functions into their declaring types. This puts all world functions together but
     // separates interfaces and resources by orientation.
-    val parentToTestFunctions = testFunctions.groupBy { it.functionParent.identifier }
-      .map { (_, functions) -> functions.first().functionParent to functions }
-      .toMap()
+    val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
     for ((parent, childFunctions) in parentToTestFunctions) {
       writeService(parent, childFunctions, parentToTestFunctions)
     }
@@ -77,8 +75,18 @@ class WitTarget(
     childFunctions: List<TestFunction>,
     parentToTestFunctions: Map<FunctionParent, List<TestFunction>>,
   ) {
+
+    // We emit WorldExports in WorldImports.
+    val childFunctionsToDeclare = when (parent) {
+      FunctionParent.WorldExport -> childFunctions +
+        parentToTestFunctions.entries.single { it.key == FunctionParent.WorldImport }.value
+
+      FunctionParent.WorldImport -> return
+      else -> childFunctions
+    }
+
     val functionsString = Buffer().run {
-      writeFunctions(childFunctions)
+      writeFunctions(childFunctionsToDeclare)
       readUtf8().trim()
     }
 
@@ -94,13 +102,14 @@ class WitTarget(
     // The 'World' is the main parent.
     if (parent.isWorld) {
       for ((memberService, memberServiceFunctions) in parentToTestFunctions) {
-        if (memberService.isWorld) continue
-        writeUtf8(
-          """
-          |  ${memberService.orientation.keyword} ${memberService.serviceName};
-          |
-          """.trimMargin(),
-        )
+        if (!memberService.isWorld) {
+          writeUtf8(
+            """
+            |  ${memberService.orientation.keyword} ${memberService.serviceName};
+            |
+            """.trimMargin(),
+          )
+        }
         if (memberService.orientation == Import) {
           val trampolinesString = Buffer().run {
             writeTrampolines(memberServiceFunctions.filter { it.orientation == Import })

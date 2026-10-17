@@ -1,5 +1,7 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.Orientation.Export
+import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.kotlin.generator.lowerSnakeCase
 import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 import kotlinx.coroutines.CoroutineName
@@ -75,6 +77,13 @@ class GuestRustTarget(
             |
             """.trimMargin(),
           )
+          for (memberServiceFunctions in parentToTestFunctions.values) {
+            for (testFunction in memberServiceFunctions.filter { it.orientation == Import }) {
+              with(testFunction) {
+                rustDeclareTrampoline()
+              }
+            }
+          }
         }
 
         FunctionParent.InterfaceExport -> {
@@ -110,9 +119,9 @@ class GuestRustTarget(
         else -> continue
       }
 
-      for (testFunction in childFunctions) {
+      for (testFunction in childFunctions.filter { it.orientation == Export }) {
         with(testFunction) {
-          rustDeclareGuestFunctions()
+          rustDeclare()
         }
       }
 
