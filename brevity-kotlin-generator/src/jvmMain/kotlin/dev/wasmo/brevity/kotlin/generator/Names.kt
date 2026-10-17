@@ -22,7 +22,9 @@ private fun FunctionName.segments(): List<Identifier> {
     is FunctionName.Constructor -> listOf(serviceName.name, name)
     is FunctionName.Interface -> listOf(serviceName.name, name)
     is FunctionName.Method -> listOf(serviceName.name, resourceName, name)
-    is FunctionName.ResourceDrop -> listOf(serviceName.name, resourceName, dropFunctionName)
+    is FunctionName.ResourceNew -> listOf(resourceType.serviceName.name, resourceType.name, resourceNewSuffix)
+    is FunctionName.ResourceClose -> listOf(resourceType.serviceName.name, resourceType.name, resourceCloseName)
+    is FunctionName.ResourceDrop -> listOf(resourceType.serviceName.name, resourceType.name, resourceDropSuffix)
     is FunctionName.Static -> listOf(serviceName.name, resourceName, name)
     is FunctionName.World -> listOf(name)
     is FunctionName.TaskReturn -> original.segments() + taskReturnSuffix
@@ -32,8 +34,10 @@ private fun FunctionName.segments(): List<Identifier> {
   }
 }
 
-val dropFunctionName = Identifier("close")
 val taskReturnSuffix = Identifier("task-return")
 val asyncLiftSuffix = Identifier("async-lift")
 val asyncLowerSuffix = Identifier("async-lower")
 val asyncLiftCallbackSuffix = Identifier("async-callback")
+val resourceNewSuffix = Identifier("resource-new")
+val resourceCloseName = Identifier("close")
+val resourceDropSuffix = Identifier("resource-drop")

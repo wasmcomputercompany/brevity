@@ -105,6 +105,12 @@ data class AbiWorld(
         }
       }
 
+      abiFunctionFactory.collectAllResourceFunctions(
+        listBuilder = abiFunctions,
+        types = irWorld.types,
+        orientation = Import,
+      )
+
       return AbiWorld(
         irDeclaration = irWorld,
         interfaces = abiInterfaces,
@@ -154,10 +160,18 @@ data class AbiInterface(
         worldServiceName = worldServiceName,
         instanceName = externalApi.instanceName,
         resources = abiResourceFactory.createAll(irInterface.types, orientation),
-        functions = abiFunctionFactory.createAll(
-          functions = irInterface.functions,
-          orientation = orientation,
-        ),
+        functions = buildList {
+          abiFunctionFactory.collectAll(
+            listBuilder = this,
+            functions = irInterface.functions,
+            orientation = orientation,
+          )
+          abiFunctionFactory.collectAllResourceFunctions(
+            listBuilder = this,
+            types = irInterface.types,
+            orientation = orientation,
+          )
+        },
       )
     }
 
@@ -171,11 +185,14 @@ data class AbiInterface(
         types = irInterface.types,
         orientation = Import, // Arbitrary.
       ),
-      functions = abiFunctionFactory.createAll(
-        functions = irInterface.functions,
-        orientation = Import,
-        includeSyntheticFunctions = false,
-      ),
+      functions = buildList {
+        abiFunctionFactory.collectAll(
+          listBuilder = this,
+          functions = irInterface.functions,
+          orientation = Import,
+          includeSyntheticFunctions = false,
+        )
+      },
     )
   }
 }
@@ -218,11 +235,19 @@ data class AbiResource(
       orientation = orientation,
       type = resource.type,
       apiClassName = kotlinMapper.getAbiClassName(resource.type),
-      functions = abiFunctionFactory.createAll(
-        functions = resource.functions,
-        orientation = orientation,
-        isResource = true,
-      ),
+      functions = buildList {
+        abiFunctionFactory.collectAll(
+          listBuilder = this,
+          functions = resource.functions,
+          orientation = orientation,
+          isResource = true,
+        )
+        add(
+          abiFunctionFactory.resourceClose(
+            resourceType = resource.type,
+          ),
+        )
+      },
     )
   }
 }

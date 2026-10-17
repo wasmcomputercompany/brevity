@@ -185,17 +185,6 @@ class IrMapper(
     },
   )
 
-  context(context: Context)
-  private fun IoResource.dropFunction(): IrFunction {
-    return IrFunction(
-      location = location,
-      functionName = FunctionName.ResourceDrop(
-        serviceName = context.serviceName,
-        resourceName = name,
-      ),
-    )
-  }
-
   context(context: Context, issueCollector: IssueCollector)
   private fun IoParameter.parameterToIr() = type.typeNameToIr(location)?.let { resolved ->
     IrParameter(
@@ -240,13 +229,8 @@ class IrMapper(
       gate = gate,
       location = location,
       type = TypeName.Declared(context.serviceName, name),
-      functions = buildList {
-        addAll(
-          functions.map {
-            it.functionToIr(resourceName = name)
-          },
-        )
-        add(dropFunction())
+      functions = functions.map {
+        it.functionToIr(resourceName = name)
       },
     )
   }

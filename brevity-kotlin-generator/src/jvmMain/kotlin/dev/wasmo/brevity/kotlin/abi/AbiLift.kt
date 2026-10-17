@@ -38,6 +38,11 @@ fun AbiLift(
       liftedFunction = CallLifted(abiFunction),
     )
 
+    abiFunction.name is FunctionName.ResourceDrop -> AbiResourceDropLift(
+      parentService = parentService,
+      abiFunction = abiFunction,
+    )
+
     abiFunction.name is FunctionName.AsyncExportCallback -> object : KtFunction {
       context(codeBuilder: CodeBuilder)
       override fun call(
@@ -116,6 +121,22 @@ private class AbiTaskReturnLift(
       codeBuilder.add("\n%L,\n", liftedParameterValues.single().code)
     }
     codeBuilder.add("⇤)\n")
+    return KtExpression.Unit
+  }
+}
+
+private class AbiResourceDropLift(
+  private val parentService: AbiService,
+  private val abiFunction: AbiFunction,
+) : KtFunction {
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    check(receiver == null)
+    codeBuilder.platform.afterLiftParameters()
+    codeBuilder.addStatement("// TODO: AbiResourceDropLift")
     return KtExpression.Unit
   }
 }

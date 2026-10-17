@@ -12,6 +12,8 @@ import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.TypeName as WitTypeName
 import dev.wasmo.brevity.ir.IrFunction
+import dev.wasmo.brevity.ir.IrResource
+import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.encoders.AbstractRecordEncoder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
@@ -46,7 +48,7 @@ data class AbiFunction(
   val isSupported: Boolean,
   val orientation: Orientation,
   /** Non-null if this function has an `id` parameter. */
-  val loweredResourceIdParameterSpec: ParameterSpec?,
+  val loweredResourceIdParameterSpec: ParameterSpec? = null,
   private val nameAllocator: NameAllocator,
 ) {
   val kotlinName: String
@@ -209,15 +211,16 @@ data class AbiFunction(
     private val kotlinMapper: KotlinMapper,
     private val encoderFactory: EncoderFactory,
   ) {
-    fun createAll(
+    fun collectAll(
+      listBuilder: MutableList<AbiFunction>,
       functions: List<IrFunction>,
       orientation: Orientation,
       isResource: Boolean = false,
       includeSyntheticFunctions: Boolean = true,
-    ): List<AbiFunction> = buildList {
+    ) {
       for (irFunction in functions) {
         collectAll(
-          listBuilder = this,
+          listBuilder = listBuilder,
           irFunction = irFunction,
           orientation = orientation,
           isResource = isResource,
@@ -257,6 +260,21 @@ data class AbiFunction(
         }
 
         else -> listBuilder += create(irFunction, orientation, isResource)
+      }
+    }
+
+    fun collectAllResourceFunctions(
+      listBuilder: MutableList<AbiFunction>,
+      types: List<IrTypeDeclaration>,
+      orientation: Orientation,
+    ) {
+      for (type in types) {
+        if (type !is IrResource) continue
+
+        listBuilder += resourceDrop(orientation, type.type)
+        if (orientation == Export) {
+          listBuilder += resourceNew(orientation, type.type)
+        }
       }
     }
 
@@ -345,6 +363,69 @@ data class AbiFunction(
         isSupported = irFunction.isSupported,
         orientation = orientation,
         loweredResourceIdParameterSpec = loweredResourceIdParameterSpec(isResource),
+      )
+    }
+
+    fun resourceNew(
+      orientation: Orientation,
+      resourceType: WitTypeName.Declared,
+    ): AbiFunction {
+      require(orientation == Export)
+
+      val nameAllocator = NameAllocator()
+      val flatParameters = listOf(
+        flatParameter(WitTypeName.S32, Identifier("p1"), nameAllocator),
+      )
+      val result = Result.SingleCoreValueReturn(
+        Result.Value(
+          encoder = encoderFactory.get(WitTypeName.S32),
+          type = kotlinMapper.get(WitTypeName.S32),
+        )
+      )
+      val name = FunctionName.ResourceNew(resourceType)
+      return AbiFunction(
+        name = name,
+        kotlinIdentifier = name.kotlinIdentifier,
+        parameters = parameters(flatParameters, nameAllocator, name),
+        result = result,
+        nameAllocator = nameAllocator,
+        orientation = Import,
+        isSupported = true,
+      )
+    }
+
+    fun resourceDrop(
+      orientation: Orientation,
+      resourceType: WitTypeName.Declared,
+    ): AbiFunction {
+      val nameAllocator = NameAllocator()
+      val flatParameters = listOf(
+        flatParameter(WitTypeName.S32, Identifier("p1"), nameAllocator),
+      )
+      val name = FunctionName.ResourceDrop(orientation, resourceType)
+      return AbiFunction(
+        name = name,
+        kotlinIdentifier = name.kotlinIdentifier,
+        parameters = parameters(flatParameters, nameAllocator, name),
+        nameAllocator = nameAllocator,
+        orientation = Import,
+        isSupported = true,
+      )
+    }
+
+    fun resourceClose(
+      resourceType: WitTypeName.Declared,
+    ): AbiFunction {
+      val nameAllocator = NameAllocator()
+      val name = FunctionName.ResourceClose(resourceType)
+      return AbiFunction(
+        name = name,
+        kotlinIdentifier = name.kotlinIdentifier,
+        parameters = parameters(listOf(), nameAllocator, name),
+        isSupported = true,
+        orientation = Export,
+        loweredResourceIdParameterSpec = loweredResourceIdParameterSpec(true),
+        nameAllocator = nameAllocator,
       )
     }
 

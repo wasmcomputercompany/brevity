@@ -1,5 +1,7 @@
 package dev.wasmo.brevity
 
+import dev.wasmo.brevity.Orientation.Export
+
 /**
  * An external function name, used as a unique identifier in a .wasm files.
  */
@@ -15,15 +17,49 @@ sealed class FunctionName {
     }
   }
 
-  data class ResourceDrop(
-    val serviceName: ServiceName,
-    val resourceName: Identifier,
+  /**
+   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#canon-resourcenew
+   */
+  data class ResourceNew(
+    val resourceType: TypeName.Declared,
   ) : FunctionName() {
     override val moduleName: String
-      get() = serviceName.toString()
+      get() = "[export]${resourceType.serviceName}"
 
     override val abiName: String
-      get() = "[resource-drop]${resourceName.name}"
+      get() = "[resource-new]${resourceType.name}"
+
+    override fun toString() = super.toString()
+  }
+
+  /**
+   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#canon-resourcedrop
+   */
+  data class ResourceDrop(
+    val orientation: Orientation,
+    val resourceType: TypeName.Declared,
+  ) : FunctionName() {
+    override val moduleName: String
+      get() = when (orientation) {
+        Export -> "[export]${resourceType.serviceName}"
+        else -> resourceType.serviceName.toString()
+      }
+
+    override val abiName: String
+      get() = "[resource-drop]${resourceType.name}"
+
+    override fun toString() = super.toString()
+  }
+
+  /** Destructs a resource. */
+  data class ResourceClose(
+    val resourceType: TypeName.Declared,
+  ) : FunctionName() {
+    override val moduleName: String
+      get() = resourceType.serviceName.toString()
+
+    override val abiName: String
+      get() = "[dtor]${resourceType.name}"
 
     override fun toString() = super.toString()
   }
@@ -75,7 +111,7 @@ sealed class FunctionName {
   ) : FunctionName() {
     override val moduleName: String?
       get() = when (orientation) {
-        Orientation.Export -> null
+        Export -> null
         Orientation.Import -> $$"$root"
       }
 

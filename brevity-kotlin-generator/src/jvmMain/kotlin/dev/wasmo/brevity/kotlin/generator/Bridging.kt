@@ -34,7 +34,6 @@ val IrFlag.kotlinName: String
 val FunctionName.kotlinIdentifier: Identifier
   get() {
     return when (this) {
-      is FunctionName.ResourceDrop -> dropFunctionName
       is FunctionName.Constructor -> name
       is FunctionName.Interface -> name
       is FunctionName.Method -> name
@@ -45,6 +44,9 @@ val FunctionName.kotlinIdentifier: Identifier
       is FunctionName.AsyncExportCallback ->
         Identifier("${original.kotlinIdentifier}-$asyncLiftCallbackSuffix")
       is FunctionName.AsyncImport -> original.kotlinIdentifier
+      is FunctionName.ResourceNew -> Identifier("${resourceType.name}-$resourceNewSuffix")
+      is FunctionName.ResourceClose -> resourceCloseName
+      is FunctionName.ResourceDrop -> Identifier("${resourceType.name}-$resourceDropSuffix")
     }
   }
 

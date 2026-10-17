@@ -118,7 +118,7 @@ class ApiGenerator(
             if (!abiFunction.isSupported) continue
             if (abiFunction.isSynthetic) continue
             // Don't override close(), it's inherited from the 'Resource' supertype.
-            if (abiFunction.name is FunctionName.ResourceDrop) continue
+            if (abiFunction.name is FunctionName.ResourceClose) continue
             addFunction(apiFunctionFactory.create(abiFunction))
           }
         }
