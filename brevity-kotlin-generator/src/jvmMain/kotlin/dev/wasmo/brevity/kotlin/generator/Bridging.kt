@@ -69,10 +69,3 @@ val IrFunction.isSupported: Boolean
     is FunctionName.Static -> false
     else -> true
   }
-
-/** Assuming this is a resource, this returns the handle implementation class. */
-val TypeName.Declared.handleName: ClassName
-  get() = ClassName(
-    serviceName.packageName.kotlinApi,
-    "${serviceName.name.upperCamelCase}${name.upperCamelCase}Handle",
-  )

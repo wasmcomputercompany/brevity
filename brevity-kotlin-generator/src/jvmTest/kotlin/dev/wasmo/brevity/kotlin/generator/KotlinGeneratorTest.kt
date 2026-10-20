@@ -128,7 +128,6 @@ class KotlinGeneratorTest {
       import dev.wasmo.brevity.GuestBridge
       import dev.wasmo.brevity.loadString
       import dev.wasmo.brevity.retainWasmExportsForGuestBridge
-      import kotlin.Boolean
       import kotlin.Int
       import kotlin.OptIn
       import kotlin.String
@@ -139,69 +138,6 @@ class KotlinGeneratorTest {
       import kotlin.wasm.unsafe.Pointer
       import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
       import kotlin.wasm.unsafe.freeAllComponentModelReallocAllocatedMemory
-      import kotlin.wasm.unsafe.withScopedMemoryAllocator
-
-      internal lateinit var guest_: Time.Guest
-
-      public var Time.guest: Time.Guest
-        get() = guest_
-        set(`value`) {
-          retainWasmExportsForGuestBridge()
-          retainWasmExportsForTime()
-          guest_ = `value`
-        }
-
-      public val Time.host: Time.Host
-        get() = TimeBridge
-
-      internal object TimeBridge : Time.Host {
-        override val types: Types = GuestTypes()
-      }
-
-      internal class GuestTypes : Types {
-        override fun now(): Datetime {
-          val result = withScopedMemoryAllocator { memoryAllocator ->
-            val resultParameter = memoryAllocator.allocate(12)
-            val result = types_now_import(
-              resultParameter.address.toInt(),
-            )
-            load_Types_Datetime_guest(GuestBridge, resultParameter)
-          }
-          freeAllComponentModelReallocAllocatedMemory()
-          return result
-        }
-      }
-
-      internal class TypesPollableHandle(
-        private val id: Int,
-      ) : Pollable {
-        override fun ready(): Boolean {
-          val result = types_pollable_ready_import(
-            this.id,
-          )
-          freeAllComponentModelReallocAllocatedMemory()
-          return (result != 0)
-        }
-
-        override fun close() {
-          types_pollable_close_import(
-            this.id,
-          )
-          freeAllComponentModelReallocAllocatedMemory()
-        }
-      }
-
-      /**
-       * This function does nothing. But by calling it the compiler retains exported symbols that
-       * would otherwise be eliminated as unused.
-       *
-       * https://youtrack.jetbrains.com/issue/KT-88068/
-       */
-      private fun retainWasmExportsForTime() {
-        // Equivalent to 'if (true) return', but immune to dead code elimination.
-        if ("".hashCode() == 0) return
-        run_export(0, 0)
-      }
 
       @WasmExport("run")
       internal fun run_export(argsAddress: Int, argsSize: Int): Int {
@@ -218,6 +154,38 @@ class KotlinGeneratorTest {
           args = list,
         )
         return result
+      }
+
+      internal lateinit var guest_: Time.Guest
+
+      public var Time.guest: Time.Guest
+        get() = guest_
+        set(`value`) {
+          GuestBridge.registerResourceHandle<Pollable> { id ->
+            TypesPollableHandle(id)
+          }
+          retainWasmExportsForGuestBridge()
+          retainWasmExportsForTime()
+          guest_ = `value`
+        }
+
+      public val Time.host: Time.Host
+        get() = TimeBridge
+
+      internal object TimeBridge : Time.Host {
+        override val types: Types = GuestTypes()
+      }
+
+      /**
+       * This function does nothing. But by calling it the compiler retains exported symbols that
+       * would otherwise be eliminated as unused.
+       *
+       * https://youtrack.jetbrains.com/issue/KT-88068/
+       */
+      private fun retainWasmExportsForTime() {
+        // Equivalent to 'if (true) return', but immune to dead code elimination.
+        if ("".hashCode() == 0) return
+        run_export(0, 0)
       }
 
       """.trimIndent(),
@@ -462,12 +430,15 @@ class KotlinGeneratorTest {
       package wit.wasi.clocks.v0_2_12
 
       import dev.wasmo.brevity.BrevityInternalApi
+      import dev.wasmo.brevity.GuestBridge
       import kotlin.Int
       import kotlin.OptIn
       import kotlin.wasm.ExperimentalWasmInterop
       import kotlin.wasm.WasmImport
       import kotlin.wasm.unsafe.ComponentModelInternalApi
       import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
+      import kotlin.wasm.unsafe.freeAllComponentModelReallocAllocatedMemory
+      import kotlin.wasm.unsafe.withScopedMemoryAllocator
 
       @WasmImport(
         module = "wasi:clocks/types@0.2.12",
@@ -480,6 +451,20 @@ class KotlinGeneratorTest {
         name = "[resource-drop]pollable",
       )
       internal external fun types_pollable_resourceDrop_import(index: Int)
+
+      internal class GuestTypes : Types {
+        override fun now(): Datetime {
+          val result = withScopedMemoryAllocator { memoryAllocator ->
+            val resultParameter = memoryAllocator.allocate(12)
+            val result = types_now_import(
+              resultParameter.address.toInt(),
+            )
+            load_Types_Datetime_guest(GuestBridge, resultParameter)
+          }
+          freeAllComponentModelReallocAllocatedMemory()
+          return result
+        }
+      }
 
       """.trimIndent(),
     )
@@ -1271,6 +1256,7 @@ class KotlinGeneratorTest {
 
       import dev.wasmo.brevity.BrevityInternalApi
       import dev.wasmo.brevity.GuestBridge
+      import kotlin.Boolean
       import kotlin.Int
       import kotlin.OptIn
       import kotlin.wasm.ExperimentalWasmInterop
@@ -1278,6 +1264,7 @@ class KotlinGeneratorTest {
       import kotlin.wasm.unsafe.ComponentModelInternalApi
       import kotlin.wasm.unsafe.Pointer
       import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
+      import kotlin.wasm.unsafe.freeAllComponentModelReallocAllocatedMemory
 
       public fun store_Types_Pollable_guest(
         bridge: GuestBridge,
@@ -1304,6 +1291,25 @@ class KotlinGeneratorTest {
         name = "[dtor]pollable",
       )
       internal external fun types_pollable_close_import(id: Int)
+
+      internal class TypesPollableHandle(
+        private val id: Int,
+      ) : Pollable {
+        override fun ready(): Boolean {
+          val result = types_pollable_ready_import(
+            this.id,
+          )
+          freeAllComponentModelReallocAllocatedMemory()
+          return (result != 0)
+        }
+
+        override fun close() {
+          types_pollable_close_import(
+            this.id,
+          )
+          freeAllComponentModelReallocAllocatedMemory()
+        }
+      }
 
       """.trimIndent(),
     )

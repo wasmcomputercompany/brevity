@@ -19,8 +19,7 @@ class GuestKotlinTarget(
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("GuestKotlinTarget")) {
-      val path =
-        layout.guestSrc / "dev/wasmo/brevity/integration/Guest${name.replaceFirstChar { it.uppercase() }}Implementation.kt"
+      val path = layout.guestSrc / "dev/wasmo/brevity/integration/Guest${name.replaceFirstChar { it.uppercase() }}Implementation.kt"
       fileSystem.createDirectories(path.parent!!)
       fileSystem.write(path) { writeKotlin() }
     }

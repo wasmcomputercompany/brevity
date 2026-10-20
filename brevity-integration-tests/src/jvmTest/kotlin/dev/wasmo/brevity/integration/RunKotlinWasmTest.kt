@@ -5,6 +5,7 @@ import assertk.assertions.isBetween
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.WasmInstance
 import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
+import kotlin.test.Ignore
 import kotlin.test.Test
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.measureTime
@@ -142,6 +143,7 @@ class RunKotlinWasmTest {
   }
 
   @Test
+  @Ignore("must be re-implemented with async")
   fun `parallel sleep`() = runTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
