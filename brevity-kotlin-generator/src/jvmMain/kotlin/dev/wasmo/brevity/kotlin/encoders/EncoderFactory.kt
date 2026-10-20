@@ -5,6 +5,7 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterSpec
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.Identifier
@@ -108,7 +109,18 @@ class EncoderFactory(
         }
       }
 
-      is TypeName.Map -> FallbackEncoder(kotlinMapper, typeName, CoreType.I32) // TODO: List<Tuple>.
+      is TypeName.Map -> MapEncoder(
+        DynamicListEncoder(
+          elementEncoder = PairEncoder(listOf(get(typeName.key), get(typeName.value))),
+          listType = Symbols.KotlinCollections.List.parameterizedBy(
+            Symbols.Kotlin.Pair.parameterizedBy(
+              kotlinMapper.get(typeName.key),
+              kotlinMapper.get(typeName.value)
+            )
+          )
+        )
+      )
+
       is TypeName.Option -> OptionalEncoder(
         some = get(typeName.type),
         instanceNameHint = when (val element = typeName.type) {

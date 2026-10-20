@@ -716,6 +716,39 @@ class BridgeEveryTypeTest {
     test.execute()
   }
 
+  @Test
+  fun maps() = runTest {
+    val test = BrevityExecutionTester(
+      name = "maps",
+      types = listOf(
+        SampleType(
+          id = Identifier("dictionary"),
+          witType = "map<string, string>",
+          kotlinType = "Map<String, String>",
+          rustType = "std::collections::BTreeMap<String, String>",
+          values = listOf(
+            SampleValue(
+              kotlin = "mapOf<String, String>()",
+              rust = "std::collections::BTreeMap::new()",
+            ),
+            SampleValue(
+              kotlin = "mapOf(\"hello\" to \"world\", \"foo\" to \"bar\")",
+              rust = "std::collections::BTreeMap::from([(\"foo\".to_string(), \"bar\".to_string()), (\"hello\".to_string(), \"world\".to_string())])",
+            ),
+            SampleValue(
+              kotlin = "mapOf(\"\" to \"nothing\", \"abc\\u0000def\" to \"code point\\u0000 zero!\", \"\uD83C\uDF69\" to \"sugary \uD83C\uDF69s\")",
+              rust = "std::collections::BTreeMap::from([(\"\uD83C\uDF69\".to_string(), \"sugary \uD83C\uDF69s\".to_string()), (\"abc\\u{0000}def\".to_string(), \"code point\\u{0000} zero!\".to_string()), (\"\".to_string(), \"nothing\".to_string())])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
+        // TODO: Add tests for all key types and complex values.
+      ),
+    )
+
+    test.execute()
+  }
+
   private fun expectedWorkingTests(
     testFunction: TestFunction,
   ): Boolean = when {
