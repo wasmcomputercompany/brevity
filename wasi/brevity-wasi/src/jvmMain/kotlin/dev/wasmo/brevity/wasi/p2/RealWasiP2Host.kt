@@ -7,6 +7,8 @@ import wit.wasi.cli.v0_2_0.Imports
 import wit.wasi.cli.v0_2_0.Stderr
 import wit.wasi.cli.v0_2_0.Stdin
 import wit.wasi.cli.v0_2_0.Stdout
+import wit.wasi.cli.v0_2_0.TerminalInput
+import wit.wasi.cli.v0_2_0.TerminalOutput
 import wit.wasi.cli.v0_2_0.TerminalStderr
 import wit.wasi.cli.v0_2_0.TerminalStdin
 import wit.wasi.cli.v0_2_0.TerminalStdout
@@ -14,13 +16,18 @@ import wit.wasi.clocks.v0_2_0.MonotonicClock
 import wit.wasi.clocks.v0_2_0.WallClock
 import wit.wasi.filesystem.v0_2_0.Preopens
 import wit.wasi.filesystem.v0_2_0.Types
+import wit.wasi.io.v0_2_0.Error
 import wit.wasi.io.v0_2_0.Poll
+import wit.wasi.io.v0_2_0.Streams
 import wit.wasi.random.v0_2_0.Insecure
 import wit.wasi.random.v0_2_0.InsecureSeed
 import wit.wasi.random.v0_2_0.Random
 import wit.wasi.sockets.v0_2_0.InstanceNetwork
 import wit.wasi.sockets.v0_2_0.IpNameLookup
+import wit.wasi.sockets.v0_2_0.Network
+import wit.wasi.sockets.v0_2_0.Tcp
 import wit.wasi.sockets.v0_2_0.TcpCreateSocket
+import wit.wasi.sockets.v0_2_0.Udp
 import wit.wasi.sockets.v0_2_0.UdpCreateSocket
 
 /**
@@ -70,5 +77,22 @@ class RealWasiP2Host(
   override val insecureSeed: InsecureSeed
     get() = TODO("Not yet implemented")
   override val poll: Poll
+    get() = TODO("Not yet implemented")
+
+  // These interfaces should be removed from the API. They're here because they have nested
+  // resources, and we don't yet prune such interfaces.
+  override val error: Error
+    get() = TODO("Not yet implemented")
+  override val streams: Streams
+    get() = TODO("Not yet implemented")
+  override val terminalInput: TerminalInput
+    get() = TODO("Not yet implemented")
+  override val terminalOutput: TerminalOutput
+    get() = TODO("Not yet implemented")
+  override val network: Network
+    get() = TODO("Not yet implemented")
+  override val udp: Udp
+    get() = TODO("Not yet implemented")
+  override val tcp: Tcp
     get() = TODO("Not yet implemented")
 }

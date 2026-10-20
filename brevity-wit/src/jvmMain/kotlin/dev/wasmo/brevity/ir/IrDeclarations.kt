@@ -54,6 +54,11 @@ data class IrWorld(
   override val location: Location,
   override val serviceName: ServiceName,
   override val types: List<IrTypeDeclaration>,
+  /**
+   * Note that this includes both explicitly imported interfaces (referenced in the .wit file) and
+   * implicitly imported interfaces (reachable from the world via 'use', 'import', and 'export'
+   * statements, but not explicitly imported or exported.
+   */
   val imports: List<Api>,
   val exports: List<Api>,
 ) : IrWitPackage.Service {

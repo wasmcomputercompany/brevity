@@ -1,5 +1,9 @@
 package dev.wasmo.brevity.integration
 
+import dev.wasmo.brevity.Orientation.Export
+import dev.wasmo.brevity.Orientation.Import
+import dev.wasmo.brevity.kotlin.generator.lowerSnakeCase
+import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -64,29 +68,60 @@ class GuestRustTarget(
 
     val parentToTestFunctions = testFunctions.groupBy { it.functionParent }
     for ((parent, childFunctions) in parentToTestFunctions) {
+      val serviceName = parent.serviceName.lowerSnakeCase
       when (parent) {
-        FunctionParent.World -> {
+        FunctionParent.WorldExport -> {
           writeUtf8(
             """
             |impl bindings::Guest for BrevityTesting {
             |
             """.trimMargin(),
           )
+          for (memberServiceFunctions in parentToTestFunctions.values) {
+            for (testFunction in memberServiceFunctions.filter { it.orientation == Import }) {
+              with(testFunction) {
+                rustDeclareTrampoline()
+              }
+            }
+          }
         }
 
-        FunctionParent.Interface -> {
+        FunctionParent.InterfaceExport -> {
           writeUtf8(
             """
-            |impl bindings::exports::brevity::testing::test_interface::Guest for BrevityTesting {
+            |impl bindings::exports::brevity::testing::$serviceName::Guest for BrevityTesting {
             |
             """.trimMargin(),
           )
         }
+
+        FunctionParent.ResourceExport -> {
+          val resourceName = parent.identifier.upperCamelCase
+          writeUtf8(
+            """
+            |struct Real$resourceName {
+            |}
+            |
+            |impl bindings::exports::brevity::testing::$serviceName::Guest for BrevityTesting {
+            |    type $resourceName = Real$resourceName;
+            |
+            |    fn create() -> bindings::exports::brevity::testing::$serviceName::$resourceName {
+            |        bindings::exports::brevity::testing::$serviceName::$resourceName::new(Real$resourceName {})
+            |    }
+            |}
+            |
+            |impl bindings::exports::brevity::testing::$serviceName::Guest$resourceName for Real$resourceName {
+            |
+            """.trimMargin(),
+          )
+        }
+
+        else -> continue
       }
 
-      for (testFunction in childFunctions) {
+      for (testFunction in childFunctions.filter { it.orientation == Export }) {
         with(testFunction) {
-          rustDeclareGuestFunctions()
+          rustDeclare()
         }
       }
 

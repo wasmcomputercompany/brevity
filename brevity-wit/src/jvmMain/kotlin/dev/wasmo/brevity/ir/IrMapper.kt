@@ -185,17 +185,6 @@ class IrMapper(
     },
   )
 
-  context(context: Context)
-  private fun IoResource.dropFunction(): IrFunction {
-    return IrFunction(
-      location = location,
-      functionName = FunctionName.ResourceDrop(
-        serviceName = context.serviceName,
-        resourceName = name,
-      ),
-    )
-  }
-
   context(context: Context, issueCollector: IssueCollector)
   private fun IoParameter.parameterToIr() = type.typeNameToIr(location)?.let { resolved ->
     IrParameter(
@@ -240,13 +229,8 @@ class IrMapper(
       gate = gate,
       location = location,
       type = TypeName.Declared(context.serviceName, name),
-      functions = buildList {
-        addAll(
-          functions.map {
-            it.functionToIr(resourceName = name)
-          },
-        )
-        add(dropFunction())
+      functions = functions.map {
+        it.functionToIr(resourceName = name)
       },
     )
   }
@@ -440,6 +424,13 @@ class IrMapper(
     val set = LinkedHashSet<IncludedWorld>()
     seed.collectIncludesRecursively(set)
 
+    val explicitImports = set.flatMap { included ->
+      context(included.context) {
+        included.world.imports.mapNotNull { it.worldApiToIr(Orientation.Import) }
+      }
+    }
+    val implicitImports = collectImplicitImports(set)
+
     builder.services += IrWorld(
       documentation = documentation,
       gate = gate,
@@ -450,11 +441,7 @@ class IrMapper(
           included.world.items.mapNotNull { it.worldItemToIrTypeDeclarationOrNull() }
         }
       },
-      imports = set.flatMap { included ->
-        context(included.context) {
-          included.world.imports.mapNotNull { it.worldApiToIr(Orientation.Import) }
-        }
-      },
+      imports = explicitImports + implicitImports,
       exports = set.flatMap { included ->
         context(included.context) {
           included.world.exports.mapNotNull { it.worldApiToIr(Orientation.Export) }
@@ -490,6 +477,11 @@ class IrMapper(
       is IoExternalApi -> externalUsePathToIr()
         .takeIf {
           val service = ioSymbolTable[it.serviceName]
+
+          if (service is IoInterface) {
+            return@takeIf service.declaresApis()
+          }
+
           fun reportIssue(moreInfo: String) {
             issueCollector.report(
               Issue(
@@ -499,23 +491,19 @@ class IrMapper(
             )
           }
 
-          if (service as? IoInterface != null) {
-            service.declaresApis()
-          } else {
-            val caseInsensitiveServiceMatch = ioSymbolTable.getCaseInsensitiveMatch(it.serviceName)
-            val packageMatch = ioSymbolTable[it.serviceName.packageName]
-            val caseInsensitivePackageMatch =
-              ioSymbolTable.getCaseInsensitiveMatch(it.serviceName.packageName)
-            when {
-              service is IoWorld -> reportIssue("I found it but it's a world, not an interface")
-              caseInsensitiveServiceMatch != null -> reportIssue("maybe you meant $caseInsensitiveServiceMatch")
-              packageMatch != null -> reportIssue("no such service in ${packageMatch.packageName}")
-              caseInsensitivePackageMatch != null -> reportIssue("maybe you meant $caseInsensitivePackageMatch but there is no such service there either")
-              else -> reportIssue("no such package")
-            }
-
-            false
+          val caseInsensitiveServiceMatch = ioSymbolTable.getCaseInsensitiveMatch(it.serviceName)
+          val packageMatch = ioSymbolTable[it.serviceName.packageName]
+          val caseInsensitivePackageMatch =
+            ioSymbolTable.getCaseInsensitiveMatch(it.serviceName.packageName)
+          when {
+            service is IoWorld -> reportIssue("I found it but it's a world, not an interface")
+            caseInsensitiveServiceMatch != null -> reportIssue("maybe you meant $caseInsensitiveServiceMatch")
+            packageMatch != null -> reportIssue("no such service in ${packageMatch.packageName}")
+            caseInsensitivePackageMatch != null -> reportIssue("maybe you meant $caseInsensitivePackageMatch but there is no such service there either")
+            else -> reportIssue("no such package")
           }
+
+          false
         }
 
       is IoFunction -> functionToIr(
@@ -567,6 +555,79 @@ class IrMapper(
     }
   }
 
+  /**
+   * Wit automatically imports every transitively-reachable interface (via 'import', 'export', and
+   * 'use' statements), unless it's explicitly imported or exported already. This returns the set of
+   * such interfaces.
+   */
+  private fun collectImplicitImports(
+    includedWorlds: Set<IncludedWorld>,
+  ): Set<IrExternalApi> {
+    val explicitApis = mutableSetOf<ServiceName>()
+    val queue = ArrayDeque<IrExternalApi>()
+    for (includedWorld in includedWorlds) {
+      context(includedWorld.context) {
+        for (ioUse in includedWorld.world.items.filterIsInstance<IoUse>()) {
+          queue += IrExternalApi(
+            location = ioUse.location,
+            serviceName = ioUse.path.usePathToIr(),
+          )
+        }
+
+        for (api in includedWorld.world.exports + includedWorld.world.imports) {
+          val serviceName = api.serviceName ?: continue
+
+          queue += IrExternalApi(
+            location = api.location,
+            serviceName = serviceName,
+          )
+
+          if (api !is IoExternalApi || api.plainName == null) {
+            explicitApis += serviceName
+          }
+        }
+      }
+    }
+
+    return buildSet {
+      val visited = mutableSetOf<ServiceName>()
+      while (true) {
+        val externalApi = queue.removeFirstOrNull() ?: break
+
+        // Only visit each service once.
+        if (!visited.add(externalApi.serviceName)) {
+          continue
+        }
+
+        // Add an explicit import if there isn't already an explicit import or export.
+        if (externalApi.serviceName !in explicitApis) {
+          add(externalApi)
+        }
+
+        // Traverse use statements from here. If we see a 'use' for something that isn't an
+        // interface, skip it because that issue will be reported elsewhere.
+        val ioInterface = ioSymbolTable[externalApi.serviceName] as? IoInterface ?: continue
+        context(Context(externalApi.serviceName)) {
+          for (ioUse in ioInterface.items.filterIsInstance<IoUse>()) {
+            queue += IrExternalApi(
+              location = ioUse.location,
+              serviceName = ioUse.path.usePathToIr(),
+            )
+          }
+        }
+      }
+    }
+  }
+
+  /** Returns the service referenced by this API. */
+  context(context: Context)
+  private val IoWorld.Api.serviceName: ServiceName?
+    get() = when (this) {
+      is IoFunction -> null
+      is IoExternalApi -> path.usePathToIr()
+      is IoInterface -> ServiceName(context.serviceName.packageName, name)
+    }
+
   internal fun getWorldOrNull(path: UsePath): IoWorld? {
     val witPackage = ioSymbolTable[path.packageName] ?: return null
     return witPackage.items
@@ -597,10 +658,6 @@ private val IoWitPackage.items: List<IoWitFile.Item>
     is IoInlinePackage -> declarations
   }
 
-/**
- * Returns true if this interface declares functions to be imported or exported.
- *
- * TODO: probably also return true if any [IoResource] member has a static function or constructor.
- */
+/** Returns true if this interface declares functions to be imported or exported. */
 private fun IoInterface.declaresApis(): Boolean =
-  items.any { it is IoFunction }
+  items.any { it is IoFunction || it is IoResource }

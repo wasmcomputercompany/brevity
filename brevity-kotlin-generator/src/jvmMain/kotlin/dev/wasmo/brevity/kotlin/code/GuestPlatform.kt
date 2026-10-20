@@ -3,23 +3,18 @@ package dev.wasmo.brevity.kotlin.code
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.TypeName
-import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
+import dev.wasmo.brevity.kotlin.abi.AbiService
 import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.abi.WasmImportFunction
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
-import dev.wasmo.brevity.kotlin.expressions.KtFunction
 import dev.wasmo.brevity.kotlin.generator.Symbols
-import dev.wasmo.brevity.kotlin.generator.handleName
 import dev.wasmo.brevity.kotlin.generator.plus
 
-class GuestPlatform(
-  private val kotlinMapper: KotlinMapper,
-) : Platform {
+object GuestPlatform : Platform {
   override val identifier: Identifier
     get() = Identifier("guest")
 
@@ -52,25 +47,6 @@ class GuestPlatform(
 
   override fun lowerAddress(address: CodeBlock) =
     CodeBlock.of("%L.address.toInt()", address)
-
-  context(codeBuilder: CodeBuilder)
-  override fun liftResource(id: CodeBlock, handleType: TypeName.Declared): CodeBlock {
-    return CodeBlock.of(
-      "%L.fromId(%L, ::%T)",
-      codeBuilder.bridge,
-      id,
-      handleType.handleName,
-    )
-  }
-
-  context(codeBuilder: CodeBuilder)
-  override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of(
-      "%L.toId<%T>(%L)",
-      codeBuilder.bridge,
-      kotlinMapper.getAbiClassName(handleType),
-      resource,
-    )
 
   override fun getParent(parent: AbiWorld): KtExpression {
     return CodeBlockExpression(
@@ -184,8 +160,10 @@ class GuestPlatform(
     )
   }
 
-  override fun createLowered(abiFunction: AbiFunction): KtFunction =
-    WasmImportFunction(abiFunction)
+  override fun createLowered(
+    abiService: AbiService,
+    abiFunction: AbiFunction,
+  ) = WasmImportFunction(abiService, abiFunction)
 
   private class GuestMemoryAllocator(
     override val name: String,

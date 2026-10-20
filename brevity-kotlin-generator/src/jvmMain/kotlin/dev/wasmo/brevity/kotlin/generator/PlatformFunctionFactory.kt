@@ -3,8 +3,10 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
+import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiLower
+import dev.wasmo.brevity.kotlin.abi.AbiService
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.Platform
 import dev.wasmo.brevity.kotlin.encoders.CoreType
@@ -21,10 +23,16 @@ class PlatformFunctionFactory(
 ) {
   fun create(
     bridge: CodeBlock,
+    abiService: AbiService,
     abiFunction: AbiFunction,
   ): FunSpec {
     return apiFunctionFactory.builder(abiFunction)
-      .addModifiers(KModifier.OVERRIDE)
+      .addModifiers(
+        when (abiFunction.name) {
+          is FunctionName.ResourceDrop -> listOf()
+          else -> listOf(KModifier.OVERRIDE)
+        },
+      )
       .apply {
         val codeBuilder = CodeBuilder(
           bridge = bridge,
@@ -34,6 +42,7 @@ class PlatformFunctionFactory(
 
         context(codeBuilder) {
           val abiLower = AbiLower(
+            abiService = abiService,
             abiFunction = abiFunction,
             resourceId = when {
               abiFunction.isResource -> CodeBlockExpression(

@@ -3,9 +3,9 @@ package dev.wasmo.brevity.kotlin.code
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
+import dev.wasmo.brevity.kotlin.abi.AbiService
 import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
@@ -38,14 +38,6 @@ interface Platform {
 
   /** Convert a pointer to an I32. */
   fun lowerAddress(address: CodeBlock): CodeBlock
-
-  /** Convert an ID to a Resource instance. */
-  context(codeBuilder: CodeBuilder)
-  fun liftResource(id: CodeBlock, handleType: TypeName.Declared): CodeBlock
-
-  /** Convert a Resource instance to an ID. */
-  context(codeBuilder: CodeBuilder)
-  fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared): CodeBlock
 
   /** Returns an expression to get an instance of [parent]. */
   fun getParent(parent: AbiWorld): KtExpression
@@ -111,5 +103,8 @@ interface Platform {
     value: CodeBlock,
   )
 
-  fun createLowered(abiFunction: AbiFunction): KtFunction
+  fun createLowered(
+    abiService: AbiService,
+    abiFunction: AbiFunction,
+  ): KtFunction
 }

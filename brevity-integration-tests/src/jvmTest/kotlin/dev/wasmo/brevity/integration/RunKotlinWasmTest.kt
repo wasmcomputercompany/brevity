@@ -16,15 +16,20 @@ import wit.wasi.v0_1.Wasi
 import wit.wasi.v0_1.World
 import wit.wasmo.testing.StringArgument
 import wit.wasmo.testing.StringResult
+import wit.wasmo.testing.Types
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.World
 
 class RunKotlinWasmTest {
   private val kotlinWasmPath = "build/compileSync/wasmWasi/main/developmentExecutable/kotlin/brevity-root-brevity-integration-tests.wasm".toPath()
+  private val host = object : WasmoTesting.Host {
+    override val types: Types
+      get() = object : Types {}
+  }
 
   @Test
   fun `call function declared on world`() = runTest {
-    val world = WasmoTesting.World()
+    val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -40,7 +45,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call function declared on interface`() = runTest {
-    val world = WasmoTesting.World()
+    val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -56,7 +61,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call concatenate`() = runTest {
-    val world = WasmoTesting.World()
+    val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -82,7 +87,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call inline concatenate`() = runTest {
-    val world = WasmoTesting.World()
+    val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -102,7 +107,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call printGreeting`() = runTest {
-    val world = WasmoTesting.World()
+    val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -120,7 +125,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call printError`() = runTest {
-    val world = WasmoTesting.World()
+    val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
@@ -138,7 +143,7 @@ class RunKotlinWasmTest {
 
   @Test
   fun `parallel sleep`() = runTest {
-    val world = WasmoTesting.World()
+    val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
       path = kotlinWasmPath,
