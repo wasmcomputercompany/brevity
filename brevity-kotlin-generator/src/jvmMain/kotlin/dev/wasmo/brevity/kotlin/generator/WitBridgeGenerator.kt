@@ -17,6 +17,9 @@ import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
 import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.mapAsync
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import okio.FileSystem
 import okio.Path
 
@@ -28,14 +31,15 @@ class WitBridgeGenerator private constructor(
   val host: HostGenerator,
   val api: ApiGenerator,
 ) {
-  fun generate(): ProjectSpec {
-    val specs = buildList {
-      addAll(host.generate())
-      addAll(guest.generate())
-      addAll(api.generate())
+  suspend fun generate(): ProjectSpec {
+    return coroutineScope {
+      val apiSpecsDeferred = async { api.generate() }
+      val guestSpecsDeferred = async { guest.generate() }
+      val hostSpecsDeferred = async { host.generate() }
+      ProjectSpec(
+        apiSpecsDeferred.await() + guestSpecsDeferred.await() + hostSpecsDeferred.await(),
+      )
     }
-
-    return ProjectSpec(specs)
   }
 
   interface Validation {
@@ -48,7 +52,7 @@ class WitBridgeGenerator private constructor(
      * Perform all necessary precompilation analysis and validation necessary to generate code.
      */
     context(issueCollector: IssueCollector)
-    fun precompile(
+    suspend fun precompile(
       fileSystem: FileSystem,
       packageDirectories: Collection<Path>,
       irFilter: (List<IrWitPackage>) -> List<IrWitPackage> = { it },
@@ -58,7 +62,7 @@ class WitBridgeGenerator private constructor(
 
       val packageReader = collectNoIssuesOrThrow { IoWitPackageReader(fileSystem) }
 
-      val ioToplevelPackages = packageDirectories.map { directory ->
+      val ioToplevelPackages = packageDirectories.mapAsync { directory ->
         packageReader.read(directory)
       }
 

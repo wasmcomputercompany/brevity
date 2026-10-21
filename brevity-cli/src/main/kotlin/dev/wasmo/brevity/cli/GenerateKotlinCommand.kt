@@ -9,6 +9,8 @@ import com.github.ajalt.clikt.parameters.options.required
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.filterNamedWorlds
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import okio.FileSystem
 import okio.Path
 
@@ -42,30 +44,32 @@ class GenerateKotlinCommand(
       """.trimMargin(),
     )
 
-  override fun run() = collectNoIssuesOrThrow {
-    val commonMainDir = outputKotlinCommonMain.toFile()
-    commonMainDir.deleteRecursively()
-    commonMainDir.mkdirs()
+  override fun run() = runBlocking(Dispatchers.IO) {
+    val generator = collectNoIssuesOrThrow {
+      val commonMainDir = outputKotlinCommonMain.toFile()
+      commonMainDir.deleteRecursively()
+      commonMainDir.mkdirs()
 
-    val wasmWasiMainDir = outputKotlinWasmWasiMain.toFile()
-    wasmWasiMainDir.deleteRecursively()
-    wasmWasiMainDir.mkdirs()
+      val wasmWasiMainDir = outputKotlinWasmWasiMain.toFile()
+      wasmWasiMainDir.deleteRecursively()
+      wasmWasiMainDir.mkdirs()
 
-    val jvmMainDir = outputKotlinJvmMain.toFile()
-    jvmMainDir.deleteRecursively()
-    jvmMainDir.mkdirs()
+      val jvmMainDir = outputKotlinJvmMain.toFile()
+      jvmMainDir.deleteRecursively()
+      jvmMainDir.mkdirs()
 
-    val generator = WitBridgeGenerator.precompile(
-      fileSystem = fileSystem,
-      packageDirectories = inputWitDirectories,
-      irFilter = {
-        when {
-          world.isEmpty() -> it
-          else -> it.filterNamedWorlds(world)
-        }
-      },
-      customTypeMappings = customTypeMappings,
-    ) ?: return@collectNoIssuesOrThrow
+      WitBridgeGenerator.precompile(
+        fileSystem = fileSystem,
+        packageDirectories = inputWitDirectories,
+        irFilter = {
+          when {
+            world.isEmpty() -> it
+            else -> it.filterNamedWorlds(world)
+          }
+        },
+        customTypeMappings = customTypeMappings,
+      )
+    } ?: return@runBlocking
 
     val projectSpec = generator.generate()
     projectSpec.writeTo(

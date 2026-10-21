@@ -5,16 +5,16 @@ package dev.wasmo.brevity.io
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.WitCoreInternalApi
-import dev.wasmo.brevity.collectNoIssuesOrThrow
+import dev.wasmo.brevity.assertNoIssues
 
-fun String.toIoTypeName(): IoTypeName = collectNoIssuesOrThrow {
+fun String.toIoTypeName(): IoTypeName = assertNoIssues {
   val reader = WitSyntaxReader(Location("file.wit"), this@toIoTypeName)
   reader.readTypeName().also {
     check(reader.exhausted)
   }
 }
 
-fun String.toUsePath(): UsePath = collectNoIssuesOrThrow {
+fun String.toUsePath(): UsePath = assertNoIssues {
   val reader = WitSyntaxReader(Location("file.wit"), this@toUsePath)
   reader.readUsePath().also {
     check(reader.exhausted)

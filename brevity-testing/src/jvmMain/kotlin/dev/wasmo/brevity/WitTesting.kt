@@ -5,14 +5,14 @@ package dev.wasmo.brevity
 import dev.wasmo.brevity.io.WitSyntaxReader
 import dev.wasmo.brevity.io.toServiceName
 
-fun String.toIdentifier(): Identifier = collectNoIssuesOrThrow {
+fun String.toIdentifier(): Identifier = assertNoIssues {
   val reader = WitSyntaxReader(Location("file.wit"), this@toIdentifier)
   reader.readIdentifier().also {
     check(reader.exhausted)
   }
 }
 
-fun String.toPackageName(): PackageName = collectNoIssuesOrThrow {
+fun String.toPackageName(): PackageName = assertNoIssues {
   val reader = WitSyntaxReader(Location("file.wit"), this@toPackageName)
   reader.readPackageName().also {
     check(reader.exhausted)
@@ -87,3 +87,11 @@ fun ServiceName(
   packageName = packageName.toPackageName(),
   name = Identifier(name),
 )
+
+/** Crash if any issues are reported in [block]. */
+fun <T> assertNoIssues(block: IssueCollector.() -> T): T {
+  val (result, issues) = collectIssues(block)
+  check(issues.isEmpty())
+  return result
+}
+

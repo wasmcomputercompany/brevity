@@ -9,6 +9,9 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.TypeSpecHolder
 import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.kotlin.generator.QualifiedSpec.SourceSet
+import dev.wasmo.brevity.mapAsync
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import okio.FileSystem
 import okio.Path
 
@@ -85,11 +88,13 @@ data class ProjectSpec(
           optIns += spec.optIns
           builder.addFunction(spec.function)
         }
+
         is QualifiedSpec.Property -> {
           paths += spec.locations.map { it.path }
           optIns += spec.optIns
           builder.addProperty(spec.property)
         }
+
         is QualifiedSpec.Type -> {
           val entry = typeEntries[spec.className]!!
           paths += entry.paths
@@ -118,23 +123,25 @@ data class ProjectSpec(
     return builder.build()
   }
 
-  fun writeTo(
+  suspend fun writeTo(
     fileSystem: FileSystem,
     commonMain: Path,
     wasmWasiMain: Path,
     jvmMain: Path,
   ) {
-    writeTo(fileSystem, SourceSet.CommonMain, commonMain)
-    writeTo(fileSystem, SourceSet.WasmWasiMain, wasmWasiMain)
-    writeTo(fileSystem, SourceSet.JvmMain, jvmMain)
+    coroutineScope {
+      launch { writeTo(fileSystem, SourceSet.CommonMain, commonMain) }
+      launch { writeTo(fileSystem, SourceSet.WasmWasiMain, wasmWasiMain) }
+      launch { writeTo(fileSystem, SourceSet.JvmMain, jvmMain) }
+    }
   }
 
-  private fun writeTo(
+  private suspend fun writeTo(
     fileSystem: FileSystem,
     sourceSet: SourceSet,
     directory: Path,
   ) {
-    for (fileSpec in fileSpecs(sourceSet)) {
+    fileSpecs(sourceSet).mapAsync { fileSpec ->
       val path = directory / fileSpec.relativePath
       path.parent?.let { parentDirectory ->
         fileSystem.createDirectories(parentDirectory)

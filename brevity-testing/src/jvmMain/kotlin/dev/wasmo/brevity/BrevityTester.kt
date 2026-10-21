@@ -1,5 +1,6 @@
 package dev.wasmo.brevity
 
+import dev.wasmo.brevity.kotlin.generator.ProjectSpec
 import dev.wasmo.brevity.kotlin.generator.QualifiedSpec.SourceSet
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
 import okio.Path
@@ -7,10 +8,8 @@ import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 
 class BrevityTester(
-  generator: WitBridgeGenerator,
+  val projectSpec: ProjectSpec,
 ) {
-  val projectSpec = generator.generate()
-
   private val apiFiles = buildMap {
     for (fileSpec in projectSpec.fileSpecs(SourceSet.CommonMain)) {
       put(fileSpec.relativePath.toPath(), fileSpec.toString())
@@ -38,7 +37,7 @@ class BrevityTester(
   operator fun get(path: Path): String? = files[path]
 
   companion object {
-    operator fun invoke(vararg files: Pair<Path, String>): BrevityTester {
+    suspend operator fun invoke(vararg files: Pair<Path, String>): BrevityTester {
       val packageDirectories = mutableSetOf<Path>()
 
       val fileSystem = FakeFileSystem()
@@ -55,7 +54,8 @@ class BrevityTester(
         WitBridgeGenerator.precompile(fileSystem, packageDirectories)
       }!!
 
-      return BrevityTester(generator)
+      val projectSpec = generator.generate()
+      return BrevityTester(projectSpec)
     }
   }
 }

@@ -181,23 +181,23 @@ class BrevityExecutionTester(
 
   suspend fun generateBrevity() {
     executeIo("generateBrevity") {
-      collectNoIssuesOrThrow {
-        val generator = WitBridgeGenerator.precompile(
+      val generator = collectNoIssuesOrThrow {
+        WitBridgeGenerator.precompile(
           fileSystem = fileSystem,
           packageDirectories = listOf(layout.wit),
           customTypeMappings = types
             .filter { it.kotlinTypeMapping }
             .associate { "brevity:testing/types.${it.witType}" to it.kotlinType },
-        ) ?: return@collectNoIssuesOrThrow
-
-        val projectSpec = generator.generate()
-        projectSpec.writeTo(
-          fileSystem = fileSystem,
-          commonMain = layout.brevitySrc,
-          wasmWasiMain = layout.brevitySrcWasmWasi,
-          jvmMain = layout.brevitySrcJvm,
         )
-      }
+      } ?: return@executeIo
+
+      val projectSpec = generator.generate()
+      projectSpec.writeTo(
+        fileSystem = fileSystem,
+        commonMain = layout.brevitySrc,
+        wasmWasiMain = layout.brevitySrcWasmWasi,
+        jvmMain = layout.brevitySrcJvm,
+      )
     }
   }
 

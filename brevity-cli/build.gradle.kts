@@ -18,6 +18,7 @@ dependencies {
   implementation(libs.clikt)
   implementation(libs.clikt.core)
   implementation(libs.kotlinpoet)
+  implementation(libs.kotlinx.coroutines.core)
   implementation(libs.okio)
   implementation(projects.brevityKotlinGenerator)
   implementation(projects.brevityWit)
