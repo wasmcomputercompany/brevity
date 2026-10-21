@@ -708,10 +708,7 @@ class BridgeEveryTypeTest {
           kotlinType = "Map<String, String>",
           rustType = "std::collections::BTreeMap<String, String>",
           values = listOf(
-            SampleValue(
-              kotlin = "mapOf<String, String>()",
-              rust = "std::collections::BTreeMap::new()",
-            ),
+            SampleValue(kotlin = "mapOf<String, String>()", rust = "std::collections::BTreeMap::new()",),
             SampleValue(
               kotlin = "mapOf(\"hello\" to \"world\", \"foo\" to \"bar\")",
               rust = "std::collections::BTreeMap::from([(\"foo\".to_string(), \"bar\".to_string()), (\"hello\".to_string(), \"world\".to_string())])",
@@ -729,10 +726,7 @@ class BridgeEveryTypeTest {
           kotlinType = "Map<Boolean, String>",
           rustType = "std::collections::BTreeMap<bool, String>",
           values = listOf(
-            SampleValue(
-              kotlin = "mapOf<Boolean, String>()",
-              rust = "std::collections::BTreeMap::new()",
-            ),
+            SampleValue(kotlin = "mapOf<Boolean, String>()", rust = "std::collections::BTreeMap::new()",),
             SampleValue(
               kotlin = "mapOf(true to \"let's go\")",
               rust = "std::collections::BTreeMap::from([(true, \"let's go\".to_string())])",
@@ -744,7 +738,102 @@ class BridgeEveryTypeTest {
           ),
           borrowRustValue = { "&($it)" },
         ),
-        // TODO: Add tests for all key types and complex values.
+        SampleType(
+          id = Identifier("byte-to-ulong"),
+          witType = "map<s8, u64>",
+          kotlinType = "Map<Byte, ULong>",
+          rustType = "std::collections::BTreeMap<i8, u64>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<Byte, ULong>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(kotlin.Byte.MIN_VALUE to kotlin.ULong.MIN_VALUE, kotlin.Byte.MAX_VALUE to kotlin.ULong.MAX_VALUE)",
+              rust = "std::collections::BTreeMap::from([(i8::MIN, u64::MIN), (i8::MAX, u64::MAX)])",
+            ),
+            SampleValue(
+              kotlin = "mapOf((-1).toByte() to 1UL, 1.toByte() to 2UL, 0.toByte() to 3UL)",
+              rust = "std::collections::BTreeMap::from([(-1, 1), (1, 2), (0, 3)])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
+        SampleType(
+          id = Identifier("ulong-to-byte"),
+          witType = "map<u64, s8>",
+          kotlinType = "Map<ULong, Byte>",
+          rustType = "std::collections::BTreeMap<u64, i8>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<ULong, Byte>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(kotlin.ULong.MIN_VALUE to kotlin.Byte.MIN_VALUE, kotlin.ULong.MAX_VALUE to kotlin.Byte.MAX_VALUE)",
+              rust = "std::collections::BTreeMap::from([(u64::MIN, i8::MIN), (u64::MAX, i8::MAX)])",
+            ),
+            SampleValue(
+              kotlin = "mapOf(1UL to (-1).toByte(), 2UL to 1.toByte(), 3UL to 0.toByte())",
+              rust = "std::collections::BTreeMap::from([(1, -1), (2, 1), (3, 0)])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
+        SampleType(
+          id = Identifier("char-to-uint"),
+          witType = "map<char, u32>",
+          kotlinType = "Map<Int, UInt>",
+          rustType = "std::collections::BTreeMap<char, u32>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<Int, UInt>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(0 to 0U, 'a'.code to 5U, 0x1F369 to kotlin.UInt.MAX_VALUE, 0x10FFFF to 1U)",
+              rust = "std::collections::BTreeMap::from([('\\u{0}',0), ('a', 5), ('\\u{1F369}', u32::MAX), ('\\u{10FFFF}', 1)])",
+            ),
+            SampleValue(
+              kotlin = "mapOf('x'.code to 1U, 'y'.code to 2U)",
+              rust = "std::collections::BTreeMap::from([('x', 1), ('y', 2)])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
+        SampleType(
+          id = Identifier("uint-to-optional-string"),
+          witType = "map<u32, option<string>>",
+          kotlinType = "Map<UInt, String?>",
+          rustType = "std::collections::BTreeMap<u32, Option<String>>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<UInt, String?>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(kotlin.UInt.MIN_VALUE to null, kotlin.UInt.MAX_VALUE to \"max\")",
+              rust = "std::collections::BTreeMap::from([(u32::MIN, None), (u32::MAX, Some(\"max\".to_string()))])",
+            ),
+            SampleValue(
+              kotlin = "mapOf(1U to \"one\", 2U to null, 3U to \"\")",
+              rust = "std::collections::BTreeMap::from([(1, Some(\"one\".to_string())), (2, None), (3, Some(\"\".to_string()))])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
+        SampleType(
+          id = Identifier("nested-dictionary"),
+          witType = "map<string, map<string, u32>>",
+          kotlinType = "Map<String, Map<String, UInt>>",
+          rustType = "std::collections::BTreeMap<String, std::collections::BTreeMap<String, u32>>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<String, Map<String, UInt>>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(\"empty\" to mapOf<String, UInt>(), \"full\" to mapOf(\"a\" to 1U, \"b\" to 2U))",
+              rust = "std::collections::BTreeMap::from([" +
+                "(\"empty\".to_string(), std::collections::BTreeMap::new()), " +
+                "(\"full\".to_string(), std::collections::BTreeMap::from([(\"a\".to_string(), 1),(\"b\".to_string(), 2)]))" +
+                "])",
+            ),
+            SampleValue(
+              kotlin = "mapOf(\"solo\" to mapOf(\"z\" to kotlin.UInt.MAX_VALUE), \"\" to mapOf(\"\" to 0U))",
+              rust = "std::collections::BTreeMap::from([" +
+                "(\"solo\".to_string(), std::collections::BTreeMap::from([(\"z\".to_string(), u32::MAX)])), " +
+                "(\"\".to_string(), std::collections::BTreeMap::from([(\"\".to_string(), 0)]))" +
+                "])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
       ),
     )
 
