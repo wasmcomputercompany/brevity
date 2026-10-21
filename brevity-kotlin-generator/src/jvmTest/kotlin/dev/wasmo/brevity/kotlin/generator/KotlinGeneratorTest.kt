@@ -455,7 +455,7 @@ class KotlinGeneratorTest {
       internal class GuestTypes : Types {
         override fun now(): Datetime {
           val result = withScopedMemoryAllocator { memoryAllocator ->
-            val resultParameter = memoryAllocator.allocate(12)
+            val resultParameter = memoryAllocator.allocate(16)
             val result = types_now_import(
               resultParameter.address.toInt(),
             )
