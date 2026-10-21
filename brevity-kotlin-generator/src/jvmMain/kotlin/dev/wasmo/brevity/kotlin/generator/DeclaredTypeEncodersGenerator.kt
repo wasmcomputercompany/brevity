@@ -17,8 +17,8 @@ class DeclaredTypeEncodersGenerator(
     type: IrTypeDeclaration,
     roles: RoleTracker.Entry,
   ) {
-    val isHost = platform is HostPlatform
-    val isGuest = platform is GuestPlatform
+    val isHost = platform == HostPlatform
+    val isGuest = platform == GuestPlatform
     generate(
       type = type,
       encode = isHost && roles.host || isGuest && roles.guest,

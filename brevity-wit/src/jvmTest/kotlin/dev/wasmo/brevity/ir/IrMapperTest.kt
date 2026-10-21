@@ -8,7 +8,6 @@ import assertk.assertions.isNull
 import dev.wasmo.brevity.FunctionNameConstructor
 import dev.wasmo.brevity.FunctionNameInterface
 import dev.wasmo.brevity.FunctionNameMethod
-import dev.wasmo.brevity.FunctionNameResourceDrop
 import dev.wasmo.brevity.FunctionNameStatic
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
@@ -484,15 +483,15 @@ class IrMapperTest {
           packageName = "wasi:clocks@0.3.0".toPackageName(),
           files = listOf(
             """
-          |package wasi:clocks@0.3.0;
-          |
-          |world clocks-world {
-          |}
-          |
-          |interface monotonic-clock {
-          |  now: func() -> s64;
-          |}
-          """.trimMargin().toWitFile(worldLocation),
+            |package wasi:clocks@0.3.0;
+            |
+            |world clocks-world {
+            |}
+            |
+            |interface monotonic-clock {
+            |  now: func() -> s64;
+            |}
+            """.trimMargin().toWitFile(worldLocation),
           ),
         ),
       )
@@ -840,10 +839,6 @@ class IrMapperTest {
         name = "clone",
         resourceName = "fields",
       ),
-      FunctionNameResourceDrop(
-        serviceName = "wasi:http/types@0.3.0",
-        resourceName = "fields",
-      ),
     )
   }
 
@@ -975,14 +970,6 @@ class IrMapperTest {
                     functionName = FunctionNameMethod(
                       serviceName = "test:types/all-types",
                       name = "write",
-                      resourceName = "my-resource",
-                    ),
-                  ),
-                  IrFunction(
-                    location = location.at(16, 5),
-                    name = "close",
-                    functionName = FunctionNameResourceDrop(
-                      serviceName = "test:types/all-types",
                       resourceName = "my-resource",
                     ),
                   ),

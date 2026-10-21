@@ -105,10 +105,18 @@ fun validateUniqueServiceNames(toplevelPackages: List<IoToplevelWitPackage>):
       for (item in file.items) {
         when (item) {
           is IoInlinePackage -> processInlinePackage(item, ::addService)
-          is IoInterface, is IoWorld -> addService(
-            ServiceName(pkg.packageName, item.name),
-            item,
-          )
+          is IoInterface -> {
+            addService(ServiceName(pkg.packageName, item.name), item)
+          }
+          is IoWorld -> {
+            addService(ServiceName(pkg.packageName, item.name), item)
+            for (inlineInterface in item.exports.filterIsInstance<IoInterface>()) {
+              addService(ServiceName(pkg.packageName, inlineInterface.name), inlineInterface)
+            }
+            for (inlineInterface in item.imports.filterIsInstance<IoInterface>()) {
+              addService(ServiceName(pkg.packageName, inlineInterface.name), inlineInterface)
+            }
+          }
 
           is IoTopLevelUse -> {}
         }

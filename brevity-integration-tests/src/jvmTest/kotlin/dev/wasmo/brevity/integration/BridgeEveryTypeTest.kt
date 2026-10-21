@@ -3,7 +3,6 @@ package dev.wasmo.brevity.integration
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.integration.CallingMechanism.Async
-import dev.wasmo.brevity.integration.FunctionParent.World
 import dev.wasmo.brevity.integration.PassingMechanism.Parameter
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
@@ -232,20 +231,17 @@ class BridgeEveryTypeTest {
   fun enums() = runTest {
     val test = BrevityExecutionTester(
       name = "enums",
-      rawWit = """
-        |interface types {
-        |  enum shaker {
-        |    salt,
-        |    pepper,
-        |  }
-        |  enum max-byte-enum {
-        |    ${List(256) { "v$it" }.joinToString(separator = ",")}
-        |  }
-        |  enum min-short-enum {
-        |    ${List(257) { "v$it" }.joinToString(separator = ",")}
-        |  }
+      rawWitTypeDeclarations = """
+        |enum shaker {
+        |  salt,
+        |  pepper,
         |}
-        |
+        |enum max-byte-enum {
+        |  ${List(256) { "v$it" }.joinToString(separator = ",")}
+        |}
+        |enum min-short-enum {
+        |  ${List(257) { "v$it" }.joinToString(separator = ",")}
+        |}
         """.trimMargin(),
       rawWitUseStatements = """
         |use types.{shaker, max-byte-enum, min-short-enum};
@@ -480,7 +476,7 @@ class BridgeEveryTypeTest {
         when {
           // Several cases are disabled here due to a bug in wit-bindgen
           // https://github.com/bytecodealliance/wit-bindgen/issues/1728
-          functionParent != World -> false
+          !functionParent.isWorld -> false
           callingMechanism == Async && type.id == Identifier("sized-list-string") -> false
           orientation == Import && type.id == Identifier("sized-list-string") -> false
           // wit-bindgen panics on sized-lists + async + import.
@@ -504,23 +500,16 @@ class BridgeEveryTypeTest {
       17, // min int
       32, // max int
     )
-    val allFlagsDeclarations = enumSizes.joinToString(separator = "\n") { story ->
-      """
-      |  flags elevator-${story}-story {
-      |    ${List(story) { "floor-${it + 1}-chosen" }.joinToString(separator = ",")}
-      |  }
-      |
-      """.trimMargin()
-    }
     val test = BrevityExecutionTester(
       name = "flags",
-      rawWit =
+      rawWitTypeDeclarations = enumSizes.joinToString(separator = "\n") { story ->
         """
-        |interface types {
-        |$allFlagsDeclarations
+        |flags elevator-${story}-story {
+        |  ${List(story) { "floor-${it + 1}-chosen" }.joinToString(separator = ",")}
         |}
         |
-        """.trimMargin(),
+        """.trimMargin()
+      },
       rawWitUseStatements = """
         |use types.{${enumSizes.joinToString { "elevator-$it-story" }}};
         |
@@ -588,11 +577,8 @@ class BridgeEveryTypeTest {
   fun typeAliases() = runTest {
     val test = BrevityExecutionTester(
       name = "typeAliases",
-      rawWit = """
-        |interface types {
-        |  type email-address = string;
-        |}
-        |
+      rawWitTypeDeclarations = """
+        |type email-address = string;
         """.trimMargin(),
       rawWitUseStatements = """
         |use types.{email-address};
@@ -626,15 +612,12 @@ class BridgeEveryTypeTest {
   fun tuples() = runTest {
     val test = BrevityExecutionTester(
       name = "tuples",
-      rawWit = """
-        |interface types {
-        |  enum colour-space {
-        |    srgb,
-        |    linear-srgb,
-        |    display-p3,
-        |  }
+      rawWitTypeDeclarations = """
+        |enum colour-space {
+        |  srgb,
+        |  linear-srgb,
+        |  display-p3,
         |}
-        |
         """.trimMargin(),
       rawWitUseStatements = """
         |use types.{colour-space};

@@ -1,7 +1,6 @@
 package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.Orientation
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 import okio.Path.Companion.toPath
@@ -11,11 +10,8 @@ class WitAdapterTest {
   fun happyPath() = runTest {
     val test = BrevityExecutionTester(
       name = "witAdapterHappyPath",
-      rawWit = """
-        |interface types {
-        |  type datetime = s64;
-        |}
-        |
+      rawWitTypeDeclarations = """
+        |type datetime = s64;
         """.trimMargin(),
       rawWitUseStatements = """
         |use types.{datetime};

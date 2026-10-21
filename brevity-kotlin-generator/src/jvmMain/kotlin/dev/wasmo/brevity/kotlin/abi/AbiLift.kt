@@ -12,6 +12,8 @@ import dev.wasmo.brevity.kotlin.abi.AbiFunction.Result.Void
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.withMemoryAllocator
 import dev.wasmo.brevity.kotlin.encoders.CoreType
+import dev.wasmo.brevity.kotlin.encoders.liftResource
+import dev.wasmo.brevity.kotlin.encoders.lowerResource
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
@@ -34,6 +36,16 @@ fun AbiLift(
       parentService = parentService,
       abiFunction = abiFunction,
       liftedFunction = CallLifted(abiFunction),
+    )
+
+    abiFunction.name is FunctionName.ResourceNew -> AbiResourceNewLift(
+      parentService = parentService,
+      abiFunction = abiFunction,
+    )
+
+    abiFunction.name is FunctionName.ResourceDrop -> AbiResourceDropLift(
+      parentService = parentService,
+      abiFunction = abiFunction,
     )
 
     abiFunction.name is FunctionName.AsyncExportCallback -> object : KtFunction {
@@ -118,6 +130,42 @@ private class AbiTaskReturnLift(
   }
 }
 
+private class AbiResourceNewLift(
+  private val parentService: AbiService,
+  private val abiFunction: AbiFunction,
+) : KtFunction {
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    check(receiver == null)
+    codeBuilder.platform.afterLiftParameters()
+    codeBuilder.addStatement("// TODO: AbiResourceNewLift")
+    return CodeBlockExpression(
+      INT,
+      "index",
+      CodeBlock.of("%L", 0),
+    )
+  }
+}
+
+private class AbiResourceDropLift(
+  private val parentService: AbiService,
+  private val abiFunction: AbiFunction,
+) : KtFunction {
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    check(receiver == null)
+    codeBuilder.platform.afterLiftParameters()
+    codeBuilder.addStatement("// TODO: AbiResourceDropLift")
+    return KtExpression.Unit
+  }
+}
+
 /** The function returns a `PackedAsyncResult`. */
 private class AbiLiftAsyncExport(
   private val parentService: AbiService,
@@ -161,9 +209,9 @@ private class AbiLiftAsyncExport(
         abiFunction.isResource -> CodeBlockExpression(
           type = INT,
           nameHint = "id",
-          code = codeBuilder.platform.lowerResource(
+          code = lowerResource(
             resource = liftedReceiverValue.code,
-            handleType = (parentService as AbiResource).type,
+            abiClassName = parentService.apiClassName,
           ),
           immediate = true,
         )
@@ -172,6 +220,7 @@ private class AbiLiftAsyncExport(
       }
 
       val taskReturn = AbiLower(
+        abiService = parentService,
         abiFunction = (abiFunction.result as AbiFunction.Result.CallTaskReturn).taskReturn,
         resourceId = resourceId,
       )
@@ -256,9 +305,9 @@ private fun AbiService.liftReceiver(
       CodeBlockExpression(
         type = this.apiClassName,
         nameHint = "receiver",
-        code = codeBuilder.platform.liftResource(
+        code = liftResource(
           id = p.next().code,
-          handleType = this.type,
+          abiClassName = apiClassName,
         ),
       )
     }

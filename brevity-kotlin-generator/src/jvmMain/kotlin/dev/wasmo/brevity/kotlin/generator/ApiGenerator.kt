@@ -57,7 +57,6 @@ class ApiGenerator(
       }
     }
     for (resource in resources) {
-      if (resource.orientation != Orientation.Export) continue // Either one, but only once.
       val resourceName = resource.apiClassName
       result.collect(
         sourceSet = QualifiedSpec.SourceSet.CommonMain,
@@ -119,7 +118,7 @@ class ApiGenerator(
             if (!abiFunction.isSupported) continue
             if (abiFunction.isSynthetic) continue
             // Don't override close(), it's inherited from the 'Resource' supertype.
-            if (abiFunction.name is FunctionName.ResourceDrop) continue
+            if (abiFunction.name is FunctionName.ResourceClose) continue
             addFunction(apiFunctionFactory.create(abiFunction))
           }
         }
@@ -257,7 +256,7 @@ class ApiGenerator(
   private fun generateServiceInterface(abiService: AbiService) {
     val typeName = abiService.apiClassName
     val typeSpecBuilder = when {
-      abiService is AbiWorld || abiService.functions.isEmpty() -> TypeSpec.objectBuilder(typeName)
+      abiService is AbiWorld -> TypeSpec.objectBuilder(typeName)
       else -> TypeSpec.interfaceBuilder(typeName)
     }
 

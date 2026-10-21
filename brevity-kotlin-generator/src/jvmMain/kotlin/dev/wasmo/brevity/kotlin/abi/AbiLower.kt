@@ -17,11 +17,12 @@ import dev.wasmo.brevity.kotlin.expressions.KtFunction
 
 context(codeBuilder: CodeBuilder)
 fun AbiLower(
+  abiService: AbiService,
   abiFunction: AbiFunction,
   resourceId: KtExpression?,
 ): KtFunction = AbiLower(
   abiFunction = abiFunction,
-  loweredFunction = codeBuilder.platform.createLowered(abiFunction),
+  loweredFunction = codeBuilder.platform.createLowered(abiService, abiFunction),
   resourceId = resourceId,
 )
 

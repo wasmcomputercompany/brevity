@@ -2,6 +2,8 @@ package dev.wasmo.brevity.integration
 
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.Orientation.Export
+import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import dev.wasmo.brevity.kotlin.generator.lowerSnakeCase
 import okio.Buffer
@@ -11,9 +13,11 @@ data class TestFunction(
   val functionParent: FunctionParent,
   val passingMechanism: PassingMechanism,
   val callingMechanism: CallingMechanism,
-  val orientation: Orientation,
   val type: SampleType,
 ) {
+  val orientation: Orientation
+    get() = functionParent.orientation
+
   val testCases: List<TestCase>
     get() = type.values.indices.map { TestCase(this, it) }
 
@@ -41,6 +45,9 @@ data class TestFunction(
     }.joinToString(separator = "-"),
   )
 
+  val trampolineIdentifier: Identifier
+    get() = Identifier("$identifier-${functionParent.keyword}-trampoline")
+
   val padding: Int
     get() = (passingMechanism as? PassingMechanism.Parameter)?.padding ?: 0
 
@@ -48,21 +55,21 @@ data class TestFunction(
     get() = copy(
       passingMechanism = PassingMechanism.Return,
       callingMechanism = CallingMechanism.Sync,
-      orientation = Orientation.Export,
+      functionParent = functionParent.export(),
     )
 
   private val valueToIndexFunction: TestFunction
     get() = copy(
       passingMechanism = PassingMechanism.Parameter(),
       callingMechanism = CallingMechanism.Sync,
-      orientation = Orientation.Export,
+      functionParent = functionParent.export(),
     )
 
   override fun toString() = identifier.name
 
   fun BufferedSink.witDeclare() {
     val orientationModifier = when {
-      functionParent == FunctionParent.World -> "${orientation.keyword} "
+      functionParent.isWorld -> "${orientation.keyword} "
       else -> ""
     }
 
@@ -73,14 +80,14 @@ data class TestFunction(
 
     writeUtf8(
       """
-      |  $orientationModifier$identifier:$syncModifier func(
+      |$orientationModifier$identifier:$syncModifier func(
       |
       """.trimMargin(),
     )
     for (i in 0 until padding) {
       writeUtf8(
         """
-        |    p$i: s32,
+        |  p$i: s32,
         |
         """.trimMargin(),
       )
@@ -89,8 +96,8 @@ data class TestFunction(
       is PassingMechanism.Parameter -> {
         writeUtf8(
           """
-          |    v: ${type.witType},
-          |  ) -> s32;
+          |  v: ${type.witType},
+          |) -> s32;
           |
           """.trimMargin(),
         )
@@ -99,8 +106,8 @@ data class TestFunction(
       PassingMechanism.Return -> {
         writeUtf8(
           """
-          |    index: s32,
-          |  ) -> ${type.witType};
+          |  index: s32,
+          |) -> ${type.witType};
           |
           """.trimMargin(),
         )
@@ -113,31 +120,12 @@ data class TestFunction(
       CallingMechanism.Async -> " async"
       CallingMechanism.Sync -> ""
     }
-    val orientationModifier = when {
-      functionParent == FunctionParent.World -> "export "
-      else -> ""
-    }
     writeUtf8(
       """
-      |  $orientationModifier$identifier-trampoline:$syncModifier func(index: s32) -> s32;
+      |export $trampolineIdentifier:$syncModifier func(index: s32) -> s32;
       |
       """.trimMargin(),
     )
-  }
-
-  fun BufferedSink.rustDeclareGuestFunctions() {
-    when (orientation) {
-      Orientation.Export -> {
-        rustDeclare()
-      }
-
-      Orientation.Import -> {
-        if (functionParent != FunctionParent.World) {
-          rustDeclareFunctionStub()
-        }
-        rustDeclareTrampoline()
-      }
-    }
   }
 
   fun BufferedSink.rustDeclareTrampoline() {
@@ -148,19 +136,29 @@ data class TestFunction(
 
     writeUtf8(
       """
-      |    ${modifiers}fn ${identifier.lowerSnakeCase}_trampoline(index: i32) -> i32 {
+      |    ${modifiers}fn ${trampolineIdentifier.lowerSnakeCase}(index: i32) -> i32 {
       |
       """.trimMargin(),
     )
 
-    val callTarget = when (functionParent) {
-      FunctionParent.World -> "bindings"
-      else -> "bindings::brevity::testing::${functionParent.identifier.lowerSnakeCase}"
+    val callTarget = when {
+      functionParent.isWorld -> "bindings::"
+      functionParent.isResource -> {
+        writeUtf8(
+          """
+          |        let resource = bindings::brevity::testing::${functionParent.serviceName.lowerSnakeCase}::create();
+          |
+          """.trimMargin(),
+        )
+        "resource."
+      }
+
+      else -> "bindings::brevity::testing::${functionParent.identifier.lowerSnakeCase}::"
     }
 
     when (passingMechanism) {
       is PassingMechanism.Parameter -> {
-        val value = indexToValueFunction.rustCall("Self", "index", "panic!()")
+        val value = indexToValueFunction.rustCall("Self::", "index", "panic!()")
         val call = rustCall(callTarget, "panic!()", "value")
         writeUtf8(
           """
@@ -174,7 +172,7 @@ data class TestFunction(
 
       PassingMechanism.Return -> {
         val call = rustCall(callTarget, "index", "panic!()")
-        val resultIndex = valueToIndexFunction.rustCall("Self", "panic!()", "value")
+        val resultIndex = valueToIndexFunction.rustCall("Self::", "panic!()", "value")
         writeUtf8(
           """
           |        let value = ${call.replace("\n", "\n        ")};
@@ -187,7 +185,7 @@ data class TestFunction(
     }
   }
 
-  private fun BufferedSink.rustDeclare() {
+  fun BufferedSink.rustDeclare() {
     rustDeclareWithSignature {
       maybeWriteSleepRust()
 
@@ -267,7 +265,7 @@ data class TestFunction(
   private fun BufferedSink.rustDeclareWithSignature(body: BufferedSink.() -> Unit) {
     val bodyString = Buffer().run {
       body()
-      readUtf8()
+      readUtf8().trim()
     }
 
     val modifiers = when (callingMechanism) {
@@ -281,6 +279,15 @@ data class TestFunction(
       |
       """.trimMargin(),
     )
+    if (functionParent.isResource) {
+      writeUtf8(
+        """
+        |        &self,
+        |
+        """.trimMargin(),
+      )
+    }
+
     for (i in 0 until padding) {
       writeUtf8(
         """
@@ -321,36 +328,6 @@ data class TestFunction(
     )
   }
 
-  fun BufferedSink.kotlinDeclareGuestFunctions() {
-    when (orientation) {
-      Orientation.Export -> {
-        kotlinDeclare()
-      }
-
-      Orientation.Import -> {
-        if (functionParent != FunctionParent.World) {
-          kotlinDeclareFunctionStub()
-        }
-        kotlinDeclareTrampoline()
-      }
-    }
-  }
-
-  fun BufferedSink.kotlinDeclareHostFunctions() {
-    when (orientation) {
-      Orientation.Export -> {
-        if (functionParent != FunctionParent.World) {
-          kotlinDeclareFunctionStub()
-        }
-      }
-
-      Orientation.Import -> {
-        kotlinDeclare()
-        kotlinDeclareTrampolineStub()
-      }
-    }
-  }
-
   fun BufferedSink.kotlinDeclareTrampoline() {
     val modifiers = when (callingMechanism) {
       CallingMechanism.Async -> " suspend"
@@ -359,14 +336,17 @@ data class TestFunction(
 
     writeUtf8(
       """
-      |  override$modifiers fun ${identifier.lowerCamelCase}Trampoline(index: Int): Int {
+      |override$modifiers fun ${trampolineIdentifier.lowerCamelCase}(index: Int): Int {
       |
       """.trimMargin(),
     )
 
-    val callTarget = when (functionParent) {
-      FunctionParent.World -> "TestWorld.host"
-      FunctionParent.Interface -> "TestWorld.host.testInterface"
+    val callTarget = when {
+      functionParent.isWorld -> "TestWorld.host"
+      functionParent.isResource ->
+        "TestWorld.host.${functionParent.serviceName.lowerCamelCase}.create()"
+
+      else -> "TestWorld.host.${functionParent.serviceName.lowerCamelCase}"
     }
 
     when (passingMechanism) {
@@ -375,8 +355,8 @@ data class TestFunction(
         val call = kotlinCall(callTarget, "Nothing", value)
         writeUtf8(
           """
-          |    return ${call.replace("\n", "\n    ")}
-          |  }
+          |  return ${call.replace("\n", "\n    ")}
+          |}
           |
           """.trimMargin(),
         )
@@ -387,9 +367,9 @@ data class TestFunction(
         val resultIndex = valueToIndexFunction.kotlinCall("this", "Nothing", "value")
         writeUtf8(
           """
-          |    val value = ${call.replace("\n", "\n    ")}
-          |    return ${resultIndex.replace("\n", "\n    ")}
-          |  }
+          |  val value = ${call.replace("\n", "\n    ")}
+          |  return ${resultIndex.replace("\n", "\n    ")}
+          |}
           |
           """.trimMargin(),
         )
@@ -397,24 +377,7 @@ data class TestFunction(
     }
   }
 
-  fun BufferedSink.kotlinDeclareTrampolineStub() {
-    // We don't declare export functions on the world.
-    if (functionParent == FunctionParent.World) return
-
-    val modifiers = when (callingMechanism) {
-      CallingMechanism.Async -> " suspend"
-      CallingMechanism.Sync -> ""
-    }
-
-    writeUtf8(
-      """
-      |  override$modifiers fun ${identifier.lowerCamelCase}Trampoline(index: Int): Int = error("unexpected call")
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.kotlinDeclare() {
+  fun BufferedSink.kotlinDeclare() {
     kotlinDeclareWithSignature {
       maybeWriteSleepKotlin()
 
@@ -488,20 +451,10 @@ data class TestFunction(
     }
   }
 
-  private fun BufferedSink.kotlinDeclareFunctionStub() {
-    kotlinDeclareWithSignature {
-      writeUtf8(
-        """
-        |error("unexpected call")
-        """.trimMargin(),
-      )
-    }
-  }
-
   private fun BufferedSink.kotlinDeclareWithSignature(body: BufferedSink.() -> Unit) {
     val bodyString = Buffer().run {
       body()
-      readUtf8()
+      readUtf8().trim()
     }
 
     val modifiers = when (callingMechanism) {
@@ -615,7 +568,7 @@ data class TestFunction(
     val call = Buffer().apply {
       writeUtf8(
         """
-        |$callTarget::${identifier.lowerSnakeCase}(
+        |$callTarget${identifier.lowerSnakeCase}(
         |
         """.trimMargin(),
       )
@@ -630,7 +583,7 @@ data class TestFunction(
       }
 
       val transformedValue = when {
-        orientation == Orientation.Import && callingMechanism == CallingMechanism.Sync ->
+        orientation == Import && callingMechanism == CallingMechanism.Sync ->
           type.borrowRustValue(value)
 
         else -> value
@@ -679,7 +632,7 @@ data class TestFunction(
   fun kotlinCallTrampoline(
     callTarget: String,
     valueIndex: Int,
-  ) = "$callTarget.${identifier.lowerCamelCase}Trampoline($valueIndex)"
+  ) = "$callTarget.${trampolineIdentifier.lowerCamelCase}($valueIndex)"
 
   private fun BufferedSink.maybeWriteSleepKotlin() {
     if (!sleep) return
@@ -703,7 +656,7 @@ data class TestFunction(
 
   private val Orientation.keyword: String
     get() = when (this) {
-      Orientation.Export -> "export"
-      Orientation.Import -> "import"
+      Export -> "export"
+      Import -> "import"
     }
 }

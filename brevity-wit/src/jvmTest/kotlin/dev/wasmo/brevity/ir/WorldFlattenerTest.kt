@@ -3,7 +3,6 @@ package dev.wasmo.brevity.ir
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.FunctionNameMethod
-import dev.wasmo.brevity.FunctionNameResourceDrop
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.TypeName
@@ -264,14 +263,6 @@ class WorldFlattenerTest {
                     returnType = TypeNameDeclared(
                       serviceName = "test:subject/subject-world",
                       typeName = "my-flags",
-                    ),
-                  ),
-                  IrFunction(
-                    location = subjectLocation.at(16, 5),
-                    name = "close",
-                    functionName = FunctionNameResourceDrop(
-                      serviceName = "test:subject/subject-world",
-                      resourceName = "my-resource",
                     ),
                   ),
                 ),

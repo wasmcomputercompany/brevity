@@ -7,23 +7,19 @@ import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation
-import dev.wasmo.brevity.TypeName
-import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
+import dev.wasmo.brevity.kotlin.abi.AbiService
 import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.abi.ChicoryExportFunction
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
-import dev.wasmo.brevity.kotlin.expressions.KtFunction
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.plus
 
-class HostPlatform(
-  private val kotlinMapper: KotlinMapper,
-) : Platform {
+object HostPlatform : Platform {
   override val identifier: Identifier
     get() = Identifier("host")
 
@@ -54,25 +50,6 @@ class HostPlatform(
   override fun lowerAddress(address: CodeBlock) = address
 
   override fun liftAddress(address: CodeBlock) = address
-
-  context(codeBuilder: CodeBuilder)
-  override fun liftResource(id: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of(
-      "%L.%M<%T>(%L)",
-      codeBuilder.bridge,
-      Symbols.Brevity.HostBridgeGet,
-      kotlinMapper.getAbiClassName(handleType),
-      id,
-    )
-
-  context(codeBuilder: CodeBuilder)
-  override fun lowerResource(resource: CodeBlock, handleType: TypeName.Declared) =
-    CodeBlock.of(
-      "%L.toId<%T>(%L)",
-      codeBuilder.bridge,
-      kotlinMapper.getAbiClassName(handleType),
-      resource,
-    )
 
   override fun getParent(parent: AbiWorld): KtExpression {
     return CodeBlockExpression(
@@ -189,8 +166,10 @@ class HostPlatform(
     )
   }
 
-  override fun createLowered(abiFunction: AbiFunction): KtFunction =
-    ChicoryExportFunction(abiFunction)
+  override fun createLowered(
+    abiService: AbiService,
+    abiFunction: AbiFunction,
+  ) = ChicoryExportFunction(abiFunction)
 
   private class HostMemoryAllocator(
     override val name: String,

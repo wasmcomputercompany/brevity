@@ -34,14 +34,6 @@ fun FunctionNameConstructor(
   name = Identifier(name),
 )
 
-fun FunctionNameResourceDrop(
-  serviceName: String,
-  resourceName: String,
-) = FunctionName.ResourceDrop(
-  serviceName = serviceName.toServiceName(),
-  resourceName = Identifier(resourceName),
-)
-
 fun FunctionNameInterface(
   serviceName: String,
   name: String,

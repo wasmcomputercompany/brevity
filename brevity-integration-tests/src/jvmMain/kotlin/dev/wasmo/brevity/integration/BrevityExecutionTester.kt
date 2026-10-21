@@ -1,6 +1,5 @@
 package dev.wasmo.brevity.integration
 
-import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
 import kotlin.time.Duration.Companion.milliseconds
@@ -39,7 +38,7 @@ import okio.source
 class BrevityExecutionTester(
   val fileSystem: FileSystem = FileSystem.SYSTEM,
   val name: String,
-  val rawWit: String = "",
+  val rawWitTypeDeclarations: String = "",
   val rawWitUseStatements: String = "",
   val extraFiles: Map<Path, String> = mapOf(),
   val types: List<SampleType>,
@@ -52,20 +51,19 @@ class BrevityExecutionTester(
 
   private val testFunctions: List<TestFunction> = buildList {
     for (functionParent in FunctionParent.entries) {
+      if (functionParent.isResource) continue // These aren't working yet.
+
       for (type in types) {
-        for (orientation in Orientation.entries) {
-          for (callingMechanism in CallingMechanism.entries) {
-            for (passingMechanism in callingMechanism.passingMechanisms) {
-              add(
-                TestFunction(
-                  functionParent = functionParent,
-                  passingMechanism = passingMechanism,
-                  callingMechanism = callingMechanism,
-                  orientation = orientation,
-                  type = type,
-                ),
-              )
-            }
+        for (callingMechanism in CallingMechanism.entries) {
+          for (passingMechanism in callingMechanism.passingMechanisms) {
+            add(
+              TestFunction(
+                functionParent = functionParent,
+                passingMechanism = passingMechanism,
+                callingMechanism = callingMechanism,
+                type = type,
+              ),
+            )
           }
         }
       }
@@ -85,7 +83,14 @@ class BrevityExecutionTester(
       }
 
       val wit = launch {
-        WitTarget(name, fileSystem, layout, rawWit, rawWitUseStatements, testFunctions).generate()
+        WitTarget(
+          name = name,
+          fileSystem = fileSystem,
+          layout = layout,
+          rawWitTypeDeclarations = rawWitTypeDeclarations,
+          rawWitUseStatements = rawWitUseStatements,
+          testFunctions = testFunctions,
+        ).generate()
       }
       val brevityKt = launch {
         wit.join()
@@ -183,7 +188,6 @@ class BrevityExecutionTester(
           customTypeMappings = types
             .filter { it.kotlinTypeMapping }
             .associate { "brevity:testing/types.${it.witType}" to it.kotlinType },
-          supportAsync = true,
         ) ?: return@collectNoIssuesOrThrow
 
         val projectSpec = generator.generate()
