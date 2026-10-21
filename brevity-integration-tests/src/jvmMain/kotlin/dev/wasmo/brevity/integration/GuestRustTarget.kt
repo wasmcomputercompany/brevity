@@ -54,6 +54,7 @@ class GuestRustTarget(
       |mod bindings {
       |    wit_bindgen::generate!({
       |        path: "../wit/bridge-type-$name-test.wit",
+      |        additional_derives: [PartialEq],
       |    });
       |
       |    use super::BrevityTesting;

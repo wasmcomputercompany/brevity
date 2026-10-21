@@ -459,6 +459,16 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "List(18) { i -> i }", rust = "(std::array::from_fn(|i| i as i32))"),
           ),
         ),
+        SampleType(
+          id = Identifier("fixed-list-padding"),
+          witType = "list<tuple<bool, s32>, 3>",
+          kotlinType = "List<Pair<Boolean, Int>>",
+          rustType = "[(bool, i32); 3]",
+          values = listOf(
+            SampleValue(kotlin = "listOf(true to 12, false to 6, true to kotlin.Int.MAX_VALUE)", rust = "[(true, 12), (false, 6), (true, 2147483647)]"),
+            SampleValue(kotlin = "listOf(false to 1, true to 2, true to 3)", rust = "[(false, 1), (true, 2), (true, 3)]"),
+          ),
+        ),
       ),
       predicate = {
         when {
@@ -736,6 +746,99 @@ class BridgeEveryTypeTest {
         ),
         // TODO: Add tests for all key types and complex values.
       ),
+    )
+
+    test.execute()
+  }
+
+  @Test
+  fun alignment() = runTest {
+    val test = BrevityExecutionTester(
+      name = "alignment",
+      rawWitTypeDeclarations = """
+        |record donut { name: string, sprinkles: bool }
+        |record order { rush: bool, donut: donut, count: u8 }
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{donut, order};
+        |
+        """.trimMargin(),
+      types = listOf(
+        SampleType(
+          id = Identifier("checklist-internal-padding"),
+          witType = "list<tuple<bool, string>>",
+          kotlinType = "List<Pair<Boolean, String>>",
+          rustType = "Vec<(bool, String)>",
+          values = listOf(
+            SampleValue(kotlin = "listOf<Pair<Boolean, String>>()", rust = "vec![] as Vec<(bool, String)>"),
+            SampleValue(
+              kotlin = "listOf(true to \"preheat the fryer\", false to \"glaze the \uD83C\uDF69s\")",
+              rust = "vec![(true, \"preheat the fryer\".to_string()), (false, \"glaze the \uD83C\uDF69s\".to_string())]"
+            ),
+            SampleValue(
+              kotlin = "listOf(true to \"turn off the fryer\",  true to \"turn off the \uD83D\uDCA1s\", false to \"\uD83D\uDD12 the \uD83D\uDEAA\")",
+              rust = "vec![(true, \"turn off the fryer\".to_string()), (true, \"turn off the \uD83D\uDCA1s\".to_string()), (false, \"\uD83D\uDD12 the \uD83D\uDEAA\".to_string())]"
+            ),
+          ),
+          borrowRustValue = { "&($it)" }
+        ),
+        SampleType(
+          id = Identifier("menu-trailing-padding"),
+          witType = "list<tuple<string, f64, bool>>",
+          kotlinType = "List<Triple<String, Double, Boolean>>",
+          rustType = "Vec<(String, f64, bool)>",
+          values = listOf(
+            SampleValue(kotlin = "listOf<Triple<String, Double, Boolean>>()", rust = "vec![] as Vec<(String, f64, bool)>"),
+            SampleValue(
+              kotlin = "listOf(Triple(\"Maple Dip\", 1.99, true), Triple(\"Pink Sprinkle\", 9.99, false))",
+              rust = "vec![(\"Maple Dip\".to_string(), 1.99, true), (\"Pink Sprinkle\".to_string(), 9.99, false)]"
+            ),
+            SampleValue(
+              kotlin = "listOf(Triple(\"\uD83D\uDCA1\", 0.99, true), Triple(\"Coffee\", 1.50, true), Triple(\"Latte\", 4.99, false))",
+              rust = "vec![(\"\uD83D\uDCA1\".to_string(), 0.99, true), (\"Coffee\".to_string(), 1.50, true), (\"Latte\".to_string(), 4.99, false)]"
+            ),
+          ),
+          borrowRustValue = { "&($it)" }
+        ),
+        SampleType(
+          id = Identifier("log-variant-padding"),
+          witType = "list<option<f64>>",
+          kotlinType = "List<Double?>",
+          rustType = "Vec<Option<f64>>",
+          values = listOf(
+            SampleValue(kotlin = "listOf<Double?>()", rust = "vec![] as Vec<Option<f64>>"),
+            SampleValue(kotlin = "listOf(180.1, null, 176.0)", rust = "vec![Some(180.1), None, Some(176.0)]"),
+            SampleValue(kotlin = "listOf(null, 190.25)", rust = "vec![None, Some(190.25)]"),
+          ),
+          borrowRustValue = { "&($it)" }
+        ),
+        SampleType(
+          id = Identifier("order-nested-offset"),
+          witType = "order",
+          kotlinType = "wit.brevity.testing.Order",
+          rustType = "bindings::Order",
+          values = listOf(
+            SampleValue(
+              kotlin = "wit.brevity.testing.Order( rush = false, donut = wit.brevity.testing.Donut( name = \"Maple Dip\", sprinkles = false ), count = 6.toUByte())",
+              rust = "(bindings::Order{ rush: false, donut: bindings::Donut{ name: \"Maple Dip\".to_string(), sprinkles: false }, count: 6 })"
+            ),
+            SampleValue(
+              kotlin = "wit.brevity.testing.Order( rush = true, donut = wit.brevity.testing.Donut( name = \"Pink Sprinkle\", sprinkles = true ), count = 12.toUByte())",
+              rust = "(bindings::Order{ rush: true, donut: bindings::Donut{ name: \"Pink Sprinkle\".to_string(), sprinkles: true }, count: 12 })"
+            ),
+            SampleValue(
+              kotlin = "wit.brevity.testing.Order( rush = false, donut = wit.brevity.testing.Donut( name = \"Vanilla\", sprinkles = true ), count = 1.toUByte())",
+              rust = "(bindings::Order{ rush: false, donut: bindings::Donut{ name: \"Vanilla\".to_string(), sprinkles: true }, count: 1 })"
+            ),
+            SampleValue(
+              kotlin = "wit.brevity.testing.Order( rush = true, donut = wit.brevity.testing.Donut( name = \"Boston Cream\", sprinkles = false ), count = 2.toUByte())",
+              rust = "(bindings::Order{ rush: true, donut: bindings::Donut{ name: \"Boston Cream\".to_string(), sprinkles: false }, count: 2 })"
+            ),
+          ),
+          borrowRustValue = { "&($it)" }
+        ),
+      )
     )
 
     test.execute()
