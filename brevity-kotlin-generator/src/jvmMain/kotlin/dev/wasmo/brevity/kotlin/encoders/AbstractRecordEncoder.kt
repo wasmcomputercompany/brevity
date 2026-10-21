@@ -9,10 +9,25 @@ abstract class AbstractRecordEncoder(
 ) : Encoder() {
   override val coreTypes = fieldEncoders.flatMap { it.coreTypes }
 
-  override val byteCount: Int
-    get() = fieldEncoders.sumOf { it.byteCount }
+  /** Each field's offset from the start of the record, padded to its alignment. */
+  private val fieldOffsets: List<Int>
 
-  override val alignment: Int
+  /** Total bytes this record takes up, including padding. */
+  final override val byteCount: Int
+
+  init {
+    var offset = 0
+    fieldOffsets = buildList {
+      fieldEncoders.forEach { encoder ->
+        offset = offset.alignTo(encoder.alignment)
+        add(offset)
+        offset += encoder.byteCount
+      }
+    }
+    byteCount = offset.alignTo(alignment)
+  }
+
+  final override val alignment: Int
     get() = fieldEncoders.maxOf { it.alignment }
 
   abstract val instanceNameHint: String
@@ -33,16 +48,13 @@ abstract class AbstractRecordEncoder(
     baseAddress: CodeBlock,
     offset: Int = 0,
   ) = buildList {
-    var offset = offset
-    for (fieldEncoder in fieldEncoders) {
-      offset = offset.alignTo(fieldEncoder.alignment)
+    fieldEncoders.forEachIndexed { index, fieldEncoder ->
       add(
         fieldEncoder.load(
           baseAddress = baseAddress,
-          offset = offset,
+          offset = offset + fieldOffsets[index],
         ),
       )
-      offset += fieldEncoder.byteCount
     }
   }
 
@@ -68,16 +80,13 @@ abstract class AbstractRecordEncoder(
     offset: Int = 0,
     fieldValues: List<CodeBlock>,
   ) {
-    var offset = offset
-    for ((index, fieldEncoder) in fieldEncoders.withIndex()) {
-      offset = offset.alignTo(fieldEncoder.alignment)
+    fieldEncoders.forEachIndexed { index, fieldEncoder ->
       fieldEncoder.store(
         memoryAllocator = memoryAllocator,
         baseAddress = baseAddress,
-        offset = offset,
+        offset = offset + fieldOffsets[index],
         value = fieldValues[index],
       )
-      offset += fieldEncoder.byteCount
     }
   }
 
