@@ -1,16 +1,14 @@
 package dev.wasmo.brevity
 
-import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
 import dev.wasmo.brevity.kotlin.generator.QualifiedSpec.SourceSet
+import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
 import okio.Path
 import okio.Path.Companion.toPath
 import okio.fakefilesystem.FakeFileSystem
 
 class BrevityTester(
-  val generator: WitBridgeGenerator,
+  generator: WitBridgeGenerator,
 ) {
-  val roleTracker = generator.roleTracker
-
   val projectSpec = generator.generate()
 
   private val apiFiles = buildMap {

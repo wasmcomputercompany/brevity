@@ -14,7 +14,6 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
-import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
@@ -30,7 +29,6 @@ class GuestGenerator(
   private val platform: GuestPlatform,
   private val platformFunctionFactory: PlatformFunctionFactory,
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
-  private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
   private val worlds: List<AbiWorld>,
 ) {
@@ -39,9 +37,6 @@ class GuestGenerator(
 
     for (type in packages.flatMap { it.services }.flatMap { it.types }) {
       val typeName = type.type
-      // TODO: this is hacked because we don't also prune unreachable callsites.
-      val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
-
       result.collect(
         sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
         locations = setOf(type.location),
@@ -49,29 +44,27 @@ class GuestGenerator(
         packageName = typeName.serviceName.kotlinApi.packageName,
         fileName = "${typeName.name.upperCamelCase}Guest",
       ) {
-        declaredTypeEncodersGenerator.generate(type, roles)
+        declaredTypeEncodersGenerator.generate(type)
       }
     }
 
-    for (abiWorld in worlds) {
-      for (abiService in abiWorld.allServices) {
-        val className = abiService.apiClassName
-        result.collect(
-          sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
-          packageName = className.packageName,
-          locations = setOf(abiService.location),
-          optIns = guestOptIns,
-          fileName = "${className.simpleName}Guest",
-        ) {
-          generateServiceFunctions(abiService)
-          when (abiService) {
-            is AbiResource -> generateAbiResourceClass(abiService)
-            is AbiInterface -> generateAbiInterfaceClass(abiService)
-            is AbiWorld -> {
-              generateWorldEntryPoint(abiWorld)
-              generateAbiWorldClass(abiWorld)
-              retainWasmExportsFunction(abiWorld)
-            }
+    for (abiService in worlds.flatMap { it.allServices }) {
+      val className = abiService.apiClassName
+      result.collect(
+        sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
+        packageName = className.packageName,
+        locations = setOf(abiService.location),
+        optIns = guestOptIns,
+        fileName = "${className.simpleName}Guest",
+      ) {
+        generateServiceFunctions(abiService)
+        when (abiService) {
+          is AbiResource -> generateAbiResourceClass(abiService)
+          is AbiInterface -> generateAbiInterfaceClass(abiService)
+          is AbiWorld -> {
+            generateWorldEntryPoint(abiService)
+            generateAbiWorldClass(abiService)
+            retainWasmExportsFunction(abiService)
           }
         }
       }

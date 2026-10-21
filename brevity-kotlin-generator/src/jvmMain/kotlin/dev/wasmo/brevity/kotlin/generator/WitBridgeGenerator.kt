@@ -3,7 +3,6 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.IssueCollector
-import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.io.validation.buildSymbolTable
@@ -28,7 +27,6 @@ class WitBridgeGenerator private constructor(
   val guest: GuestGenerator,
   val host: HostGenerator,
   val api: ApiGenerator,
-  val roleTracker: RoleTracker,
 ) {
   fun generate(): ProjectSpec {
     val specs = buildList {
@@ -76,7 +74,6 @@ class WitBridgeGenerator private constructor(
       val irPackages = irFilter(irMapper.map())
 
       val declarationIndex = DeclarationIndex(irPackages)
-      val roleTracker = RoleTracker(declarationIndex, irPackages)
 
       val kotlinMapper = KotlinMapper(
         customTypeMappings = customTypeMappings.entries.associate { (key, value) ->
@@ -92,14 +89,12 @@ class WitBridgeGenerator private constructor(
       val guestGenerator = guestGenerator(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        roleTracker = roleTracker,
         irPackages = irPackages,
         apiFunctionFactory = apiFunctionFactory,
       )
       val hostGenerator = hostGenerator(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        roleTracker = roleTracker,
         irPackages = irPackages,
         apiFunctionFactory = apiFunctionFactory,
       )
@@ -113,14 +108,12 @@ class WitBridgeGenerator private constructor(
         guest = guestGenerator,
         host = hostGenerator,
         api = apiGenerator,
-        roleTracker = roleTracker,
       )
     }
 
     private fun hostGenerator(
       kotlinMapper: KotlinMapper,
       declarationIndex: DeclarationIndex,
-      roleTracker: RoleTracker,
       irPackages: List<IrWitPackage>,
       apiFunctionFactory: ApiFunctionFactory,
     ): HostGenerator {
@@ -155,13 +148,11 @@ class WitBridgeGenerator private constructor(
       )
       val declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
         encoderFactory = encoderFactory,
-        platform = platform,
       )
       return HostGenerator(
         platformFunctionFactory = platformFunctionFactory,
         hostPlatform = platform,
         declaredTypeEncodersGenerator = declaredTypeEncodersGenerator,
-        roleTracker = roleTracker,
         packages = irPackages,
         worlds = worlds,
       )
@@ -170,7 +161,6 @@ class WitBridgeGenerator private constructor(
     private fun guestGenerator(
       kotlinMapper: KotlinMapper,
       declarationIndex: DeclarationIndex,
-      roleTracker: RoleTracker,
       irPackages: List<IrWitPackage>,
       apiFunctionFactory: ApiFunctionFactory,
     ): GuestGenerator {
@@ -205,13 +195,11 @@ class WitBridgeGenerator private constructor(
       )
       val declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
         encoderFactory = encoderFactory,
-        platform = platform,
       )
       return GuestGenerator(
         platform = platform,
         platformFunctionFactory = platformFunctionFactory,
         declaredTypeEncodersGenerator = declaredTypeEncodersGenerator,
-        roleTracker = roleTracker,
         packages = irPackages,
         worlds = worlds,
       )

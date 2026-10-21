@@ -16,7 +16,6 @@ import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
-import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
@@ -35,7 +34,6 @@ class HostGenerator(
   private val platformFunctionFactory: PlatformFunctionFactory,
   private val hostPlatform: HostPlatform,
   private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
-  private val roleTracker: RoleTracker,
   private val packages: List<IrWitPackage>,
   private val worlds: List<AbiWorld>,
 ) {
@@ -44,9 +42,6 @@ class HostGenerator(
 
     for (type in packages.flatMap { it.services }.flatMap { it.types }) {
       val typeName = type.type
-      // TODO: this is hacked because we don't also prune unreachable callsites.
-      val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
-
       result.collect(
         sourceSet = QualifiedSpec.SourceSet.JvmMain,
         locations = setOf(type.location),
@@ -54,7 +49,7 @@ class HostGenerator(
         packageName = typeName.serviceName.kotlinApi.packageName,
         fileName = "${typeName.name.upperCamelCase}Host",
       ) {
-        declaredTypeEncodersGenerator.generate(type, roles)
+        declaredTypeEncodersGenerator.generate(type)
       }
     }
 
