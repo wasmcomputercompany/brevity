@@ -713,6 +713,27 @@ class BridgeEveryTypeTest {
           ),
           borrowRustValue = { "&($it)" },
         ),
+        SampleType(
+          id = Identifier("bool-map"),
+          witType = "map<bool, string>",
+          kotlinType = "Map<Boolean, String>",
+          rustType = "std::collections::BTreeMap<bool, String>",
+          values = listOf(
+            SampleValue(
+              kotlin = "mapOf<Boolean, String>()",
+              rust = "std::collections::BTreeMap::new()",
+            ),
+            SampleValue(
+              kotlin = "mapOf(true to \"let's go\")",
+              rust = "std::collections::BTreeMap::from([(true, \"let's go\".to_string())])",
+            ),
+            SampleValue(
+              kotlin = "mapOf(true to \"affirmative\", false to \"\")",
+              rust = "std::collections::BTreeMap::from([(true, \"affirmative\".to_string()), (false, \"\".to_string())])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
         // TODO: Add tests for all key types and complex values.
       ),
     )
