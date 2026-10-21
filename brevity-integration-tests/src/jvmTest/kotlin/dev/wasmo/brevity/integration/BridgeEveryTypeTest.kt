@@ -3,7 +3,6 @@ package dev.wasmo.brevity.integration
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.integration.CallingMechanism.Async
-import dev.wasmo.brevity.integration.PassingMechanism.Parameter
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 
@@ -332,9 +331,9 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "\"abc\\u0000def\"", rust = "Some(\"abc\\u{0000}def\".to_string())"),
             SampleValue(kotlin = "\"\uD83C\uDF69\"", rust = "Some(\"\uD83C\uDF69\".to_string())"),
           ),
+          borrowRustValue = { "($it).as_deref()" },
         ),
       ),
-      predicate = ::expectedWorkingTests,
     )
 
     test.execute()
@@ -357,6 +356,7 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "booleanArrayOf(true)", rust = "vec![true]"),
             SampleValue(kotlin = "booleanArrayOf(true, false, true)", rust = "vec![true, false, true]"),
           ),
+          borrowRustValue = { "&($it)" },
         ),
         SampleType(
           id = Identifier("list-s32"),
@@ -370,6 +370,7 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "intArrayOf(kotlin.Int.MIN_VALUE, kotlin.Int.MAX_VALUE)", rust = "vec![-2147483648, 2147483647]"),
             SampleValue(kotlin = "IntArray(100) { i -> i + 32767  }", rust = "((32767..=32866).collect::<Vec<i32>>())"),
           ),
+          borrowRustValue = { "&($it)" },
         ),
         SampleType(
           id = Identifier("list-s64"),
@@ -383,6 +384,7 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "longArrayOf(kotlin.Long.MIN_VALUE, kotlin.Long.MAX_VALUE)", rust = "vec![-9223372036854775808, 9223372036854775807]"),
             SampleValue(kotlin = "LongArray(100) { i -> i + 2147483647L }", rust = "((2147483647..=2147483746).collect::<Vec<i64>>())"),
           ),
+          borrowRustValue = { "&($it)" },
         ),
         SampleType(
           id = Identifier("list-f64"),
@@ -406,6 +408,7 @@ class BridgeEveryTypeTest {
               rust = "vec![std::f64::INFINITY, std::f64::NEG_INFINITY]"
             ),
           ),
+          borrowRustValue = { "&($it)" },
         ),
         SampleType(
           id = Identifier("list-string"),
@@ -417,9 +420,9 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "listOf(\"hello\", \"world\")", rust = "[\"hello\", \"world\"].map(String::from).to_vec()"),
             SampleValue(kotlin = "listOf(\"\", \"abc\\u0000def\", \"\uD83C\uDF69\")", rust = "[\"\", \"abc\\u{0000}def\", \"\uD83C\uDF69\"].map(String::from).to_vec()"),
           ),
+          borrowRustValue = { "&($it)" },
         ),
       ),
-      predicate = ::expectedWorkingTests,
     )
 
     test.execute()
@@ -600,9 +603,9 @@ class BridgeEveryTypeTest {
               rust = "\"noreply@wasmo.com\"",
             ),
           ),
+          borrowRustValue = { "($it).as_str()" },
         ),
       ),
-      predicate = ::expectedWorkingTests,
     )
 
     test.execute()
@@ -671,6 +674,7 @@ class BridgeEveryTypeTest {
               rust = "(\"\".to_string(), std::f64::INFINITY, std::f64::NEG_INFINITY, std::f64::INFINITY)",
             ),
           ),
+          borrowRustValue = { "(($it).0.as_str(), ($it).1, ($it).2, ($it).3)" },
         ),
         SampleType(
           id = Identifier("quintuple-colour-space"),
@@ -693,7 +697,6 @@ class BridgeEveryTypeTest {
           ),
         ),
       ),
-      predicate = ::expectedWorkingTests,
     )
 
     test.execute()
@@ -730,14 +733,5 @@ class BridgeEveryTypeTest {
     )
 
     test.execute()
-  }
-
-  private fun expectedWorkingTests(
-    testFunction: TestFunction,
-  ): Boolean = when {
-    // Skip tests that don't compile because Rust uses `String` in some cases and `&str` in others,
-    // and we don't generate smart-enough code to convert between them.
-    testFunction.orientation == Import && testFunction.passingMechanism is Parameter -> false
-    else -> true
   }
 }
