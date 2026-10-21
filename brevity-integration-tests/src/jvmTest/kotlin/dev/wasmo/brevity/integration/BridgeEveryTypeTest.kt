@@ -208,7 +208,7 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "\"abc\\u0000def\"", rust = "\"abc\\u{0000}def\""),
             SampleValue(kotlin = "\"\uD83C\uDF69\"", rust = "\"\uD83C\uDF69\""),
           ),
-          borrowRustValue = { "($it).as_str()" },
+          borrowRustValue = { "&($it)" },
         ),
         SampleType(
           id = Identifier("char"),
@@ -603,7 +603,7 @@ class BridgeEveryTypeTest {
               rust = "\"noreply@wasmo.com\"",
             ),
           ),
-          borrowRustValue = { "($it).as_str()" },
+          borrowRustValue = { "&($it)" },
         ),
       ),
     )
