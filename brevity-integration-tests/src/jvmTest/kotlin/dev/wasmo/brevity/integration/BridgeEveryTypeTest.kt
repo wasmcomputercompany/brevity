@@ -47,8 +47,8 @@ class BridgeEveryTypeTest {
           rustType = "i8",
           values = listOf(
             SampleValue(kotlin = "0.toByte()", rust = "0"),
-            SampleValue(kotlin = "kotlin.Byte.MIN_VALUE", rust = "-128"),
-            SampleValue(kotlin = "kotlin.Byte.MAX_VALUE", rust = "127"),
+            SampleValue(kotlin = "kotlin.Byte.MIN_VALUE", rust = "i8::MIN"),
+            SampleValue(kotlin = "kotlin.Byte.MAX_VALUE", rust = "i8::MAX"),
           ),
         ),
         SampleType(
@@ -58,8 +58,8 @@ class BridgeEveryTypeTest {
           rustType = "i16",
           values = listOf(
             SampleValue(kotlin = "0.toShort()", rust = "0"),
-            SampleValue(kotlin = "kotlin.Short.MIN_VALUE", rust = "-32768"),
-            SampleValue(kotlin = "kotlin.Short.MAX_VALUE", rust = "32767"),
+            SampleValue(kotlin = "kotlin.Short.MIN_VALUE", rust = "i16::MIN"),
+            SampleValue(kotlin = "kotlin.Short.MAX_VALUE", rust = "i16::MAX"),
           ),
         ),
         SampleType(
@@ -70,8 +70,8 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "0", rust = "0"),
             SampleValue(kotlin = "5", rust = "5"),
-            SampleValue(kotlin = "kotlin.Int.MIN_VALUE", rust = "-2147483648"),
-            SampleValue(kotlin = "kotlin.Int.MAX_VALUE", rust = "2147483647"),
+            SampleValue(kotlin = "kotlin.Int.MIN_VALUE", rust = "i32::MIN"),
+            SampleValue(kotlin = "kotlin.Int.MAX_VALUE", rust = "i32::MAX"),
           ),
         ),
         SampleType(
@@ -82,8 +82,8 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "0L", rust = "0"),
             SampleValue(kotlin = "5L", rust = "5"),
-            SampleValue(kotlin = "kotlin.Long.MIN_VALUE", rust = "-9223372036854775808"),
-            SampleValue(kotlin = "kotlin.Long.MAX_VALUE", rust = "9223372036854775807"),
+            SampleValue(kotlin = "kotlin.Long.MIN_VALUE", rust = "i64::MIN"),
+            SampleValue(kotlin = "kotlin.Long.MAX_VALUE", rust = "i64::MAX"),
           ),
         ),
         SampleType(
@@ -93,8 +93,8 @@ class BridgeEveryTypeTest {
           rustType = "u8",
           values = listOf(
             SampleValue(kotlin = "5.toUByte()", rust = "5"),
-            SampleValue(kotlin = "kotlin.UByte.MIN_VALUE", rust = "0"),
-            SampleValue(kotlin = "kotlin.UByte.MAX_VALUE", rust = "255"),
+            SampleValue(kotlin = "kotlin.UByte.MIN_VALUE", rust = "u8::MIN"),
+            SampleValue(kotlin = "kotlin.UByte.MAX_VALUE", rust = "u8::MAX"),
           ),
         ),
         SampleType(
@@ -104,8 +104,8 @@ class BridgeEveryTypeTest {
           rustType = "u16",
           values = listOf(
             SampleValue(kotlin = "5.toUShort()", rust = "5"),
-            SampleValue(kotlin = "kotlin.UShort.MIN_VALUE", rust = "0"),
-            SampleValue(kotlin = "kotlin.UShort.MAX_VALUE", rust = "65535"),
+            SampleValue(kotlin = "kotlin.UShort.MIN_VALUE", rust = "u16::MIN"),
+            SampleValue(kotlin = "kotlin.UShort.MAX_VALUE", rust = "u16::MAX"),
           ),
         ),
         SampleType(
@@ -115,8 +115,8 @@ class BridgeEveryTypeTest {
           rustType = "u32",
           values = listOf(
             SampleValue(kotlin = "5U", rust = "5"),
-            SampleValue(kotlin = "kotlin.UInt.MIN_VALUE", rust = "0"),
-            SampleValue(kotlin = "kotlin.UInt.MAX_VALUE", rust = "4294967295"),
+            SampleValue(kotlin = "kotlin.UInt.MIN_VALUE", rust = "u32::MIN"),
+            SampleValue(kotlin = "kotlin.UInt.MAX_VALUE", rust = "u32::MAX"),
           ),
         ),
         SampleType(
@@ -126,8 +126,8 @@ class BridgeEveryTypeTest {
           rustType = "u64",
           values = listOf(
             SampleValue(kotlin = "5UL", rust = "5"),
-            SampleValue(kotlin = "kotlin.ULong.MIN_VALUE", rust = "0"),
-            SampleValue(kotlin = "kotlin.ULong.MAX_VALUE", rust = "18446744073709551615"),
+            SampleValue(kotlin = "kotlin.ULong.MIN_VALUE", rust = "u64::MIN"),
+            SampleValue(kotlin = "kotlin.ULong.MAX_VALUE", rust = "u64::MAX"),
           ),
         ),
       ),
@@ -151,18 +151,12 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "0.0f", rust = "0.0"),
             SampleValue(kotlin = "-0.0f", rust = "-0.0"),
             SampleValue(kotlin = "0.5f", rust = "0.5"),
-            SampleValue(
-              kotlin = "1.17549435E-38f",
-              rust = "0.000000000000000000000000000000000000011754944",
-            ),
-            SampleValue(
-              kotlin = "kotlin.Float.MIN_VALUE",
-              rust = "0.000000000000000000000000000000000000000000001",
-            ),
-            SampleValue(kotlin = "kotlin.Float.MAX_VALUE", rust = "3.4028235e38"),
-            SampleValue(kotlin = "kotlin.Float.POSITIVE_INFINITY", rust = "std::f32::INFINITY"),
-            SampleValue(kotlin = "kotlin.Float.NEGATIVE_INFINITY", rust = "std::f32::NEG_INFINITY"),
-            SampleValue(kotlin = "kotlin.Float.NaN", rust = "std::f32::NAN"),
+            SampleValue(kotlin = "1.17549435E-38f", rust = "f32::MIN_POSITIVE"),
+            SampleValue(kotlin = "kotlin.Float.MIN_VALUE", rust = "f32::from_bits(1)"),
+            SampleValue(kotlin = "kotlin.Float.MAX_VALUE", rust = "f32::MAX"),
+            SampleValue(kotlin = "kotlin.Float.POSITIVE_INFINITY", rust = "f32::INFINITY"),
+            SampleValue(kotlin = "kotlin.Float.NEGATIVE_INFINITY", rust = "f32::NEG_INFINITY"),
+            SampleValue(kotlin = "kotlin.Float.NaN", rust = "f32::NAN"),
           ),
         ),
         SampleType(
@@ -175,15 +169,12 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "0.0", rust = "0.0"),
             SampleValue(kotlin = "-0.0", rust = "-0.0"),
             SampleValue(kotlin = "0.5", rust = "0.5"),
-            SampleValue(kotlin = "2.2250738585072014e-308", rust = "2.2250738585072014e-308"),
-            SampleValue(kotlin = "kotlin.Double.MIN_VALUE", rust = "4.9E-324"),
-            SampleValue(kotlin = "kotlin.Double.MAX_VALUE", rust = "1.7976931348623157E308"),
-            SampleValue(kotlin = "kotlin.Double.POSITIVE_INFINITY", rust = "std::f64::INFINITY"),
-            SampleValue(
-              kotlin = "kotlin.Double.NEGATIVE_INFINITY",
-              rust = "std::f64::NEG_INFINITY",
-            ),
-            SampleValue(kotlin = "kotlin.Double.NaN", rust = "std::f64::NAN"),
+            SampleValue(kotlin = "2.2250738585072014e-308", rust = "f64::MIN_POSITIVE"),
+            SampleValue(kotlin = "kotlin.Double.MIN_VALUE", rust = "f64::from_bits(1)"),
+            SampleValue(kotlin = "kotlin.Double.MAX_VALUE", rust = "f64::MAX"),
+            SampleValue(kotlin = "kotlin.Double.POSITIVE_INFINITY", rust = "f64::INFINITY"),
+            SampleValue(kotlin = "kotlin.Double.NEGATIVE_INFINITY", rust = "f64::NEG_INFINITY"),
+            SampleValue(kotlin = "kotlin.Double.NaN", rust = "f64::NAN"),
           ),
         ),
       ),
@@ -309,14 +300,11 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "null", rust = "None"),
             SampleValue(kotlin = "0.0", rust = "Some(0.0)"),
             SampleValue(kotlin = "0.5", rust = "Some(0.5)"),
-            SampleValue(kotlin = "2.2250738585072014e-308", rust = "Some(2.2250738585072014e-308)"),
-            SampleValue(kotlin = "kotlin.Double.MIN_VALUE", rust = "Some(4.9E-324)"),
-            SampleValue(kotlin = "kotlin.Double.MAX_VALUE", rust = "Some(1.7976931348623157E308)"),
-            SampleValue(kotlin = "kotlin.Double.POSITIVE_INFINITY", rust = "Some(std::f64::INFINITY)"),
-            SampleValue(
-              kotlin = "kotlin.Double.NEGATIVE_INFINITY",
-              rust = "Some(std::f64::NEG_INFINITY)",
-            ),
+            SampleValue(kotlin = "2.2250738585072014e-308", rust = "Some(f64::MIN_POSITIVE)"),
+            SampleValue(kotlin = "kotlin.Double.MIN_VALUE", rust = "Some(f64::from_bits(1))"),
+            SampleValue(kotlin = "kotlin.Double.MAX_VALUE", rust = "Some(f64::MAX)"),
+            SampleValue(kotlin = "kotlin.Double.POSITIVE_INFINITY", rust = "Some(f64::INFINITY)"),
+            SampleValue(kotlin = "kotlin.Double.NEGATIVE_INFINITY", rust = "Some(f64::NEG_INFINITY)"),
           ),
         ),
         SampleType(
@@ -367,7 +355,7 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "intArrayOf()", rust = "vec![]"),
             SampleValue(kotlin = "intArrayOf(0, 5)", rust = "vec![0, 5]"),
-            SampleValue(kotlin = "intArrayOf(kotlin.Int.MIN_VALUE, kotlin.Int.MAX_VALUE)", rust = "vec![-2147483648, 2147483647]"),
+            SampleValue(kotlin = "intArrayOf(kotlin.Int.MIN_VALUE, kotlin.Int.MAX_VALUE)", rust = "vec![i32::MIN, i32::MAX]"),
             SampleValue(kotlin = "IntArray(100) { i -> i + 32767  }", rust = "((32767..=32866).collect::<Vec<i32>>())"),
           ),
           borrowRustValue = { "&($it)" },
@@ -381,7 +369,7 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "longArrayOf()", rust = "vec![]"),
             SampleValue(kotlin = "longArrayOf(0L, 5L)", rust = "vec![0, 5]"),
-            SampleValue(kotlin = "longArrayOf(kotlin.Long.MIN_VALUE, kotlin.Long.MAX_VALUE)", rust = "vec![-9223372036854775808, 9223372036854775807]"),
+            SampleValue(kotlin = "longArrayOf(kotlin.Long.MIN_VALUE, kotlin.Long.MAX_VALUE)", rust = "vec![i64::MIN, i64::MAX]"),
             SampleValue(kotlin = "LongArray(100) { i -> i + 2147483647L }", rust = "((2147483647..=2147483746).collect::<Vec<i64>>())"),
           ),
           borrowRustValue = { "&($it)" },
@@ -395,17 +383,14 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "doubleArrayOf()", rust = "vec![]"),
             SampleValue(kotlin = "doubleArrayOf(0.0, -0.0, 0.5)", rust = "vec![0.0, -0.0, 0.5]"),
-            SampleValue(
-              kotlin = "doubleArrayOf(2.2250738585072014e-308)",
-              rust = "vec![2.2250738585072014e-308]",
-            ),
+            SampleValue(kotlin = "doubleArrayOf(2.2250738585072014e-308)", rust = "vec![f64::MIN_POSITIVE]"),
             SampleValue(
               kotlin = "doubleArrayOf(kotlin.Double.MIN_VALUE, kotlin.Double.MAX_VALUE)",
-              rust = "vec![4.9E-324, 1.7976931348623157E308]",
+              rust = "vec![f64::from_bits(1), f64::MAX]",
             ),
             SampleValue(
               kotlin = "doubleArrayOf(kotlin.Double.POSITIVE_INFINITY, kotlin.Double.NEGATIVE_INFINITY)",
-              rust = "vec![std::f64::INFINITY, std::f64::NEG_INFINITY]"
+              rust = "vec![f64::INFINITY, f64::NEG_INFINITY]"
             ),
           ),
           borrowRustValue = { "&($it)" },
@@ -451,7 +436,7 @@ class BridgeEveryTypeTest {
           rustType = "[u32; 2]",
           values = listOf(
             SampleValue(kotlin = "listOf(0U, 5U)", rust = "[0, 5]"),
-            SampleValue(kotlin = "listOf(kotlin.UInt.MIN_VALUE, kotlin.UInt.MAX_VALUE)", rust = "[0, 4294967295]"),
+            SampleValue(kotlin = "listOf(kotlin.UInt.MIN_VALUE, kotlin.UInt.MAX_VALUE)", rust = "[u32::MIN, u32::MAX]"),
           ),
         ),
         SampleType(
@@ -635,8 +620,8 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "Pair(0.toByte(), false)", rust = "(0, false)"),
             SampleValue(kotlin = "Pair(5.toByte(), false)", rust = "(5, false)"),
-            SampleValue(kotlin = "Pair(kotlin.Byte.MIN_VALUE, true)", rust = "(-128, true)"),
-            SampleValue(kotlin = "Pair(kotlin.Byte.MAX_VALUE, true)", rust = "(127, true)"),
+            SampleValue(kotlin = "Pair(kotlin.Byte.MIN_VALUE, true)", rust = "(i8::MIN, true)"),
+            SampleValue(kotlin = "Pair(kotlin.Byte.MAX_VALUE, true)", rust = "(i8::MAX, true)"),
           ),
         ),
         SampleType(
@@ -649,11 +634,11 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "Triple(5, 5UL, 'b'.code)", rust = "(5, 5, 'b')"),
             SampleValue(
               kotlin = "Triple(kotlin.Int.MIN_VALUE, kotlin.ULong.MIN_VALUE, 'c'.code)",
-              rust = "(-2147483648, 0, 'c')",
+              rust = "(i32::MIN, u64::MIN, 'c')",
             ),
             SampleValue(
               kotlin = "Triple(kotlin.Int.MAX_VALUE, kotlin.ULong.MAX_VALUE, 'z'.code)",
-              rust = "(2147483647, 18446744073709551615, 'z')",
+              rust = "(i32::MAX, u64::MAX, 'z')",
             ),
           ),
         ),
@@ -667,11 +652,11 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "dev.wasmo.brevity.Quad(\"\uD83D\uDCC8\", 0.5, 0.5, 0.5)", rust = "(\"\uD83D\uDCC8\".to_string(), 0.5, 0.5, 0.5)"),
             SampleValue(
               kotlin = "dev.wasmo.brevity.Quad(\"To the\\u0000 fences\", 2.2250738585072014e-308, kotlin.Double.MIN_VALUE, kotlin.Double.MAX_VALUE)",
-              rust = "(\"To the\\u{0000} fences\".to_string(), 2.2250738585072014e-308, 4.9E-324, 1.7976931348623157E308)",
+              rust = "(\"To the\\u{0000} fences\".to_string(), f64::MIN_POSITIVE, f64::from_bits(1), f64::MAX)",
             ),
             SampleValue(
               kotlin = "dev.wasmo.brevity.Quad(\"\", kotlin.Double.POSITIVE_INFINITY, kotlin.Double.NEGATIVE_INFINITY, kotlin.Double.POSITIVE_INFINITY)",
-              rust = "(\"\".to_string(), std::f64::INFINITY, std::f64::NEG_INFINITY, std::f64::INFINITY)",
+              rust = "(\"\".to_string(), f64::INFINITY, f64::NEG_INFINITY, f64::INFINITY)",
             ),
           ),
           borrowRustValue = { "(($it).0.as_str(), ($it).1, ($it).2, ($it).3)" },
