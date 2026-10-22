@@ -19,6 +19,7 @@ import dev.wasmo.brevity.kotlin.encoders.AbstractRecordEncoder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.encoders.Encoder
 import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
+import dev.wasmo.brevity.kotlin.encoders.IntEncoder
 import dev.wasmo.brevity.kotlin.generator.isSupported
 import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 import dev.wasmo.brevity.kotlin.generator.kotlinIdentifier
@@ -47,8 +48,6 @@ data class AbiFunction(
   val result: Result = Result.Void,
   val isSupported: Boolean,
   val orientation: Orientation,
-  /** Non-null if this function has an `id` parameter. */
-  val loweredResourceIdParameterSpec: ParameterSpec? = null,
   private val nameAllocator: NameAllocator,
 ) {
   val kotlinName: String
@@ -64,16 +63,12 @@ data class AbiFunction(
       name is FunctionName.ResourceDrop
 
   val isResource: Boolean
-    get() = loweredResourceIdParameterSpec != null
+    get() = parameters.resourceId != null
 
   fun newNameAllocator() = nameAllocator.copy()
 
   val loweredParameterSpecs: List<ParameterSpec>
     get() = buildList {
-      if (loweredResourceIdParameterSpec != null) {
-        add(loweredResourceIdParameterSpec)
-      }
-
       when (parameters) {
         is Parameters.Flattened -> {
           for (coreParameter in parameters.parameters) {
@@ -93,10 +88,6 @@ data class AbiFunction(
 
   val loweredParameterTypes: List<CoreType>
     get() = buildList {
-      if (loweredResourceIdParameterSpec != null) {
-        add(CoreType.I32)
-      }
-
       when (parameters) {
         is Parameters.Flattened -> {
           for (coreParameter in parameters.parameters) {
@@ -114,30 +105,53 @@ data class AbiFunction(
       }
     }
 
+  sealed interface FlatParameter {
+    val name: String
+    val type: TypeName
+    val encoder: Encoder
+    val loweredSpecs: List<ParameterSpec>
+
+    /** A regular parameter. */
+    data class Value(
+      override val name: String,
+      override val type: TypeName,
+      override val encoder: Encoder,
+      override val loweredSpecs: List<ParameterSpec>,
+    ) : FlatParameter
+
+    /** The resource ID is a parameter when lowered, but the receiver when lifted. */
+    data class ResourceId(
+      override val name: String,
+    ) : FlatParameter {
+      override val type: TypeName
+        get() = INT
+      override val encoder: Encoder
+        get() = IntEncoder
+      override val loweredSpecs: List<ParameterSpec>
+        get() = listOf(ParameterSpec.builder(name, type).build())
+    }
+  }
+
   sealed interface Parameters {
+    val parameters: List<FlatParameter>
     val lowerAllocates: Boolean
     val liftedSpecs: List<ParameterSpec>
+      get() = parameters.filterIsInstance<FlatParameter.Value>()
+        .map { ParameterSpec.builder(it.name, it.type).build() }
+    val resourceId: FlatParameter.ResourceId?
+      get() = parameters.filterIsInstance<FlatParameter.ResourceId>().singleOrNull()
 
     class Flattened(
-      val parameters: List<FlatParameter>,
+      override val parameters: List<FlatParameter>,
     ) : Parameters {
       override val lowerAllocates: Boolean
         get() = parameters.any { it.encoder.lowerAllocates }
-      override val liftedSpecs: List<ParameterSpec>
-        get() = parameters.map { it.liftedSpec }
     }
 
-    class FlatParameter(
-      val encoder: Encoder,
-      val liftedSpec: ParameterSpec,
-      val loweredSpecs: List<ParameterSpec>,
-    )
-
     class Stored(
-      override val liftedSpecs: List<ParameterSpec>,
+      override val parameters: List<FlatParameter>,
       val addressSpec: ParameterSpec,
-      fieldEncoders: List<Encoder>,
-    ) : AbstractRecordEncoder(fieldEncoders), Parameters {
+    ) : AbstractRecordEncoder(parameters.map { it.encoder }), Parameters {
       override val instanceNameHint: String
         get() = "parameters"
 
@@ -243,7 +257,6 @@ data class AbiFunction(
           val taskReturn = taskReturn(
             irFunction = irFunction,
             orientation = orientation.mirror,
-            isResource = isResource,
           )
           listBuilder += create(
             irFunction = irFunction,
@@ -289,8 +302,13 @@ data class AbiFunction(
       check(taskReturn == null || orientation == Export)
 
       val nameAllocator = NameAllocator()
-      val flatParameters = irFunction.parameters.map { parameter ->
-        flatParameter(parameter.type, parameter.name, nameAllocator)
+      val flatParameters = buildList {
+        if (isResource) {
+          add(flatParameterResourceId(nameAllocator))
+        }
+        for (irParameter in irFunction.parameters) {
+          add(flatParameter(irParameter.type, irParameter.name, nameAllocator))
+        }
       }
       val name = when {
         irFunction.async -> when (orientation) {
@@ -308,7 +326,6 @@ data class AbiFunction(
         result = result(nameAllocator, irFunction, orientation, taskReturn),
         isSupported = irFunction.isSupported,
         orientation = orientation,
-        loweredResourceIdParameterSpec = loweredResourceIdParameterSpec(isResource),
         nameAllocator = nameAllocator,
       )
     }
@@ -319,40 +336,35 @@ data class AbiFunction(
       isResource: Boolean,
     ): AbiFunction {
       val nameAllocator = NameAllocator()
-      val flatParameters = listOf(
-        flatParameter(WitTypeName.U32, Identifier("event-code"), nameAllocator),
-        flatParameter(WitTypeName.U32, Identifier("p1"), nameAllocator),
-        flatParameter(WitTypeName.U32, Identifier("p2"), nameAllocator),
-      )
+      val flatParameters = buildList {
+        if (isResource) {
+          add(flatParameterResourceId(nameAllocator))
+        }
+        add(flatParameter(WitTypeName.U32, Identifier("event-code"), nameAllocator))
+        add(flatParameter(WitTypeName.U32, Identifier("p1"), nameAllocator))
+        add(flatParameter(WitTypeName.U32, Identifier("p2"), nameAllocator))
+      }
 
       val name = FunctionName.AsyncExportCallback(irFunction.functionName)
       return AbiFunction(
         name = name,
         kotlinIdentifier = irFunction.functionName.kotlinIdentifier,
         parameters = parameters(flatParameters, nameAllocator, name),
-        nameAllocator = nameAllocator,
-        orientation = orientation,
-        loweredResourceIdParameterSpec = loweredResourceIdParameterSpec(isResource),
         isSupported = irFunction.isSupported,
+        orientation = orientation,
+        nameAllocator = nameAllocator,
       )
     }
 
     fun taskReturn(
       irFunction: IrFunction,
       orientation: Orientation,
-      isResource: Boolean,
     ): AbiFunction {
       val nameAllocator = NameAllocator()
       val flatParameters = buildList {
         val returnType = irFunction.returnType
         if (returnType != null) {
-          add(
-            flatParameter(
-              type = returnType,
-              name = Identifier("lifted-result"),
-              nameAllocator = nameAllocator,
-            ),
-          )
+          add(flatParameter(returnType, Identifier("lifted-result"), nameAllocator))
         }
       }
 
@@ -364,7 +376,6 @@ data class AbiFunction(
         nameAllocator = nameAllocator,
         isSupported = irFunction.isSupported,
         orientation = orientation,
-        loweredResourceIdParameterSpec = loweredResourceIdParameterSpec(isResource),
       )
     }
 
@@ -390,9 +401,9 @@ data class AbiFunction(
         kotlinIdentifier = name.kotlinIdentifier,
         parameters = parameters(flatParameters, nameAllocator, name),
         result = result,
-        nameAllocator = nameAllocator,
-        orientation = Import,
         isSupported = true,
+        orientation = Import,
+        nameAllocator = nameAllocator,
       )
     }
 
@@ -409,9 +420,9 @@ data class AbiFunction(
         name = name,
         kotlinIdentifier = name.kotlinIdentifier,
         parameters = parameters(flatParameters, nameAllocator, name),
-        nameAllocator = nameAllocator,
-        orientation = Import,
         isSupported = true,
+        orientation = Import,
+        nameAllocator = nameAllocator,
       )
     }
 
@@ -420,45 +431,39 @@ data class AbiFunction(
       orientation: Orientation,
     ): AbiFunction {
       val nameAllocator = NameAllocator()
+      val flatParameters = listOf(
+        flatParameterResourceId(nameAllocator)
+      )
       val name = FunctionName.ResourceClose(resourceType)
       return AbiFunction(
         name = name,
         kotlinIdentifier = name.kotlinIdentifier,
-        parameters = parameters(listOf(), nameAllocator, name),
+        parameters = parameters(flatParameters, nameAllocator, name),
         isSupported = true,
         orientation = orientation,
-        loweredResourceIdParameterSpec = loweredResourceIdParameterSpec(true),
         nameAllocator = nameAllocator,
       )
-    }
-
-    private fun loweredResourceIdParameterSpec(
-      isResource: Boolean,
-    ): ParameterSpec? = when {
-      isResource -> ParameterSpec.builder("id", INT).build()
-      else -> null
     }
 
     private fun flatParameter(
       type: WitTypeName,
       name: Identifier,
       nameAllocator: NameAllocator,
-    ): Parameters.FlatParameter {
+    ): FlatParameter {
       val encoder = encoderFactory.get(type)
-      val spec = ParameterSpec.builder(
-        nameAllocator.newName(name.lowerCamelCase),
-        kotlinMapper.get(type),
-      ).build()
-      return Parameters.FlatParameter(
+      val liftedName = nameAllocator.newName(name.lowerCamelCase)
+      val liftedType = kotlinMapper.get(type)
+      return FlatParameter.Value(
+        name = liftedName,
+        type = liftedType,
         encoder = encoder,
-        liftedSpec = spec,
         loweredSpecs = encoder.coreTypes.withIndex().map { (v, coreType) ->
           val nameHint = encoder.nameHints?.getOrNull(v)
           val coreName = when {
             nameHint != null && encoder.coreTypes.size > 1 ->
               nameAllocator.newName(Identifier("$name-${nameHint.name}").lowerCamelCase)
 
-            v == 0 -> spec.name
+            v == 0 -> liftedName
             else -> nameAllocator.newName(Identifier("$name${v + 1}").lowerCamelCase)
           }
           ParameterSpec.builder(
@@ -469,8 +474,11 @@ data class AbiFunction(
       )
     }
 
+    private fun flatParameterResourceId(nameAllocator: NameAllocator) =
+      FlatParameter.ResourceId(name = nameAllocator.newName("id"))
+
     private fun parameters(
-      flatParameters: List<Parameters.FlatParameter>,
+      flatParameters: List<FlatParameter>,
       nameAllocator: NameAllocator,
       name: FunctionName,
     ): Parameters {
@@ -483,12 +491,11 @@ data class AbiFunction(
           Parameters.Flattened(flatParameters)
 
         else -> Parameters.Stored(
-          liftedSpecs = flatParameters.map { it.liftedSpec },
+          parameters = flatParameters,
           addressSpec = ParameterSpec(
             nameAllocator.newName("parameterAddress"),
             CoreType.Pointer.kotlinCoreType,
           ),
-          fieldEncoders = flatParameters.map { it.encoder },
         )
       }
     }
@@ -529,7 +536,7 @@ data class AbiFunction(
 
     private fun documentation(
       value: IrFunction,
-      parameters: List<Parameters.FlatParameter>,
+      parameters: List<FlatParameter>,
     ): String? {
       val result = buildString {
         val functionDocumentation = value.documentation
@@ -540,7 +547,7 @@ data class AbiFunction(
 
         for ((index, parameter) in value.parameters.withIndex()) {
           val parameterDocumentation = parameter.documentation ?: continue
-          append("@param ${parameters[index].liftedSpec.name} ")
+          append("@param ${parameters[index].name} ")
           append(parameterDocumentation.content.trimIndent().replace("\n", "\n  "))
           append("\n\n")
         }
