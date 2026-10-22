@@ -65,10 +65,13 @@ val publishTestingArtifacts = tasks.register("publishToMavenLocal", Exec::class.
 val compileDevelopmentExecutableKotlinWasmWasi =
   tasks.named("compileDevelopmentExecutableKotlinWasmWasi")
 
-tasks.named("jvmTest") {
+tasks.named<Test>("jvmTest") {
   // Required by RunKotlinWasmTest.
   dependsOn(compileDevelopmentExecutableKotlinWasmWasi)
 
   // Required by BridgeEveryTypeTest.
   dependsOn(publishTestingArtifacts)
+
+  // Surface test output such as the phase timings to gradle/ci.
+  testLogging.showStandardStreams = true
 }

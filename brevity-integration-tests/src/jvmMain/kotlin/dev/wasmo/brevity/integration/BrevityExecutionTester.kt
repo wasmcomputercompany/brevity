@@ -71,86 +71,92 @@ class BrevityExecutionTester(
   }.filter(predicate)
 
   suspend fun execute() {
-    clean()
+    val start = TimeSource.Monotonic.markNow()
+    try {
+      clean()
 
-    coroutineScope {
-      val kotlinToolchain = launch {
-        launch { generateKotlinProject() }
-        launch { generateBrevityKotlinModule() }
-        launch { generateGuestAppKotlinModule() }
-        launch { generateHostAppKotlinModule() }
-        launch { writeExtraFiles() }
-      }
+      coroutineScope {
+        val kotlinToolchain = launch {
+          launch { generateKotlinProject() }
+          launch { generateBrevityKotlinModule() }
+          launch { generateGuestAppKotlinModule() }
+          launch { generateHostAppKotlinModule() }
+          launch { writeExtraFiles() }
+        }
 
-      val wit = launch {
-        WitTarget(
-          name = name,
-          fileSystem = fileSystem,
-          layout = layout,
-          rawWitTypeDeclarations = rawWitTypeDeclarations,
-          rawWitUseStatements = rawWitUseStatements,
-          testFunctions = testFunctions,
-        ).generate()
-      }
-      val brevityKt = launch {
-        wit.join()
-        generateBrevity()
-      }
+        val wit = launch {
+          WitTarget(
+            name = name,
+            fileSystem = fileSystem,
+            layout = layout,
+            rawWitTypeDeclarations = rawWitTypeDeclarations,
+            rawWitUseStatements = rawWitUseStatements,
+            testFunctions = testFunctions,
+          ).generate()
+        }
+        val brevityKt = launch {
+          wit.join()
+          generateBrevity()
+        }
 
-      val hostKt = launch {
-        HostKotlinTarget(name, fileSystem, layout, testFunctions).generate()
-      }
-      val hostKtJar = async {
-        brevityKt.join()
-        hostKt.join()
-        kotlinToolchain.join()
-        compileKotlinHost()
-        "build/tasks/_host_executableJarJvm/host-jvm-executable.jar"
-      }
+        val hostKt = launch {
+          HostKotlinTarget(name, fileSystem, layout, testFunctions).generate()
+        }
+        val hostKtJar = async {
+          brevityKt.join()
+          hostKt.join()
+          kotlinToolchain.join()
+          compileKotlinHost()
+          "build/tasks/_host_executableJarJvm/host-jvm-executable.jar"
+        }
 
-      val guestKt = launch {
-        GuestKotlinTarget(name, fileSystem, layout, testFunctions).generate()
-      }
-      val guestKtWasm = async {
-        // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
-        // https://kotlinlang.slack.com/archives/C062WG3A7T8/p1787598848694559
-        hostKtJar.await()
+        val guestKt = launch {
+          GuestKotlinTarget(name, fileSystem, layout, testFunctions).generate()
+        }
+        val guestKtWasm = async {
+          // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
+          // https://kotlinlang.slack.com/archives/C062WG3A7T8/p1787598848694559
+          hostKtJar.await()
 
-        brevityKt.join()
-        guestKt.join()
-        kotlinToolchain.join()
-        compileKotlinGuest()
-        "build/artifacts/CompiledWebArtifact/guestwasmWasidebug/kotlin-output/guest.wasm"
-      }
+          brevityKt.join()
+          guestKt.join()
+          kotlinToolchain.join()
+          compileKotlinGuest()
+          "build/artifacts/CompiledWebArtifact/guestwasmWasidebug/kotlin-output/guest.wasm"
+        }
 
-      val guestRsToml = launch {
-        generateGuestAppRustCargoToml()
-      }
-      val guestRs = launch {
-        GuestRustTarget(name, fileSystem, layout, testFunctions).generate()
-      }
-      val guestRsWasm = async {
-        guestRs.join()
-        guestRsToml.join()
-        compileRustGuest()
-        "rust/target/unbundled/unbundled-module0.wasm"
-      }
+        val guestRsToml = launch {
+          generateGuestAppRustCargoToml()
+        }
+        val guestRs = launch {
+          GuestRustTarget(name, fileSystem, layout, testFunctions).generate()
+        }
+        val guestRsWasm = async {
+          guestRs.join()
+          guestRsToml.join()
+          compileRustGuest()
+          "rust/target/unbundled/unbundled-module0.wasm"
+        }
 
-      launch {
-        executeKotlinHost(
-          "executeKotlinHost(guest=kt)",
-          hostKtJar.await(),
-          guestKtWasm.await(),
-        )
-      }
+        launch {
+          executeKotlinHost(
+            "executeKotlinHost(guest=kt)",
+            hostKtJar.await(),
+            guestKtWasm.await(),
+          )
+        }
 
-      launch {
-        executeKotlinHost(
-          "executeKotlinHost(guest=rs)",
-          hostKtJar.await(),
-          guestRsWasm.await(),
-        )
+        launch {
+          executeKotlinHost(
+            "executeKotlinHost(guest=rs)",
+            hostKtJar.await(),
+            guestRsWasm.await(),
+          )
+        }
       }
+    } finally {
+      val elapsed = TimeSource.Monotonic.markNow() - start
+      println("$name.total took $elapsed")
     }
   }
 
