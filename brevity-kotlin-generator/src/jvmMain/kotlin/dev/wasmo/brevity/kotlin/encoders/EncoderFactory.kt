@@ -110,15 +110,10 @@ class EncoderFactory(
       }
 
       is TypeName.Map -> MapEncoder(
-        DynamicListEncoder(
-          elementEncoder = PairEncoder(listOf(get(typeName.key), get(typeName.value))),
-          listType = Symbols.KotlinCollections.List.parameterizedBy(
-            Symbols.Kotlin.Pair.parameterizedBy(
-              kotlinMapper.get(typeName.key),
-              kotlinMapper.get(typeName.value)
-            )
-          )
-        )
+        keyType = kotlinMapper.get(typeName.key),
+        valueType = kotlinMapper.get(typeName.value),
+        keyEncoder = get(typeName.key),
+        valueEncoder = get(typeName.value),
       )
 
       is TypeName.Option -> OptionalEncoder(

@@ -459,6 +459,16 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "List(18) { i -> i }", rust = "(std::array::from_fn(|i| i as i32))"),
           ),
         ),
+        SampleType(
+          id = Identifier("fixed-list-padding"),
+          witType = "list<tuple<bool, s32>, 3>",
+          kotlinType = "List<Pair<Boolean, Int>>",
+          rustType = "[(bool, i32); 3]",
+          values = listOf(
+            SampleValue(kotlin = "listOf(true to 12, false to 6, true to kotlin.Int.MAX_VALUE)", rust = "[(true, 12), (false, 6), (true, 2147483647)]"),
+            SampleValue(kotlin = "listOf(false to 1, true to 2, true to 3)", rust = "[(false, 1), (true, 2), (true, 3)]"),
+          ),
+        ),
       ),
       predicate = {
         when {
@@ -698,10 +708,7 @@ class BridgeEveryTypeTest {
           kotlinType = "Map<String, String>",
           rustType = "std::collections::BTreeMap<String, String>",
           values = listOf(
-            SampleValue(
-              kotlin = "mapOf<String, String>()",
-              rust = "std::collections::BTreeMap::new()",
-            ),
+            SampleValue(kotlin = "mapOf<String, String>()", rust = "std::collections::BTreeMap::new()",),
             SampleValue(
               kotlin = "mapOf(\"hello\" to \"world\", \"foo\" to \"bar\")",
               rust = "std::collections::BTreeMap::from([(\"foo\".to_string(), \"bar\".to_string()), (\"hello\".to_string(), \"world\".to_string())])",
@@ -713,8 +720,214 @@ class BridgeEveryTypeTest {
           ),
           borrowRustValue = { "&($it)" },
         ),
-        // TODO: Add tests for all key types and complex values.
+        SampleType(
+          id = Identifier("bool-map"),
+          witType = "map<bool, string>",
+          kotlinType = "Map<Boolean, String>",
+          rustType = "std::collections::BTreeMap<bool, String>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<Boolean, String>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(true to \"let's go\")",
+              rust = "std::collections::BTreeMap::from([(true, \"let's go\".to_string())])",
+            ),
+            SampleValue(
+              kotlin = "mapOf(true to \"affirmative\", false to \"\")",
+              rust = "std::collections::BTreeMap::from([(true, \"affirmative\".to_string()), (false, \"\".to_string())])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
+        SampleType(
+          id = Identifier("byte-to-ulong"),
+          witType = "map<s8, u64>",
+          kotlinType = "Map<Byte, ULong>",
+          rustType = "std::collections::BTreeMap<i8, u64>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<Byte, ULong>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(kotlin.Byte.MIN_VALUE to kotlin.ULong.MIN_VALUE, kotlin.Byte.MAX_VALUE to kotlin.ULong.MAX_VALUE)",
+              rust = "std::collections::BTreeMap::from([(i8::MIN, u64::MIN), (i8::MAX, u64::MAX)])",
+            ),
+            SampleValue(
+              kotlin = "mapOf((-1).toByte() to 1UL, 1.toByte() to 2UL, 0.toByte() to 3UL)",
+              rust = "std::collections::BTreeMap::from([(-1, 1), (1, 2), (0, 3)])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
+        SampleType(
+          id = Identifier("ulong-to-byte"),
+          witType = "map<u64, s8>",
+          kotlinType = "Map<ULong, Byte>",
+          rustType = "std::collections::BTreeMap<u64, i8>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<ULong, Byte>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(kotlin.ULong.MIN_VALUE to kotlin.Byte.MIN_VALUE, kotlin.ULong.MAX_VALUE to kotlin.Byte.MAX_VALUE)",
+              rust = "std::collections::BTreeMap::from([(u64::MIN, i8::MIN), (u64::MAX, i8::MAX)])",
+            ),
+            SampleValue(
+              kotlin = "mapOf(1UL to (-1).toByte(), 2UL to 1.toByte(), 3UL to 0.toByte())",
+              rust = "std::collections::BTreeMap::from([(1, -1), (2, 1), (3, 0)])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
+        SampleType(
+          id = Identifier("char-to-uint"),
+          witType = "map<char, u32>",
+          kotlinType = "Map<Int, UInt>",
+          rustType = "std::collections::BTreeMap<char, u32>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<Int, UInt>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(0 to 0U, 'a'.code to 5U, 0x1F369 to kotlin.UInt.MAX_VALUE, 0x10FFFF to 1U)",
+              rust = "std::collections::BTreeMap::from([('\\u{0}',0), ('a', 5), ('\\u{1F369}', u32::MAX), ('\\u{10FFFF}', 1)])",
+            ),
+            SampleValue(
+              kotlin = "mapOf('x'.code to 1U, 'y'.code to 2U)",
+              rust = "std::collections::BTreeMap::from([('x', 1), ('y', 2)])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
+        SampleType(
+          id = Identifier("uint-to-optional-string"),
+          witType = "map<u32, option<string>>",
+          kotlinType = "Map<UInt, String?>",
+          rustType = "std::collections::BTreeMap<u32, Option<String>>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<UInt, String?>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(kotlin.UInt.MIN_VALUE to null, kotlin.UInt.MAX_VALUE to \"max\")",
+              rust = "std::collections::BTreeMap::from([(u32::MIN, None), (u32::MAX, Some(\"max\".to_string()))])",
+            ),
+            SampleValue(
+              kotlin = "mapOf(1U to \"one\", 2U to null, 3U to \"\")",
+              rust = "std::collections::BTreeMap::from([(1, Some(\"one\".to_string())), (2, None), (3, Some(\"\".to_string()))])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
+        SampleType(
+          id = Identifier("nested-dictionary"),
+          witType = "map<string, map<string, u32>>",
+          kotlinType = "Map<String, Map<String, UInt>>",
+          rustType = "std::collections::BTreeMap<String, std::collections::BTreeMap<String, u32>>",
+          values = listOf(
+            SampleValue(kotlin = "mapOf<String, Map<String, UInt>>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf(\"empty\" to mapOf<String, UInt>(), \"full\" to mapOf(\"a\" to 1U, \"b\" to 2U))",
+              rust = "std::collections::BTreeMap::from([" +
+                "(\"empty\".to_string(), std::collections::BTreeMap::new()), " +
+                "(\"full\".to_string(), std::collections::BTreeMap::from([(\"a\".to_string(), 1),(\"b\".to_string(), 2)]))" +
+                "])",
+            ),
+            SampleValue(
+              kotlin = "mapOf(\"solo\" to mapOf(\"z\" to kotlin.UInt.MAX_VALUE), \"\" to mapOf(\"\" to 0U))",
+              rust = "std::collections::BTreeMap::from([" +
+                "(\"solo\".to_string(), std::collections::BTreeMap::from([(\"z\".to_string(), u32::MAX)])), " +
+                "(\"\".to_string(), std::collections::BTreeMap::from([(\"\".to_string(), 0)]))" +
+                "])",
+            ),
+          ),
+          borrowRustValue = { "&($it)" },
+        ),
       ),
+    )
+
+    test.execute()
+  }
+
+  @Test
+  fun alignment() = runTest {
+    val test = BrevityExecutionTester(
+      name = "alignment",
+      rawWitTypeDeclarations = """
+        |record donut { name: string, sprinkles: bool }
+        |record order { rush: bool, donut: donut, count: u8 }
+        |
+        """.trimMargin(),
+      rawWitUseStatements = """
+        |use types.{donut, order};
+        |
+        """.trimMargin(),
+      types = listOf(
+        SampleType(
+          id = Identifier("checklist-internal-padding"),
+          witType = "list<tuple<bool, string>>",
+          kotlinType = "List<Pair<Boolean, String>>",
+          rustType = "Vec<(bool, String)>",
+          values = listOf(
+            SampleValue(kotlin = "listOf<Pair<Boolean, String>>()", rust = "vec![] as Vec<(bool, String)>"),
+            SampleValue(
+              kotlin = "listOf(true to \"preheat the fryer\", false to \"glaze the \uD83C\uDF69s\")",
+              rust = "vec![(true, \"preheat the fryer\".to_string()), (false, \"glaze the \uD83C\uDF69s\".to_string())]"
+            ),
+            SampleValue(
+              kotlin = "listOf(true to \"turn off the fryer\",  true to \"turn off the \uD83D\uDCA1s\", false to \"\uD83D\uDD12 the \uD83D\uDEAA\")",
+              rust = "vec![(true, \"turn off the fryer\".to_string()), (true, \"turn off the \uD83D\uDCA1s\".to_string()), (false, \"\uD83D\uDD12 the \uD83D\uDEAA\".to_string())]"
+            ),
+          ),
+          borrowRustValue = { "&($it)" }
+        ),
+        SampleType(
+          id = Identifier("menu-trailing-padding"),
+          witType = "list<tuple<string, f64, bool>>",
+          kotlinType = "List<Triple<String, Double, Boolean>>",
+          rustType = "Vec<(String, f64, bool)>",
+          values = listOf(
+            SampleValue(kotlin = "listOf<Triple<String, Double, Boolean>>()", rust = "vec![] as Vec<(String, f64, bool)>"),
+            SampleValue(
+              kotlin = "listOf(Triple(\"Maple Dip\", 1.99, true), Triple(\"Pink Sprinkle\", 9.99, false))",
+              rust = "vec![(\"Maple Dip\".to_string(), 1.99, true), (\"Pink Sprinkle\".to_string(), 9.99, false)]"
+            ),
+            SampleValue(
+              kotlin = "listOf(Triple(\"\uD83D\uDCA1\", 0.99, true), Triple(\"Coffee\", 1.50, true), Triple(\"Latte\", 4.99, false))",
+              rust = "vec![(\"\uD83D\uDCA1\".to_string(), 0.99, true), (\"Coffee\".to_string(), 1.50, true), (\"Latte\".to_string(), 4.99, false)]"
+            ),
+          ),
+          borrowRustValue = { "&($it)" }
+        ),
+        SampleType(
+          id = Identifier("log-variant-padding"),
+          witType = "list<option<f64>>",
+          kotlinType = "List<Double?>",
+          rustType = "Vec<Option<f64>>",
+          values = listOf(
+            SampleValue(kotlin = "listOf<Double?>()", rust = "vec![] as Vec<Option<f64>>"),
+            SampleValue(kotlin = "listOf(180.1, null, 176.0)", rust = "vec![Some(180.1), None, Some(176.0)]"),
+            SampleValue(kotlin = "listOf(null, 190.25)", rust = "vec![None, Some(190.25)]"),
+          ),
+          borrowRustValue = { "&($it)" }
+        ),
+        SampleType(
+          id = Identifier("order-nested-offset"),
+          witType = "order",
+          kotlinType = "wit.brevity.testing.Order",
+          rustType = "bindings::Order",
+          values = listOf(
+            SampleValue(
+              kotlin = "wit.brevity.testing.Order( rush = false, donut = wit.brevity.testing.Donut( name = \"Maple Dip\", sprinkles = false ), count = 6.toUByte())",
+              rust = "(bindings::Order{ rush: false, donut: bindings::Donut{ name: \"Maple Dip\".to_string(), sprinkles: false }, count: 6 })"
+            ),
+            SampleValue(
+              kotlin = "wit.brevity.testing.Order( rush = true, donut = wit.brevity.testing.Donut( name = \"Pink Sprinkle\", sprinkles = true ), count = 12.toUByte())",
+              rust = "(bindings::Order{ rush: true, donut: bindings::Donut{ name: \"Pink Sprinkle\".to_string(), sprinkles: true }, count: 12 })"
+            ),
+            SampleValue(
+              kotlin = "wit.brevity.testing.Order( rush = false, donut = wit.brevity.testing.Donut( name = \"Vanilla\", sprinkles = true ), count = 1.toUByte())",
+              rust = "(bindings::Order{ rush: false, donut: bindings::Donut{ name: \"Vanilla\".to_string(), sprinkles: true }, count: 1 })"
+            ),
+            SampleValue(
+              kotlin = "wit.brevity.testing.Order( rush = true, donut = wit.brevity.testing.Donut( name = \"Boston Cream\", sprinkles = false ), count = 2.toUByte())",
+              rust = "(bindings::Order{ rush: true, donut: bindings::Donut{ name: \"Boston Cream\".to_string(), sprinkles: false }, count: 2 })"
+            ),
+          ),
+          borrowRustValue = { "&($it)" }
+        ),
+      )
     )
 
     test.execute()
