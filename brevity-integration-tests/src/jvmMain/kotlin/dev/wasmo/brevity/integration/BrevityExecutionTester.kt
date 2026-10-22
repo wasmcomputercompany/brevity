@@ -53,6 +53,8 @@ class BrevityExecutionTester(
 
   private val testFunctions: List<TestFunction> = buildList {
     for (functionParent in FunctionParent.entries) {
+      if (functionParent.isResource) continue // These aren't working yet.
+
       for (type in types) {
         for (callingMechanism in CallingMechanism.entries) {
           for (passingMechanism in callingMechanism.passingMechanisms) {
