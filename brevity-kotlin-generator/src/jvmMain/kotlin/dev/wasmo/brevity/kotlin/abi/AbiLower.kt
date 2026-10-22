@@ -44,8 +44,10 @@ private class AbiLower(
       || abiFunction.result is PointerParameter,
   ) { memoryAllocator ->
     val loweredParameterValues = abiFunction.lowerParameterValues(
-      resourceId = resourceId,
-      parameterValues = parameters,
+      parameterValues = buildList {
+        if (resourceId != null) add(resourceId)
+        addAll(parameters)
+      },
       memoryAllocator = memoryAllocator,
     )
     val loweredResult = loweredFunction.call(receiver, loweredParameterValues)
@@ -60,14 +62,9 @@ private class AbiLower(
 
 context(codeBuilder: CodeBuilder)
 private fun AbiFunction.lowerParameterValues(
-  resourceId: KtExpression?,
   parameterValues: List<KtExpression>,
   memoryAllocator: MemoryAllocator?,
 ) = buildList {
-  if (isResource) {
-    add(resourceId!!)
-  }
-
   when (parameters) {
     is Flattened -> {
       for ((p, coreParameter) in parameters.parameters.withIndex()) {

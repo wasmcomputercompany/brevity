@@ -12,8 +12,6 @@ import dev.wasmo.brevity.kotlin.abi.AbiFunction.Result.Void
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.withMemoryAllocator
 import dev.wasmo.brevity.kotlin.encoders.CoreType
-import dev.wasmo.brevity.kotlin.encoders.liftResource
-import dev.wasmo.brevity.kotlin.encoders.lowerResource
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
@@ -29,13 +27,12 @@ fun AbiLift(
     abiFunction.name is FunctionName.AsyncExport -> AbiLiftAsyncExport(
       parentService = parentService,
       abiFunction = abiFunction,
-      liftedFunction = CallLifted(abiFunction),
+      liftedFunction = CallLifted(parentService, abiFunction),
     )
 
     abiFunction.name is FunctionName.AsyncImport -> AbiLiftAsyncImport(
-      parentService = parentService,
       abiFunction = abiFunction,
-      liftedFunction = CallLifted(abiFunction),
+      liftedFunction = CallLifted(parentService, abiFunction),
     )
 
     abiFunction.name is FunctionName.ResourceNew -> AbiResourceNewLift(
@@ -60,20 +57,17 @@ fun AbiLift(
     }
 
     abiFunction.name is FunctionName.TaskReturn -> AbiTaskReturnLift(
-      parentService = parentService,
       abiFunction = abiFunction,
     )
 
     else -> AbiSyncLift(
-      parentService = parentService,
       abiFunction = abiFunction,
-      liftedFunction = CallLifted(abiFunction),
+      liftedFunction = CallLifted(parentService, abiFunction),
     )
   }
 }
 
 private class AbiSyncLift(
-  private val parentService: AbiService,
   private val abiFunction: AbiFunction,
   private val liftedFunction: KtFunction,
 ) : KtFunction {
@@ -85,7 +79,6 @@ private class AbiSyncLift(
     check(receiver == null)
 
     val p = parameters.iterator()
-    val liftedReceiverValue = parentService.liftReceiver(p)
     val liftedParametersValues = abiFunction.liftParameters(p)
     val liftedPointerParameterValue = abiFunction.liftPointerParameter(p)
 
@@ -96,7 +89,7 @@ private class AbiSyncLift(
     codeBuilder.platform.afterLiftParameters()
 
     val resultValue = liftedFunction.call(
-      liftedReceiverValue,
+      null,
       liftedParametersValues,
     ).makeImmediate()
 
@@ -105,7 +98,6 @@ private class AbiSyncLift(
 }
 
 private class AbiTaskReturnLift(
-  private val parentService: AbiService,
   private val abiFunction: AbiFunction,
 ) : KtFunction {
   context(codeBuilder: CodeBuilder)
@@ -116,13 +108,13 @@ private class AbiTaskReturnLift(
     check(receiver == null)
 
     val p = parameters.iterator()
-    val liftedReceiverValue = parentService.liftReceiver(p)
     val liftedParameterValues = abiFunction.liftParameters(p)
+    check(!p.hasNext())
 
     codeBuilder.platform.afterLiftParameters()
 
     codeBuilder.add("%L.taskReturn(⇥", codeBuilder.bridge)
-    if (abiFunction.parameters.liftedSpecs.isNotEmpty()) {
+    if (abiFunction.parameters.parameters.isNotEmpty()) {
       codeBuilder.add("\n%L,\n", liftedParameterValues.single().code)
     }
     codeBuilder.add("⇤)\n")
@@ -172,9 +164,10 @@ private class AbiLiftAsyncExport(
   private val abiFunction: AbiFunction,
   private val liftedFunction: KtFunction,
 ) : KtFunction {
+  private val result = abiFunction.result as AbiFunction.Result.CallTaskReturn
+
   init {
     require(abiFunction.name is FunctionName.AsyncExport)
-    require(abiFunction.result is AbiFunction.Result.CallTaskReturn)
   }
 
   context(codeBuilder: CodeBuilder)
@@ -191,7 +184,6 @@ private class AbiLiftAsyncExport(
       codeBuilder.bridge,
     ) {
       val p = parameters.iterator()
-      val liftedReceiverValue = parentService.liftReceiver(p)
       val liftedParametersValues = abiFunction.liftParameters(p)
 
       check(!p.hasNext()) {
@@ -201,33 +193,19 @@ private class AbiLiftAsyncExport(
       codeBuilder.platform.afterLiftParameters()
 
       val resultValue = liftedFunction.call(
-        liftedReceiverValue,
+        null,
         liftedParametersValues,
       ).makeImmediate()
 
-      val resourceId = when {
-        abiFunction.isResource -> CodeBlockExpression(
-          type = INT,
-          nameHint = "id",
-          code = lowerResource(
-            resource = liftedReceiverValue.code,
-            abiClassName = parentService.apiClassName,
-          ),
-          immediate = true,
-        )
-
-        else -> null
-      }
-
       val taskReturn = AbiLower(
         abiService = parentService,
-        abiFunction = (abiFunction.result as AbiFunction.Result.CallTaskReturn).taskReturn,
-        resourceId = resourceId,
+        abiFunction = result.taskReturn,
+        resourceId = null,
       )
       taskReturn.call(
         receiver = null,
         parameters = buildList {
-          if (abiFunction.result.value != null) {
+          if (result.value != null) {
             add(resultValue)
           }
         },
@@ -245,7 +223,6 @@ private class AbiLiftAsyncExport(
 
 /** The function returns a `PackedSubtaskResult`. */
 private class AbiLiftAsyncImport(
-  private val parentService: AbiService,
   private val abiFunction: AbiFunction,
   private val liftedFunction: KtFunction,
 ) : KtFunction {
@@ -267,7 +244,6 @@ private class AbiLiftAsyncImport(
       codeBuilder.bridge,
     ) {
       val p = parameters.iterator()
-      val liftedReceiverValue = parentService.liftReceiver(p)
       val liftedParametersValues = abiFunction.liftParameters(p)
       val liftedPointerParameterValue = abiFunction.liftPointerParameter(p)
 
@@ -278,7 +254,7 @@ private class AbiLiftAsyncImport(
       codeBuilder.platform.afterLiftParameters()
 
       val resultValue = liftedFunction.call(
-        liftedReceiverValue,
+        null,
         liftedParametersValues,
       ).makeImmediate()
 
@@ -295,52 +271,28 @@ private class AbiLiftAsyncImport(
 }
 
 context(codeBuilder: CodeBuilder)
-private fun AbiService.liftReceiver(
-  p: Iterator<KtExpression>,
-): KtExpression {
-  val receiverValue = when (this) {
-    is AbiWorld -> codeBuilder.platform.getParent(this)
-    is AbiInterface -> codeBuilder.platform.getParent(this)
-    is AbiResource -> {
-      CodeBlockExpression(
-        type = this.apiClassName,
-        nameHint = "receiver",
-        code = liftResource(
-          id = p.next().code,
-          abiClassName = apiClassName,
-        ),
-      )
-    }
-  }
-
-  return receiverValue.makeImmediate()
-}
-
-context(codeBuilder: CodeBuilder)
 private fun AbiFunction.liftParameters(
   p: Iterator<KtExpression>,
 ): List<KtExpression> {
-  val codeBlocks = when (parameters) {
-    is Flattened -> {
-      parameters.parameters.map { flatParameter ->
-        flatParameter.encoder.liftFlat(
-          values = flatParameter.encoder.coreTypes.map { p.next().code },
-        )
-      }
-    }
-
-    is Stored -> {
-      parameters.loadAll(
-        baseAddress = codeBuilder.platform.liftAddress(p.next().code),
+  val values = when (parameters) {
+    is Flattened -> parameters.parameters.map { flatParameter ->
+      flatParameter.encoder.liftFlat(
+        values = flatParameter.encoder.coreTypes.map { p.next().code },
       )
     }
+
+    is Stored -> parameters.loadAll(
+      baseAddress = codeBuilder.platform.liftAddress(p.next().code),
+    )
   }
 
-  return parameters.liftedSpecs.zip(codeBlocks).map { (spec, code) ->
+  check(parameters.parameters.size == values.size)
+
+  return parameters.parameters.zip(values).map { (flatParameter, value) ->
     CodeBlockExpression(
-      type = spec.type,
-      nameHint = spec.name,
-      code = code,
+      type = flatParameter.type,
+      nameHint = flatParameter.name,
+      code = value,
     )
   }
 }
