@@ -309,6 +309,18 @@ class BrevityExecutionTester(
   suspend fun generateGuestAppRustCargoToml() {
     executeIo("generateGuestAppRustCargoToml") {
       fileSystem.createDirectories(layout.rust)
+      // Create one cargo workspace for every generated test. Dependencies compile once.
+      val workspaceTomlPath = layout.path.parent!! / "Cargo.toml"
+      val workspaceToml = """
+        |[workspace]
+        | resolver = "3"
+        | members = ["*/rust"]
+        |
+        """.trimMargin()
+      if (!fileSystem.exists(workspaceTomlPath) ||
+        fileSystem.read(workspaceTomlPath) { readUtf8() } != workspaceToml) {
+        fileSystem.write(workspaceTomlPath) { writeUtf8(workspaceToml) }
+      }
       fileSystem.write(layout.rust / "Cargo.toml") {
         writeUtf8(
           """
@@ -443,7 +455,7 @@ class BrevityExecutionTester(
       "target/unbundled/",
       "--output",
       "target/unbundled/component.wasm",
-      "./target/wasm32-wasip2/release/brevity_testing_${name}.wasm",
+      "../../target/wasm32-wasip2/release/brevity_testing_${name}.wasm",
     )
   }
 
