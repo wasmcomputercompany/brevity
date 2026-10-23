@@ -102,26 +102,27 @@ class BrevityExecutionTester(
         val hostKt = launch {
           HostKotlinTarget(name, fileSystem, layout, testFunctions).generate()
         }
-        val hostKtJar = async {
-          brevityKt.join()
-          hostKt.join()
-          kotlinToolchain.join()
-          compileKotlinHost()
-          "build/tasks/_host_executableJarJvm/host-jvm-executable.jar"
-        }
-
         val guestKt = launch {
           GuestKotlinTarget(name, fileSystem, layout, testFunctions).generate()
         }
-        val guestKtWasm = async {
-          // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
-          // https://kotlinlang.slack.com/archives/C062WG3A7T8/p1787598848694559
-          hostKtJar.await()
-
+        // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
+        // https://kotlinlang.slack.com/archives/C062WG3A7T8/p1787598848694559
+        // Instead compile both the guest and host as one build invocation.
+        val kotlinBuild = launch {
           brevityKt.join()
+          hostKt.join()
           guestKt.join()
           kotlinToolchain.join()
-          compileKotlinGuest()
+          compileKotlin()
+        }
+        val hostKtJar = async {
+          kotlinBuild.join()
+          packageKotlinHost()
+          "build/tasks/_host_executableJarJvm/host-jvm-executable.jar"
+        }
+
+        val guestKtWasm = async {
+          kotlinBuild.join()
           "build/artifacts/CompiledWebArtifact/guestwasmWasidebug/kotlin-output/guest.wasm"
         }
 
@@ -308,6 +309,18 @@ class BrevityExecutionTester(
   suspend fun generateGuestAppRustCargoToml() {
     executeIo("generateGuestAppRustCargoToml") {
       fileSystem.createDirectories(layout.rust)
+      // Create one cargo workspace for every generated test. Dependencies compile once.
+      val workspaceTomlPath = layout.path.parent!! / "Cargo.toml"
+      val workspaceToml = """
+        |[workspace]
+        | resolver = "3"
+        | members = ["*/rust"]
+        |
+        """.trimMargin()
+      if (!fileSystem.exists(workspaceTomlPath) ||
+        fileSystem.read(workspaceTomlPath) { readUtf8() } != workspaceToml) {
+        fileSystem.write(workspaceTomlPath) { writeUtf8(workspaceToml) }
+      }
       fileSystem.write(layout.rust / "Cargo.toml") {
         writeUtf8(
           """
@@ -381,20 +394,22 @@ class BrevityExecutionTester(
     }
   }
 
-  suspend fun compileKotlinGuest() {
+  suspend fun compileKotlin() {
     executeCommand(
-      "compileKotlinGuest",
+      "compileKotlin",
       layout.path,
       "kotlin",
       "build",
+      "--module",
+      "host",
       "--module",
       "guest",
     )
   }
 
-  suspend fun compileKotlinHost() {
+  suspend fun packageKotlinHost() {
     executeCommand(
-      "compileKotlinHost",
+      "packageKotlinHost",
       layout.path,
       "kotlin",
       "package",
@@ -440,7 +455,7 @@ class BrevityExecutionTester(
       "target/unbundled/",
       "--output",
       "target/unbundled/component.wasm",
-      "./target/wasm32-wasip2/release/brevity_testing_${name}.wasm",
+      "../../target/wasm32-wasip2/release/brevity_testing_${name}.wasm",
     )
   }
 
