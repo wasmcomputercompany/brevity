@@ -107,12 +107,12 @@ class GuestGenerator(
                 "%T.registerResourceHandle<%T> { %N ->",
                 Symbols.Brevity.GuestBridge,
                 abiResource.apiClassName,
-                "id",
+                "rep",
               )
               addStatement(
                 "%T(%N)",
                 abiResource.guestServiceClassName,
-                "id",
+                "rep",
               )
               endControlFlow()
             }
@@ -181,16 +181,16 @@ class GuestGenerator(
       className,
       TypeSpec.classBuilder(className)
         .addModifiers(KModifier.INTERNAL)
-        .addSuperinterface(abiResource.apiInterfaceName(Import))
+        .superclass(abiResource.apiInterfaceName(Import))
         .addProperty(
-          PropertySpec.builder("id", INT)
+          PropertySpec.builder("rep", INT)
             .addModifiers(KModifier.PRIVATE)
-            .initializer("id")
+            .initializer("rep")
             .build(),
         )
         .primaryConstructor(
           FunSpec.constructorBuilder()
-            .addParameter("id", INT)
+            .addParameter("rep", INT)
             .build(),
         )
         .declareServiceClassFunctions(abiResource)

@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.kotlin.abi
 
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.INT
 import dev.wasmo.brevity.FunctionName
@@ -22,6 +23,7 @@ context(codeBuilder: CodeBuilder)
 fun AbiLift(
   parentService: AbiService,
   abiFunction: AbiFunction,
+  resourceImplementation: ClassName? = null,
 ): KtFunction {
   return when {
     abiFunction.name is FunctionName.AsyncExport -> AbiLiftAsyncExport(
@@ -38,6 +40,7 @@ fun AbiLift(
     abiFunction.name is FunctionName.ResourceNew -> AbiResourceNewLift(
       parentService = parentService,
       abiFunction = abiFunction,
+      resourceImplementation = resourceImplementation!!,
     )
 
     abiFunction.name is FunctionName.ResourceDrop -> AbiResourceDropLift(
@@ -125,6 +128,7 @@ private class AbiTaskReturnLift(
 private class AbiResourceNewLift(
   private val parentService: AbiService,
   private val abiFunction: AbiFunction,
+  private val resourceImplementation: ClassName,
 ) : KtFunction {
   context(codeBuilder: CodeBuilder)
   override fun call(
@@ -133,11 +137,16 @@ private class AbiResourceNewLift(
   ): KtExpression {
     check(receiver == null)
     codeBuilder.platform.afterLiftParameters()
-    codeBuilder.addStatement("// TODO: AbiResourceNewLift")
     return CodeBlockExpression(
       INT,
       "index",
-      CodeBlock.of("%L", 0),
+      CodeBlock.of(
+        "%L.newResource(%T(%N = %L))",
+        codeBuilder.bridge,
+        resourceImplementation,
+        "rep",
+        parameters.single().code,
+      ),
     )
   }
 }

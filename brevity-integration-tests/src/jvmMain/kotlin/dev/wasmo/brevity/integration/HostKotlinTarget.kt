@@ -120,7 +120,7 @@ class HostKotlinTarget(
             |  override fun create() = ${parent.identifier.upperCamelCase}HostImplementation
             |}
             |
-            |object ${parent.identifier.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.serviceName.upperCamelCase}.${parent.identifier.upperCamelCase} {
+            |object ${parent.identifier.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.serviceName.upperCamelCase}.${parent.identifier.upperCamelCase}() {
             |  ${functionsString.replace("\n", "\n  ")}
             |}
             |

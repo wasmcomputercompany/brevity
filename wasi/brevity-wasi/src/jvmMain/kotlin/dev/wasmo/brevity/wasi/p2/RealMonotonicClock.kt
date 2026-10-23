@@ -33,7 +33,7 @@ internal class RealMonotonicClock(
 
   private class DurationPollable(
     val readyAt: ComparableTimeMark,
-  ) : Poll.Pollable {
+  ) : Poll.Pollable() {
     override fun ready(): Boolean {
       val elapsedNow = readyAt.elapsedNow()
       return elapsedNow >= 0.nanoseconds

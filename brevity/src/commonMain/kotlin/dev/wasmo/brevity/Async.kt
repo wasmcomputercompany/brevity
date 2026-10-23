@@ -3,16 +3,16 @@ package dev.wasmo.brevity
 import kotlin.jvm.JvmInline
 
 @BrevityInternalApi
-interface WaitableSet : Resource {
+abstract class WaitableSet : Resource() {
   /**
    * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitablejoin
    */
-  fun join(waitableIndex: Int)
+  abstract fun join(waitableIndex: Int)
 
   /**
    * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setpoll
    */
-  fun poll(eventPointer: Int): Int
+  abstract fun poll(eventPointer: Int): Int
 }
 
 @BrevityInternalApi

@@ -70,5 +70,5 @@ tasks.named("jvmTest") {
   dependsOn(compileDevelopmentExecutableKotlinWasmWasi)
 
   // Required by BridgeEveryTypeTest.
-  dependsOn(publishTestingArtifacts)
+//  dependsOn(publishTestingArtifacts)
 }

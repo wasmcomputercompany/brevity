@@ -73,7 +73,7 @@ class BrevityPlugin @Inject constructor(
       }
 
       classpath.setFrom(cliConfiguration)
-      dependsOn(wkgFetchDependencies)
+//      dependsOn(wkgFetchDependencies)
       inputWitPackageDirectories.from(copyWitSourceToBuildFolder)
       outputKotlinCommonMain.value(project.layout.buildDirectory.dir("brevity/commonMain"))
       outputKotlinWasmWasiMain.value(project.layout.buildDirectory.dir("brevity/wasmWasiMain"))

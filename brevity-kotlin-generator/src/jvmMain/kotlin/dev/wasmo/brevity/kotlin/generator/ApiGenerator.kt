@@ -110,9 +110,10 @@ class ApiGenerator(
     val className = kotlinMapper.getAbiClassName(abiResource.type)
     collector.addType(
       className = className,
-      type = TypeSpec.interfaceBuilder(className)
+      type = TypeSpec.classBuilder(className)
+        .addModifiers(KModifier.ABSTRACT)
         .setDeclaration(abiResource.irDeclaration)
-        .addSuperinterface(Symbols.Brevity.Resource)
+        .superclass(Symbols.Brevity.Resource)
         .apply {
           for (abiFunction in abiResource.functions) {
             if (!abiFunction.isSupported) continue

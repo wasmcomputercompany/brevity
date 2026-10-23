@@ -1,6 +1,6 @@
 package dev.wasmo.brevity
 
-interface Resource : AutoCloseable {
+abstract class Resource : AutoCloseable {
   override fun close() {
   }
 }

@@ -69,7 +69,7 @@ class CallLifted(
       is AbiInterface -> codeBuilder.platform.getParent(parentService)
       is AbiResource -> {
         val (spec, value) = iterator.next()
-        check(spec is AbiFunction.FlatParameter.ResourceId)
+        check(spec is AbiFunction.FlatParameter.ResourceRep)
         CodeBlockExpression(
           type = parentService.apiClassName,
           nameHint = "receiver",

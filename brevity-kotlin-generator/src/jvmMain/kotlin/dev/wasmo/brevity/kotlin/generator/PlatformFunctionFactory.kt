@@ -47,8 +47,8 @@ class PlatformFunctionFactory(
             resourceId = when {
               abiFunction.isResource -> CodeBlockExpression(
                 type = CoreType.I32.kotlinCoreType,
-                nameHint = "id",
-                code = CodeBlock.of("this.%N", "id"),
+                nameHint = "rep",
+                code = CodeBlock.of("this.%N", "rep"),
                 immediate = true,
               )
 

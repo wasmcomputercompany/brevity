@@ -10,8 +10,8 @@ import kotlinx.coroutines.runBlocking
 @BrevityInternalApi
 class HostBridge {
   private val typeToResourceHandle = mutableMapOf<KType, (Int) -> Resource>()
-  private val idToResource = mutableMapOf<Int, Resource>()
-  private var nextId = 6_060_000
+  private val indexToResource = mutableMapOf<Int, Resource>()
+  private var nextIndex = 6_060_000
   private lateinit var _memory: Memory
 
   val memory: Memory
@@ -29,6 +29,12 @@ class HostBridge {
     )
   }
 
+  fun newResource(handle: Resource): Int {
+    val result = nextIndex++
+    indexToResource[result] = handle
+    return result
+  }
+
   inline fun <reified T : Resource> registerResourceHandle(
     noinline constructor: (id: Int) -> T,
   ) {
@@ -37,29 +43,29 @@ class HostBridge {
 
   @PublishedApi
   internal fun registerResourceHandle(type: KType, createHandle: (id: Int) -> Resource) {
-    typeToResourceHandle[type] = createHandle
+//    typeToResourceHandle[type] = createHandle
   }
 
-  fun <T : Resource> toId(resource: T): Int {
-    val id = nextId++
-    idToResource[id] = resource
+  fun <T : Resource> toIndex(resource: T): Int {
+    val id = nextIndex++
+    indexToResource[id] = resource
     return id
   }
 
-  inline fun <reified T : Resource> fromId(id: Int): T {
-    return fromId(typeOf<T>(), id) as T
+  inline fun <reified T : Resource> fromIndex(index: Int): T {
+    return fromIndex(typeOf<T>(), index) as T
   }
 
   @PublishedApi
-  internal fun fromId(type: KType, id: Int): Resource? {
-    val createHandle = typeToResourceHandle[type]
-    if (createHandle != null) return createHandle(id)
-    return idToResource[id]
+  internal fun fromIndex(type: KType, index: Int): Resource? {
+//    val createHandle = typeToResourceHandle[type]
+//    if (createHandle != null) return createHandle(id)
+    return indexToResource[index]
   }
 
   @PublishedApi
   internal fun dropInternal(id: Int): Resource? {
-    return idToResource.remove(id)
+    return indexToResource.remove(id)
   }
 
   fun launchSubtask(block: suspend () -> Unit): PackedSubtaskResult {

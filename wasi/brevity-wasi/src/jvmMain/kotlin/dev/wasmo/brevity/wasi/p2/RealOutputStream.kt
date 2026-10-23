@@ -10,7 +10,7 @@ import wit.wasi.io.v0_2_0.Streams
 
 class RealOutputStream(
   val delegate: OutputStream,
-) : Streams.OutputStream {
+) : Streams.OutputStream() {
   override fun checkWrite(): Result<ULong, Streams.StreamError> {
     return Result.Ok(1024UL * 1024UL)
   }
@@ -64,7 +64,7 @@ class RealOutputStream(
 }
 
 internal fun IOException.asStreamErrorResult(): Result.Error<Unit, Streams.StreamError> {
-  val error = object : Error.Error {
+  val error = object : Error.Error() {
     override fun toDebugString() = this@asStreamErrorResult.stackTraceToString()
   }
   return Result.Error<Unit, Streams.StreamError>(

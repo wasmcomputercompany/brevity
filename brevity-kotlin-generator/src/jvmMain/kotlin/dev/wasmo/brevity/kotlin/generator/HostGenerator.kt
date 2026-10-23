@@ -13,10 +13,12 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.buildCodeBlock
 import com.squareup.kotlinpoet.joinToCode
+import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.RoleTracker
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
@@ -149,12 +151,12 @@ class HostGenerator(
                 beginControlFlow(
                   "registerResourceHandle<%T> { %N ->",
                   abiResource.apiClassName,
-                  "id",
+                  "rep",
                 )
                 addStatement(
                   "%T(%N)",
                   className.nestedClass(abiResource.implementationName),
-                  "id",
+                  "rep",
                 )
                 endControlFlow()
               }
@@ -191,13 +193,23 @@ class HostGenerator(
           .build(),
       )
       initExports(initExportsBuilder, builder, abiWorld.functions)
-      initImports(initImportsBuilder, bridgeValue, abiWorld)
+      initImports(
+        initImportsBuilder = initImportsBuilder,
+        bridgeValue = bridgeValue,
+        worldClassName = className,
+        parentService = abiWorld,
+      )
       builder.addType(generateExportsImplementation(abiWorld))
     }
 
     fun generateResource(abiResource: AbiResource) {
       initExports(initExportsBuilder, builder, abiResource.functions)
-      initImports(initImportsBuilder, bridgeValue, abiResource)
+      initImports(
+        initImportsBuilder = initImportsBuilder,
+        bridgeValue = bridgeValue,
+        worldClassName = className,
+        parentService = abiResource,
+      )
       if (abiResource.orientation == Export) {
         builder.addType(generateExportsImplementation(abiResource))
       }
@@ -205,7 +217,12 @@ class HostGenerator(
 
     fun generateInterface(abiInterface: AbiInterface) {
       initExports(initExportsBuilder, builder, abiInterface.functions)
-      initImports(initImportsBuilder, bridgeValue, abiInterface)
+      initImports(
+        initImportsBuilder = initImportsBuilder,
+        bridgeValue = bridgeValue,
+        worldClassName = className,
+        parentService = abiInterface,
+      )
       if (abiInterface.orientation == Export) {
         builder.addType(generateExportsImplementation(abiInterface))
       }
@@ -261,6 +278,7 @@ class HostGenerator(
   private fun initImports(
     initImportsBuilder: FunSpec.Builder,
     bridgeValue: CodeBlock,
+    worldClassName: ClassName,
     parentService: AbiService,
   ) {
     val store = CodeBlock.of("%N", "store")
@@ -270,6 +288,7 @@ class HostGenerator(
       initImportsBuilder.addCode(
         declareHost(
           bridge = bridgeValue,
+          worldClassName = worldClassName,
           store = store,
           parentService = parentService,
           abiFunction = abiFunction,
@@ -284,36 +303,44 @@ class HostGenerator(
   ): TypeSpec {
     return TypeSpec.classBuilder(abiService.implementationName)
       .addModifiers(KModifier.INTERNAL, KModifier.INNER)
-      .addSuperinterface(abiService.apiInterfaceName(Export))
       .primaryConstructor(
         FunSpec.constructorBuilder()
           .apply {
             if (abiService is AbiResource) {
-              addParameter("id", INT)
+              addParameter("rep", INT)
             }
           }
           .build(),
       )
       .apply {
-        if (abiService is AbiResource) {
-          addProperty(
-            PropertySpec.builder("id", INT)
-              .addModifiers(KModifier.PRIVATE)
-              .initializer("id")
-              .build(),
-          )
-        }
-        if (abiService is AbiWorld) {
-          val worldClassName = abiService.hostClassName
-          for (abiInterface in abiService.interfaces) {
-            if (abiInterface.orientation != Export) continue
+        when (abiService) {
+          is AbiWorld -> {
+            addSuperinterface(abiService.apiInterfaceName(Export))
+            val worldClassName = abiService.hostClassName
+            for (abiInterface in abiService.interfaces) {
+              if (abiInterface.orientation != Export) continue
+              addProperty(
+                PropertySpec.builder(abiInterface.instanceName, abiInterface.apiClassName)
+                  .addModifiers(KModifier.OVERRIDE)
+                  .initializer(
+                    "%T()",
+                    worldClassName.nestedClass(abiInterface.implementationName),
+                  )
+                  .build(),
+              )
+            }
+          }
+
+          is AbiInterface -> {
+            addSuperinterface(abiService.apiInterfaceName(Export))
+          }
+
+          is AbiResource -> {
+            superclass(abiService.apiInterfaceName(Export))
             addProperty(
-              PropertySpec.builder(abiInterface.instanceName, abiInterface.apiClassName)
-                .addModifiers(KModifier.OVERRIDE)
-                .initializer(
-                  "%T()",
-                  worldClassName.nestedClass(abiInterface.implementationName),
-                )
+              PropertySpec.builder("rep", INT)
+                .addModifiers(KModifier.PRIVATE)
+                .initializer("rep")
                 .build(),
             )
           }
@@ -340,6 +367,7 @@ class HostGenerator(
   private fun declareHost(
     bridge: CodeBlock,
     store: CodeBlock,
+    worldClassName: ClassName,
     parentService: AbiService,
     abiFunction: AbiFunction,
   ): CodeBlock {
@@ -349,12 +377,21 @@ class HostGenerator(
       nameAllocator = abiFunction.newNameAllocator(),
     )
 
+    val resourceImplementation = when {
+      abiFunction.isResource -> worldClassName.nestedClass(parentService.implementationName)
+      abiFunction.name is FunctionName.ResourceNew ->
+        worldClassName.nestedClass(abiFunction.name.resourceType.handleName)
+
+      else -> null
+    }
+
     context(codeBuilder) {
       val function = ChicoryImportFunction(
         abiFunction,
         AbiLift(
           parentService = parentService,
           abiFunction = abiFunction,
+          resourceImplementation = resourceImplementation,
         ),
       )
       val args = CodeBlockExpression(
@@ -436,10 +473,13 @@ private val AbiService.implementationName: String
   get() {
     return when (this) {
       is AbiInterface -> "Real${serviceName.name.upperCamelCase}"
-      is AbiResource -> "${type.name.upperCamelCase}Handle"
+      is AbiResource -> type.handleName
       is AbiWorld -> "RealGuest"
     }
   }
+
+private val TypeName.Declared.handleName: String
+  get() = "${name.upperCamelCase}Handle"
 
 private fun ClassName.wrap(
   prefix: Any = "",

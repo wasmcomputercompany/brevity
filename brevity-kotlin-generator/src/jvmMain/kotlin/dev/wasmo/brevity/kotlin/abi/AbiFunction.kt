@@ -63,7 +63,7 @@ data class AbiFunction(
       name is FunctionName.ResourceDrop
 
   val isResource: Boolean
-    get() = parameters.resourceId != null
+    get() = parameters.resourceRep != null
 
   fun newNameAllocator() = nameAllocator.copy()
 
@@ -119,8 +119,8 @@ data class AbiFunction(
       override val loweredSpecs: List<ParameterSpec>,
     ) : FlatParameter
 
-    /** The resource ID is a parameter when lowered, but the receiver when lifted. */
-    data class ResourceId(
+    /** The resource rep is a parameter when lowered, and the receiver when lifted. */
+    data class ResourceRep(
       override val name: String,
     ) : FlatParameter {
       override val type: TypeName
@@ -138,8 +138,8 @@ data class AbiFunction(
     val liftedSpecs: List<ParameterSpec>
       get() = parameters.filterIsInstance<FlatParameter.Value>()
         .map { ParameterSpec.builder(it.name, it.type).build() }
-    val resourceId: FlatParameter.ResourceId?
-      get() = parameters.filterIsInstance<FlatParameter.ResourceId>().singleOrNull()
+    val resourceRep: FlatParameter.ResourceRep?
+      get() = parameters.filterIsInstance<FlatParameter.ResourceRep>().singleOrNull()
 
     class Flattened(
       override val parameters: List<FlatParameter>,
@@ -304,7 +304,7 @@ data class AbiFunction(
       val nameAllocator = NameAllocator()
       val flatParameters = buildList {
         if (isResource) {
-          add(flatParameterResourceId(nameAllocator))
+          add(flatParameterResourceRep(nameAllocator))
         }
         for (irParameter in irFunction.parameters) {
           add(flatParameter(irParameter.type, irParameter.name, nameAllocator))
@@ -338,7 +338,7 @@ data class AbiFunction(
       val nameAllocator = NameAllocator()
       val flatParameters = buildList {
         if (isResource) {
-          add(flatParameterResourceId(nameAllocator))
+          add(flatParameterResourceRep(nameAllocator))
         }
         add(flatParameter(WitTypeName.U32, Identifier("event-code"), nameAllocator))
         add(flatParameter(WitTypeName.U32, Identifier("p1"), nameAllocator))
@@ -432,7 +432,7 @@ data class AbiFunction(
     ): AbiFunction {
       val nameAllocator = NameAllocator()
       val flatParameters = listOf(
-        flatParameterResourceId(nameAllocator)
+        flatParameterResourceRep(nameAllocator)
       )
       val name = FunctionName.ResourceClose(resourceType)
       return AbiFunction(
@@ -474,8 +474,8 @@ data class AbiFunction(
       )
     }
 
-    private fun flatParameterResourceId(nameAllocator: NameAllocator) =
-      FlatParameter.ResourceId(name = nameAllocator.newName("id"))
+    private fun flatParameterResourceRep(nameAllocator: NameAllocator) =
+      FlatParameter.ResourceRep(name = nameAllocator.newName("rep"))
 
     private fun parameters(
       flatParameters: List<FlatParameter>,

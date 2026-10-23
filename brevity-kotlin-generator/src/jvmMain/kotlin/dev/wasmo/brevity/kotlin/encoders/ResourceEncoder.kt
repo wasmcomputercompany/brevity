@@ -56,7 +56,7 @@ internal class ResourceEncoder(
 
 context(codeBuilder: CodeBuilder)
 fun liftResource(id: CodeBlock, abiClassName: ClassName) = CodeBlock.of(
-  "%L.fromId<%T>(%L)",
+  "%L.fromIndex<%T>(%L)",
   codeBuilder.bridge,
   abiClassName,
   id,
@@ -64,7 +64,7 @@ fun liftResource(id: CodeBlock, abiClassName: ClassName) = CodeBlock.of(
 
 context(codeBuilder: CodeBuilder)
 fun lowerResource(resource: CodeBlock, abiClassName: ClassName) = CodeBlock.of(
-  "%L.toId<%T>(%L)",
+  "%L.toIndex<%T>(%L)",
   codeBuilder.bridge,
   abiClassName,
   resource,

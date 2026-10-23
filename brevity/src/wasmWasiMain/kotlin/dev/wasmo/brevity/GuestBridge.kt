@@ -32,7 +32,9 @@ object GuestBridge {
     kotlin.wasm.internal.onExportedFunctionExit = {}
   }
 
-  inline fun <reified T : Resource> registerResourceHandle(noinline constructor: (id: Int) -> T) {
+  inline fun <reified T : Resource> registerResourceHandle(
+    noinline constructor: (id: Int) -> T,
+  ) {
     registerResourceHandle(typeOf<T>(), constructor)
   }
 
@@ -41,21 +43,21 @@ object GuestBridge {
     typeToResourceHandle[type] = createHandle
   }
 
-  fun <T : Resource> toId(resource: T): Int {
+  fun <T : Resource> toIndex(resource: T): Int {
     val id = nextId++
     idToResource[id] = resource
     return id
   }
 
-  inline fun <reified T : Resource> fromId(id: Int): T {
-    return fromId(typeOf<T>(), id) as T
+  inline fun <reified T : Resource> fromIndex(index: Int): T {
+    return fromIndex(typeOf<T>(), index) as T
   }
 
   @PublishedApi
-  internal fun fromId(type: KType, id: Int): Resource? {
-    val createHandle = typeToResourceHandle[type]
-    if (createHandle != null) return createHandle(id)
-    return idToResource[id]
+  internal fun fromIndex(type: KType, index: Int): Resource? {
+//    val createHandle = typeToResourceHandle[type]
+//    if (createHandle != null) return createHandle(index)
+    return idToResource[index]
   }
 
   fun taskReturn(value: Any? = Unit) {
