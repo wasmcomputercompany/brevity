@@ -74,90 +74,76 @@ class BrevityExecutionTester(
     val start = TimeSource.Monotonic.markNow()
     try {
       clean()
-
-      coroutineScope {
-        val kotlinToolchain = launch {
-          launch { generateKotlinProject() }
-          launch { generateBrevityKotlinModule() }
-          launch { generateGuestAppKotlinModule() }
-          launch { generateHostAppKotlinModule() }
-          launch { writeExtraFiles() }
-        }
-
-        val wit = launch {
-          WitTarget(
-            name = name,
-            fileSystem = fileSystem,
-            layout = layout,
-            rawWitTypeDeclarations = rawWitTypeDeclarations,
-            rawWitUseStatements = rawWitUseStatements,
-            testFunctions = testFunctions,
-          ).generate()
-        }
-        val brevityKt = launch {
-          wit.join()
-          generateBrevity()
-        }
-
-        val hostKt = launch {
-          HostKotlinTarget(name, fileSystem, layout, testFunctions).generate()
-        }
-        val guestKt = launch {
-          GuestKotlinTarget(name, fileSystem, layout, testFunctions).generate()
-        }
-        // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
-        // https://kotlinlang.slack.com/archives/C062WG3A7T8/p1787598848694559
-        // Instead compile both the guest and host as one build invocation.
-        val kotlinBuild = launch {
-          brevityKt.join()
-          hostKt.join()
-          guestKt.join()
-          kotlinToolchain.join()
-          compileKotlin()
-        }
-        val hostKtJar = async {
-          kotlinBuild.join()
-          packageKotlinHost()
-          "build/tasks/_host_executableJarJvm/host-jvm-executable.jar"
-        }
-
-        val guestKtWasm = async {
-          kotlinBuild.join()
-          "build/artifacts/CompiledWebArtifact/guestwasmWasidebug/kotlin-output/guest.wasm"
-        }
-
-        val guestRsToml = launch {
-          generateGuestAppRustCargoToml()
-        }
-        val guestRs = launch {
-          GuestRustTarget(name, fileSystem, layout, testFunctions).generate()
-        }
-        val guestRsWasm = async {
-          guestRs.join()
-          guestRsToml.join()
-          compileRustGuest()
-          "rust/target/unbundled/unbundled-module0.wasm"
-        }
-
-        launch {
-          executeKotlinHost(
-            "executeKotlinHost(guest=kt)",
-            hostKtJar.await(),
-            guestKtWasm.await(),
-          )
-        }
-
-        launch {
-          executeKotlinHost(
-            "executeKotlinHost(guest=rs)",
-            hostKtJar.await(),
-            guestRsWasm.await(),
-          )
-        }
-      }
+      generate()
+      buildAndRun()
     } finally {
       val elapsed = TimeSource.Monotonic.markNow() - start
       println("$name.total took $elapsed")
+    }
+  }
+
+  private suspend fun generate() {
+    coroutineScope {
+      launch { generateKotlinProject() }
+      launch { generateBrevityKotlinModule() }
+      launch { generateGuestAppKotlinModule() }
+      launch { generateHostAppKotlinModule() }
+      launch { writeExtraFiles() }
+      launch { generateGuestAppRustCargoToml() }
+      launch { HostKotlinTarget(name, fileSystem, layout, testFunctions).generate() }
+      launch { GuestKotlinTarget(name, fileSystem, layout, testFunctions).generate() }
+      launch { GuestRustTarget(name, fileSystem, layout, testFunctions).generate() }
+      launch {
+        WitTarget(
+          name = name,
+          fileSystem = fileSystem,
+          layout = layout,
+          rawWitTypeDeclarations = rawWitTypeDeclarations,
+          rawWitUseStatements = rawWitUseStatements,
+          testFunctions = testFunctions,
+        ).generate()
+        generateBrevity()
+      }
+    }
+  }
+
+  private suspend fun buildAndRun() {
+    coroutineScope {
+      // Don't run The Kotlin Toolchain in parallel; that's currently broken at the moment.
+      // https://kotlinlang.slack.com/archives/C062WG3A7T8/p1787598848694559
+      // Instead compile both the guest and host as one build invocation.
+      val kotlinBuild = launch { compileKotlin() }
+      val hostKtJar = async {
+        kotlinBuild.join()
+        packageKotlinHost()
+        "build/tasks/_host_executableJarJvm/host-jvm-executable.jar"
+      }
+
+      val guestKtWasm = async {
+        kotlinBuild.join()
+        "build/artifacts/CompiledWebArtifact/guestwasmWasidebug/kotlin-output/guest.wasm"
+      }
+
+      val guestRsWasm = async {
+        compileRustGuest()
+        "rust/target/unbundled/unbundled-module0.wasm"
+      }
+
+      launch {
+        executeKotlinHost(
+          "executeKotlinHost(guest=kt)",
+          hostKtJar.await(),
+          guestKtWasm.await(),
+        )
+      }
+
+      launch {
+        executeKotlinHost(
+          "executeKotlinHost(guest=rs)",
+          hostKtJar.await(),
+          guestRsWasm.await(),
+        )
+      }
     }
   }
 
