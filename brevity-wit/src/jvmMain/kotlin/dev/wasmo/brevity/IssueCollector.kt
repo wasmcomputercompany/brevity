@@ -7,7 +7,7 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
-class IssueCollector internal constructor(
+class IssueCollector(
   issues: MutableList<Issue> = mutableListOf(),
 ) {
   class ThrowIfEmptyThrown internal constructor(private val issueCollector: IssueCollector): Exception() {
@@ -40,7 +40,7 @@ class IssueCollector internal constructor(
 }
 
 context(issueCollector: IssueCollector)
-fun <T> pushIssueLocation(location: Location, block: IssueCollector.() -> T): T {
+inline fun <T> pushIssueLocation(location: Location, crossinline block: IssueCollector.() -> T): T {
   contract {
     callsInPlace(block, InvocationKind.EXACTLY_ONCE)
   }
@@ -75,7 +75,7 @@ fun <T> pushIssueLocation(location: Location, block: IssueCollector.() -> T): T 
 /**
  * Convenience function to run a block of code and throw if any issues are raised by it.
  */
-fun <T> collectNoIssuesOrThrow(block: IssueCollector.() -> T): T {
+inline fun <T> collectNoIssuesOrThrow(crossinline block: IssueCollector.() -> T): T {
   contract {
     callsInPlace(block, InvocationKind.EXACTLY_ONCE)
   }
@@ -101,7 +101,7 @@ fun <T> collectNoIssuesOrThrow(block: IssueCollector.() -> T): T {
 /**
  * Run a block, returning the result and any issues raised.
  */
-fun <T> collectIssues(block: IssueCollector.() -> T): Pair<T, List<Issue>> {
+inline fun <T> collectIssues(crossinline block: IssueCollector.() -> T): Pair<T, List<Issue>> {
   contract {
     callsInPlace(block, InvocationKind.EXACTLY_ONCE)
   }
