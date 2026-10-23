@@ -2,32 +2,41 @@
 
 package dev.wasmo.brevity
 
+import dev.wasmo.brevity.IssueCollector.ThrowIfEmptyThrown
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
 class IssueCollector internal constructor(
   issues: MutableList<Issue> = mutableListOf(),
-  val locationStack: List<Location> = emptyList(),
 ) {
+  class ThrowIfEmptyThrown internal constructor(private val issueCollector: IssueCollector): Exception() {
+    fun throwIssues(location: Location? = null): Nothing =
+      throw WitCompoundException(issueCollector.issues.map {
+        WitException(it.copy(locationStack = if (location != null) {
+          it.locationStack + location
+        } else {
+          it.locationStack
+        }
+        ))
+      })
+  }
+
   private val _issues = issues
   val issues: List<Issue> = _issues
 
   fun report(issue: Issue) {
-    _issues += issue.copy(locationStack = locationStack)
+    _issues += issue
   }
 
   fun throwIfNotEmpty() {
-    // Note that this clears the current issues list to avoid double-reporting if this exception
-    // is later caught and rethrown.
     if (issues.isNotEmpty()) {
-      throw WitCompoundException(issues.map { WitException(it) })
-        .also { _issues.clear() }
+      // The collectIssue APIs all stitch together issues across the stack
+      // in try/catch blocks, so our issues will actually be packaged up by our
+      // caller instead of us here.
+      throw ThrowIfEmptyThrown(this)
     }
   }
-
-  internal fun pushIssueLocation(location: Location) =
-    IssueCollector(_issues, listOf(location).plus(locationStack))
 }
 
 context(issueCollector: IssueCollector)
@@ -35,15 +44,31 @@ fun <T> pushIssueLocation(location: Location, block: IssueCollector.() -> T): T 
   contract {
     callsInPlace(block, InvocationKind.EXACTLY_ONCE)
   }
-  val issueCollector = issueCollector.pushIssueLocation(location)
+  val innerCollector = IssueCollector()
   return try {
-    issueCollector.block()
+    innerCollector.block().also {
+      for (issue in innerCollector.issues) {
+        // On success, copy any collected issues within the scope to the enclosing
+        // collector
+        issueCollector.report(
+          issue.copy(
+            locationStack = issue.locationStack + location
+          )
+        )
+      }
+    }
+  } catch (e: ThrowIfEmptyThrown) {
+    e.throwIssues(location)
   } catch (e: WitCompoundException) {
-    val issues = e.witExceptions
-      .map { it.issue }
-      .map { it.copy(locationStack = it.locationStack + issueCollector.locationStack )}
+    // Outer issues will be handled by an enclosing block, but issues in the exception
+    // and issues in our collector need the location added to them
+    val thrownIssues = e.witExceptions.map { it.issue }
+    val innerIssues = innerCollector.issues
 
-    throw WitCompoundException(issues.map { WitException(it) })
+    throw WitCompoundException(
+      (innerIssues + thrownIssues)
+        .map { it.copy(locationStack = it.locationStack + location) }
+        .map { WitException(it) })
   }
 }
 
@@ -55,9 +80,13 @@ fun <T> collectNoIssuesOrThrow(block: IssueCollector.() -> T): T {
     callsInPlace(block, InvocationKind.EXACTLY_ONCE)
   }
   val issueCollector = IssueCollector()
-  val result = with(issueCollector) {
+  return with(issueCollector) {
     try {
-      block()
+      block().also {
+        issueCollector.throwIfNotEmpty()
+      }
+    } catch (e: ThrowIfEmptyThrown) {
+      e.throwIssues()
     } catch (e: WitCompoundException) {
       val nestedIssues = e.witExceptions.map { it.issue }
 
@@ -67,10 +96,6 @@ fun <T> collectNoIssuesOrThrow(block: IssueCollector.() -> T): T {
       )
     }
   }
-
-  issueCollector.throwIfNotEmpty()
-
-  return result
 }
 
 /**
@@ -84,6 +109,8 @@ fun <T> collectIssues(block: IssueCollector.() -> T): Pair<T, List<Issue>> {
   val result = with(issueCollector) {
     try {
       block()
+    } catch (e: ThrowIfEmptyThrown) {
+      e.throwIssues()
     } catch (e: WitCompoundException) {
       val nestedIssues = e.witExceptions.map { it.issue }
       throw WitCompoundException(
