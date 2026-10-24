@@ -1,8 +1,9 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeName as KtTypeName
 import com.squareup.kotlinpoet.buildCodeBlock
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.generator.Symbols
 
 /**
@@ -11,9 +12,11 @@ import dev.wasmo.brevity.kotlin.generator.Symbols
  */
 class StaticListEncoder(
   size: Int,
-  private val elementType: TypeName,
+  private val elementType: KtTypeName,
   elementEncoder: Encoder,
 ) : AbstractRecordEncoder(List(size) { elementEncoder }) {
+  override val brevityTypeName: TypeName
+    get() = TypeName.List(fieldEncoders.first().brevityTypeName, fieldEncoders.size.toUInt())
   override val instanceNameHint: String
     get() = "list"
 

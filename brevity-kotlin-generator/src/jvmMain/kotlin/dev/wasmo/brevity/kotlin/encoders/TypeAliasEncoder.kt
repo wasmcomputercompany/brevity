@@ -2,10 +2,12 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 class TypeAliasEncoder(
+  override val brevityTypeName: TypeName,
   val type: KtTypeName,
   val delegate: Encoder,
 ) : Encoder() {

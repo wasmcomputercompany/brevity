@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.buildCodeBlock
 import com.squareup.kotlinpoet.joinToCode
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFlag
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
@@ -13,6 +14,7 @@ import dev.wasmo.brevity.kotlin.generator.kotlinName
  * Flags are implemented as packed integer values. This encoder packs and unpacks values.
  */
 class FlagsEncoder(
+  override val brevityTypeName: TypeName,
   private val kotlinType: ClassName,
   private val flags: List<IrFlag>,
   private val packedFlagEncoder: DirectEncoder,

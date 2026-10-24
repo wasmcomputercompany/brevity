@@ -1,8 +1,9 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
@@ -11,8 +12,10 @@ import dev.wasmo.brevity.kotlin.code.MemoryAllocator
  */
 class DynamicListEncoder(
   private val elementEncoder: Encoder,
-  private val listType: TypeName,
+  private val listType: KtTypeName,
 ) : Encoder() {
+  override val brevityTypeName: TypeName
+    get() = TypeName.List(elementEncoder.brevityTypeName)
   override val coreTypes = listOf(CoreType.Pointer, CoreType.Pointer)
 
   override val nameHints: List<Identifier>

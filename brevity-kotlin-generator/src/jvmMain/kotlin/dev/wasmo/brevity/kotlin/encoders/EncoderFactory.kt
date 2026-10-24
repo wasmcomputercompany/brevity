@@ -63,7 +63,7 @@ class EncoderFactory(
       is TypeName.Declared -> {
         val declaredType = declarationIndex[typeName]
           ?: error("unexpected type: $typeName")
-        getImplementationEncoder(declaredType)
+        getDeclaredTypeEncoder(declaredType)
       }
 
       is TypeName.Future -> FallbackEncoder(kotlinMapper, typeName, CoreType.I32)
@@ -98,6 +98,7 @@ class EncoderFactory(
       )
 
       is TypeName.Option -> OptionalEncoder(
+        brevityTypeName = typeName,
         some = get(typeName.type),
         instanceNameHint = when (val element = typeName.type) {
           is TypeName.Declared -> element.name.lowerCamelCase
@@ -106,17 +107,18 @@ class EncoderFactory(
       )
 
       is TypeName.Result -> ResultEncoder(
+        brevityTypeName = typeName,
         ok = typeName.ok?.let { kotlinMapper.get(it) to get(it) },
         error = typeName.error?.let { kotlinMapper.get(it) to get(it) },
       )
     }
   }
 
-  /** Returns an encoder that is used to implement [CallDeclaredTypeEncoder]. */
-  private fun getImplementationEncoder(type: IrTypeDeclaration): Encoder {
+  private fun getDeclaredTypeEncoder(type: IrTypeDeclaration): Encoder {
     val kotlinType = kotlinMapper.getAbiClassName(type.type)
     return when (type) {
       is IrEnum -> EnumEncoder(
+        brevityTypeName = type.type,
         kotlinType = kotlinType,
         instanceNameHint = type.type.name.lowerCamelCase,
         cases = type.cases,
@@ -125,18 +127,21 @@ class EncoderFactory(
       is IrFlags -> {
         when {
           type.flags.size <= 8 -> FlagsEncoder(
+            brevityTypeName = type.type,
             kotlinType = kotlinType,
             flags = type.flags,
             packedFlagEncoder = ByteEncoder,
           )
 
           type.flags.size <= 16 -> FlagsEncoder(
+            brevityTypeName = type.type,
             kotlinType = kotlinType,
             flags = type.flags,
             packedFlagEncoder = ShortEncoder,
           )
 
           type.flags.size <= 32 -> FlagsEncoder(
+            brevityTypeName = type.type,
             kotlinType = kotlinType,
             flags = type.flags,
             packedFlagEncoder = IntEncoder,
@@ -147,6 +152,7 @@ class EncoderFactory(
       }
 
       is IrRecord -> RecordEncoder(
+        brevityTypeName = type.type,
         kotlinType = kotlinType,
         instanceNameHint = type.name.lowerCamelCase,
         fields = type.fields,
@@ -155,11 +161,16 @@ class EncoderFactory(
 
       is IrResource -> ResourceEncoder(
         abiClassName = kotlinMapper.getAbiClassName(type.type),
-        typeName = type.type,
+        brevityTypeName = type.type,
       )
 
-      is IrTypeAlias -> TypeAliasEncoder(kotlinType, get(type.target))
+      is IrTypeAlias -> TypeAliasEncoder(
+        brevityTypeName = type.type,
+        type = kotlinType,
+        delegate = get(type.target),
+      )
       is IrVariant -> VariantEncoder(
+        brevityTypeName = type.type,
         kotlinType = kotlinType,
         instanceNameHint = type.type.name.lowerCamelCase,
         cases = type.cases,

@@ -3,11 +3,14 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import com.squareup.kotlinpoet.buildCodeBlock
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.generator.Symbols
 
 class PairEncoder(
   fieldEncoders: List<Encoder>,
 ) : AbstractRecordEncoder(fieldEncoders) {
+  override val brevityTypeName: TypeName
+    get() = TypeName.Tuple(fieldEncoders.map { it.brevityTypeName })
   override val instanceNameHint: String
     get() = "pair"
 
@@ -30,6 +33,8 @@ class PairEncoder(
 class TripleEncoder(
   fieldEncoders: List<Encoder>,
 ) : AbstractRecordEncoder(fieldEncoders) {
+  override val brevityTypeName: TypeName
+    get() = TypeName.Tuple(fieldEncoders.map { it.brevityTypeName })
   override val instanceNameHint: String
     get() = "triple"
 
@@ -55,6 +60,8 @@ class TripleEncoder(
 class QuadEncoder(
   fieldEncoders: List<Encoder>,
 ) : AbstractRecordEncoder(fieldEncoders) {
+  override val brevityTypeName: TypeName
+    get() = TypeName.Tuple(fieldEncoders.map { it.brevityTypeName })
   override val instanceNameHint: String
     get() = "quad"
 
@@ -84,6 +91,8 @@ class LargeTupleEncoder(
   private val elementTypes: List<KtTypeName>,
   fieldEncoders: List<Encoder>,
 ) : AbstractRecordEncoder(fieldEncoders) {
+  override val brevityTypeName: TypeName
+    get() = TypeName.Tuple(fieldEncoders.map { it.brevityTypeName })
   override val instanceNameHint: String
     get() = "tuple"
 

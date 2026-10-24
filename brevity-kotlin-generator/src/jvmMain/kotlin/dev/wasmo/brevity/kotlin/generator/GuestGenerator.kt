@@ -14,6 +14,7 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
+import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
 import dev.wasmo.brevity.kotlin.abi.AbiLift
@@ -26,6 +27,7 @@ import dev.wasmo.brevity.kotlin.expressions.valueExpression
 
 class GuestGenerator(
   private val platform: GuestPlatform,
+  private val kotlinMapper: KotlinMapper,
   private val platformFunctionFactory: PlatformFunctionFactory,
   private val worlds: List<AbiWorld>,
 ) {
@@ -50,13 +52,15 @@ class GuestGenerator(
     for (abiWorld in worlds) {
       val worldClassName = abiWorld.apiClassName
       val encoderFunctionCollector = EncoderFunctionCollector(
-        result.collector(
+        kotlinMapper = kotlinMapper,
+        qualifiedSpecCollector = result.collector(
           sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
           packageName = worldClassName.packageName,
           locations = setOf(abiWorld.location),
           optIns = guestOptIns,
           fileName = "${worldClassName.simpleName}GuestEncoders",
         ),
+        world = abiWorld,
       )
 
       for (abiService in abiWorld.allServices) {

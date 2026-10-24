@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
@@ -11,6 +12,8 @@ import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 abstract class ConvertingEncoder(
   val delegate: Encoder,
 ) : Encoder() {
+  override val brevityTypeName: TypeName
+    get() = delegate.brevityTypeName
   override val coreTypes: List<CoreType>
     get() = delegate.coreTypes
   override val byteCount: Int

@@ -2,7 +2,6 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.UNIT
-import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiFunction.Parameters
 import dev.wasmo.brevity.kotlin.abi.AbiFunction.Result
@@ -23,19 +22,11 @@ class FunctionEncoder(
   val service: AbiService,
   val function: AbiFunction,
 ) {
-  /** Functions declared on worlds always import [AbiResource]s. */
-  val serviceOrientation: Orientation
-    get() = when (service) {
-      is AbiInterface -> service.orientation
-      is AbiResource -> service.orientation
-      is AbiWorld -> Orientation.Import
-    }
-
   context(codeBuilder: CodeBuilder)
   fun liftParameters(
     p: Iterator<KtExpression>,
   ): List<KtExpression> {
-    val encoderContext = collector.encoderContext()
+    val encoderContext = RealEncoderContext(collector, function)
     val parameters = function.parameters
     val values = when (parameters) {
       is Parameters.Flattened -> parameters.parameters.map { flatParameter ->
@@ -68,7 +59,7 @@ class FunctionEncoder(
     parameterValues: List<KtExpression>,
     memoryAllocator: MemoryAllocator?,
   ): List<KtExpression> {
-    val encoderContext = collector.encoderContext()
+    val encoderContext = RealEncoderContext(collector, function)
     return buildList {
       when (val parameters = function.parameters) {
         is Parameters.Flattened -> {
@@ -155,7 +146,7 @@ class FunctionEncoder(
   fun liftReceiver(
     iterator: Iterator<Pair<AbiFunction.FlatParameter, KtExpression>>,
   ): KtExpression {
-    val encoderContext = collector.encoderContext()
+    val encoderContext = RealEncoderContext(collector, function)
     val receiverValue = when (service) {
       is AbiWorld -> codeBuilder.platform.getParent(service)
       is AbiInterface -> codeBuilder.platform.getParent(service)
@@ -169,6 +160,7 @@ class FunctionEncoder(
             codeBuilder.platform.liftResource(
               id = value.code,
               abiClassName = service.apiClassName,
+              orientation = function.orientation,
             )
           },
         )
@@ -180,7 +172,7 @@ class FunctionEncoder(
 
   context(codeBuilder: CodeBuilder)
   fun liftReturnValue(callResult: KtExpression): CodeBlock {
-    val encoderContext = collector.encoderContext()
+    val encoderContext = RealEncoderContext(collector, function)
     return when (val result = function.result) {
       Result.Void -> KtExpression.Unit.code
       is Result.SingleCoreValueReturn -> encoderContext.liftFlat(
@@ -211,7 +203,7 @@ class FunctionEncoder(
     resultValue: KtExpression,
     pointerParameterValue: CodeBlock?,
   ): KtExpression {
-    val encoderContext = collector.encoderContext()
+    val encoderContext = RealEncoderContext(collector, function)
     return when (val result = function.result) {
       Result.Void -> KtExpression.Unit
 

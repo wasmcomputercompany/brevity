@@ -1,10 +1,12 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 open class DirectEncoder(
+  override val brevityTypeName: TypeName,
   override val alignment: Int,
   val coreType: CoreType,
   val integerType: IntegerType,
@@ -56,6 +58,7 @@ open class DirectEncoder(
 }
 
 object BooleanEncoder : DirectEncoder(
+  brevityTypeName = TypeName.Bool,
   alignment = 1,
   coreType = CoreType.I32,
   integerType = IntegerType.S8,
@@ -75,6 +78,7 @@ object BooleanEncoder : DirectEncoder(
 }
 
 object ByteEncoder : DirectEncoder(
+  brevityTypeName = TypeName.S8,
   alignment = 1,
   coreType = CoreType.I32,
   integerType = IntegerType.S8,
@@ -90,6 +94,7 @@ object ByteEncoder : DirectEncoder(
 }
 
 object ShortEncoder : DirectEncoder(
+  brevityTypeName = TypeName.S16,
   alignment = 2,
   coreType = CoreType.I32,
   integerType = IntegerType.S16,
@@ -105,18 +110,21 @@ object ShortEncoder : DirectEncoder(
 }
 
 object IntEncoder : DirectEncoder(
+  brevityTypeName = TypeName.S32,
   alignment = 4,
   coreType = CoreType.I32,
   integerType = IntegerType.S32,
 )
 
 object LongEncoder : DirectEncoder(
+  brevityTypeName = TypeName.S64,
   alignment = 8,
   coreType = CoreType.I64,
   integerType = IntegerType.S64,
 )
 
 object UByteEncoder : DirectEncoder(
+  brevityTypeName = TypeName.U8,
   alignment = 1,
   coreType = CoreType.I32,
   integerType = IntegerType.S8,
@@ -132,6 +140,7 @@ object UByteEncoder : DirectEncoder(
 }
 
 object UShortEncoder : DirectEncoder(
+  brevityTypeName = TypeName.U16,
   alignment = 2,
   coreType = CoreType.I32,
   integerType = IntegerType.S16,
@@ -147,6 +156,7 @@ object UShortEncoder : DirectEncoder(
 }
 
 object UIntEncoder : DirectEncoder(
+  brevityTypeName = TypeName.U32,
   alignment = 4,
   coreType = CoreType.I32,
   integerType = IntegerType.S32,
@@ -159,6 +169,7 @@ object UIntEncoder : DirectEncoder(
 }
 
 object ULongEncoder : DirectEncoder(
+  brevityTypeName = TypeName.U64,
   alignment = 8,
   coreType = CoreType.I64,
   integerType = IntegerType.S64,
@@ -171,6 +182,7 @@ object ULongEncoder : DirectEncoder(
 }
 
 object FloatEncoder : DirectEncoder(
+  brevityTypeName = TypeName.F32,
   alignment = 4,
   coreType = CoreType.F32,
   integerType = IntegerType.S32,
@@ -183,6 +195,7 @@ object FloatEncoder : DirectEncoder(
 }
 
 object DoubleEncoder : DirectEncoder(
+  brevityTypeName = TypeName.F64,
   alignment = 8,
   coreType = CoreType.F64,
   integerType = IntegerType.S64,
@@ -195,6 +208,7 @@ object DoubleEncoder : DirectEncoder(
 }
 
 object CharEncoder : DirectEncoder(
+  brevityTypeName = TypeName.Char,
   alignment = 4,
   coreType = CoreType.I32,
   integerType = IntegerType.S32,

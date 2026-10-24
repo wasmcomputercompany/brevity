@@ -2,10 +2,13 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 abstract class Encoder {
+  abstract val brevityTypeName: TypeName
   abstract val coreTypes: List<CoreType>
   abstract val byteCount: Int
   abstract val alignment: Int
@@ -109,6 +112,9 @@ abstract class Encoder {
   }
 
   interface Context {
+    /** Returns the orientation of the resource with respect to this function. */
+    fun getOrientation(type: TypeName.Declared): Orientation
+
     context(codeBuilder: CodeBuilder)
     fun lowerFlat(
       encoder: Encoder,

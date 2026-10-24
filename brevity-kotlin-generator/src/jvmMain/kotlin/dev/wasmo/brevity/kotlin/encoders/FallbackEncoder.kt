@@ -9,7 +9,7 @@ import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 /** Fake encoder for all the types we don't actually implement yet. */
 class FallbackEncoder(
   private val kotlinMapper: KotlinMapper,
-  private val type: TypeName,
+  override val brevityTypeName: TypeName,
   val coreType: CoreType,
 ) : Encoder() {
   override val coreTypes = listOf(coreType)
@@ -26,7 +26,7 @@ class FallbackEncoder(
     offset: Int,
   ) = CodeBlock.of(
     "TODO(%S)",
-    "load ${kotlinMapper.get(type)}",
+    "load ${kotlinMapper.get(brevityTypeName)}",
   )
 
   context(codeBuilder: CodeBuilder, context: Context)
@@ -36,13 +36,13 @@ class FallbackEncoder(
     offset: Int,
     value: CodeBlock,
   ) {
-    codeBuilder.addStatement("// TODO: store ${kotlinMapper.get(type)}")
+    codeBuilder.addStatement("// TODO: store ${kotlinMapper.get(brevityTypeName)}")
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     transformer.take()
-    transformer.put("TODO(%S)", "lift ${kotlinMapper.get(type)}")
+    transformer.put("TODO(%S)", "lift ${kotlinMapper.get(brevityTypeName)}")
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
@@ -51,6 +51,6 @@ class FallbackEncoder(
     transformer: Transformer,
   ) {
     transformer.take()
-    transformer.put("TODO(%S)", "lower ${kotlinMapper.get(type)}")
+    transformer.put("TODO(%S)", "lower ${kotlinMapper.get(brevityTypeName)}")
   }
 }

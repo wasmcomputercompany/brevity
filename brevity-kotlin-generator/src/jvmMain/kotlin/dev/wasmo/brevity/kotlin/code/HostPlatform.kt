@@ -184,7 +184,11 @@ object HostPlatform : Platform {
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun liftResource(id: CodeBlock, abiClassName: ClassName): CodeBlock = CodeBlock.of(
+  override fun liftResource(
+    id: CodeBlock,
+    abiClassName: ClassName,
+    orientation: Orientation,
+  ): CodeBlock = CodeBlock.of(
     "%L.getResource<%T>(%L)",
     codeBuilder.bridge,
     abiClassName,
@@ -192,15 +196,20 @@ object HostPlatform : Platform {
   )
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerResource(resource: CodeBlock, resourceType: TypeName.Declared): CodeBlock {
+  override fun lowerResource(
+    resource: CodeBlock,
+    resourceType: TypeName.Declared,
+    orientation: Orientation,
+  ): CodeBlock {
     val resourceName = codeBuilder.newName("resource")
     codeBuilder.addStatement("val %N = %L", resourceName, resource)
     codeBuilder.beginControlFlow("if (!%N.%N)", resourceName, "hasIndex")
-    codeBuilder.addStatement("%N.%N = %L.putResource(%N)",
+    codeBuilder.addStatement(
+      "%N.%N = %L.putResource(%N)",
       resourceName,
       "index",
       codeBuilder.bridge,
-      resourceName
+      resourceName,
     )
     codeBuilder.addStatement("%N.%N = %L", resourceName, "hasIndex", true)
     codeBuilder.endControlFlow()

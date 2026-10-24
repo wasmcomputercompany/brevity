@@ -2,11 +2,15 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 /** Stores a string as an address pointer and a byte count. */
 object StringEncoder : Encoder() {
+  override val brevityTypeName: TypeName
+    get() = TypeName.String
+
   override val coreTypes: List<CoreType>
     get() = listOf(CoreType.Pointer, CoreType.I32)
 

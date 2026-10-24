@@ -2,8 +2,9 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeName as KtTypeName
 import com.squareup.kotlinpoet.UNIT
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
@@ -230,6 +231,7 @@ abstract class AbstractVariantEncoder(
 }
 
 class VariantEncoder(
+  override val brevityTypeName: TypeName,
   private val kotlinType: ClassName,
   override val instanceNameHint: String,
   private val cases: List<IrCase>,
@@ -279,6 +281,7 @@ class VariantEncoder(
 }
 
 class EnumEncoder(
+  override val brevityTypeName: TypeName,
   private val kotlinType: ClassName,
   override val instanceNameHint: String,
   private val cases: List<IrCase>,
@@ -293,6 +296,7 @@ class EnumEncoder(
 }
 
 class OptionalEncoder(
+  override val brevityTypeName: TypeName,
   some: Encoder,
   override val instanceNameHint: String,
 ) : AbstractVariantEncoder(listOf(null, some)) {
@@ -325,8 +329,9 @@ class OptionalEncoder(
 }
 
 class ResultEncoder(
-  private val ok: Pair<TypeName, Encoder>?,
-  private val error: Pair<TypeName, Encoder>?,
+  override val brevityTypeName: TypeName,
+  private val ok: Pair<KtTypeName, Encoder>?,
+  private val error: Pair<KtTypeName, Encoder>?,
 ) : AbstractVariantEncoder(listOf(ok?.second, error?.second)) {
   override val instanceNameHint: String
     get() = "result"
@@ -346,7 +351,7 @@ class ResultEncoder(
   override fun instanceValue(index: Int, value: CodeBlock) =
     CodeBlock.of("%L.value", value)
 
-  private fun rawType(index: Int): TypeName {
+  private fun rawType(index: Int): KtTypeName {
     return when (index) {
       0 -> Symbols.Brevity.ResultOk
       1 -> Symbols.Brevity.ResultError

@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
@@ -111,8 +112,16 @@ interface Platform {
   ): KtFunction
 
   context(codeBuilder: CodeBuilder)
-  fun liftResource(id: CodeBlock, abiClassName: ClassName): CodeBlock
+  fun liftResource(
+    id: CodeBlock,
+    abiClassName: ClassName,
+    orientation: Orientation,
+  ): CodeBlock
 
   context(codeBuilder: CodeBuilder)
-  fun lowerResource(resource: CodeBlock, resourceType: TypeName.Declared): CodeBlock
+  fun lowerResource(
+    resource: CodeBlock,
+    resourceType: TypeName.Declared,
+    orientation: Orientation,
+  ): CodeBlock
 }

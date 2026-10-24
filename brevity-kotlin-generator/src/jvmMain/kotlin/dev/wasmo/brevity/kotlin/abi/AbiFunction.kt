@@ -153,6 +153,9 @@ data class AbiFunction(
       override val parameters: List<FlatParameter>,
       val addressSpec: ParameterSpec,
     ) : AbstractRecordEncoder(parameters.map { it.encoder }), Parameters {
+      override val brevityTypeName: WitTypeName
+        get() = WitTypeName.Tuple(parameters.map { it.encoder.brevityTypeName })
+
       override val instanceNameHint: String
         get() = "parameters"
 

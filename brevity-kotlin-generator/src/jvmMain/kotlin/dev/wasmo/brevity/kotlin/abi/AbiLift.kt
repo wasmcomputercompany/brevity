@@ -133,7 +133,7 @@ private class AbiResourceNewLift(
       INT,
       "index",
       CodeBlock.of(
-        "%L.newResource(%T(%N = %L))",
+        "%L.putResource(%T(%N = %L))",
         codeBuilder.bridge,
         resourceImplementation,
         "rep",

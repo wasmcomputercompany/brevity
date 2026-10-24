@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
@@ -182,7 +183,11 @@ object GuestPlatform : Platform {
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun liftResource(id: CodeBlock, abiClassName: ClassName): CodeBlock = CodeBlock.of(
+  override fun liftResource(
+    id: CodeBlock,
+    abiClassName: ClassName,
+    orientation: Orientation,
+  ) = CodeBlock.of(
     "%L.getResource<%T>(%L)",
     codeBuilder.bridge,
     abiClassName,
@@ -190,24 +195,41 @@ object GuestPlatform : Platform {
   )
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerResource(resource: CodeBlock, resourceType: TypeName.Declared): CodeBlock {
+  override fun lowerResource(
+    resource: CodeBlock,
+    resourceType: TypeName.Declared,
+    orientation: Orientation,
+  ): CodeBlock {
     val resourceName = codeBuilder.newName("resource")
     codeBuilder.addStatement("val %N = %L", resourceName, resource)
-    codeBuilder.beginControlFlow("if (!%N.%N)", resourceName, "hasIndex")
-    val repName = codeBuilder.newName("rep")
-    codeBuilder.addStatement("val %N = %L.putResource(%N)", repName, codeBuilder.bridge, resourceName)
-    codeBuilder.addStatement(
-      "%N.%N = %N(%N)",
-      resourceName,
-      "index",
-      MemberName(
-        resourceType.serviceName.packageName.kotlinApi,
-        FunctionName.ResourceNew(resourceType).importFunctionName,
-      ),
-      repName,
-    )
-    codeBuilder.addStatement("%N.%N = %L", resourceName, "hasIndex", true)
-    codeBuilder.endControlFlow()
+    when (orientation) {
+      Orientation.Export -> {
+        codeBuilder.beginControlFlow("if (!%N.%N)", resourceName, "hasIndex")
+        val repName = codeBuilder.newName("rep")
+        codeBuilder.addStatement(
+          "val %N = %L.putResource(%N)",
+          repName,
+          codeBuilder.bridge,
+          resourceName,
+        )
+        codeBuilder.addStatement(
+          "%N.%N = %N(%N)",
+          resourceName,
+          "index",
+          MemberName(
+            resourceType.serviceName.packageName.kotlinApi,
+            FunctionName.ResourceNew(resourceType).importFunctionName,
+          ),
+          repName,
+        )
+        codeBuilder.addStatement("%N.%N = %L", resourceName, "hasIndex", true)
+        codeBuilder.endControlFlow()
+      }
+
+      Orientation.Import -> {
+        codeBuilder.addStatement("check(%N.%N)", resourceName, "hasIndex")
+      }
+    }
     return CodeBlock.of("%N.%N", resourceName, "index")
   }
 }
