@@ -34,11 +34,13 @@ class ApiGenerator(
 
     for (world in worlds) {
       val apiClassName = world.apiClassName
-      result.collect(
-        sourceSet = QualifiedSpec.SourceSet.CommonMain,
-        locations = setOf(world.location),
-        packageName = apiClassName.packageName,
-        fileName = apiClassName.simpleName,
+      context(
+        result.collector(
+          sourceSet = QualifiedSpec.SourceSet.CommonMain,
+          locations = setOf(world.location),
+          packageName = apiClassName.packageName,
+          fileName = apiClassName.simpleName
+        )
       ) {
         generateServiceInterface(world)
         generateWorldInterface(world, Orientation.Export)
@@ -47,22 +49,26 @@ class ApiGenerator(
     }
     for (abiInterface in interfaces) {
       val apiClassName = abiInterface.apiClassName
-      result.collect(
-        sourceSet = QualifiedSpec.SourceSet.CommonMain,
-        locations = setOf(abiInterface.location),
-        packageName = apiClassName.packageName,
-        fileName = apiClassName.simpleName,
+      context(
+        result.collector(
+          sourceSet = QualifiedSpec.SourceSet.CommonMain,
+          locations = setOf(abiInterface.location),
+          packageName = apiClassName.packageName,
+          fileName = apiClassName.simpleName
+        )
       ) {
         generateServiceInterface(abiInterface)
       }
     }
     for (resource in resources) {
       val resourceName = resource.apiClassName
-      result.collect(
-        sourceSet = QualifiedSpec.SourceSet.CommonMain,
-        locations = setOf(resource.location),
-        packageName = resourceName.packageName,
-        fileName = resourceName.simpleName,
+      context(
+        result.collector(
+          sourceSet = QualifiedSpec.SourceSet.CommonMain,
+          locations = setOf(resource.location),
+          packageName = resourceName.packageName,
+          fileName = resourceName.simpleName
+        )
       ) {
         generateResource(resource)
       }

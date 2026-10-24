@@ -27,7 +27,7 @@ class DynamicListEncoder(
   override val lowerAllocates: Boolean
     get() = true
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -42,7 +42,7 @@ class DynamicListEncoder(
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -59,12 +59,12 @@ class DynamicListEncoder(
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     transformer.put(loadList(transformer.take(), transformer.take()))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
@@ -75,7 +75,7 @@ class DynamicListEncoder(
     transformer.put(length)
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   private fun loadList(
     address: CodeBlock,
     length: CodeBlock,
@@ -104,24 +104,25 @@ class DynamicListEncoder(
       lengthName,
       indexName,
     ) {
-      with(elementEncoder) {
-        codeBuilder.addStatement(
-          "val %N = %N + %N * %L",
-          elementAddressName,
-          addressName,
-          indexName,
-          elementEncoder.byteCount,
-        )
-        codeBuilder.addStatement(
-          "%L",
-          load(baseAddress = CodeBlock.of("%N", elementAddressName)),
-        )
-      }
+      codeBuilder.addStatement(
+        "val %N = %N + %N * %L",
+        elementAddressName,
+        addressName,
+        indexName,
+        elementEncoder.byteCount,
+      )
+      codeBuilder.addStatement(
+        "%L",
+        context.load(
+          encoder = elementEncoder,
+          baseAddress = CodeBlock.of("%N", elementAddressName),
+        ),
+      )
     }
     return CodeBlock.of("%N", listName)
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   private fun storeList(
     memoryAllocator: MemoryAllocator,
     list: CodeBlock,
@@ -147,7 +148,8 @@ class DynamicListEncoder(
         indexName,
         elementEncoder.byteCount,
       )
-      elementEncoder.store(
+      context.store(
+        encoder = elementEncoder,
         memoryAllocator = memoryAllocator,
         baseAddress = CodeBlock.of("%N", elementAddressName),
         value = CodeBlock.of("%L[%N]", list, indexName),

@@ -35,7 +35,7 @@ abstract class AbstractRecordEncoder(
   override val lowerAllocates: Boolean
     get() = fieldEncoders.any { it.lowerAllocates }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -43,14 +43,15 @@ abstract class AbstractRecordEncoder(
     fieldValues = loadAll(baseAddress, offset),
   )
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   fun loadAll(
     baseAddress: CodeBlock,
     offset: Int = 0,
   ) = buildList {
     fieldEncoders.forEachIndexed { index, fieldEncoder ->
       add(
-        fieldEncoder.load(
+        context.load(
+          encoder = fieldEncoder,
           baseAddress = baseAddress,
           offset = offset + fieldOffsets[index],
         ),
@@ -58,7 +59,7 @@ abstract class AbstractRecordEncoder(
     }
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -73,7 +74,7 @@ abstract class AbstractRecordEncoder(
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   fun storeAll(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -81,7 +82,8 @@ abstract class AbstractRecordEncoder(
     fieldValues: List<CodeBlock>,
   ) {
     fieldEncoders.forEachIndexed { index, fieldEncoder ->
-      fieldEncoder.store(
+      context.store(
+        encoder = fieldEncoder,
         memoryAllocator = memoryAllocator,
         baseAddress = baseAddress,
         offset = offset + fieldOffsets[index],
@@ -90,12 +92,13 @@ abstract class AbstractRecordEncoder(
     }
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     transformer.put(
       fieldValuesToInstance(
         fieldValues = fieldEncoders.map { fieldEncoder ->
-          fieldEncoder.liftFlat(
+          context.liftFlat(
+            encoder = fieldEncoder,
             values = fieldEncoder.coreTypes.map { transformer.take() },
           )
         },
@@ -103,7 +106,7 @@ abstract class AbstractRecordEncoder(
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
@@ -113,7 +116,7 @@ abstract class AbstractRecordEncoder(
 
     val fieldValues = instanceToFieldValues(CodeBlock.of("%N", nameHint))
     for ((i, fieldEncoder) in fieldEncoders.withIndex()) {
-      for (coreType in fieldEncoder.lowerFlat(memoryAllocator, fieldValues[i])) {
+      for (coreType in context.lowerFlat(fieldEncoder, fieldValues[i], memoryAllocator)) {
         transformer.put(coreType)
       }
     }

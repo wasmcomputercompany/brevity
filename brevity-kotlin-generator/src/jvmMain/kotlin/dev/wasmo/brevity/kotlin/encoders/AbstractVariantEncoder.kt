@@ -56,7 +56,7 @@ abstract class AbstractVariantEncoder(
   /** Returns a code block that extracts the value of [index]. */
   abstract fun instanceValue(index: Int, value: CodeBlock): CodeBlock?
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -81,7 +81,8 @@ abstract class AbstractVariantEncoder(
             constructInstance(
               index = index,
               value = caseEncoder?.let {
-                caseEncoder.load(
+                context.load(
+                  encoder = caseEncoder,
                   baseAddress = baseAddress,
                   offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
                 )
@@ -96,7 +97,7 @@ abstract class AbstractVariantEncoder(
     return CodeBlock.of("%N", variantName)
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -113,13 +114,16 @@ abstract class AbstractVariantEncoder(
     ) {
       for ((index, caseEncoder) in caseEncoders.withIndex()) {
         codeBuilder.controlFlow("%L ->", matchInstance(index)) {
-          caseEncoder?.store(
-            memoryAllocator = memoryAllocator,
-            baseAddress = baseAddress,
-            offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
-            value = instanceValue(index, CodeBlock.of("%N", variantName))
-              ?: error("case mismatch for $index"),
-          )
+          if (caseEncoder != null) {
+            context.store(
+              encoder = caseEncoder,
+              memoryAllocator = memoryAllocator,
+              baseAddress = baseAddress,
+              offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
+              value = instanceValue(index, CodeBlock.of("%N", variantName))
+                ?: error("case mismatch for $index"),
+            )
+          }
           codeBuilder.addStatement("%L", index)
         }
       }
@@ -137,7 +141,7 @@ abstract class AbstractVariantEncoder(
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     val variantName = codeBuilder.newName(instanceNameHint)
 
@@ -156,7 +160,8 @@ abstract class AbstractVariantEncoder(
             constructInstance(
               index = caseIndex,
               value = caseEncoder?.let {
-                caseEncoder.liftFlat(
+                context.liftFlat(
+                  encoder = caseEncoder,
                   values = caseEncoder.coreTypes.withIndex().map { (v, requiredType) ->
                     requiredType.fromBits(
                       sourceType = casesCoreTypesBits[v],
@@ -175,7 +180,7 @@ abstract class AbstractVariantEncoder(
     return transformer.put(variantName)
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
@@ -199,7 +204,11 @@ abstract class AbstractVariantEncoder(
       for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
         codeBuilder.controlFlow("%L ->", matchInstance(caseIndex)) {
           if (caseEncoder != null) {
-            val values = caseEncoder.lowerFlat(memoryAllocator, instanceValue(caseIndex, variant)!!)
+            val values = context.lowerFlat(
+              encoder = caseEncoder,
+              value = instanceValue(caseIndex, variant)!!,
+              memoryAllocator = memoryAllocator,
+            )
             for ((v, coreType) in caseEncoder.coreTypes.withIndex()) {
               codeBuilder.addStatement(
                 "%N = %L",

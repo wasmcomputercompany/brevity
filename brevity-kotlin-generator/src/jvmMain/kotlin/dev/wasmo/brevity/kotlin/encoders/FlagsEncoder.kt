@@ -23,13 +23,19 @@ class FlagsEncoder(
 
   override val alignment: Int = packedFlagEncoder.alignment
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
-  ) = packedValueToInstance(packedFlagEncoder.load(baseAddress, offset))
+  ) = packedValueToInstance(
+    context.load(
+      encoder = packedFlagEncoder,
+      baseAddress = baseAddress,
+      offset = offset,
+    )
+  )
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -40,23 +46,24 @@ class FlagsEncoder(
 
     codeBuilder.addStatement(
       "val %N = %L", packedFlagsName,
-      instanceToPackedValue(value)
+      instanceToPackedValue(value),
     )
 
-    packedFlagEncoder.store(
+    context.store(
+      encoder = packedFlagEncoder,
       memoryAllocator = memoryAllocator,
       baseAddress = baseAddress,
       offset = offset,
-      value = CodeBlock.of("%N", packedFlagsName)
+      value = CodeBlock.of("%N", packedFlagsName),
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     transformer.put(packedValueToInstance(transformer.take()))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
@@ -86,7 +93,7 @@ class FlagsEncoder(
       flags.mapIndexed { i, flag ->
         CodeBlock.of("(if (%L.%N) ${1 shl i} else 0)", flagsName, flag.kotlinName)
       }.joinToCode(" or \n"),
-      CodeBlock.of("⇤}")
+      CodeBlock.of("⇤}"),
     ).joinToCode("\n")
   }
 

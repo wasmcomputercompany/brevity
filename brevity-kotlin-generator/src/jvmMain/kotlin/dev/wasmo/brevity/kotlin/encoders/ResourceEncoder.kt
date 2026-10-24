@@ -18,7 +18,7 @@ internal class ResourceEncoder(
   override val alignment: Int
     get() = CoreType.I32.alignment
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -26,7 +26,7 @@ internal class ResourceEncoder(
     return liftResource(codeBuilder.platform.load(baseAddress, offset, CoreType.Pointer))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -36,12 +36,12 @@ internal class ResourceEncoder(
     codeBuilder.platform.store(baseAddress, offset, CoreType.Pointer, lowerResource(value))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     transformer.put(liftResource(transformer.take()))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,

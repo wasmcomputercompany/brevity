@@ -22,6 +22,7 @@ class PlatformFunctionFactory(
   private val platform: Platform,
 ) {
   fun create(
+    encoderFunctionCollector: EncoderFunctionCollector,
     bridge: CodeBlock,
     abiService: AbiService,
     abiFunction: AbiFunction,
@@ -42,8 +43,11 @@ class PlatformFunctionFactory(
 
         context(codeBuilder) {
           val abiLower = AbiLower(
-            abiService = abiService,
-            abiFunction = abiFunction,
+            functionEncoder = FunctionEncoder(
+              collector = encoderFunctionCollector,
+              service = abiService,
+              function = abiFunction,
+            ),
             resourceId = when {
               abiFunction.isResource -> CodeBlockExpression(
                 type = CoreType.I32.kotlinCoreType,

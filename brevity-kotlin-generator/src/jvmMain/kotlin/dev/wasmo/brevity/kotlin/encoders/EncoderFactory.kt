@@ -1,13 +1,6 @@
 package dev.wasmo.brevity.kotlin.encoders
 
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.MemberName
-import com.squareup.kotlinpoet.NameAllocator
-import com.squareup.kotlinpoet.ParameterSpec
-import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.DeclarationIndex
-import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrEnum
 import dev.wasmo.brevity.ir.IrFlags
@@ -17,19 +10,12 @@ import dev.wasmo.brevity.ir.IrTypeAlias
 import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrVariant
 import dev.wasmo.brevity.kotlin.KotlinMapper
-import dev.wasmo.brevity.kotlin.code.CodeBuilder
-import dev.wasmo.brevity.kotlin.code.MemoryAllocator
-import dev.wasmo.brevity.kotlin.code.Platform
 import dev.wasmo.brevity.kotlin.generator.Symbols
-import dev.wasmo.brevity.kotlin.generator.allocateNames
-import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
-import dev.wasmo.brevity.kotlin.generator.upperCamelCase
 
 class EncoderFactory(
   private val kotlinMapper: KotlinMapper,
   private val declarationIndex: DeclarationIndex,
-  private val platform: Platform,
 ) {
   fun get(typeName: TypeName): Encoder {
     return when (typeName) {
@@ -77,11 +63,7 @@ class EncoderFactory(
       is TypeName.Declared -> {
         val declaredType = declarationIndex[typeName]
           ?: error("unexpected type: $typeName")
-        CallDeclaredTypeEncoder(
-          encoderFactory = this,
-          type = declaredType,
-          typeEncoder = getImplementationEncoder(declaredType),
-        )
+        getImplementationEncoder(declaredType)
       }
 
       is TypeName.Future -> FallbackEncoder(kotlinMapper, typeName, CoreType.I32)
@@ -188,333 +170,333 @@ class EncoderFactory(
     }
   }
 
-  fun load(type: IrTypeDeclaration) =
-    Load(type, getImplementationEncoder(type))
-
-  fun store(type: IrTypeDeclaration) =
-    Store(type, getImplementationEncoder(type))
-
-  fun liftFlat(type: IrTypeDeclaration) =
-    LiftFlat(type, getImplementationEncoder(type))
-
-  fun lowerFlat(type: IrTypeDeclaration) =
-    LowerFlat(type, getImplementationEncoder(type))
-
-  /** One of 4 encode operations on a declared type. */
-  abstract inner class EncodeStrategy(
-    protected val type: IrTypeDeclaration,
-    protected val encoder: Encoder,
-    encodeAction: Identifier,
-  ) {
-    val className = kotlinMapper.getAbiClassName(type.type)
-    val customType = kotlinMapper.customTypeMappings[type.type]
-    val memberName = MemberName(
-      className.packageName,
-      buildString {
-        append(encodeAction.lowerCamelCase)
-        append("_")
-        append(type.type.serviceName.name.upperCamelCase)
-        append("_")
-        append(type.name.upperCamelCase)
-        append("_")
-        append(platform.identifier.lowerCamelCase)
-      },
-    )
-
-    protected fun memoryAllocator(nameAllocator: NameAllocator): MemoryAllocator? {
-      if (!encoder.lowerAllocates) return null
-      return platform.getMemoryAllocator(nameAllocator.newName("memoryAllocator"))
-    }
-
-    fun generate(): FunSpec {
-      val nameAllocator = NameAllocator()
-      val bridgeParameter = ParameterSpec.builder(
-        nameAllocator.newName("bridge"),
-        platform.bridgeType,
-      ).build()
-      val codeBuilder = CodeBuilder(
-        bridge = CodeBlock.of("%N", bridgeParameter.name),
-        platform = platform,
-        nameAllocator = nameAllocator,
-      )
-      context(codeBuilder) {
-        return generate(bridgeParameter)
-      }
-    }
-
-    context(codeBuilder: CodeBuilder)
-    abstract fun generate(bridgeParameter: ParameterSpec): FunSpec
-
-    /** Returns a code block with [value] converted to its ABI type, if necessary. */
-    context(codeBuilder: CodeBuilder)
-    protected fun toWit(value: CodeBlock): CodeBlock {
-      return when {
-        customType != null -> {
-          CodeBlock.of("%L", codeBuilder.newName("witValue"))
-            .also {
-              codeBuilder.addStatement(
-                "val %L = %M.toWit(%L)",
-                it,
-                kotlinMapper.getAdaptersObjectMemberName(type.type),
-                value,
-              )
-            }
-        }
-
-        else -> value
-      }
-    }
-
-    /** Returns a code block with [value] converted from its ABI type, if necessary. */
-    context(codeBuilder: CodeBuilder)
-    protected fun fromWit(value: CodeBlock): CodeBlock {
-      return when {
-        customType != null -> CodeBlock.of(
-          "%M.fromWit(%L)",
-          kotlinMapper.getAdaptersObjectMemberName(type.type),
-          value,
-        )
-
-        else -> value
-      }
-    }
-  }
-
-  inner class Load(
-    type: IrTypeDeclaration,
-    encoder: Encoder,
-  ) : EncodeStrategy(type, encoder, Identifier("load")) {
-    context(codeBuilder: CodeBuilder)
-    override fun generate(
-      bridgeParameter: ParameterSpec,
-    ): FunSpec {
-      val addressName = codeBuilder.newName("address")
-      return FunSpec.builder(memberName)
-        .addParameter(bridgeParameter)
-        .addParameter(addressName, codeBuilder.platform.addressType)
-        .returns(customType ?: className)
-        .apply {
-          context(codeBuilder) {
-            codeBuilder.addStatement(
-              "return %L",
-              fromWit(encoder.load(CodeBlock.of("%N", addressName))),
-            )
-          }
-          addCode(codeBuilder.build())
-        }
-        .build()
-    }
-
-    context(codeBuilder: CodeBuilder)
-    fun call(baseAddress: CodeBlock): CodeBlock {
-      return CodeBlock.of(
-        "%M(%L, %L)",
-        memberName,
-        codeBuilder.bridge,
-        baseAddress,
-      )
-    }
-  }
-
-  inner class Store(
-    type: IrTypeDeclaration,
-    encoder: Encoder,
-  ) : EncodeStrategy(type, encoder, Identifier("store")) {
-    context(codeBuilder: CodeBuilder)
-    override fun generate(
-      bridgeParameter: ParameterSpec,
-    ): FunSpec {
-      val addressName = codeBuilder.newName("address")
-      val valueName = codeBuilder.newName("value")
-      val memoryAllocator = memoryAllocator(codeBuilder.nameAllocator)
-
-      return FunSpec.builder(memberName)
-        .addParameter(bridgeParameter)
-        .apply {
-          if (memoryAllocator != null) {
-            addParameter(memoryAllocator.name, memoryAllocator.type)
-          }
-        }
-        .addParameter(addressName, codeBuilder.platform.addressType)
-        .addParameter(valueName, customType ?: className)
-        .apply {
-          encoder.store(
-            memoryAllocator = memoryAllocator,
-            baseAddress = CodeBlock.of("%L", addressName),
-            value = CodeBlock.of("%L", toWit(CodeBlock.of("%N", valueName))),
-          )
-          addCode(codeBuilder.build())
-        }
-        .build()
-    }
-
-    context(codeBuilder: CodeBuilder)
-    fun call(
-      memoryAllocator: MemoryAllocator?,
-      baseAddress: CodeBlock,
-      value: CodeBlock,
-    ) {
-      if (encoder.lowerAllocates) {
-        codeBuilder.addStatement(
-          "%M(%L, %L, %L, %L)",
-          memberName,
-          codeBuilder.bridge,
-          memoryAllocator!!.name,
-          baseAddress,
-          value,
-        )
-      } else {
-        codeBuilder.addStatement(
-          "%M(%L, %L, %L)",
-          memberName,
-          codeBuilder.bridge,
-          baseAddress,
-          value,
-        )
-      }
-    }
-  }
-
-  inner class LiftFlat(
-    type: IrTypeDeclaration,
-    encoder: Encoder,
-  ) : EncodeStrategy(type, encoder, Identifier("lift-flat")) {
-    context(codeBuilder: CodeBuilder)
-    override fun generate(bridgeParameter: ParameterSpec): FunSpec {
-      return FunSpec.builder(memberName)
-        .addParameter(bridgeParameter)
-        .returns(customType ?: className)
-        .apply {
-          val coreValueNames = allocateNames("value", encoder.coreTypes.size)
-          for ((v, coreType) in encoder.coreTypes.withIndex()) {
-            addParameter(coreValueNames[v], coreType.kotlinCoreType)
-          }
-          codeBuilder.addStatement(
-            "return %L",
-            fromWit(encoder.liftFlat(coreValueNames.map { CodeBlock.of("%N", it) })),
-          )
-          addCode(codeBuilder.build())
-        }
-        .build()
-    }
-
-    context(codeBuilder: CodeBuilder)
-    fun call(transformer: Encoder.Transformer) {
-      transformer.put(
-        buildCodeBlock {
-          add("%M(⇥\n", memberName)
-          add("%L,\n", codeBuilder.bridge)
-          for (i in encoder.coreTypes.indices) {
-            add("%L,\n", transformer.take())
-          }
-          add("⇤)", memberName)
-        },
-      )
-    }
-  }
-
-  inner class LowerFlat(
-    type: IrTypeDeclaration,
-    encoder: Encoder,
-  ) : EncodeStrategy(type, encoder, Identifier("lower-flat")) {
-    context(codeBuilder: CodeBuilder)
-    override fun generate(
-      bridgeParameter: ParameterSpec,
-    ): FunSpec {
-      val valueName = codeBuilder.newName("value")
-      val memoryAllocator = memoryAllocator(codeBuilder.nameAllocator)
-      return FunSpec.builder(memberName)
-        .addParameter(bridgeParameter)
-        .apply {
-          if (memoryAllocator != null) {
-            addParameter(memoryAllocator.name, memoryAllocator.type)
-          }
-        }
-        .addParameter(valueName, customType ?: className)
-        .apply {
-          val witValue = toWit(CodeBlock.of("%N", valueName))
-          if (encoder.coreTypes.size > 1) {
-            val callBuilderName = codeBuilder.newName("callBuilder")
-            addParameter(callBuilderName, Symbols.Brevity.CallBuilder)
-            val codeBlocks = encoder.lowerFlat(memoryAllocator, witValue)
-            for (coreValue in codeBlocks) {
-              codeBuilder.addStatement("%N.put(%L)", callBuilderName, coreValue)
-            }
-          } else {
-            returns(encoder.coreTypes.single().kotlinCoreType)
-            codeBuilder.addStatement(
-              "return %L",
-              encoder.lowerFlat(memoryAllocator, witValue).single(),
-            )
-          }
-          addCode(codeBuilder.build())
-        }
-        .build()
-    }
-
-    context(codeBuilder: CodeBuilder)
-    fun call(
-      memoryAllocator: MemoryAllocator?,
-      transformer: Encoder.Transformer,
-    ) {
-      if (encoder.coreTypes.size > 1) {
-        val callBuilderName = codeBuilder.newName("callBuilder")
-        val i32Count = encoder.coreTypes.count { it.byteCount == 4 }
-        val i64Count = encoder.coreTypes.count { it.byteCount == 8 }
-
-        codeBuilder.addStatement(
-          "val %N = %T(i32Count = %L, i64Count = %L)",
-          callBuilderName,
-          Symbols.Brevity.CallBuilder,
-          i32Count,
-          i64Count,
-        )
-
-        if (encoder.lowerAllocates) {
-          codeBuilder.addStatement(
-            "%M(%L, %L, %L, %N)",
-            memberName,
-            codeBuilder.bridge,
-            memoryAllocator!!.name,
-            transformer.take(),
-            callBuilderName,
-          )
-        } else {
-          codeBuilder.addStatement(
-            "%M(%L, %L, %N)",
-            memberName,
-            codeBuilder.bridge,
-            transformer.take(),
-            callBuilderName,
-          )
-        }
-
-        val coreValueNames = allocateNames("value", encoder.coreTypes.size)
-        for ((v, coreType) in encoder.coreTypes.withIndex()) {
-          val takeFunction = when (coreType) {
-            CoreType.F32 -> "takeF32"
-            CoreType.F64 -> "takeF64"
-            CoreType.I32, CoreType.Pointer -> "takeI32"
-            CoreType.I64 -> "takeI64"
-          }
-          codeBuilder.addStatement(
-            "val %N = %N.%N()",
-            coreValueNames[v],
-            callBuilderName,
-            takeFunction,
-          )
-          transformer.put(CodeBlock.of("%N", coreValueNames[v]))
-        }
-      } else {
-        transformer.put(
-          CodeBlock.of(
-            "%M(%L, %L)",
-            memberName,
-            codeBuilder.bridge,
-            transformer.take(),
-          ),
-        )
-      }
-    }
-  }
+//  fun load(type: IrTypeDeclaration) =
+//    Load(type, getImplementationEncoder(type))
+//
+//  fun store(type: IrTypeDeclaration) =
+//    Store(type, getImplementationEncoder(type))
+//
+//  fun liftFlat(type: IrTypeDeclaration) =
+//    LiftFlat(type, getImplementationEncoder(type))
+//
+//  fun lowerFlat(type: IrTypeDeclaration) =
+//    LowerFlat(type, getImplementationEncoder(type))
+//
+//  /** One of 4 encode operations on a declared type. */
+//  abstract inner class EncodeStrategy(
+//    protected val type: IrTypeDeclaration,
+//    protected val encoder: Encoder,
+//    encodeAction: Identifier,
+//  ) {
+//    val className = kotlinMapper.getAbiClassName(type.type)
+//    val customType = kotlinMapper.customTypeMappings[type.type]
+//    val memberName = MemberName(
+//      className.packageName,
+//      buildString {
+//        append(encodeAction.lowerCamelCase)
+//        append("_")
+//        append(type.type.serviceName.name.upperCamelCase)
+//        append("_")
+//        append(type.name.upperCamelCase)
+//        append("_")
+//        append(platform.identifier.lowerCamelCase)
+//      },
+//    )
+//
+//    protected fun memoryAllocator(nameAllocator: NameAllocator): MemoryAllocator? {
+//      if (!encoder.lowerAllocates) return null
+//      return platform.getMemoryAllocator(nameAllocator.newName("memoryAllocator"))
+//    }
+//
+//    fun generate(): FunSpec {
+//      val nameAllocator = NameAllocator()
+//      val bridgeParameter = ParameterSpec.builder(
+//        nameAllocator.newName("bridge"),
+//        platform.bridgeType,
+//      ).build()
+//      val codeBuilder = CodeBuilder(
+//        bridge = CodeBlock.of("%N", bridgeParameter.name),
+//        platform = platform,
+//        nameAllocator = nameAllocator,
+//      )
+//      context(codeBuilder) {
+//        return generate(bridgeParameter)
+//      }
+//    }
+//
+//    context(codeBuilder: CodeBuilder)
+//    abstract fun generate(bridgeParameter: ParameterSpec): FunSpec
+//
+//    /** Returns a code block with [value] converted to its ABI type, if necessary. */
+//    context(codeBuilder: CodeBuilder)
+//    protected fun toWit(value: CodeBlock): CodeBlock {
+//      return when {
+//        customType != null -> {
+//          CodeBlock.of("%L", codeBuilder.newName("witValue"))
+//            .also {
+//              codeBuilder.addStatement(
+//                "val %L = %M.toWit(%L)",
+//                it,
+//                kotlinMapper.getAdaptersObjectMemberName(type.type),
+//                value,
+//              )
+//            }
+//        }
+//
+//        else -> value
+//      }
+//    }
+//
+//    /** Returns a code block with [value] converted from its ABI type, if necessary. */
+//    context(codeBuilder: CodeBuilder)
+//    protected fun fromWit(value: CodeBlock): CodeBlock {
+//      return when {
+//        customType != null -> CodeBlock.of(
+//          "%M.fromWit(%L)",
+//          kotlinMapper.getAdaptersObjectMemberName(type.type),
+//          value,
+//        )
+//
+//        else -> value
+//      }
+//    }
+//  }
+//
+//  inner class Load(
+//    type: IrTypeDeclaration,
+//    encoder: Encoder,
+//  ) : EncodeStrategy(type, encoder, Identifier("load")) {
+//    context(codeBuilder: CodeBuilder)
+//    override fun generate(
+//      bridgeParameter: ParameterSpec,
+//    ): FunSpec {
+//      val addressName = codeBuilder.newName("address")
+//      return FunSpec.builder(memberName)
+//        .addParameter(bridgeParameter)
+//        .addParameter(addressName, codeBuilder.platform.addressType)
+//        .returns(customType ?: className)
+//        .apply {
+//          context(codeBuilder) {
+//            codeBuilder.addStatement(
+//              "return %L",
+//              fromWit(encoder.load(CodeBlock.of("%N", addressName))),
+//            )
+//          }
+//          addCode(codeBuilder.build())
+//        }
+//        .build()
+//    }
+//
+//    context(codeBuilder: CodeBuilder)
+//    fun call(baseAddress: CodeBlock): CodeBlock {
+//      return CodeBlock.of(
+//        "%M(%L, %L)",
+//        memberName,
+//        codeBuilder.bridge,
+//        baseAddress,
+//      )
+//    }
+//  }
+//
+//  inner class Store(
+//    type: IrTypeDeclaration,
+//    encoder: Encoder,
+//  ) : EncodeStrategy(type, encoder, Identifier("store")) {
+//    context(codeBuilder: CodeBuilder)
+//    override fun generate(
+//      bridgeParameter: ParameterSpec,
+//    ): FunSpec {
+//      val addressName = codeBuilder.newName("address")
+//      val valueName = codeBuilder.newName("value")
+//      val memoryAllocator = memoryAllocator(codeBuilder.nameAllocator)
+//
+//      return FunSpec.builder(memberName)
+//        .addParameter(bridgeParameter)
+//        .apply {
+//          if (memoryAllocator != null) {
+//            addParameter(memoryAllocator.name, memoryAllocator.type)
+//          }
+//        }
+//        .addParameter(addressName, codeBuilder.platform.addressType)
+//        .addParameter(valueName, customType ?: className)
+//        .apply {
+//          encoder.store(
+//            memoryAllocator = memoryAllocator,
+//            baseAddress = CodeBlock.of("%L", addressName),
+//            value = CodeBlock.of("%L", toWit(CodeBlock.of("%N", valueName))),
+//          )
+//          addCode(codeBuilder.build())
+//        }
+//        .build()
+//    }
+//
+//    context(codeBuilder: CodeBuilder)
+//    fun call(
+//      memoryAllocator: MemoryAllocator?,
+//      baseAddress: CodeBlock,
+//      value: CodeBlock,
+//    ) {
+//      if (encoder.lowerAllocates) {
+//        codeBuilder.addStatement(
+//          "%M(%L, %L, %L, %L)",
+//          memberName,
+//          codeBuilder.bridge,
+//          memoryAllocator!!.name,
+//          baseAddress,
+//          value,
+//        )
+//      } else {
+//        codeBuilder.addStatement(
+//          "%M(%L, %L, %L)",
+//          memberName,
+//          codeBuilder.bridge,
+//          baseAddress,
+//          value,
+//        )
+//      }
+//    }
+//  }
+//
+//  inner class LiftFlat(
+//    type: IrTypeDeclaration,
+//    encoder: Encoder,
+//  ) : EncodeStrategy(type, encoder, Identifier("lift-flat")) {
+//    context(codeBuilder: CodeBuilder)
+//    override fun generate(bridgeParameter: ParameterSpec): FunSpec {
+//      return FunSpec.builder(memberName)
+//        .addParameter(bridgeParameter)
+//        .returns(customType ?: className)
+//        .apply {
+//          val coreValueNames = allocateNames("value", encoder.coreTypes.size)
+//          for ((v, coreType) in encoder.coreTypes.withIndex()) {
+//            addParameter(coreValueNames[v], coreType.kotlinCoreType)
+//          }
+//          codeBuilder.addStatement(
+//            "return %L",
+//            fromWit(encoder.liftFlat(coreValueNames.map { CodeBlock.of("%N", it) })),
+//          )
+//          addCode(codeBuilder.build())
+//        }
+//        .build()
+//    }
+//
+//    context(codeBuilder: CodeBuilder)
+//    fun call(transformer: Encoder.Transformer) {
+//      transformer.put(
+//        buildCodeBlock {
+//          add("%M(⇥\n", memberName)
+//          add("%L,\n", codeBuilder.bridge)
+//          for (i in encoder.coreTypes.indices) {
+//            add("%L,\n", transformer.take())
+//          }
+//          add("⇤)", memberName)
+//        },
+//      )
+//    }
+//  }
+//
+//  inner class LowerFlat(
+//    type: IrTypeDeclaration,
+//    encoder: Encoder,
+//  ) : EncodeStrategy(type, encoder, Identifier("lower-flat")) {
+//    context(codeBuilder: CodeBuilder)
+//    override fun generate(
+//      bridgeParameter: ParameterSpec,
+//    ): FunSpec {
+//      val valueName = codeBuilder.newName("value")
+//      val memoryAllocator = memoryAllocator(codeBuilder.nameAllocator)
+//      return FunSpec.builder(memberName)
+//        .addParameter(bridgeParameter)
+//        .apply {
+//          if (memoryAllocator != null) {
+//            addParameter(memoryAllocator.name, memoryAllocator.type)
+//          }
+//        }
+//        .addParameter(valueName, customType ?: className)
+//        .apply {
+//          val witValue = toWit(CodeBlock.of("%N", valueName))
+//          if (encoder.coreTypes.size > 1) {
+//            val callBuilderName = codeBuilder.newName("callBuilder")
+//            addParameter(callBuilderName, Symbols.Brevity.CallBuilder)
+//            val codeBlocks = codeBuilder.lowerFlat(encoder, memoryAllocator, witValue)
+//            for (coreValue in codeBlocks) {
+//              codeBuilder.addStatement("%N.put(%L)", callBuilderName, coreValue)
+//            }
+//          } else {
+//            returns(encoder.coreTypes.single().kotlinCoreType)
+//            codeBuilder.addStatement(
+//              "return %L",
+//              encoder.lowerFlat(memoryAllocator, witValue).single(),
+//            )
+//          }
+//          addCode(codeBuilder.build())
+//        }
+//        .build()
+//    }
+//
+//    context(codeBuilder: CodeBuilder)
+//    fun call(
+//      memoryAllocator: MemoryAllocator?,
+//      transformer: Encoder.Transformer,
+//    ) {
+//      if (encoder.coreTypes.size > 1) {
+//        val callBuilderName = codeBuilder.newName("callBuilder")
+//        val i32Count = encoder.coreTypes.count { it.byteCount == 4 }
+//        val i64Count = encoder.coreTypes.count { it.byteCount == 8 }
+//
+//        codeBuilder.addStatement(
+//          "val %N = %T(i32Count = %L, i64Count = %L)",
+//          callBuilderName,
+//          Symbols.Brevity.CallBuilder,
+//          i32Count,
+//          i64Count,
+//        )
+//
+//        if (encoder.lowerAllocates) {
+//          codeBuilder.addStatement(
+//            "%M(%L, %L, %L, %N)",
+//            memberName,
+//            codeBuilder.bridge,
+//            memoryAllocator!!.name,
+//            transformer.take(),
+//            callBuilderName,
+//          )
+//        } else {
+//          codeBuilder.addStatement(
+//            "%M(%L, %L, %N)",
+//            memberName,
+//            codeBuilder.bridge,
+//            transformer.take(),
+//            callBuilderName,
+//          )
+//        }
+//
+//        val coreValueNames = allocateNames("value", encoder.coreTypes.size)
+//        for ((v, coreType) in encoder.coreTypes.withIndex()) {
+//          val takeFunction = when (coreType) {
+//            CoreType.F32 -> "takeF32"
+//            CoreType.F64 -> "takeF64"
+//            CoreType.I32, CoreType.Pointer -> "takeI32"
+//            CoreType.I64 -> "takeI64"
+//          }
+//          codeBuilder.addStatement(
+//            "val %N = %N.%N()",
+//            coreValueNames[v],
+//            callBuilderName,
+//            takeFunction,
+//          )
+//          transformer.put(CodeBlock.of("%N", coreValueNames[v]))
+//        }
+//      } else {
+//        transformer.put(
+//          CodeBlock.of(
+//            "%M(%L, %L)",
+//            memberName,
+//            codeBuilder.bridge,
+//            transformer.take(),
+//          ),
+//        )
+//      }
+//    }
+//  }
 }

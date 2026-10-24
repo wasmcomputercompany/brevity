@@ -18,24 +18,29 @@ class TypeAliasEncoder(
   override val lowerAllocates: Boolean
     get() = delegate.lowerAllocates
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
   ) = CodeBlock.of(
     "%T(%L)",
     type,
-    delegate.load(baseAddress, offset),
+    context.load(
+      encoder = delegate,
+      baseAddress = baseAddress,
+      offset = offset,
+    ),
   )
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
   ) {
-    delegate.store(
+    context.store(
+      encoder = delegate,
       memoryAllocator = memoryAllocator,
       baseAddress = baseAddress,
       offset = offset,
@@ -43,9 +48,10 @@ class TypeAliasEncoder(
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
-    val codeBlock = delegate.liftFlat(
+    val codeBlock = context.liftFlat(
+      encoder = delegate,
       values = coreTypes.map { transformer.take() },
     )
     transformer.put(
@@ -55,12 +61,13 @@ class TypeAliasEncoder(
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
   ) {
-    val values = delegate.lowerFlat(
+    val values = context.lowerFlat(
+      encoder = delegate,
       memoryAllocator = memoryAllocator,
       value = CodeBlock.of(
         "(%L).%N",

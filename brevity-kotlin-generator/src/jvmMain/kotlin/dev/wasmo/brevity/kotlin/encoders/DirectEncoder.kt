@@ -15,7 +15,7 @@ open class DirectEncoder(
   override val byteCount: Int
     get() = integerType.byteCount
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -23,7 +23,7 @@ open class DirectEncoder(
     return integerTypeToValue(codeBuilder.platform.load(baseAddress, offset, integerType))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -33,12 +33,12 @@ open class DirectEncoder(
     codeBuilder.platform.store(baseAddress, offset, integerType, valueToIntegerType(value))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     transformer.put(coreTypeToValue(transformer.take()))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,

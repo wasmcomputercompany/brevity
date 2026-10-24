@@ -24,26 +24,24 @@ class ProjectSpecTest {
   @Test
   fun happyPath() {
     val list = mutableListOf<QualifiedSpec>()
-    list.collect(
+    val collector = list.collector(
       sourceSet = SourceSet.CommonMain,
       locations = locations,
       packageName = resort.packageName,
       fileName = "Island",
-    ) {
-      contextOf<QualifiedSpecCollector>().addType(
-        className = resort,
-        type = TypeSpec.classBuilder(resort).build(),
-      )
-      contextOf<QualifiedSpecCollector>().addType(
-        className = spa,
-        type = TypeSpec.classBuilder(spa).build(),
-      )
-      contextOf<QualifiedSpecCollector>() += FunSpec.builder("snorkel").build()
-      contextOf<QualifiedSpecCollector>() +=
-        PropertySpec.builder("Aulani", resort, KModifier.LATEINIT)
-          .mutable(true)
-          .build()
-    }
+    )
+    collector.addType(
+      className = resort,
+      type = TypeSpec.classBuilder(resort).build(),
+    )
+    collector.addType(
+      className = spa,
+      type = TypeSpec.classBuilder(spa).build(),
+    )
+    collector += FunSpec.builder("snorkel").build()
+    collector += PropertySpec.builder("Aulani", resort, KModifier.LATEINIT)
+      .mutable(true)
+      .build()
 
     val project = ProjectSpec(list)
     val fileSpecs = project.fileSpecs(SourceSet.CommonMain)

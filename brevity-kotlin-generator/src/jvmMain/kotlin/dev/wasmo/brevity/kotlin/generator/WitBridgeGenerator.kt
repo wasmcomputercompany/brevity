@@ -92,14 +92,12 @@ class WitBridgeGenerator private constructor(
       val guestGenerator = guestGenerator(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        roleTracker = roleTracker,
         irPackages = irPackages,
         apiFunctionFactory = apiFunctionFactory,
       )
       val hostGenerator = hostGenerator(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        roleTracker = roleTracker,
         irPackages = irPackages,
         apiFunctionFactory = apiFunctionFactory,
       )
@@ -120,7 +118,6 @@ class WitBridgeGenerator private constructor(
     private fun hostGenerator(
       kotlinMapper: KotlinMapper,
       declarationIndex: DeclarationIndex,
-      roleTracker: RoleTracker,
       irPackages: List<IrWitPackage>,
       apiFunctionFactory: ApiFunctionFactory,
     ): HostGenerator {
@@ -128,7 +125,6 @@ class WitBridgeGenerator private constructor(
       val encoderFactory = EncoderFactory(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        platform = platform,
       )
       val abiFunctionFactory = AbiFunction.Factory(
         kotlinMapper = kotlinMapper,
@@ -153,16 +149,9 @@ class WitBridgeGenerator private constructor(
         apiFunctionFactory = apiFunctionFactory,
         platform = platform,
       )
-      val declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
-        encoderFactory = encoderFactory,
-        platform = platform,
-      )
       return HostGenerator(
         platformFunctionFactory = platformFunctionFactory,
         hostPlatform = platform,
-        declaredTypeEncodersGenerator = declaredTypeEncodersGenerator,
-        roleTracker = roleTracker,
-        packages = irPackages,
         worlds = worlds,
       )
     }
@@ -170,7 +159,6 @@ class WitBridgeGenerator private constructor(
     private fun guestGenerator(
       kotlinMapper: KotlinMapper,
       declarationIndex: DeclarationIndex,
-      roleTracker: RoleTracker,
       irPackages: List<IrWitPackage>,
       apiFunctionFactory: ApiFunctionFactory,
     ): GuestGenerator {
@@ -178,7 +166,6 @@ class WitBridgeGenerator private constructor(
       val encoderFactory = EncoderFactory(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        platform = platform,
       )
       val abiFunctionFactory = AbiFunction.Factory(
         kotlinMapper = kotlinMapper,
@@ -203,16 +190,9 @@ class WitBridgeGenerator private constructor(
         apiFunctionFactory = apiFunctionFactory,
         platform = platform,
       )
-      val declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
-        encoderFactory = encoderFactory,
-        platform = platform,
-      )
       return GuestGenerator(
         platform = platform,
         platformFunctionFactory = platformFunctionFactory,
-        declaredTypeEncodersGenerator = declaredTypeEncodersGenerator,
-        roleTracker = roleTracker,
-        packages = irPackages,
         worlds = worlds,
       )
     }
@@ -223,11 +203,9 @@ class WitBridgeGenerator private constructor(
       irPackages: List<IrWitPackage>,
       apiFunctionFactory: ApiFunctionFactory,
     ): ApiGenerator {
-      val platform = HostPlatform
       val encoderFactory = EncoderFactory(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        platform = platform,
       )
       val abiFunctionFactory = AbiFunction.Factory(
         kotlinMapper = kotlinMapper,

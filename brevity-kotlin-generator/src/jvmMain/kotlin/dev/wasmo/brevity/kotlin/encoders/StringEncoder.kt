@@ -22,7 +22,7 @@ object StringEncoder : Encoder() {
   override val lowerAllocates: Boolean
     get() = true
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -45,7 +45,7 @@ object StringEncoder : Encoder() {
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -72,12 +72,12 @@ object StringEncoder : Encoder() {
     codeBuilder.platform.store(baseAddress, offset + 4, CoreType.I32, CodeBlock.of("%N", byteCount))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     transformer.put(codeBuilder.platform.loadString(transformer.take(), transformer.take()))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,

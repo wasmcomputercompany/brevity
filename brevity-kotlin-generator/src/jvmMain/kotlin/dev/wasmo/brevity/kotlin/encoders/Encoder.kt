@@ -18,11 +18,11 @@ abstract class Encoder {
     get() = null
 
   /** Loads a value from memory at [baseAddress] + [offset]. */
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   abstract fun load(baseAddress: CodeBlock, offset: Int = 0): CodeBlock
 
   /** Stores [value] in memory at [baseAddress] + [offset]. */
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   abstract fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -31,10 +31,10 @@ abstract class Encoder {
   )
 
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   abstract fun liftFlat(transformer: Transformer)
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   fun liftFlat(values: List<CodeBlock>): CodeBlock {
     val transformer = Transformer(values.toMutableList())
     liftFlat(transformer)
@@ -51,13 +51,13 @@ abstract class Encoder {
   }
 
   /** Lower an API value like a resource instance to an ABI value like a memory address. */
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   abstract fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
   )
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     value: CodeBlock,
@@ -106,5 +106,36 @@ abstract class Encoder {
     }
 
     fun put(format: String, vararg args: Any?) = put(CodeBlock.of(format, *args))
+  }
+
+  interface Context {
+    context(codeBuilder: CodeBuilder)
+    fun lowerFlat(
+      encoder: Encoder,
+      value: CodeBlock,
+      memoryAllocator: MemoryAllocator?,
+    ): List<CodeBlock>
+
+    context(codeBuilder: CodeBuilder)
+    fun liftFlat(
+      encoder: Encoder,
+      values: List<CodeBlock>,
+    ): CodeBlock
+
+    context(codeBuilder: CodeBuilder)
+    fun load(
+      encoder: Encoder,
+      baseAddress: CodeBlock,
+      offset: Int = 0,
+    ): CodeBlock
+
+    context(codeBuilder: CodeBuilder)
+    fun store(
+      encoder: Encoder,
+      memoryAllocator: MemoryAllocator?,
+      baseAddress: CodeBlock,
+      offset: Int = 0,
+      value: CodeBlock,
+    )
   }
 }

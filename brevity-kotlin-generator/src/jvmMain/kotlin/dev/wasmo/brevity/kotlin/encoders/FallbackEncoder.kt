@@ -20,7 +20,7 @@ class FallbackEncoder(
   override val alignment: Int
     get() = coreType.alignment
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -29,7 +29,7 @@ class FallbackEncoder(
     "load ${kotlinMapper.get(type)}",
   )
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -39,13 +39,13 @@ class FallbackEncoder(
     codeBuilder.addStatement("// TODO: store ${kotlinMapper.get(type)}")
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     transformer.take()
     transformer.put("TODO(%S)", "lift ${kotlinMapper.get(type)}")
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,

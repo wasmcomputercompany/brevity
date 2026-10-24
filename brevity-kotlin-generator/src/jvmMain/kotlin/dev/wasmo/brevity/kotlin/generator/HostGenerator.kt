@@ -17,9 +17,7 @@ import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
-import dev.wasmo.brevity.RoleTracker
 import dev.wasmo.brevity.TypeName
-import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
 import dev.wasmo.brevity.kotlin.abi.AbiLift
@@ -36,41 +34,45 @@ import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 class HostGenerator(
   private val platformFunctionFactory: PlatformFunctionFactory,
   private val hostPlatform: HostPlatform,
-  private val declaredTypeEncodersGenerator: DeclaredTypeEncodersGenerator,
-  private val roleTracker: RoleTracker,
-  private val packages: List<IrWitPackage>,
   private val worlds: List<AbiWorld>,
 ) {
   fun generate(): List<QualifiedSpec> {
     val result = mutableListOf<QualifiedSpec>()
 
-    for (type in packages.flatMap { it.services }.flatMap { it.types }) {
-      val typeName = type.type
-      // TODO: this is hacked because we don't also prune unreachable callsites.
-      val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
-
-      result.collect(
-        sourceSet = QualifiedSpec.SourceSet.JvmMain,
-        locations = setOf(type.location),
-        optIns = hostOptIns,
-        packageName = typeName.serviceName.kotlinApi.packageName,
-        fileName = "${typeName.name.upperCamelCase}Host",
-      ) {
-        declaredTypeEncodersGenerator.generate(type, roles)
-      }
-    }
+//    for (type in packages.flatMap { it.services }.flatMap { it.types }) {
+//      val typeName = type.type
+//      // TODO: this is hacked because we don't also prune unreachable callsites.
+//      val roles = (RoleTracker.Entry(true, true) ?: roleTracker[typeName])!!
+//
+//      result.collect(
+//        sourceSet = QualifiedSpec.SourceSet.JvmMain,
+//        locations = setOf(type.location),
+//        optIns = hostOptIns,
+//        packageName = typeName.serviceName.kotlinApi.packageName,
+//        fileName = "${typeName.name.upperCamelCase}Host",
+//      ) {
+//        declaredTypeEncodersGenerator.generate(type, roles)
+//      }
+//    }
 
     for (abiWorld in worlds) {
       val className = abiWorld.apiClassName
-      result.collect(
+      val encoderFunctionCollector = EncoderFunctionCollector(
+        qualifiedSpecCollector = result.collector(
+          sourceSet = QualifiedSpec.SourceSet.JvmMain,
+          className = className,
+        ),
+      )
+      val collector = result.collector(
         sourceSet = QualifiedSpec.SourceSet.JvmMain,
         packageName = className.packageName,
         locations = setOf(abiWorld.location),
         optIns = hostOptIns,
         fileName = "${className.simpleName}Host",
-      ) {
+      )
+      context(collector) {
         generateWorldFactoryFunction(abiWorld)
-        generateWorld(abiWorld)
+        generateWorld(encoderFunctionCollector, abiWorld)
       }
     }
 
@@ -122,7 +124,10 @@ class HostGenerator(
 
   /** Generates the host side of [abiWorld], either for imports or exports. */
   context(collector: QualifiedSpecCollector)
-  private fun generateWorld(abiWorld: AbiWorld) {
+  private fun generateWorld(
+    encoderFunctionCollector: EncoderFunctionCollector,
+    abiWorld: AbiWorld,
+  ) {
     val className = abiWorld.hostClassName
     val builder = TypeSpec.classBuilder(className)
       .addModifiers(KModifier.INTERNAL)
@@ -181,37 +186,55 @@ class HostGenerator(
       )
       initExports(initExportsBuilder, builder, abiWorld.functions)
       initImports(
+        encoderFunctionCollector = encoderFunctionCollector,
         initImportsBuilder = initImportsBuilder,
         bridgeValue = bridgeValue,
         worldClassName = className,
         parentService = abiWorld,
       )
-      builder.addType(generateExportsImplementation(abiWorld))
+      builder.addType(
+        generateExportsImplementation(
+          encoderFunctionCollector = encoderFunctionCollector,
+          abiService = abiWorld,
+        ),
+      )
     }
 
     fun generateResource(abiResource: AbiResource) {
       initExports(initExportsBuilder, builder, abiResource.functions)
       initImports(
+        encoderFunctionCollector = encoderFunctionCollector,
         initImportsBuilder = initImportsBuilder,
         bridgeValue = bridgeValue,
         worldClassName = className,
         parentService = abiResource,
       )
       if (abiResource.orientation == Export) {
-        builder.addType(generateExportsImplementation(abiResource))
+        builder.addType(
+          generateExportsImplementation(
+            encoderFunctionCollector = encoderFunctionCollector,
+            abiService = abiResource,
+          ),
+        )
       }
     }
 
     fun generateInterface(abiInterface: AbiInterface) {
       initExports(initExportsBuilder, builder, abiInterface.functions)
       initImports(
+        encoderFunctionCollector = encoderFunctionCollector,
         initImportsBuilder = initImportsBuilder,
         bridgeValue = bridgeValue,
         worldClassName = className,
         parentService = abiInterface,
       )
       if (abiInterface.orientation == Export) {
-        builder.addType(generateExportsImplementation(abiInterface))
+        builder.addType(
+          generateExportsImplementation(
+            encoderFunctionCollector = encoderFunctionCollector,
+            abiService = abiInterface,
+          ),
+        )
       }
       for (abiResource in abiInterface.resources) {
         generateResource(abiResource)
@@ -263,6 +286,7 @@ class HostGenerator(
   }
 
   private fun initImports(
+    encoderFunctionCollector: EncoderFunctionCollector,
     initImportsBuilder: FunSpec.Builder,
     bridgeValue: CodeBlock,
     worldClassName: ClassName,
@@ -274,6 +298,7 @@ class HostGenerator(
       if (abiFunction.orientation != Import) continue
       initImportsBuilder.addCode(
         declareHost(
+          encoderFunctionCollector = encoderFunctionCollector,
           bridge = bridgeValue,
           worldClassName = worldClassName,
           store = store,
@@ -286,6 +311,7 @@ class HostGenerator(
 
   /** Generates one or two classes to implement [abiService] for this orientation. */
   private fun generateExportsImplementation(
+    encoderFunctionCollector: EncoderFunctionCollector,
     abiService: AbiService,
   ): TypeSpec {
     return TypeSpec.classBuilder(abiService.implementationName)
@@ -340,6 +366,7 @@ class HostGenerator(
           if (abiFunction.isSynthetic) continue
           addFunction(
             platformFunctionFactory.create(
+              encoderFunctionCollector = encoderFunctionCollector,
               bridge = bridgeValue,
               abiService = abiService,
               abiFunction = abiFunction,
@@ -352,6 +379,7 @@ class HostGenerator(
 
   /** Adds a host function using the Chicory API. */
   private fun declareHost(
+    encoderFunctionCollector: EncoderFunctionCollector,
     bridge: CodeBlock,
     store: CodeBlock,
     worldClassName: ClassName,
@@ -376,8 +404,11 @@ class HostGenerator(
       val function = ChicoryImportFunction(
         abiFunction,
         AbiLift(
-          parentService = parentService,
-          abiFunction = abiFunction,
+          functionEncoder = FunctionEncoder(
+            collector = encoderFunctionCollector,
+            service = parentService,
+            function = abiFunction,
+          ),
           resourceImplementation = resourceImplementation,
         ),
       )
