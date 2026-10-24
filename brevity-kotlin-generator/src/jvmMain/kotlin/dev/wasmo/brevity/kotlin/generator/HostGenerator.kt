@@ -147,19 +147,6 @@ class HostGenerator(
 
             if (allResources.isNotEmpty()) {
               beginControlFlow(".apply")
-              for (abiResource in allResources) {
-                beginControlFlow(
-                  "registerResourceHandle<%T> { %N ->",
-                  abiResource.apiClassName,
-                  "rep",
-                )
-                addStatement(
-                  "%T(%N)",
-                  className.nestedClass(abiResource.implementationName),
-                  "rep",
-                )
-                endControlFlow()
-              }
               endControlFlow()
             }
           },

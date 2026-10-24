@@ -37,7 +37,7 @@ internal class BridgeAsync(
           listOf(),
         ),
         WasmFunctionHandle { instance, args ->
-          bridge.fromIndex<WaitableSet>(args[1].toInt()).join(args[0].toInt())
+          bridge.getResource<WaitableSet>(args[1].toInt()).join(args[0].toInt())
           longArrayOf()
         },
       ),
@@ -51,7 +51,7 @@ internal class BridgeAsync(
           listOf(ValType.I32),
         ),
         WasmFunctionHandle { instance, args ->
-          val result = bridge.fromIndex<WaitableSet>(args[0].toInt()).poll(args[1].toInt())
+          val result = bridge.getResource<WaitableSet>(args[0].toInt()).poll(args[1].toInt())
           longArrayOf(result.toLong())
         },
       ),
@@ -68,7 +68,7 @@ internal class BridgeAsync(
         ),
         WasmFunctionHandle { instance, args ->
           val waitableSet = host.waitableSetNew()
-          val result = bridge.toIndex(waitableSet)
+          val result = waitableSet.index
           longArrayOf(result.toLong())
         },
       ),

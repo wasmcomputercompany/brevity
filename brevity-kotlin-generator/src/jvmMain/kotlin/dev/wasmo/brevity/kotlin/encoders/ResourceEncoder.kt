@@ -2,10 +2,12 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 internal class ResourceEncoder(
+  private val typeName: TypeName.Declared,
   private val abiClassName: ClassName,
 ) : Encoder() {
   override val coreTypes = listOf(CoreType.I32)
@@ -48,24 +50,10 @@ internal class ResourceEncoder(
   }
 
   context(codeBuilder: CodeBuilder)
-  fun liftResource(id: CodeBlock): CodeBlock = liftResource(id, abiClassName)
+  fun liftResource(id: CodeBlock): CodeBlock =
+    codeBuilder.platform.liftResource(id, abiClassName)
 
   context(codeBuilder: CodeBuilder)
-  fun lowerResource(resource: CodeBlock) = lowerResource(resource, abiClassName)
+  fun lowerResource(resource: CodeBlock) =
+    codeBuilder.platform.lowerResource(resource, typeName)
 }
-
-context(codeBuilder: CodeBuilder)
-fun liftResource(id: CodeBlock, abiClassName: ClassName) = CodeBlock.of(
-  "%L.fromIndex<%T>(%L)",
-  codeBuilder.bridge,
-  abiClassName,
-  id,
-)
-
-context(codeBuilder: CodeBuilder)
-fun lowerResource(resource: CodeBlock, abiClassName: ClassName) = CodeBlock.of(
-  "%L.toIndex<%T>(%L)",
-  codeBuilder.bridge,
-  abiClassName,
-  resource,
-)

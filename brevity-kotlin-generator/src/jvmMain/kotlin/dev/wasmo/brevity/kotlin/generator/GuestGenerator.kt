@@ -100,23 +100,6 @@ class GuestGenerator(
         FunSpec.setterBuilder()
           .addParameter("value", guestApisType)
           .apply {
-            val allResources = (abiWorld.resources + abiWorld.interfaces.flatMap { it.resources })
-              .filter { it.orientation == Import }
-            for (abiResource in allResources) {
-              beginControlFlow(
-                "%T.registerResourceHandle<%T> { %N ->",
-                Symbols.Brevity.GuestBridge,
-                abiResource.apiClassName,
-                "rep",
-              )
-              addStatement(
-                "%T(%N)",
-                abiResource.guestServiceClassName,
-                "rep",
-              )
-              endControlFlow()
-            }
-
             addStatement("%M()", Symbols.Brevity.RetainWasmExportsForGuestBridge)
             addStatement("%N()", abiWorld.retainWasmExportsFunctionName)
             addStatement("%N = %N", "${guestApisInstanceName}_", "value")
@@ -182,17 +165,6 @@ class GuestGenerator(
       TypeSpec.classBuilder(className)
         .addModifiers(KModifier.INTERNAL)
         .superclass(abiResource.apiInterfaceName(Import))
-        .addProperty(
-          PropertySpec.builder("rep", INT)
-            .addModifiers(KModifier.PRIVATE)
-            .initializer("rep")
-            .build(),
-        )
-        .primaryConstructor(
-          FunSpec.constructorBuilder()
-            .addParameter("rep", INT)
-            .build(),
-        )
         .declareServiceClassFunctions(abiResource)
         .build(),
     )

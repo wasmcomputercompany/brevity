@@ -60,7 +60,8 @@ data class AbiFunction(
   val isSynthetic: Boolean
     get() = name is FunctionName.TaskReturn ||
       name is FunctionName.AsyncExportCallback ||
-      name is FunctionName.ResourceDrop
+      name is FunctionName.ResourceDrop ||
+      name is FunctionName.ResourceNew
 
   val isResource: Boolean
     get() = parameters.resourceRep != null

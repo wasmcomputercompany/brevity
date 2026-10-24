@@ -3,15 +3,12 @@ package dev.wasmo.brevity
 import com.dylibso.chicory.runtime.ExportFunction
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
-import kotlin.reflect.KType
-import kotlin.reflect.typeOf
 import kotlinx.coroutines.runBlocking
 
 @BrevityInternalApi
 class HostBridge {
-  private val typeToResourceHandle = mutableMapOf<KType, (Int) -> Resource>()
-  private val indexToResource = mutableMapOf<Int, Resource>()
-  private var nextIndex = 6_060_000
+  private val repToResource = mutableMapOf<Int, Resource>()
+  private var nextRep = 6_060_000
   private lateinit var _memory: Memory
 
   val memory: Memory
@@ -29,43 +26,20 @@ class HostBridge {
     )
   }
 
-  fun newResource(handle: Resource): Int {
-    val result = nextIndex++
-    indexToResource[result] = handle
-    return result
+  fun <T : Resource> putResource(resource: T): Int {
+    val rep = nextRep++
+    repToResource[rep] = resource
+    return rep
   }
 
-  inline fun <reified T : Resource> registerResourceHandle(
-    noinline constructor: (id: Int) -> T,
-  ) {
-    registerResourceHandle(typeOf<T>(), constructor)
-  }
-
-  @PublishedApi
-  internal fun registerResourceHandle(type: KType, createHandle: (id: Int) -> Resource) {
-//    typeToResourceHandle[type] = createHandle
-  }
-
-  fun <T : Resource> toIndex(resource: T): Int {
-    val id = nextIndex++
-    indexToResource[id] = resource
-    return id
-  }
-
-  inline fun <reified T : Resource> fromIndex(index: Int): T {
-    return fromIndex(typeOf<T>(), index) as T
+  fun <T : Resource> getResource(rep: Int): T {
+    val resource = repToResource[rep] ?: error("unexpected rep: $rep")
+    return resource as T
   }
 
   @PublishedApi
-  internal fun fromIndex(type: KType, index: Int): Resource? {
-//    val createHandle = typeToResourceHandle[type]
-//    if (createHandle != null) return createHandle(id)
-    return indexToResource[index]
-  }
-
-  @PublishedApi
-  internal fun dropInternal(id: Int): Resource? {
-    return indexToResource.remove(id)
+  internal fun dropInternal(rep: Int): Resource? {
+    return repToResource.remove(rep)
   }
 
   fun launchSubtask(block: suspend () -> Unit): PackedSubtaskResult {

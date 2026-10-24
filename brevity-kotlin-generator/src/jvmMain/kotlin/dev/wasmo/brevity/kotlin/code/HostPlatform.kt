@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.kotlin.code
 
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.DOUBLE
 import com.squareup.kotlinpoet.FLOAT
@@ -7,6 +8,7 @@ import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
 import dev.wasmo.brevity.kotlin.abi.AbiService
@@ -179,5 +181,29 @@ object HostPlatform : Platform {
 
     override fun allocate(byteCount: CodeBlock) =
       CodeBlock.of("%N.allocate(%L)", name, byteCount)
+  }
+
+  context(codeBuilder: CodeBuilder)
+  override fun liftResource(id: CodeBlock, abiClassName: ClassName): CodeBlock = CodeBlock.of(
+    "%L.getResource<%T>(%L)",
+    codeBuilder.bridge,
+    abiClassName,
+    id,
+  )
+
+  context(codeBuilder: CodeBuilder)
+  override fun lowerResource(resource: CodeBlock, resourceType: TypeName.Declared): CodeBlock {
+    val resourceName = codeBuilder.newName("resource")
+    codeBuilder.addStatement("val %N = %L", resourceName, resource)
+    codeBuilder.beginControlFlow("if (!%N.%N)", resourceName, "hasIndex")
+    codeBuilder.addStatement("%N.%N = %L.putResource(%N)",
+      resourceName,
+      "index",
+      codeBuilder.bridge,
+      resourceName
+    )
+    codeBuilder.addStatement("%N.%N = %L", resourceName, "hasIndex", true)
+    codeBuilder.endControlFlow()
+    return CodeBlock.of("%N.%N", resourceName, "index")
   }
 }

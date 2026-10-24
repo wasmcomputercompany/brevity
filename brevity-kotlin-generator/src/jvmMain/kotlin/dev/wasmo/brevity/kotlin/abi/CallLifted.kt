@@ -2,7 +2,6 @@ package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
-import dev.wasmo.brevity.kotlin.encoders.liftResource
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
@@ -73,7 +72,7 @@ class CallLifted(
         CodeBlockExpression(
           type = parentService.apiClassName,
           nameHint = "receiver",
-          code = liftResource(
+          code = codeBuilder.platform.liftResource(
             id = value.code,
             abiClassName = parentService.apiClassName,
           ),

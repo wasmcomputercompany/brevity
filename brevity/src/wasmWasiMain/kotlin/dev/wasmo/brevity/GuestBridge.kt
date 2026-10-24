@@ -5,8 +5,6 @@
 
 package dev.wasmo.brevity
 
-import kotlin.reflect.KType
-import kotlin.reflect.typeOf
 import kotlin.wasm.unsafe.Pointer
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlinx.coroutines.CoroutineScope
@@ -14,9 +12,8 @@ import kotlinx.coroutines.launch
 
 @BrevityInternalApi
 object GuestBridge {
-  private val typeToResourceHandle = mutableMapOf<KType, (Int) -> Resource>()
-  private val idToResource = mutableMapOf<Int, Resource>()
-  private var nextId = 4_040_000
+  private val repToResource = mutableMapOf<Int, Resource>()
+  private var nextRep = 4_040_000
 
   private var taskResult: Any? = null
 
@@ -32,32 +29,15 @@ object GuestBridge {
     kotlin.wasm.internal.onExportedFunctionExit = {}
   }
 
-  inline fun <reified T : Resource> registerResourceHandle(
-    noinline constructor: (id: Int) -> T,
-  ) {
-    registerResourceHandle(typeOf<T>(), constructor)
+  fun <T : Resource> putResource(resource: T): Int {
+    val rep = nextRep++
+    repToResource[rep] = resource
+    return rep
   }
 
-  @PublishedApi
-  internal fun registerResourceHandle(type: KType, createHandle: (id: Int) -> Resource) {
-    typeToResourceHandle[type] = createHandle
-  }
-
-  fun <T : Resource> toIndex(resource: T): Int {
-    val id = nextId++
-    idToResource[id] = resource
-    return id
-  }
-
-  inline fun <reified T : Resource> fromIndex(index: Int): T {
-    return fromIndex(typeOf<T>(), index) as T
-  }
-
-  @PublishedApi
-  internal fun fromIndex(type: KType, index: Int): Resource? {
-//    val createHandle = typeToResourceHandle[type]
-//    if (createHandle != null) return createHandle(index)
-    return idToResource[index]
+  fun <T : Resource> getResource(rep: Int): T {
+    val resource = repToResource[rep] ?: error("unexpected rep: $rep")
+    return resource as T
   }
 
   fun taskReturn(value: Any? = Unit) {

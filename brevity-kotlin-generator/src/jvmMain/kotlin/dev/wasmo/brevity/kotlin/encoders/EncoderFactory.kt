@@ -5,7 +5,6 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterSpec
-import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.buildCodeBlock
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.Identifier
@@ -174,6 +173,7 @@ class EncoderFactory(
 
       is IrResource -> ResourceEncoder(
         abiClassName = kotlinMapper.getAbiClassName(type.type),
+        typeName = type.type,
       )
 
       is IrTypeAlias -> TypeAliasEncoder(kotlinType, get(type.target))

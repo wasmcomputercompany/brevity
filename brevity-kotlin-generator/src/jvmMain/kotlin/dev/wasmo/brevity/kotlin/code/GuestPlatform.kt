@@ -1,8 +1,12 @@
 package dev.wasmo.brevity.kotlin.code
 
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName as KtTypeName
+import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
 import dev.wasmo.brevity.kotlin.abi.AbiService
@@ -12,6 +16,8 @@ import dev.wasmo.brevity.kotlin.encoders.IntegerType
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.generator.Symbols
+import dev.wasmo.brevity.kotlin.generator.importFunctionName
+import dev.wasmo.brevity.kotlin.generator.kotlinApi
 import dev.wasmo.brevity.kotlin.generator.plus
 
 object GuestPlatform : Platform {
@@ -173,5 +179,35 @@ object GuestPlatform : Platform {
 
     override fun allocate(byteCount: CodeBlock) =
       CodeBlock.of("%N.allocate(%L)", name, byteCount)
+  }
+
+  context(codeBuilder: CodeBuilder)
+  override fun liftResource(id: CodeBlock, abiClassName: ClassName): CodeBlock = CodeBlock.of(
+    "%L.getResource<%T>(%L)",
+    codeBuilder.bridge,
+    abiClassName,
+    id,
+  )
+
+  context(codeBuilder: CodeBuilder)
+  override fun lowerResource(resource: CodeBlock, resourceType: TypeName.Declared): CodeBlock {
+    val resourceName = codeBuilder.newName("resource")
+    codeBuilder.addStatement("val %N = %L", resourceName, resource)
+    codeBuilder.beginControlFlow("if (!%N.%N)", resourceName, "hasIndex")
+    val repName = codeBuilder.newName("rep")
+    codeBuilder.addStatement("val %N = %L.putResource(%N)", repName, codeBuilder.bridge, resourceName)
+    codeBuilder.addStatement(
+      "%N.%N = %N(%N)",
+      resourceName,
+      "index",
+      MemberName(
+        resourceType.serviceName.packageName.kotlinApi,
+        FunctionName.ResourceNew(resourceType).importFunctionName,
+      ),
+      repName,
+    )
+    codeBuilder.addStatement("%N.%N = %L", resourceName, "hasIndex", true)
+    codeBuilder.endControlFlow()
+    return CodeBlock.of("%N.%N", resourceName, "index")
   }
 }
