@@ -2,8 +2,9 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.TypeName as KtTypeName
 import com.squareup.kotlinpoet.UNIT
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
@@ -56,7 +57,7 @@ abstract class AbstractVariantEncoder(
   /** Returns a code block that extracts the value of [index]. */
   abstract fun instanceValue(index: Int, value: CodeBlock): CodeBlock?
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -81,7 +82,8 @@ abstract class AbstractVariantEncoder(
             constructInstance(
               index = index,
               value = caseEncoder?.let {
-                caseEncoder.load(
+                context.load(
+                  encoder = caseEncoder,
                   baseAddress = baseAddress,
                   offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
                 )
@@ -96,7 +98,7 @@ abstract class AbstractVariantEncoder(
     return CodeBlock.of("%N", variantName)
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -113,13 +115,16 @@ abstract class AbstractVariantEncoder(
     ) {
       for ((index, caseEncoder) in caseEncoders.withIndex()) {
         codeBuilder.controlFlow("%L ->", matchInstance(index)) {
-          caseEncoder?.store(
-            memoryAllocator = memoryAllocator,
-            baseAddress = baseAddress,
-            offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
-            value = instanceValue(index, CodeBlock.of("%N", variantName))
-              ?: error("case mismatch for $index"),
-          )
+          if (caseEncoder != null) {
+            context.store(
+              encoder = caseEncoder,
+              memoryAllocator = memoryAllocator,
+              baseAddress = baseAddress,
+              offset = offset + discriminant.byteCount.alignTo(maxCaseAlignment),
+              value = instanceValue(index, CodeBlock.of("%N", variantName))
+                ?: error("case mismatch for $index"),
+            )
+          }
           codeBuilder.addStatement("%L", index)
         }
       }
@@ -137,7 +142,7 @@ abstract class AbstractVariantEncoder(
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     val variantName = codeBuilder.newName(instanceNameHint)
 
@@ -156,7 +161,8 @@ abstract class AbstractVariantEncoder(
             constructInstance(
               index = caseIndex,
               value = caseEncoder?.let {
-                caseEncoder.liftFlat(
+                context.liftFlat(
+                  encoder = caseEncoder,
                   values = caseEncoder.coreTypes.withIndex().map { (v, requiredType) ->
                     requiredType.fromBits(
                       sourceType = casesCoreTypesBits[v],
@@ -175,7 +181,7 @@ abstract class AbstractVariantEncoder(
     return transformer.put(variantName)
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
@@ -199,7 +205,11 @@ abstract class AbstractVariantEncoder(
       for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
         codeBuilder.controlFlow("%L ->", matchInstance(caseIndex)) {
           if (caseEncoder != null) {
-            val values = caseEncoder.lowerFlat(memoryAllocator, instanceValue(caseIndex, variant)!!)
+            val values = context.lowerFlat(
+              encoder = caseEncoder,
+              value = instanceValue(caseIndex, variant)!!,
+              memoryAllocator = memoryAllocator,
+            )
             for ((v, coreType) in caseEncoder.coreTypes.withIndex()) {
               codeBuilder.addStatement(
                 "%N = %L",
@@ -221,6 +231,7 @@ abstract class AbstractVariantEncoder(
 }
 
 class VariantEncoder(
+  override val type: TypeName,
   private val kotlinType: ClassName,
   override val instanceNameHint: String,
   private val cases: List<IrCase>,
@@ -270,6 +281,7 @@ class VariantEncoder(
 }
 
 class EnumEncoder(
+  override val type: TypeName,
   private val kotlinType: ClassName,
   override val instanceNameHint: String,
   private val cases: List<IrCase>,
@@ -284,6 +296,7 @@ class EnumEncoder(
 }
 
 class OptionalEncoder(
+  override val type: TypeName,
   some: Encoder,
   override val instanceNameHint: String,
 ) : AbstractVariantEncoder(listOf(null, some)) {
@@ -316,8 +329,9 @@ class OptionalEncoder(
 }
 
 class ResultEncoder(
-  private val ok: Pair<TypeName, Encoder>?,
-  private val error: Pair<TypeName, Encoder>?,
+  override val type: TypeName,
+  private val ok: Pair<KtTypeName, Encoder>?,
+  private val error: Pair<KtTypeName, Encoder>?,
 ) : AbstractVariantEncoder(listOf(ok?.second, error?.second)) {
   override val instanceNameHint: String
     get() = "result"
@@ -337,7 +351,7 @@ class ResultEncoder(
   override fun instanceValue(index: Int, value: CodeBlock) =
     CodeBlock.of("%L.value", value)
 
-  private fun rawType(index: Int): TypeName {
+  private fun rawType(index: Int): KtTypeName {
     return when (index) {
       0 -> Symbols.Brevity.ResultOk
       1 -> Symbols.Brevity.ResultError

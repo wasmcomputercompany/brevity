@@ -3,10 +3,12 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.buildCodeBlock
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrField
 import dev.wasmo.brevity.kotlin.generator.kotlinName
 
 class RecordEncoder(
+  override val type: TypeName,
   private val kotlinType: ClassName,
   override val instanceNameHint: String,
   private val fields: List<IrField>,

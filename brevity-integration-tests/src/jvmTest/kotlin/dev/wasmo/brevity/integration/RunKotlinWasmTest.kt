@@ -76,7 +76,7 @@ class RunKotlinWasmTest {
     val b = "World!".asStringArgument()
 
     var result: String? = null
-    val callback = object : StringResult {
+    val callback = object : StringResult() {
       override fun put(value_: String) {
         result = value_
       }
@@ -102,7 +102,7 @@ class RunKotlinWasmTest {
       .isEqualTo("Hello, World!")
   }
 
-  private fun String.asStringArgument() = object : StringArgument {
+  private fun String.asStringArgument() = object : StringArgument() {
     override fun get() = this@asStringArgument
   }
 

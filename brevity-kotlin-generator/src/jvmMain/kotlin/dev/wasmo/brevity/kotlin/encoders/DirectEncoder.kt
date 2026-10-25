@@ -1,10 +1,12 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 open class DirectEncoder(
+  override val type: TypeName,
   override val alignment: Int,
   val coreType: CoreType,
   val integerType: IntegerType,
@@ -15,7 +17,7 @@ open class DirectEncoder(
   override val byteCount: Int
     get() = integerType.byteCount
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -23,7 +25,7 @@ open class DirectEncoder(
     return integerTypeToValue(codeBuilder.platform.load(baseAddress, offset, integerType))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -33,12 +35,12 @@ open class DirectEncoder(
     codeBuilder.platform.store(baseAddress, offset, integerType, valueToIntegerType(value))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     transformer.put(coreTypeToValue(transformer.take()))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
@@ -56,6 +58,7 @@ open class DirectEncoder(
 }
 
 object BooleanEncoder : DirectEncoder(
+  type = TypeName.Bool,
   alignment = 1,
   coreType = CoreType.I32,
   integerType = IntegerType.S8,
@@ -75,6 +78,7 @@ object BooleanEncoder : DirectEncoder(
 }
 
 object ByteEncoder : DirectEncoder(
+  type = TypeName.S8,
   alignment = 1,
   coreType = CoreType.I32,
   integerType = IntegerType.S8,
@@ -90,6 +94,7 @@ object ByteEncoder : DirectEncoder(
 }
 
 object ShortEncoder : DirectEncoder(
+  type = TypeName.S16,
   alignment = 2,
   coreType = CoreType.I32,
   integerType = IntegerType.S16,
@@ -105,18 +110,21 @@ object ShortEncoder : DirectEncoder(
 }
 
 object IntEncoder : DirectEncoder(
+  type = TypeName.S32,
   alignment = 4,
   coreType = CoreType.I32,
   integerType = IntegerType.S32,
 )
 
 object LongEncoder : DirectEncoder(
+  type = TypeName.S64,
   alignment = 8,
   coreType = CoreType.I64,
   integerType = IntegerType.S64,
 )
 
 object UByteEncoder : DirectEncoder(
+  type = TypeName.U8,
   alignment = 1,
   coreType = CoreType.I32,
   integerType = IntegerType.S8,
@@ -132,6 +140,7 @@ object UByteEncoder : DirectEncoder(
 }
 
 object UShortEncoder : DirectEncoder(
+  type = TypeName.U16,
   alignment = 2,
   coreType = CoreType.I32,
   integerType = IntegerType.S16,
@@ -147,6 +156,7 @@ object UShortEncoder : DirectEncoder(
 }
 
 object UIntEncoder : DirectEncoder(
+  type = TypeName.U32,
   alignment = 4,
   coreType = CoreType.I32,
   integerType = IntegerType.S32,
@@ -159,6 +169,7 @@ object UIntEncoder : DirectEncoder(
 }
 
 object ULongEncoder : DirectEncoder(
+  type = TypeName.U64,
   alignment = 8,
   coreType = CoreType.I64,
   integerType = IntegerType.S64,
@@ -171,6 +182,7 @@ object ULongEncoder : DirectEncoder(
 }
 
 object FloatEncoder : DirectEncoder(
+  type = TypeName.F32,
   alignment = 4,
   coreType = CoreType.F32,
   integerType = IntegerType.S32,
@@ -183,6 +195,7 @@ object FloatEncoder : DirectEncoder(
 }
 
 object DoubleEncoder : DirectEncoder(
+  type = TypeName.F64,
   alignment = 8,
   coreType = CoreType.F64,
   integerType = IntegerType.S64,
@@ -195,6 +208,7 @@ object DoubleEncoder : DirectEncoder(
 }
 
 object CharEncoder : DirectEncoder(
+  type = TypeName.Char,
   alignment = 4,
   coreType = CoreType.I32,
   integerType = IntegerType.S32,

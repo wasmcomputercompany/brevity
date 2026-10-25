@@ -44,7 +44,7 @@ private object AsyncHost : Async.Host {
 @BrevityInternalApi
 private class GuestWaitableSet(
   private val waitableSetIndex: Int,
-) : WaitableSet {
+) : WaitableSet() {
   override fun join(waitableIndex: Int) {
     waitableJoin_export(waitableIndex, waitableSetIndex)
   }

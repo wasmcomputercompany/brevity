@@ -3,15 +3,13 @@ package dev.wasmo.brevity
 import com.dylibso.chicory.runtime.ExportFunction
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
-import kotlin.reflect.KType
-import kotlin.reflect.typeOf
 import kotlinx.coroutines.runBlocking
 
 @BrevityInternalApi
 class HostBridge {
-  private val typeToResourceHandle = mutableMapOf<KType, (Int) -> Resource>()
-  private val idToResource = mutableMapOf<Int, Resource>()
-  private var nextId = 6_060_000
+  private val repToExportedResource = mutableMapOf<Int, Resource>()
+  private val repToImportedResource = mutableMapOf<Int, Resource>()
+  private var nextRep = 6_060_000
   private lateinit var _memory: Memory
 
   val memory: Memory
@@ -29,37 +27,31 @@ class HostBridge {
     )
   }
 
-  inline fun <reified T : Resource> registerResourceHandle(
-    noinline constructor: (id: Int) -> T,
-  ) {
-    registerResourceHandle(typeOf<T>(), constructor)
+  fun <T : Resource> putExportedResource(resource: T): Int {
+    val rep = nextRep++
+    repToExportedResource[rep] = resource
+    return rep
+  }
+
+  fun <T : Resource> getExportedResource(rep: Int): T {
+    val resource = repToExportedResource[rep] ?: error("unexpected rep: $rep")
+    return resource as T
+  }
+
+  fun <T : Resource> putImportedResource(resource: T): Int {
+    val rep = nextRep++
+    repToImportedResource[rep] = resource
+    return rep
+  }
+
+  fun <T : Resource> getImportedResource(rep: Int): T {
+    val resource = repToImportedResource[rep] ?: error("unexpected rep: $rep")
+    return resource as T
   }
 
   @PublishedApi
-  internal fun registerResourceHandle(type: KType, createHandle: (id: Int) -> Resource) {
-    typeToResourceHandle[type] = createHandle
-  }
-
-  fun <T : Resource> toId(resource: T): Int {
-    val id = nextId++
-    idToResource[id] = resource
-    return id
-  }
-
-  inline fun <reified T : Resource> fromId(id: Int): T {
-    return fromId(typeOf<T>(), id) as T
-  }
-
-  @PublishedApi
-  internal fun fromId(type: KType, id: Int): Resource? {
-    val createHandle = typeToResourceHandle[type]
-    if (createHandle != null) return createHandle(id)
-    return idToResource[id]
-  }
-
-  @PublishedApi
-  internal fun dropInternal(id: Int): Resource? {
-    return idToResource.remove(id)
+  internal fun dropInternal(rep: Int): Resource? {
+    return repToExportedResource.remove(rep)
   }
 
   fun launchSubtask(block: suspend () -> Unit): PackedSubtaskResult {

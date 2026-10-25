@@ -2,15 +2,14 @@ package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
-import dev.wasmo.brevity.kotlin.encoders.liftResource
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
 import dev.wasmo.brevity.kotlin.expressions.makeImmediate
+import dev.wasmo.brevity.kotlin.generator.FunctionEncoder
 
 class CallLifted(
-  val parentService: AbiService,
-  val abiFunction: AbiFunction,
+  private val functionEncoder: FunctionEncoder,
 ) : KtFunction {
   context(codeBuilder: CodeBuilder)
   override fun call(
@@ -19,6 +18,7 @@ class CallLifted(
   ): KtExpression {
     check(receiver == null)
 
+    val abiFunction = functionEncoder.function
     val resultValue = abiFunction.result.value
     val resultName = when {
       resultValue != null -> codeBuilder.newName("result")
@@ -27,7 +27,7 @@ class CallLifted(
 
     check(parameters.size == abiFunction.parameters.parameters.size)
     val p = abiFunction.parameters.parameters.zip(parameters).iterator()
-    val receiver = liftReceiver(p).makeImmediate()
+    val receiver = functionEncoder.liftReceiver(p).makeImmediate()
     if (resultName != null) {
       codeBuilder.add("val %N = ", resultName)
     }
@@ -58,29 +58,5 @@ class CallLifted(
       code = CodeBlock.of("%N", resultName),
       immediate = true,
     )
-  }
-
-  context(codeBuilder: CodeBuilder)
-  private fun liftReceiver(
-    iterator: Iterator<Pair<AbiFunction.FlatParameter, KtExpression>>,
-  ): KtExpression {
-    val receiverValue = when (parentService) {
-      is AbiWorld -> codeBuilder.platform.getParent(parentService)
-      is AbiInterface -> codeBuilder.platform.getParent(parentService)
-      is AbiResource -> {
-        val (spec, value) = iterator.next()
-        check(spec is AbiFunction.FlatParameter.ResourceId)
-        CodeBlockExpression(
-          type = parentService.apiClassName,
-          nameHint = "receiver",
-          code = liftResource(
-            id = value.code,
-            abiClassName = parentService.apiClassName,
-          ),
-        )
-      }
-    }
-
-    return receiverValue.makeImmediate()
   }
 }

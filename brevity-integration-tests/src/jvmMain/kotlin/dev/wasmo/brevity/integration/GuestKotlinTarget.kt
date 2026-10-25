@@ -134,7 +134,7 @@ class GuestKotlinTarget(
             |  override fun create() = ${parent.identifier.upperCamelCase}Implementation
             |}
             |
-            |object ${parent.identifier.upperCamelCase}Implementation : wit.brevity.testing.${parent.serviceName.upperCamelCase}.${parent.identifier.upperCamelCase} {
+            |object ${parent.identifier.upperCamelCase}Implementation : wit.brevity.testing.${parent.serviceName.upperCamelCase}.${parent.identifier.upperCamelCase}() {
             |  ${functionsString.replace("\n", "\n  ")}
             |}
             |

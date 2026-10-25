@@ -1,5 +1,6 @@
 package dev.wasmo.brevity.kotlin.code
 
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.DOUBLE
 import com.squareup.kotlinpoet.FLOAT
@@ -7,6 +8,9 @@ import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.Orientation.Export
+import dev.wasmo.brevity.Orientation.Import
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
 import dev.wasmo.brevity.kotlin.abi.AbiService
@@ -53,7 +57,7 @@ object HostPlatform : Platform {
 
   override fun getParent(parent: AbiWorld): KtExpression {
     return CodeBlockExpression(
-      type = parent.apiInterfaceName(Orientation.Import),
+      type = parent.apiInterfaceName(Import),
       nameHint = "host",
       code = CodeBlock.of("%N", "host"),
       immediate = true,
@@ -179,5 +183,61 @@ object HostPlatform : Platform {
 
     override fun allocate(byteCount: CodeBlock) =
       CodeBlock.of("%N.allocate(%L)", name, byteCount)
+  }
+
+  context(codeBuilder: CodeBuilder)
+  override fun liftResource(
+    id: CodeBlock,
+    resourceApiName: ClassName,
+    resourceImplementationName: ClassName,
+    orientation: Orientation,
+  ): CodeBlock {
+    when (orientation) {
+      Export -> {
+        return CodeBlock.of(
+          "%L.getExportedResource<%T>(%L)",
+          codeBuilder.bridge,
+          resourceApiName,
+          id,
+        )
+      }
+      Import -> {
+        return CodeBlock.of(
+          "%L.getImportedResource<%T>(%L)",
+          codeBuilder.bridge,
+          resourceApiName,
+          id,
+        )
+      }
+    }
+  }
+
+  context(codeBuilder: CodeBuilder)
+  override fun lowerResource(
+    resource: CodeBlock,
+    resourceType: TypeName.Declared,
+    orientation: Orientation,
+  ): CodeBlock {
+    val resourceName = codeBuilder.newName("resource")
+    codeBuilder.addStatement("val %N = %L", resourceName, resource)
+    when (orientation) {
+      Import -> {
+        codeBuilder.beginControlFlow("if (!%N.%N)", resourceName, "hasRep")
+        codeBuilder.addStatement(
+          "%N.%N = %L.putImportedResource(%N)",
+          resourceName,
+          "rep",
+          codeBuilder.bridge,
+          resourceName,
+        )
+        codeBuilder.addStatement("%N.%N = %L", resourceName, "hasRep", true)
+        codeBuilder.endControlFlow()
+      }
+
+      Export -> {
+        codeBuilder.addStatement("check(%N.%N)", resourceName, "hasRep")
+      }
+    }
+    return CodeBlock.of("%N.%N", resourceName, "rep")
   }
 }

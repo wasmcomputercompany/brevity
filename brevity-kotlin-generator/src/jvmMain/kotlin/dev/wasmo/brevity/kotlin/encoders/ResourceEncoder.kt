@@ -2,10 +2,12 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 internal class ResourceEncoder(
+  override val type: TypeName.Declared,
   private val abiClassName: ClassName,
 ) : Encoder() {
   override val coreTypes = listOf(CoreType.I32)
@@ -16,56 +18,74 @@ internal class ResourceEncoder(
   override val alignment: Int
     get() = CoreType.I32.alignment
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
   ): CodeBlock {
-    return liftResource(codeBuilder.platform.load(baseAddress, offset, CoreType.Pointer))
+    return liftResource(
+      index = codeBuilder.platform.load(
+        baseAddress,
+        offset,
+        CoreType.Pointer,
+      ),
+    )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
   ) {
-    codeBuilder.platform.store(baseAddress, offset, CoreType.Pointer, lowerResource(value))
+    codeBuilder.platform.store(
+      baseAddress,
+      offset,
+      CoreType.Pointer,
+      lowerResource(
+        resource = value,
+      ),
+    )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
-    transformer.put(liftResource(transformer.take()))
+    transformer.put(
+      liftResource(
+        index = transformer.take(),
+      ),
+    )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
   ) {
-    transformer.put(lowerResource(transformer.take()))
+    transformer.put(
+      lowerResource(
+        resource = transformer.take(),
+      ),
+    )
   }
 
-  context(codeBuilder: CodeBuilder)
-  fun liftResource(id: CodeBlock): CodeBlock = liftResource(id, abiClassName)
+  context(codeBuilder: CodeBuilder, context: Context)
+  fun liftResource(
+    index: CodeBlock,
+  ): CodeBlock = codeBuilder.platform.liftResource(
+    id = index,
+    resourceApiName = abiClassName,
+    resourceImplementationName = context.typeNamer.implementation(type),
+    orientation = context.getOrientation(type),
+  )
 
-  context(codeBuilder: CodeBuilder)
-  fun lowerResource(resource: CodeBlock) = lowerResource(resource, abiClassName)
+  context(codeBuilder: CodeBuilder, context: Context)
+  fun lowerResource(
+    resource: CodeBlock,
+  ) = codeBuilder.platform.lowerResource(
+    resource = resource,
+    resourceType = type,
+    orientation = context.getOrientation(type),
+  )
 }
-
-context(codeBuilder: CodeBuilder)
-fun liftResource(id: CodeBlock, abiClassName: ClassName) = CodeBlock.of(
-  "%L.fromId<%T>(%L)",
-  codeBuilder.bridge,
-  abiClassName,
-  id,
-)
-
-context(codeBuilder: CodeBuilder)
-fun lowerResource(resource: CodeBlock, abiClassName: ClassName) = CodeBlock.of(
-  "%L.toId<%T>(%L)",
-  codeBuilder.bridge,
-  abiClassName,
-  resource,
-)

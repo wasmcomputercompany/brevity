@@ -121,7 +121,6 @@ class WitBridgeGenerator private constructor(
       val encoderFactory = EncoderFactory(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        platform = platform,
       )
       val abiFunctionFactory = AbiFunction.Factory(
         kotlinMapper = kotlinMapper,
@@ -146,14 +145,10 @@ class WitBridgeGenerator private constructor(
         apiFunctionFactory = apiFunctionFactory,
         platform = platform,
       )
-      val declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
-        encoderFactory = encoderFactory,
-      )
       return HostGenerator(
         platformFunctionFactory = platformFunctionFactory,
+        kotlinMapper = kotlinMapper,
         hostPlatform = platform,
-        declaredTypeEncodersGenerator = declaredTypeEncodersGenerator,
-        packages = irPackages,
         worlds = worlds,
       )
     }
@@ -168,7 +163,6 @@ class WitBridgeGenerator private constructor(
       val encoderFactory = EncoderFactory(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        platform = platform,
       )
       val abiFunctionFactory = AbiFunction.Factory(
         kotlinMapper = kotlinMapper,
@@ -193,14 +187,10 @@ class WitBridgeGenerator private constructor(
         apiFunctionFactory = apiFunctionFactory,
         platform = platform,
       )
-      val declaredTypeEncodersGenerator = DeclaredTypeEncodersGenerator(
-        encoderFactory = encoderFactory,
-      )
       return GuestGenerator(
         platform = platform,
+        kotlinMapper = kotlinMapper,
         platformFunctionFactory = platformFunctionFactory,
-        declaredTypeEncodersGenerator = declaredTypeEncodersGenerator,
-        packages = irPackages,
         worlds = worlds,
       )
     }
@@ -211,11 +201,9 @@ class WitBridgeGenerator private constructor(
       irPackages: List<IrWitPackage>,
       apiFunctionFactory: ApiFunctionFactory,
     ): ApiGenerator {
-      val platform = HostPlatform
       val encoderFactory = EncoderFactory(
         kotlinMapper = kotlinMapper,
         declarationIndex = declarationIndex,
-        platform = platform,
       )
       val abiFunctionFactory = AbiFunction.Factory(
         kotlinMapper = kotlinMapper,
