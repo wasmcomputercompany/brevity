@@ -85,9 +85,27 @@ class RealEncoderContext(
     offset: Int,
     value: CodeBlock,
   ) {
-    val toStore = collector.kotlinMapper.typeMapper(encoder.type).toWit(value)
-    context(this) {
-      encoder.store(memoryAllocator, baseAddress, offset, toStore)
+    val typeMapper = collector.kotlinMapper.typeMapper(encoder.type)
+    when (encoder.type) {
+      is TypeName.Declared -> {
+        collector.callDeclaredStoreFunction(
+          encoderContext = this,
+          encoder = encoder,
+          typeMapper = typeMapper,
+          orientation = function.orientation,
+          memoryAllocator = memoryAllocator,
+          baseAddress = baseAddress,
+          offset = offset,
+          value = value,
+        )
+      }
+
+      else -> {
+        val toStore = typeMapper.toWit(value)
+        context(this) {
+          encoder.store(memoryAllocator, baseAddress, offset, toStore)
+        }
+      }
     }
   }
 }

@@ -271,8 +271,7 @@ class KotlinGeneratorTest {
               WasmFunctionHandle { instance, args ->
                 val resultParameter = args[0].toInt()
                 val result = host.types.now()
-                bridge.memory.writeLong(resultParameter, result.seconds.toLong())
-                bridge.memory.writeI32(resultParameter + 8, result.nanoseconds.toInt())
+                storeTypesDatetimeImport(resultParameter, result)
                 return@WasmFunctionHandle longArrayOf()    },
             )
           )
@@ -318,6 +317,11 @@ class KotlinGeneratorTest {
                 return@WasmFunctionHandle longArrayOf()    },
             )
           )
+        }
+
+        public fun storeTypesDatetimeImport(address: Int, value_: Datetime) {
+          bridge.memory.writeLong(address, value_.seconds.toLong())
+          bridge.memory.writeI32(address + 8, value_.nanoseconds.toInt())
         }
 
         internal inner class RealGuest : Time.Guest {
