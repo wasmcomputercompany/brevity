@@ -1,158 +1,99 @@
 package dev.wasmo.brevity.kotlin.generator
 
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.TypeName as KtTypeName
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.NameAllocator
+import com.squareup.kotlinpoet.ParameterSpec
 import dev.wasmo.brevity.Orientation
-import dev.wasmo.brevity.Orientation.Export
-import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
-import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
-import dev.wasmo.brevity.kotlin.code.MemoryAllocator
+import dev.wasmo.brevity.kotlin.code.Platform
 import dev.wasmo.brevity.kotlin.encoders.Encoder
 
 class EncoderFunctionCollector(
+  val platform: Platform,
   val kotlinMapper: KotlinMapper,
-  val qualifiedSpecCollector: QualifiedSpecCollector,
+  val qualifiedSpecs: MutableList<QualifiedSpec>,
+  val qualifiedSpecParent: QualifiedSpec.Parent,
+  val qualifiedSpecOptIns: Set<ClassName>,
   val world: AbiWorld,
   val typeNamer: TypeNamer,
-)
-
-class RealEncoderContext(
-  private val collector: EncoderFunctionCollector,
-  private val function: AbiFunction,
-) : Encoder.Context {
-  override val typeNamer: TypeNamer
-    get() = collector.typeNamer
-
-  /** Returns the orientation of the resource with respect to this function. */
-  override fun getOrientation(type: TypeName.Declared): Orientation {
-    return when {
-      function.orientation == Export && resourceInterfaceIsExported(type) -> Export
-      else -> Import
-    }
-  }
-
-  private fun resourceInterfaceIsExported(type: TypeName.Declared): Boolean =
-    collector.world.interfaces.any { abiInterface ->
-      abiInterface.serviceName == type.serviceName && abiInterface.orientation == Export
-    }
+) {
+  private val declaredFunctionNames = mutableSetOf<String>()
 
   context(codeBuilder: CodeBuilder)
-  override fun lowerFlat(
+  fun callDeclaredLoadFunction(
+    encoderContext: Encoder.Context,
     encoder: Encoder,
-    value: CodeBlock,
-    memoryAllocator: MemoryAllocator?,
-  ): List<CodeBlock> {
-    val toLower = transform(encoder).toWit(value)
-    return context(this) {
-      encoder.lowerFlat(memoryAllocator, toLower)
-    }
-  }
-
-  context(codeBuilder: CodeBuilder)
-  override fun liftFlat(
-    encoder: Encoder,
-    values: List<CodeBlock>,
-  ): CodeBlock {
-    val lifted = context(this) {
-      encoder.liftFlat(values)
-    }
-    return transform(encoder).fromWit(lifted)
-  }
-
-  context(codeBuilder: CodeBuilder)
-  override fun load(
-    encoder: Encoder,
+    typeMapper: TypeMapper,
+    orientation: Orientation,
     baseAddress: CodeBlock,
     offset: Int,
   ): CodeBlock {
-    val loaded = context(this) {
-      encoder.load(baseAddress, offset)
+    val type = encoder.type as TypeName.Declared
+    val name = "load${type.serviceName.name.upperCamelCase}${type.name.upperCamelCase}$orientation"
+
+    if (declaredFunctionNames.add(name)) {
+      declaredLoadFunction(codeBuilder.bridge, encoderContext, encoder, typeMapper, name)
     }
-    return transform(encoder).fromWit(loaded)
+
+    val offsetValue = when {
+      offset == 0 -> baseAddress
+      else -> CodeBlock.of("%L + %L", baseAddress, offset)
+    }
+
+    return when (qualifiedSpecParent) {
+      is QualifiedSpec.Parent.File -> CodeBlock.of(
+        "%M(%L)",
+        MemberName(qualifiedSpecParent.packageName, name),
+        offsetValue,
+      )
+
+      is QualifiedSpec.Parent.Type -> CodeBlock.of(
+        "%N(%L)",
+        name,
+        offsetValue,
+      )
+    }
   }
 
-  context(codeBuilder: CodeBuilder)
-  override fun store(
+  private fun declaredLoadFunction(
+    bridge: CodeBlock,
+    encoderContext: Encoder.Context,
     encoder: Encoder,
-    memoryAllocator: MemoryAllocator?,
-    baseAddress: CodeBlock,
-    offset: Int,
-    value: CodeBlock,
+    typeMapper: TypeMapper,
+    name: String,
   ) {
-    val toStore = transform(encoder).toWit(value)
-    context(this) {
-      encoder.store(memoryAllocator, baseAddress, offset, toStore)
-    }
-  }
-
-  private fun transform(encoder: Encoder): Transform {
-    val typeName = encoder.type as? TypeName.Declared ?: return Transform.Identity
-    val kotlinMapper = collector.kotlinMapper
-    val customType = kotlinMapper.customTypeMappings[typeName] ?: return Transform.Identity
-    return MappingTransform(
-      kotlinMapper = kotlinMapper,
-      type = typeName,
-      customType = customType,
+    val codeBuilder = CodeBuilder(
+      bridge = bridge,
+      platform = platform,
+      nameAllocator = NameAllocator(),
     )
-  }
+    val addressName = codeBuilder.nameAllocator.newName("address")
 
-  private interface Transform {
-    context(codeBuilder: CodeBuilder)
-    fun toWit(value: CodeBlock): CodeBlock
-
-    context(codeBuilder: CodeBuilder)
-    fun fromWit(value: CodeBlock): CodeBlock
-
-    object Identity : Transform {
-      context(codeBuilder: CodeBuilder)
-      override fun toWit(value: CodeBlock) = value
-
-      context(codeBuilder: CodeBuilder)
-      override fun fromWit(value: CodeBlock) = value
-    }
-  }
-
-  private class MappingTransform(
-    val kotlinMapper: KotlinMapper,
-    val type: TypeName.Declared,
-    val customType: KtTypeName?,
-  ) : Transform {
-    /** Returns a code block with [value] converted to its ABI type, if necessary. */
-    context(codeBuilder: CodeBuilder)
-    override fun toWit(value: CodeBlock): CodeBlock {
-      return when {
-        customType != null -> {
-          CodeBlock.of("%L", codeBuilder.newName("witValue"))
-            .also {
-              codeBuilder.addStatement(
-                "val %L = %M.toWit(%L)",
-                it,
-                kotlinMapper.getAdaptersObjectMemberName(type),
-                value,
-              )
-            }
+    val function = FunSpec.builder(name)
+      .addParameter(ParameterSpec.builder(addressName, platform.addressType).build())
+      .returns(typeMapper.type)
+      .apply {
+        val baseAddress = CodeBlock.of("%N", addressName)
+        context(codeBuilder, encoderContext) {
+          codeBuilder.addStatement(
+            "return %L",
+            typeMapper.fromWit(encoder.load(baseAddress)),
+          )
+          addCode(codeBuilder.build())
         }
-
-        else -> value
       }
-    }
+      .build()
 
-    /** Returns a code block with [value] converted from its ABI type, if necessary. */
-    context(codeBuilder: CodeBuilder)
-    override fun fromWit(value: CodeBlock): CodeBlock {
-      return when {
-        customType != null -> CodeBlock.of(
-          "%M.fromWit(%L)",
-          kotlinMapper.getAdaptersObjectMemberName(type),
-          value,
-        )
-
-        else -> value
-      }
-    }
+    qualifiedSpecs += QualifiedSpec.Function(
+      parent = qualifiedSpecParent,
+      optIns = qualifiedSpecOptIns,
+      function = function,
+    )
   }
 }

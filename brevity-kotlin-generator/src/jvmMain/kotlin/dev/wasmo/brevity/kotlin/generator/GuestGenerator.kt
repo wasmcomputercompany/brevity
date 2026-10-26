@@ -38,12 +38,13 @@ class GuestGenerator(
     for (abiWorld in worlds) {
       val worldClassName = abiWorld.apiClassName
       val encoderFunctionCollector = EncoderFunctionCollector(
+        platform = platform,
         kotlinMapper = kotlinMapper,
-        qualifiedSpecCollector = result.collector(
+        qualifiedSpecs = result,
+        qualifiedSpecOptIns = guestOptIns,
+        qualifiedSpecParent = QualifiedSpec.Parent.File(
           sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
           packageName = worldClassName.packageName,
-          locations = setOf(abiWorld.location),
-          optIns = guestOptIns,
           fileName = "${worldClassName.simpleName}GuestEncoders",
         ),
         world = abiWorld,

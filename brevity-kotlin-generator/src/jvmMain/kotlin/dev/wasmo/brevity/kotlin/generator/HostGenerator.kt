@@ -33,7 +33,7 @@ import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 class HostGenerator(
   private val platformFunctionFactory: PlatformFunctionFactory,
   private val kotlinMapper: KotlinMapper,
-  private val hostPlatform: HostPlatform,
+  private val platform: HostPlatform,
   private val worlds: List<AbiWorld>,
 ) {
   fun generate(): List<QualifiedSpec> {
@@ -42,10 +42,13 @@ class HostGenerator(
     for (abiWorld in worlds) {
       val typeNamer = HostTypeNamer(abiWorld)
       val encoderFunctionCollector = EncoderFunctionCollector(
+        platform = platform,
         kotlinMapper = kotlinMapper,
-        qualifiedSpecCollector = result.collector(
+        qualifiedSpecs = result,
+        qualifiedSpecOptIns = hostOptIns,
+        qualifiedSpecParent = QualifiedSpec.Parent.Type(
           sourceSet = QualifiedSpec.SourceSet.JvmMain,
-          className = typeNamer.apiClassName,
+          className = typeNamer.hostClassName,
         ),
         world = abiWorld,
         typeNamer = typeNamer,
@@ -357,7 +360,7 @@ class HostGenerator(
   ): CodeBlock {
     val codeBuilder = CodeBuilder(
       bridge = bridge,
-      platform = hostPlatform,
+      platform = platform,
       nameAllocator = abiFunction.newNameAllocator(),
     )
 
