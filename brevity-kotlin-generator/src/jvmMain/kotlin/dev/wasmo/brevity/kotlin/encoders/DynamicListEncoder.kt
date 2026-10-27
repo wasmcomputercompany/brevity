@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
@@ -29,6 +30,9 @@ class DynamicListEncoder(
 
   override val lowerAllocates: Boolean
     get() = true
+
+  override val lowerFlatRequiresCallBuilder: Boolean
+    get() = false
 
   context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
@@ -63,19 +67,19 @@ class DynamicListEncoder(
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
-  override fun liftFlat(transformer: Transformer) {
-    transformer.put(loadList(transformer.take(), transformer.take()))
+  override fun liftFlat(liftFlatIo: LiftFlatIo) {
+    liftFlatIo.put(loadList(liftFlatIo.take(), liftFlatIo.take()))
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
-    transformer: Transformer,
+    lowerFlatIo: LowerFlatIo,
+    value: CodeBlock,
   ) {
-    val value = transformer.take()
     val (address, length) = storeList(memoryAllocator!!, value)
-    transformer.put(address)
-    transformer.put(length)
+    lowerFlatIo.put(address)
+    lowerFlatIo.put(length)
   }
 
   context(codeBuilder: CodeBuilder, context: Context)

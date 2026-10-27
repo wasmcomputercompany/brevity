@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
@@ -51,12 +52,12 @@ class TypeAliasEncoder(
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
-  override fun liftFlat(transformer: Transformer) {
+  override fun liftFlat(liftFlatIo: LiftFlatIo) {
     val codeBlock = context.liftFlat(
       encoder = delegate,
-      values = coreTypes.map { transformer.take() },
+      values = coreTypes.map { liftFlatIo.take() },
     )
-    transformer.put(
+    liftFlatIo.put(
       "%T(%L)",
       ktType,
       codeBlock,
@@ -66,19 +67,14 @@ class TypeAliasEncoder(
   context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
-    transformer: Transformer,
+    lowerFlatIo: LowerFlatIo,
+    value: CodeBlock,
   ) {
-    val values = context.lowerFlat(
+    context.lowerFlat(
       encoder = delegate,
       memoryAllocator = memoryAllocator,
-      value = CodeBlock.of(
-        "(%L).%N",
-        transformer.take(),
-        "value",
-      ),
+      lowerFlatIo = lowerFlatIo,
+      value = CodeBlock.of("(%L).%N", value, "value"),
     )
-    for (value in values) {
-      transformer.put(value)
-    }
   }
 }

@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
@@ -50,10 +51,10 @@ internal class ResourceEncoder(
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
-  override fun liftFlat(transformer: Transformer) {
-    transformer.put(
+  override fun liftFlat(liftFlatIo: LiftFlatIo) {
+    liftFlatIo.put(
       liftResource(
-        index = transformer.take(),
+        index = liftFlatIo.take(),
       ),
     )
   }
@@ -61,13 +62,10 @@ internal class ResourceEncoder(
   context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
-    transformer: Transformer,
+    lowerFlatIo: LowerFlatIo,
+    value: CodeBlock,
   ) {
-    transformer.put(
-      lowerResource(
-        resource = transformer.take(),
-      ),
-    )
+    lowerFlatIo.put(lowerResource(resource = value))
   }
 
   context(codeBuilder: CodeBuilder, context: Context)

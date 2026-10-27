@@ -5,6 +5,7 @@ import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.encoders.Encoder
@@ -32,12 +33,28 @@ class RealEncoderContext(
   context(codeBuilder: CodeBuilder)
   override fun lowerFlat(
     encoder: Encoder,
-    value: CodeBlock,
     memoryAllocator: MemoryAllocator?,
-  ): List<CodeBlock> {
-    val toLower = collector.kotlinMapper.typeMapper(encoder.type).toWit(value)
-    return context(this) {
-      encoder.lowerFlat(memoryAllocator, toLower)
+    lowerFlatIo: LowerFlatIo,
+    value: CodeBlock,
+  ) {
+    val typeMapper = collector.kotlinMapper.typeMapper(encoder.type)
+    return when (encoder.type) {
+      is TypeName.Declared -> {
+        collector.callDeclaredLowerFlatFunction(
+          encoderContext = this,
+          encoder = encoder,
+          typeMapper = typeMapper,
+          orientation = function.orientation,
+          memoryAllocator = memoryAllocator,
+          lowerFlatIo = lowerFlatIo,
+          value = value,
+        )
+      }
+
+      else -> context(this) {
+        val toLower = typeMapper.toWit(value)
+        encoder.lowerFlat(memoryAllocator, lowerFlatIo, toLower)
+      }
     }
   }
 
@@ -46,10 +63,22 @@ class RealEncoderContext(
     encoder: Encoder,
     values: List<CodeBlock>,
   ): CodeBlock {
-    val lifted = context(this) {
-      encoder.liftFlat(values)
+    val typeMapper = collector.kotlinMapper.typeMapper(encoder.type)
+    return when (encoder.type) {
+      is TypeName.Declared -> {
+        collector.callDeclaredLiftFlatFunction(
+          encoderContext = this,
+          encoder = encoder,
+          typeMapper = typeMapper,
+          orientation = function.orientation,
+          values = values,
+        )
+      }
+
+      else -> context(this) {
+        typeMapper.fromWit(encoder.liftFlat(values))
+      }
     }
-    return collector.kotlinMapper.typeMapper(encoder.type).fromWit(lifted)
   }
 
   context(codeBuilder: CodeBuilder)

@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinName
@@ -47,6 +48,10 @@ abstract class AbstractVariantEncoder(
 
   override val lowerAllocates: Boolean
     get() = caseEncoders.any { it?.lowerAllocates == true }
+
+  override val lowerFlatRequiresCallBuilder: Boolean
+    get() = (type is TypeName.Declared && coreTypes.size > 1) ||
+      caseEncoders.any { it?.lowerFlatRequiresCallBuilder == true }
 
   /** Turns an index and argument into an instance. */
   abstract fun constructInstance(index: Int, value: CodeBlock?): CodeBlock
@@ -143,11 +148,11 @@ abstract class AbstractVariantEncoder(
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
-  override fun liftFlat(transformer: Transformer) {
+  override fun liftFlat(liftFlatIo: LiftFlatIo) {
     val variantName = codeBuilder.newName(instanceNameHint)
 
-    val discriminator = transformer.take()
-    val caseCoreValuesBits = casesCoreTypesBits.map { transformer.take() }
+    val discriminator = liftFlatIo.take()
+    val caseCoreValuesBits = casesCoreTypesBits.map { liftFlatIo.take() }
 
     codeBuilder.controlFlow(
       "val %L = when (%L)",
@@ -178,54 +183,42 @@ abstract class AbstractVariantEncoder(
       codeBuilder.addStatement("else -> error(%S)", "unexpected case")
     }
 
-    return transformer.put(variantName)
+    return liftFlatIo.put(variantName)
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
-    transformer: Transformer,
+    lowerFlatIo: LowerFlatIo,
+    value: CodeBlock,
   ) {
     val variantName = codeBuilder.newName(instanceNameHint)
-    codeBuilder.addStatement("val %N = %L", variantName, transformer.take())
+    codeBuilder.addStatement("val %N = %L", variantName, value)
     val variant = CodeBlock.of("%N", variantName)
 
-    val caseCoreValuesBitsNames = casesCoreTypesBits.withIndex().map { (index, type) ->
-      val name = codeBuilder.newName("${instanceNameHint}CoreValueBits$index")
-      codeBuilder.addStatement("var %N = %L", name, type.zero)
-      name
-    }
-
-    val discriminatorName = codeBuilder.newName("${instanceNameHint}Discriminator")
-    codeBuilder.controlFlow(
-      "val %N = when (%N)",
-      discriminatorName,
-      variantName,
-    ) {
+    codeBuilder.controlFlow("when (%N)", variantName) {
+      val initialPutCount = lowerFlatIo.putCount
       for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
+        lowerFlatIo.putCount = initialPutCount
         codeBuilder.controlFlow("%L ->", matchInstance(caseIndex)) {
-          if (caseEncoder != null) {
-            val values = context.lowerFlat(
-              encoder = caseEncoder,
-              value = instanceValue(caseIndex, variant)!!,
-              memoryAllocator = memoryAllocator,
-            )
-            for ((v, coreType) in caseEncoder.coreTypes.withIndex()) {
-              codeBuilder.addStatement(
-                "%N = %L",
-                caseCoreValuesBitsNames[v],
-                coreType.toBits(casesCoreTypesBits[v], values[v]),
+          lowerFlatIo.put(CodeBlock.of("%L", caseIndex))
+          val coreValueCount = when {
+            caseEncoder != null -> {
+              context.lowerFlat(
+                encoder = caseEncoder,
+                memoryAllocator = memoryAllocator,
+                lowerFlatIo = lowerFlatIo,
+                value = instanceValue(caseIndex, variant)!!,
               )
+              caseEncoder.coreTypes.size
             }
+
+            else -> 0
           }
-          codeBuilder.addStatement("%L", caseIndex)
+
+          lowerFlatIo.skip(casesCoreTypesBits.size - coreValueCount)
         }
       }
-    }
-
-    transformer.put("%N", discriminatorName)
-    for (caseCoreValueBits in caseCoreValuesBitsNames) {
-      transformer.put("%N", caseCoreValueBits)
     }
   }
 }

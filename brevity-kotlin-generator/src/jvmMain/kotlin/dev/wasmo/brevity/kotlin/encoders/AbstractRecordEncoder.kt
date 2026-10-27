@@ -1,7 +1,9 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 abstract class AbstractRecordEncoder(
@@ -14,6 +16,10 @@ abstract class AbstractRecordEncoder(
 
   /** Total bytes this record takes up, including padding. */
   final override val byteCount: Int
+
+  override val lowerFlatRequiresCallBuilder: Boolean
+    get() = (type is TypeName.Declared && coreTypes.size > 1) ||
+      fieldEncoders.any { it.lowerFlatRequiresCallBuilder }
 
   init {
     var offset = 0
@@ -93,13 +99,13 @@ abstract class AbstractRecordEncoder(
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
-  override fun liftFlat(transformer: Transformer) {
-    transformer.put(
+  override fun liftFlat(liftFlatIo: LiftFlatIo) {
+    liftFlatIo.put(
       fieldValuesToInstance(
         fieldValues = fieldEncoders.map { fieldEncoder ->
           context.liftFlat(
             encoder = fieldEncoder,
-            values = fieldEncoder.coreTypes.map { transformer.take() },
+            values = fieldEncoder.coreTypes.map { liftFlatIo.take() },
           )
         },
       ),
@@ -109,16 +115,16 @@ abstract class AbstractRecordEncoder(
   context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
-    transformer: Transformer,
+    lowerFlatIo: LowerFlatIo,
+    value: CodeBlock,
   ) {
     val nameHint = codeBuilder.newName(instanceNameHint)
-    codeBuilder.addStatement("val %N = %L", nameHint, transformer.take())
+    codeBuilder.addStatement("val %N = %L", nameHint, value)
 
     val fieldValues = instanceToFieldValues(CodeBlock.of("%N", nameHint))
-    for ((i, fieldEncoder) in fieldEncoders.withIndex()) {
-      for (coreType in context.lowerFlat(fieldEncoder, fieldValues[i], memoryAllocator)) {
-        transformer.put(coreType)
-      }
+    check(fieldEncoders.size == fieldValues.size)
+    for ((fieldEncoder, value) in fieldEncoders.zip(fieldValues)) {
+      context.lowerFlat(fieldEncoder, memoryAllocator, lowerFlatIo, value)
     }
   }
 

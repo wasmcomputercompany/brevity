@@ -152,7 +152,9 @@ class KotlinGeneratorTest {
         val result = guest_.run(
           args = list,
         )
-        return result
+        var result_ = 0
+        result_ = result
+        return result_
       }
 
       internal lateinit var guest_: Time.Guest
@@ -299,8 +301,10 @@ class KotlinGeneratorTest {
               WasmFunctionHandle { instance, args ->
                 val receiver_ = bridge.getImportedResource<Pollable>(args[0].toInt())
                 val result = receiver_.ready()
-                val result_ = (if (result) 1 else 0)
-                return@WasmFunctionHandle longArrayOf(result_.toLong())    },
+                var result_ = 0
+                result_ = (if (result) 1 else 0)
+                val result__ = result_
+                return@WasmFunctionHandle longArrayOf(result__.toLong())    },
             )
           )
           store.addFunction(
@@ -327,6 +331,8 @@ class KotlinGeneratorTest {
         internal inner class RealGuest : Time.Guest {
           override fun run(args: List<String>): Int {
             val result = bridge.memoryAllocator.let { memoryAllocator ->
+              var argsAddress_ = 0
+              var argsSize_ = 0
               val listAddress = memoryAllocator.allocate(args.size * 8)
               for (i in args.indices) {
                 val elementAddress = listAddress + i * 8
@@ -338,9 +344,11 @@ class KotlinGeneratorTest {
                 bridge.memory.writeI32(elementAddress, stringAddress_)
                 bridge.memory.writeI32(elementAddress + 4, stringByteCount)
               }
+              argsAddress_ = listAddress
+              argsSize_ = args.size
               val resultArray = run_export.apply(
-                listAddress.toLong(),
-                args.size.toLong(),
+                argsAddress_.toLong(),
+                argsSize_.toLong(),
               )
               resultArray[0].toInt()
             }
@@ -529,16 +537,20 @@ class KotlinGeneratorTest {
 
       internal class TypesPollableHandle : Pollable() {
         override fun ready(): Boolean {
+          var rep_ = 0
+          rep_ = this.rep
           val result = types_pollable_ready_import(
-            this.rep,
+            rep_,
           )
           freeAllComponentModelReallocAllocatedMemory()
           return (result != 0)
         }
 
         override fun close() {
+          var rep_ = 0
+          rep_ = this.rep
           types_pollable_close_import(
-            this.rep,
+            rep_,
           )
           freeAllComponentModelReallocAllocatedMemory()
         }

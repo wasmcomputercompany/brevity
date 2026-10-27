@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
@@ -24,6 +25,8 @@ abstract class ConvertingEncoder(
     get() = delegate.nameHints
   override val lowerAllocates: Boolean
     get() = delegate.lowerAllocates
+  override val lowerFlatRequiresCallBuilder: Boolean
+    get() = delegate.lowerFlatRequiresCallBuilder
 
   abstract fun encode(codeBlock: CodeBlock): CodeBlock
   abstract fun decode(codeBlock: CodeBlock): CodeBlock
@@ -49,23 +52,19 @@ abstract class ConvertingEncoder(
   )
 
   context(codeBuilder: CodeBuilder, context: Context)
-  override fun liftFlat(transformer: Transformer) {
+  override fun liftFlat(liftFlatIo: LiftFlatIo) {
     val coreValues = buildList {
       for (i in delegate.coreTypes.indices) {
-        add(transformer.take())
+        add(liftFlatIo.take())
       }
     }
-    transformer.put(decode(context.liftFlat(delegate, coreValues)))
+    liftFlatIo.put(decode(context.liftFlat(delegate, coreValues)))
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
-    transformer: Transformer,
-  ) {
-    val coreValues = context.lowerFlat(delegate, encode(transformer.take()), memoryAllocator)
-    for (i in delegate.coreTypes.indices) {
-      transformer.put(coreValues[i])
-    }
-  }
+    lowerFlatIo: LowerFlatIo,
+    value: CodeBlock,
+  ) = context.lowerFlat(delegate, memoryAllocator, lowerFlatIo, encode(value))
 }
