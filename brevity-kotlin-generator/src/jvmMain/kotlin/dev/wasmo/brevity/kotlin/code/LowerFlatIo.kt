@@ -16,7 +16,15 @@ import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
  * return that value instead.
  */
 sealed interface LowerFlatIo {
-  var putCount: Int
+  /**
+   * If calling [put] conditionally through different code paths (if/else), use this to mark a
+   * position to reset back to. If the code builder is using local variables, this call makes sure
+   * those local variables are declared.
+   */
+  context(codeBuilder: CodeBuilder)
+  fun mark(count: Int): Int
+
+  fun reset(tag: Int)
 
   context(codeBuilder: CodeBuilder)
   fun put(value: CodeBlock)
@@ -42,27 +50,16 @@ fun callBuilderLowerFlatIo(parameters: List<FlatParameter>): CallBuilderLowerFla
 @JvmName("localVariablesLowerFlatIo2")
 context(codeBuilder: CodeBuilder)
 fun localVariablesLowerFlatIo(parameters: List<FlatParameter>): LowerFlatIo {
-  return localVariablesLowerFlatIo(
-    vars = parameters.flatMap { parameter ->
+  return LocalVariablesLowerFlatIo(
+    parameters.flatMap { parameter ->
       parameter.loweredSpecs.zip(parameter.encoder.coreTypes).map { it.first.name to it.second }
     },
   )
 }
 
 context(codeBuilder: CodeBuilder)
-fun localVariablesLowerFlatIo(vars: List<Pair<String, CoreType>>): LowerFlatIo {
-  val coreTypes = mutableListOf<CoreType>()
-  val valueNames = mutableListOf<String>()
-  for ((name, coreType) in vars) {
-    val valueName = codeBuilder.newName(name)
-    codeBuilder.addStatement("var %N = %L", valueName, coreType.kotlinCoreType.placeholder)
-    valueNames += valueName
-    coreTypes += coreType
-  }
-  return LocalVariablesLowerFlatIo(
-    valueNames = valueNames,
-  )
-}
+fun localVariablesLowerFlatIo(name: String, coreType: CoreType): LowerFlatIo =
+  LocalVariablesLowerFlatIo(listOf(name to coreType))
 
 /** Lower a value into a `CallBuilder`. */
 class CallBuilderLowerFlatIo(
@@ -72,8 +69,15 @@ class CallBuilderLowerFlatIo(
   val type: TypeName
     get() = Symbols.Brevity.CallBuilder
 
-  override var putCount = 0
+  private var putCount = 0
   private var takeCount = 0
+
+  context(codeBuilder: CodeBuilder)
+  override fun mark(count: Int) = putCount
+
+  override fun reset(tag: Int) {
+    putCount = tag
+  }
 
   context(codeBuilder: CodeBuilder)
   override fun put(value: CodeBlock) {
@@ -100,22 +104,83 @@ class CallBuilderLowerFlatIo(
   }
 }
 
-/** Lower a value into one or more local variables. */
+/**
+ * Lower a value into one or more local variables.
+ *
+ * This declares local variables only if [mark] is called; otherwise it assumes each local variable
+ * can be inlined into the [take] call.
+ */
 private class LocalVariablesLowerFlatIo(
-  private val valueNames: List<String>,
+  variables: List<Pair<String, CoreType>>,
 ) : LowerFlatIo {
-  override var putCount = 0
+  private var vars = MutableList<Var>(variables.size) { Var.Unassigned(variables[it]) }
+  private var putCount = 0
   private var takeCount = 0
 
   context(codeBuilder: CodeBuilder)
+  override fun mark(count: Int): Int {
+    for (i in putCount until putCount + count) {
+      val v = vars[i]
+      val initialValue = when (v) {
+        is Var.Unassigned -> v.coreType.kotlinCoreType.placeholder
+        is Var.Expression -> v.value
+        is Var.Local -> continue
+      }
+
+      val valueName = codeBuilder.newName(v.name)
+      codeBuilder.addStatement("var %N = %L", valueName, initialValue)
+      vars[i] = Var.Local(valueName)
+    }
+    return putCount
+  }
+
+  override fun reset(tag: Int) {
+    putCount = tag
+  }
+
+  context(codeBuilder: CodeBuilder)
   override fun put(value: CodeBlock) {
-    codeBuilder.addStatement("%N = %L", valueNames[putCount++], value)
+    when (val v = vars[putCount]) {
+      is Var.Expression -> error("multiple conflicting assignment to var")
+      is Var.Local -> {
+        codeBuilder.addStatement("%N = %L", v.name, value)
+      }
+      is Var.Unassigned -> {
+        vars[putCount] = Var.Expression(v.name, value)
+      }
+    }
+    putCount++
   }
 
   context(codeBuilder: CodeBuilder)
   override fun skip(count: Int) {
+    putCount += count
   }
 
   context(codeBuilder: CodeBuilder)
-  override fun take() = CodeBlock.of("%N", valueNames[takeCount++])
+  override fun take() = vars[takeCount++].value
+
+  sealed interface Var {
+    val name: String
+    val value: CodeBlock
+
+    class Unassigned(variable: Pair<String, CoreType>) : Var {
+      override val name = variable.first
+      val coreType = variable.second
+      override val value: CodeBlock
+        get() = error("unassigned: $name")
+    }
+
+    class Local(
+      override val name: String,
+    ) : Var {
+      override val value: CodeBlock
+        get() = CodeBlock.of("%N", name)
+    }
+
+    class Expression(
+      override val name: String,
+      override val value: CodeBlock,
+    ) : Var
+  }
 }

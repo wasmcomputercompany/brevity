@@ -241,7 +241,8 @@ class FunctionEncoder(
           lowerAllocates = result.value.encoder.lowerAllocates,
         ) { memoryAllocator ->
           val callBuilder = localVariablesLowerFlatIo(
-            listOf("result" to result.value.encoder.coreTypes.single()),
+            name = "result",
+            coreType = result.value.encoder.coreTypes.single(),
           )
           encoderContext.lowerFlat(
             encoder = result.value.encoder,

@@ -196,10 +196,10 @@ abstract class AbstractVariantEncoder(
     codeBuilder.addStatement("val %N = %L", variantName, value)
     val variant = CodeBlock.of("%N", variantName)
 
+    val tag = lowerFlatIo.mark(1 + casesCoreTypesBits.size)
     codeBuilder.controlFlow("when (%N)", variantName) {
-      val initialPutCount = lowerFlatIo.putCount
       for ((caseIndex, caseEncoder) in caseEncoders.withIndex()) {
-        lowerFlatIo.putCount = initialPutCount
+        lowerFlatIo.reset(tag)
         codeBuilder.controlFlow("%L ->", matchInstance(caseIndex)) {
           lowerFlatIo.put(CodeBlock.of("%L", caseIndex))
           val coreValueCount = when {

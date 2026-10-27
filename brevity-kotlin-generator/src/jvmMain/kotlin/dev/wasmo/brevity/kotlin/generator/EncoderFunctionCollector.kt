@@ -285,7 +285,10 @@ class EncoderFunctionCollector(
 
           val callBuilder = when {
             encoder.coreTypes.size == 1 -> {
-              localVariablesLowerFlatIo(listOf("result" to encoder.coreTypes.single()))
+              localVariablesLowerFlatIo(
+                name = "result",
+                coreType = encoder.coreTypes.single(),
+              )
             }
 
             else -> CallBuilderLowerFlatIo(

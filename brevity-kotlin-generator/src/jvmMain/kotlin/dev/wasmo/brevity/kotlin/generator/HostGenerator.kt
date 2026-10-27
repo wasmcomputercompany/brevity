@@ -414,7 +414,8 @@ class HostGenerator(
       |      listOf(%L),
       |    ),
       |    %T { instance, args ->
-      |      ⇥⇥⇥%L⇤⇤⇤    },
+      |      ⇥⇥⇥%L⇤⇤⇤
+      |    },
       |  )
       |)
       |
