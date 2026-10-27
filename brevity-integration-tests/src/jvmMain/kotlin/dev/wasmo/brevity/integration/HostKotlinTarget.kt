@@ -120,7 +120,7 @@ class HostKotlinTarget(
             |  override fun create() = ${parent.identifier.upperCamelCase}HostImplementation
             |}
             |
-            |object ${parent.identifier.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.serviceName.upperCamelCase}.${parent.identifier.upperCamelCase} {
+            |object ${parent.identifier.upperCamelCase}HostImplementation : wit.brevity.testing.${parent.serviceName.upperCamelCase}.${parent.identifier.upperCamelCase}() {
             |  ${functionsString.replace("\n", "\n  ")}
             |}
             |
@@ -137,7 +137,7 @@ class HostKotlinTarget(
       """
       |
       |fun main(vararg args: String) = runTest {
-      |  WasmInstance(
+      |  val wasmInstance = WasmInstance(
       |    path = args[0].toPath(),
       |    worlds = listOf(
       |      wit.wasi.v0_1.Wasi.World({ RealWasiP1Host() }),
@@ -151,10 +151,22 @@ class HostKotlinTarget(
       """.trimMargin(),
     )
 
+    var callCount = 0
     for (testFunction in testFunctions) {
       for (testCase in testFunction.testCases) {
         with(testCase) {
           kotlinCallAndAssert()
+        }
+
+        if (callCount++ % 100 == 0) {
+          writeUtf8(
+            """
+            |
+            |  wasmInstance.gc()
+            |
+            |
+            """.trimMargin(),
+          )
         }
       }
     }

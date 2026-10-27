@@ -2,11 +2,15 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
 /** Stores a string as an address pointer and a byte count. */
 object StringEncoder : Encoder() {
+  override val type: TypeName
+    get() = TypeName.String
+
   override val coreTypes: List<CoreType>
     get() = listOf(CoreType.Pointer, CoreType.I32)
 
@@ -22,7 +26,7 @@ object StringEncoder : Encoder() {
   override val lowerAllocates: Boolean
     get() = true
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
@@ -45,7 +49,7 @@ object StringEncoder : Encoder() {
     )
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -72,12 +76,12 @@ object StringEncoder : Encoder() {
     codeBuilder.platform.store(baseAddress, offset + 4, CoreType.I32, CodeBlock.of("%N", byteCount))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     transformer.put(codeBuilder.platform.loadString(transformer.take(), transformer.take()))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,

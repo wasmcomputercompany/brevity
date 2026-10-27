@@ -5,8 +5,6 @@
 
 package dev.wasmo.brevity
 
-import kotlin.reflect.KType
-import kotlin.reflect.typeOf
 import kotlin.wasm.unsafe.Pointer
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlinx.coroutines.CoroutineScope
@@ -14,9 +12,9 @@ import kotlinx.coroutines.launch
 
 @BrevityInternalApi
 object GuestBridge {
-  private val typeToResourceHandle = mutableMapOf<KType, (Int) -> Resource>()
-  private val idToResource = mutableMapOf<Int, Resource>()
-  private var nextId = 4_040_000
+  private val repToImportedResource = mutableMapOf<Int, Resource>()
+  private val repToExportedResource = mutableMapOf<Int, Resource>()
+  private var nextRep = 4_040_000
 
   private var taskResult: Any? = null
 
@@ -32,30 +30,32 @@ object GuestBridge {
     kotlin.wasm.internal.onExportedFunctionExit = {}
   }
 
-  inline fun <reified T : Resource> registerResourceHandle(noinline constructor: (id: Int) -> T) {
-    registerResourceHandle(typeOf<T>(), constructor)
+  fun <T : Resource> putExportedResource(resource: T): Int {
+    val rep = nextRep++
+    repToExportedResource[rep] = resource
+    return rep
   }
 
-  @PublishedApi
-  internal fun registerResourceHandle(type: KType, createHandle: (id: Int) -> Resource) {
-    typeToResourceHandle[type] = createHandle
+  fun <T : Resource> getExportedResource(rep: Int): T {
+    val resource = repToExportedResource[rep] ?: error("unexpected rep: $rep")
+    return resource as T
   }
 
-  fun <T : Resource> toId(resource: T): Int {
-    val id = nextId++
-    idToResource[id] = resource
-    return id
+  fun <T : Resource> putImportedResource(resource: T): Int {
+    val rep = nextRep++
+    repToImportedResource[rep] = resource
+    return rep
   }
 
-  inline fun <reified T : Resource> fromId(id: Int): T {
-    return fromId(typeOf<T>(), id) as T
-  }
-
-  @PublishedApi
-  internal fun fromId(type: KType, id: Int): Resource? {
-    val createHandle = typeToResourceHandle[type]
-    if (createHandle != null) return createHandle(id)
-    return idToResource[id]
+  fun <T : Resource> getImportedResource(rep: Int, newHandle: () -> T): T {
+    val existing = repToImportedResource[rep]
+    if (existing == null) {
+      val result = newHandle()
+      result.rep = rep
+      result.hasRep = true
+      return result
+    }
+    return existing as T
   }
 
   fun taskReturn(value: Any? = Unit) {

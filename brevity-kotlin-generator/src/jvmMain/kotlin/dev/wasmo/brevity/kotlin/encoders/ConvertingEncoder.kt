@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
@@ -11,6 +12,8 @@ import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 abstract class ConvertingEncoder(
   val delegate: Encoder,
 ) : Encoder() {
+  override val type: TypeName
+    get() = delegate.type
   override val coreTypes: List<CoreType>
     get() = delegate.coreTypes
   override val byteCount: Int
@@ -25,36 +28,42 @@ abstract class ConvertingEncoder(
   abstract fun encode(codeBlock: CodeBlock): CodeBlock
   abstract fun decode(codeBlock: CodeBlock): CodeBlock
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,
     offset: Int,
-  ) = decode(delegate.load(baseAddress, offset))
+  ) = decode(context.load(delegate, baseAddress, offset))
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
     offset: Int,
     value: CodeBlock,
-  ) = delegate.store(memoryAllocator, baseAddress, offset, encode(value))
+  ) = context.store(
+    encoder = delegate,
+    memoryAllocator = memoryAllocator,
+    baseAddress = baseAddress,
+    offset = offset,
+    value = encode(value),
+  )
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun liftFlat(transformer: Transformer) {
     val coreValues = buildList {
       for (i in delegate.coreTypes.indices) {
         add(transformer.take())
       }
     }
-    transformer.put(decode(delegate.liftFlat(coreValues)))
+    transformer.put(decode(context.liftFlat(delegate, coreValues)))
   }
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
   ) {
-    val coreValues = delegate.lowerFlat(memoryAllocator, encode(transformer.take()))
+    val coreValues = context.lowerFlat(delegate, encode(transformer.take()), memoryAllocator)
     for (i in delegate.coreTypes.indices) {
       transformer.put(coreValues[i])
     }

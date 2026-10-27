@@ -2,10 +2,14 @@ package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
+import dev.wasmo.brevity.kotlin.generator.TypeNamer
 
 abstract class Encoder {
+  abstract val type: TypeName
   abstract val coreTypes: List<CoreType>
   abstract val byteCount: Int
   abstract val alignment: Int
@@ -18,11 +22,11 @@ abstract class Encoder {
     get() = null
 
   /** Loads a value from memory at [baseAddress] + [offset]. */
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   abstract fun load(baseAddress: CodeBlock, offset: Int = 0): CodeBlock
 
   /** Stores [value] in memory at [baseAddress] + [offset]. */
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   abstract fun store(
     memoryAllocator: MemoryAllocator?,
     baseAddress: CodeBlock,
@@ -31,10 +35,10 @@ abstract class Encoder {
   )
 
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   abstract fun liftFlat(transformer: Transformer)
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   fun liftFlat(values: List<CodeBlock>): CodeBlock {
     val transformer = Transformer(values.toMutableList())
     liftFlat(transformer)
@@ -51,13 +55,13 @@ abstract class Encoder {
   }
 
   /** Lower an API value like a resource instance to an ABI value like a memory address. */
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   abstract fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     transformer: Transformer,
   )
 
-  context(codeBuilder: CodeBuilder)
+  context(codeBuilder: CodeBuilder, context: Context)
   fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
     value: CodeBlock,
@@ -106,5 +110,47 @@ abstract class Encoder {
     }
 
     fun put(format: String, vararg args: Any?) = put(CodeBlock.of(format, *args))
+  }
+
+  /**
+   * We have different encoders for resources, based on how they're used. This context can be used
+   * to figure out how a resource should be encoded.
+   *
+   * This is also used to extract reusable functions to encode declared types.
+   */
+  interface Context {
+    val typeNamer: TypeNamer
+
+    /** Returns the orientation of the resource with respect to this function. */
+    fun getOrientation(type: TypeName.Declared): Orientation
+
+    context(codeBuilder: CodeBuilder)
+    fun lowerFlat(
+      encoder: Encoder,
+      value: CodeBlock,
+      memoryAllocator: MemoryAllocator?,
+    ): List<CodeBlock>
+
+    context(codeBuilder: CodeBuilder)
+    fun liftFlat(
+      encoder: Encoder,
+      values: List<CodeBlock>,
+    ): CodeBlock
+
+    context(codeBuilder: CodeBuilder)
+    fun load(
+      encoder: Encoder,
+      baseAddress: CodeBlock,
+      offset: Int = 0,
+    ): CodeBlock
+
+    context(codeBuilder: CodeBuilder)
+    fun store(
+      encoder: Encoder,
+      memoryAllocator: MemoryAllocator?,
+      baseAddress: CodeBlock,
+      offset: Int = 0,
+      value: CodeBlock,
+    )
   }
 }

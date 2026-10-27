@@ -82,42 +82,70 @@ fun MutableList<QualifiedSpec>.collect(
   fileName: String,
   block: context(QualifiedSpecCollector) () -> Unit,
 ) {
-  val parentFile = QualifiedSpec.Parent.File(sourceSet, packageName, fileName)
+  context(collector(sourceSet, locations, optIns, packageName, fileName)) {
+    block()
+  }
+}
 
-  val collector = object : QualifiedSpecCollector {
-    override fun plusAssign(function: FunSpec) {
-      this@collect += QualifiedSpec.Function(
-        parent = parentFile,
-        locations = locations,
-        optIns = optIns,
-        function = function,
-      )
-    }
+fun MutableList<QualifiedSpec>.collector(
+  sourceSet: SourceSet,
+  className: ClassName,
+  locations: Set<Location> = setOf(),
+  optIns: Set<ClassName> = setOf(),
+): QualifiedSpecCollector = RealQualifiedSpecCollector(
+  list = this,
+  parent = QualifiedSpec.Parent.Type(sourceSet, className),
+  locations = locations,
+  optIns = optIns,
+)
 
-    override fun plusAssign(property: PropertySpec) {
-      this@collect += QualifiedSpec.Property(
-        parent = parentFile,
-        locations = locations,
-        optIns = optIns,
-        property = property,
-      )
-    }
+fun MutableList<QualifiedSpec>.collector(
+  sourceSet: SourceSet,
+  locations: Set<Location>,
+  optIns: Set<ClassName> = setOf(),
+  packageName: String,
+  fileName: String,
+): QualifiedSpecCollector = RealQualifiedSpecCollector(
+  list = this,
+  parent = QualifiedSpec.Parent.File(sourceSet, packageName, fileName),
+  locations = locations,
+  optIns = optIns,
+)
 
-    override fun addType(className: ClassName, type: TypeSpec) {
-      val parent = className.enclosingClassName()
-        ?.let { QualifiedSpec.Parent.Type(sourceSet, it) }
-        ?: parentFile
-      this@collect += QualifiedSpec.Type(
-        parent = parent,
-        locations = locations,
-        optIns = optIns,
-        className = className,
-        type = type,
-      )
-    }
+private class RealQualifiedSpecCollector(
+  private val list: MutableList<QualifiedSpec>,
+  private val parent: QualifiedSpec.Parent,
+  private val locations: Set<Location>,
+  private val optIns: Set<ClassName>,
+) : QualifiedSpecCollector {
+  override fun plusAssign(function: FunSpec) {
+    list += QualifiedSpec.Function(
+      parent = parent,
+      locations = locations,
+      optIns = optIns,
+      function = function,
+    )
   }
 
-  context(collector) {
-    block()
+  override fun plusAssign(property: PropertySpec) {
+    list += QualifiedSpec.Property(
+      parent = parent,
+      locations = locations,
+      optIns = optIns,
+      property = property,
+    )
+  }
+
+  override fun addType(className: ClassName, type: TypeSpec) {
+    val parent = className.enclosingClassName()
+      ?.let { QualifiedSpec.Parent.Type(parent.sourceSet, it) }
+      ?: parent
+    list += QualifiedSpec.Type(
+      parent = parent,
+      locations = locations,
+      optIns = optIns,
+      className = className,
+      type = type,
+    )
   }
 }
