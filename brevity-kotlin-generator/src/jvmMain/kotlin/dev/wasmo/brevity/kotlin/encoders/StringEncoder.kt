@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.encoders
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
@@ -77,17 +78,18 @@ object StringEncoder : Encoder() {
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
-  override fun liftFlat(transformer: Transformer) {
-    transformer.put(codeBuilder.platform.loadString(transformer.take(), transformer.take()))
+  override fun liftFlat(liftFlatIo: LiftFlatIo) {
+    liftFlatIo.put(codeBuilder.platform.loadString(liftFlatIo.take(), liftFlatIo.take()))
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
-    transformer: Transformer,
+    lowerFlatIo: LowerFlatIo,
+    value: CodeBlock,
   ) {
-    val (address, size) = codeBuilder.platform.storeString(memoryAllocator!!, transformer.take())
-    transformer.put(address)
-    transformer.put(size)
+    val (address, size) = codeBuilder.platform.storeString(memoryAllocator!!, value)
+    lowerFlatIo.put(address)
+    lowerFlatIo.put(size)
   }
 }

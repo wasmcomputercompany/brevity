@@ -13,6 +13,8 @@ import dev.wasmo.brevity.kotlin.abi.AbiService
 import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
+import dev.wasmo.brevity.kotlin.code.callBuilderLowerFlatIo
+import dev.wasmo.brevity.kotlin.code.localVariablesLowerFlatIo
 import dev.wasmo.brevity.kotlin.code.withMemoryAllocator
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
@@ -78,18 +80,29 @@ class FunctionEncoder(
     return buildList {
       when (val parameters = function.parameters) {
         is Parameters.Flattened -> {
+          val callBuilder = when {
+            parameters.parameters.any { it.encoder.lowerFlatRequiresCallBuilder } ->
+              callBuilderLowerFlatIo(parameters.parameters)
+
+            else -> localVariablesLowerFlatIo(parameters.parameters)
+          }
+
           for ((p, coreParameter) in parameters.parameters.withIndex()) {
-            val coreValues = encoderContext.lowerFlat(
-              coreParameter.encoder,
-              parameterValues[p].code,
-              memoryAllocator,
+            encoderContext.lowerFlat(
+              encoder = coreParameter.encoder,
+              memoryAllocator = memoryAllocator,
+              lowerFlatIo = callBuilder,
+              value = parameterValues[p].code,
             )
-            for ((index, loweredSpec) in coreParameter.loweredSpecs.withIndex()) {
+          }
+
+          for (coreParameter in parameters.parameters) {
+            for (spec in coreParameter.loweredSpecs) {
               add(
                 CodeBlockExpression(
-                  type = loweredSpec.type,
-                  nameHint = loweredSpec.name,
-                  code = coreValues[index],
+                  type = spec.type,
+                  nameHint = spec.name,
+                  code = callBuilder.take(),
                 ),
               )
             }
@@ -227,14 +240,20 @@ class FunctionEncoder(
         withMemoryAllocator(
           lowerAllocates = result.value.encoder.lowerAllocates,
         ) { memoryAllocator ->
+          val callBuilder = localVariablesLowerFlatIo(
+            name = "result",
+            coreType = result.value.encoder.coreTypes.single(),
+          )
+          encoderContext.lowerFlat(
+            encoder = result.value.encoder,
+            memoryAllocator = memoryAllocator,
+            lowerFlatIo = callBuilder,
+            value = resultValue.code,
+          )
           CodeBlockExpression(
             type = result.value.encoder.coreTypes.single().kotlinCoreType,
             nameHint = "result",
-            code = encoderContext.lowerFlat(
-              encoder = result.value.encoder,
-              memoryAllocator = memoryAllocator,
-              value = resultValue.code,
-            ).single(),
+            code = callBuilder.take(),
           )
         }
       }

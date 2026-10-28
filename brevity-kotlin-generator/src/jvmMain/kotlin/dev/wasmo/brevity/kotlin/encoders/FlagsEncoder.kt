@@ -6,6 +6,7 @@ import com.squareup.kotlinpoet.buildCodeBlock
 import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrFlag
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.generator.kotlinName
@@ -61,16 +62,17 @@ class FlagsEncoder(
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
-  override fun liftFlat(transformer: Transformer) {
-    transformer.put(packedValueToInstance(transformer.take()))
+  override fun liftFlat(liftFlatIo: LiftFlatIo) {
+    liftFlatIo.put(packedValueToInstance(liftFlatIo.take()))
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
-    transformer: Transformer,
+    lowerFlatIo: LowerFlatIo,
+    value: CodeBlock,
   ) {
-    transformer.put(instanceToPackedValue(transformer.take()))
+    lowerFlatIo.put(instanceToPackedValue(value))
   }
 
   context(codeBuilder: CodeBuilder)

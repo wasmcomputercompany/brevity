@@ -19,7 +19,6 @@ interface MemoryAllocator {
     allocate(CodeBlock.of(format, *args))
 }
 
-
 /**
  * Executes [block] with a memory allocator if [lowerAllocates] is true. Otherwise, this executes
  * it inline.

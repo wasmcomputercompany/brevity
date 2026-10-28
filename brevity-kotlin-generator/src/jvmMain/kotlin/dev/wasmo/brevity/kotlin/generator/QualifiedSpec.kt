@@ -66,6 +66,8 @@ sealed interface QualifiedSpec {
 }
 
 interface QualifiedSpecCollector {
+  val parent: QualifiedSpec.Parent
+
   operator fun plusAssign(function: FunSpec)
 
   operator fun plusAssign(property: PropertySpec)
@@ -101,7 +103,7 @@ fun MutableList<QualifiedSpec>.collector(
 
 fun MutableList<QualifiedSpec>.collector(
   sourceSet: SourceSet,
-  locations: Set<Location>,
+  locations: Set<Location> = setOf(),
   optIns: Set<ClassName> = setOf(),
   packageName: String,
   fileName: String,
@@ -114,7 +116,7 @@ fun MutableList<QualifiedSpec>.collector(
 
 private class RealQualifiedSpecCollector(
   private val list: MutableList<QualifiedSpec>,
-  private val parent: QualifiedSpec.Parent,
+  override val parent: QualifiedSpec.Parent,
   private val locations: Set<Location>,
   private val optIns: Set<ClassName>,
 ) : QualifiedSpecCollector {

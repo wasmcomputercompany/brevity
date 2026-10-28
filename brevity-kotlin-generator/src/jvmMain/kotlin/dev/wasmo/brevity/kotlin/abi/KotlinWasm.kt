@@ -22,6 +22,7 @@ class WasmImportFunction(
 
     val resultValue = abiFunction.result.value
     val resultName = when {
+      abiFunction.result is AbiFunction.Result.PointerParameter -> null
       resultValue != null -> codeBuilder.newName("result")
       else -> null
     }

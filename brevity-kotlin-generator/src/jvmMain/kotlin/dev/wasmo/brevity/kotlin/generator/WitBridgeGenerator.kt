@@ -148,7 +148,7 @@ class WitBridgeGenerator private constructor(
       return HostGenerator(
         platformFunctionFactory = platformFunctionFactory,
         kotlinMapper = kotlinMapper,
-        hostPlatform = platform,
+        platform = platform,
         worlds = worlds,
       )
     }

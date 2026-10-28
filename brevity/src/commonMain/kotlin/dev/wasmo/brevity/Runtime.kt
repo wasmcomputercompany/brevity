@@ -33,20 +33,17 @@ sealed interface Result<out S, out F> {
 
 /** This is used internally by Brevity to implement flattening. */
 class CallBuilder(
-  i32Count: Int = 0,
-  i64Count: Int = 0,
+  valueCount: Int,
 ) {
-  private var nextI32 = 0
-  private val i32s = IntArray(i32Count)
-  private var nextI64 = 0
-  private val i64s = LongArray(i64Count)
+  private var next = 0
+  private val values = LongArray(valueCount)
 
   fun put(v: Int) {
-    i32s[nextI32++] = v
+    put(v.toLong())
   }
 
   fun put(v: Long) {
-    i64s[nextI64++] = v
+    values[next++] = v
   }
 
   fun put(v: Float) {
@@ -57,8 +54,12 @@ class CallBuilder(
     put(v.toBits())
   }
 
-  fun takeI32() = i32s[nextI32++ - i32s.size]
-  fun takeI64() = i64s[nextI64++ - i64s.size]
+  fun skip(count: Int) {
+    next += count
+  }
+
+  fun takeI32() = takeI64().toInt()
+  fun takeI64() = values[next++ - values.size]
   fun takeF32() = Float.fromBits(takeI32())
   fun takeF64() = Double.fromBits(takeI64())
 }

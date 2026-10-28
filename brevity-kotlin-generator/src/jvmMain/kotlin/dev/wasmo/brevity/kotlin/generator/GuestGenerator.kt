@@ -2,14 +2,9 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.DOUBLE
-import com.squareup.kotlinpoet.FLOAT
 import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
-import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.MemberName
-import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import dev.wasmo.brevity.Orientation.Export
@@ -24,6 +19,7 @@ import dev.wasmo.brevity.kotlin.abi.AbiService
 import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
+import dev.wasmo.brevity.kotlin.expressions.placeholder
 import dev.wasmo.brevity.kotlin.expressions.valueExpression
 
 class GuestGenerator(
@@ -38,12 +34,13 @@ class GuestGenerator(
     for (abiWorld in worlds) {
       val worldClassName = abiWorld.apiClassName
       val encoderFunctionCollector = EncoderFunctionCollector(
+        platform = platform,
         kotlinMapper = kotlinMapper,
-        qualifiedSpecCollector = result.collector(
+        qualifiedSpecs = result,
+        qualifiedSpecOptIns = guestOptIns,
+        qualifiedSpecParent = QualifiedSpec.Parent.File(
           sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
           packageName = worldClassName.packageName,
-          locations = setOf(abiWorld.location),
-          optIns = guestOptIns,
           fileName = "${worldClassName.simpleName}GuestEncoders",
         ),
         world = abiWorld,
@@ -293,7 +290,7 @@ class GuestGenerator(
             addCode("%M(", memberName)
             for ((index, spec) in abiFunction.loweredParameterSpecs.withIndex()) {
               if (index > 0) addCode(", ")
-              addCode(spec.placeholder)
+              addCode(spec.type.placeholder)
             }
             addCode(")\n")
           }
@@ -301,15 +298,6 @@ class GuestGenerator(
       }
       .build()
   }
-
-  private val ParameterSpec.placeholder: CodeBlock
-    get() = when (type) {
-      INT -> CodeBlock.of("%L", 0)
-      LONG -> CodeBlock.of("%LL", 0)
-      FLOAT -> CodeBlock.of("%Lf", 0.0)
-      DOUBLE -> CodeBlock.of("%L", 0.0)
-      else -> error("unexpected core parameter type")
-    }
 }
 
 private val AbiWorld.allServices: List<AbiService>

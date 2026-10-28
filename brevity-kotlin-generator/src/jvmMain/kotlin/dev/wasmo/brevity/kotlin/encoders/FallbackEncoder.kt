@@ -1,8 +1,10 @@
 package dev.wasmo.brevity.kotlin.encoders
 
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.INT
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 
@@ -40,17 +42,17 @@ class FallbackEncoder(
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
-  override fun liftFlat(transformer: Transformer) {
-    transformer.take()
-    transformer.put("TODO(%S)", "lift ${kotlinMapper.get(type)}")
+  override fun liftFlat(liftFlatIo: LiftFlatIo) {
+    liftFlatIo.take()
+    liftFlatIo.put("TODO(%S)", "lift ${kotlinMapper.get(type)}")
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
   override fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
-    transformer: Transformer,
+    lowerFlatIo: LowerFlatIo,
+    value: CodeBlock,
   ) {
-    transformer.take()
-    transformer.put("TODO(%S)", "lower ${kotlinMapper.get(type)}")
+    lowerFlatIo.put(CodeBlock.of("TODO(%S) as %T", "lower ${kotlinMapper.get(type)}", INT))
   }
 }

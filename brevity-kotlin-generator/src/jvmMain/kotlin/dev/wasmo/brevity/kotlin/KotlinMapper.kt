@@ -11,8 +11,11 @@ import com.squareup.kotlinpoet.TypeName as KtTypeName
 import com.squareup.kotlinpoet.TypeSpec
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.kotlin.generator.IdentityTypeMapper
 import dev.wasmo.brevity.kotlin.generator.QualifiedSpec
+import dev.wasmo.brevity.kotlin.generator.RealTypeMapper
 import dev.wasmo.brevity.kotlin.generator.Symbols
+import dev.wasmo.brevity.kotlin.generator.TypeMapper
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import dev.wasmo.brevity.kotlin.generator.upperCamelCase
@@ -148,7 +151,7 @@ class KotlinMapper(
     val result = mutableMapOf<ClassName, TypeSpec.Builder>()
 
     for ((name, target) in customTypeMappings) {
-      val memberName = getAdaptersObjectMemberName(name)
+      val memberName = typeAdapter(name)
       val adaptersClassName = getAdaptersInterfaceName(name)
 
       val typeSpecBuilder = result.getOrPut(adaptersClassName) {
@@ -201,7 +204,18 @@ class KotlinMapper(
   private fun getAdaptersObjectName(memberName: TypeName.Declared) =
     ClassName(memberName.serviceName.packageName.kotlinApi, "RealAdapters")
 
-  fun getAdaptersObjectMemberName(name: TypeName.Declared) =
+  fun typeMapper(typeName: TypeName): TypeMapper {
+    val declaredTypeName = typeName as? TypeName.Declared
+      ?: return IdentityTypeMapper(get(typeName))
+    val customType = customTypeMappings[declaredTypeName]
+      ?: return IdentityTypeMapper(get(typeName))
+    return RealTypeMapper(
+      adapter = typeAdapter(declaredTypeName),
+      type = customType,
+    )
+  }
+
+  fun typeAdapter(name: TypeName.Declared) =
     getAdaptersObjectName(name).member("${name.serviceName.lowerCamelCase}${name.upperCamelCase}")
 
   private val ServiceName.lowerCamelCase: String

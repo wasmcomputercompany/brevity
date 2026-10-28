@@ -5,6 +5,7 @@ import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.generator.TypeNamer
 
@@ -17,6 +18,10 @@ abstract class Encoder {
   /** Returns true if [store] and [lowerFlat]'s `memoryAllocator` parameter must be non-null. */
   open val lowerAllocates: Boolean
     get() = false
+
+  /** Returns true if [lowerFlat] is a standalone function that returns multiple values. */
+  open val lowerFlatRequiresCallBuilder: Boolean
+    get() = coreTypes.size > 1
 
   open val nameHints: List<Identifier>?
     get() = null
@@ -36,49 +41,31 @@ abstract class Encoder {
 
   /** Lift an ABI value like a memory address to an API value like a resource instance. */
   context(codeBuilder: CodeBuilder, context: Context)
-  abstract fun liftFlat(transformer: Transformer)
+  abstract fun liftFlat(liftFlatIo: LiftFlatIo)
 
   context(codeBuilder: CodeBuilder, context: Context)
   fun liftFlat(values: List<CodeBlock>): CodeBlock {
-    val transformer = Transformer(values.toMutableList())
-    liftFlat(transformer)
+    val liftFlatIo = LiftFlatIo(values.toMutableList())
+    liftFlat(liftFlatIo)
 
-    check(transformer.inputs.isEmpty()) {
-      "expected ${values.size} calls to take(), but was ${values.size - transformer.inputs.size}"
+    check(liftFlatIo.inputs.isEmpty()) {
+      "expected ${values.size} calls to take(), but was ${values.size - liftFlatIo.inputs.size}"
     }
 
-    check(transformer.outputs.size == 1) {
-      "expected 1 call to put(), but was ${transformer.outputs.size}"
+    check(liftFlatIo.outputs.size == 1) {
+      "expected 1 call to put(), but was ${liftFlatIo.outputs.size}"
     }
 
-    return transformer.outputs.single()
+    return liftFlatIo.outputs.single()
   }
 
   /** Lower an API value like a resource instance to an ABI value like a memory address. */
   context(codeBuilder: CodeBuilder, context: Context)
   abstract fun lowerFlat(
     memoryAllocator: MemoryAllocator?,
-    transformer: Transformer,
-  )
-
-  context(codeBuilder: CodeBuilder, context: Context)
-  fun lowerFlat(
-    memoryAllocator: MemoryAllocator?,
+    lowerFlatIo: LowerFlatIo,
     value: CodeBlock,
-  ): List<CodeBlock> {
-    val transformer = Transformer(mutableListOf(value))
-    lowerFlat(memoryAllocator, transformer)
-
-    check(transformer.inputs.isEmpty()) {
-      "expected 1 call to take(), but was 0"
-    }
-
-    check(transformer.outputs.size == coreTypes.size) {
-      "expected ${coreTypes.size} calls to put(), but was ${transformer.outputs.size}"
-    }
-
-    return transformer.outputs.toList()
-  }
+  )
 
   /**
    * Generates encode or decode logic for a single receiver, parameter, or return value.
@@ -95,7 +82,7 @@ abstract class Encoder {
    *
    * Additional statements may be added to [code].
    */
-  class Transformer internal constructor(
+  class LiftFlatIo internal constructor(
     internal val inputs: MutableList<CodeBlock>,
   ) {
     internal val outputs = mutableListOf<CodeBlock>()
@@ -127,9 +114,10 @@ abstract class Encoder {
     context(codeBuilder: CodeBuilder)
     fun lowerFlat(
       encoder: Encoder,
-      value: CodeBlock,
       memoryAllocator: MemoryAllocator?,
-    ): List<CodeBlock>
+      lowerFlatIo: LowerFlatIo,
+      value: CodeBlock,
+    )
 
     context(codeBuilder: CodeBuilder)
     fun liftFlat(
