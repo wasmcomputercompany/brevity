@@ -18,8 +18,9 @@ data class TestFunction(
   val orientation: Orientation
     get() = functionParent.orientation
 
+  // TODO: add a TestCase(this, 0, 100UL) to trigger a sleep once Rust is on WASIp3.
   val testCases: List<TestCase>
-    get() = type.values.indices.map { TestCase(this, it, 0UL) } + TestCase(this, 0, 100UL)
+    get() = type.values.indices.map { TestCase(this, it, 0UL) }
 
   val futures: Boolean
     get() = false
@@ -305,7 +306,6 @@ data class TestFunction(
         writeUtf8(
           """
           |    async fn ${identifier.lowerSnakeCase}(
-          |        delay_millis: u64,
           |
           """.trimMargin(),
         )
@@ -325,6 +325,15 @@ data class TestFunction(
       writeUtf8(
         """
         |        &self,
+        |
+        """.trimMargin(),
+      )
+    }
+
+    if (callingMechanism == CallingMechanism.Async) {
+      writeUtf8(
+        """
+        |        delay_millis: u64,
         |
         """.trimMargin(),
       )

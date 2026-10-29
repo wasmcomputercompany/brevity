@@ -38,7 +38,13 @@ internal class RealAsyncWorld : World<Async.Host, Async.Guest>() {
           listOf(),
         ),
         WasmFunctionHandle { instance, args ->
-          bridge.getImportedResource<WaitableSet>(args[1].toInt()).join(args[0].toInt())
+          val waitableIndex = args[0].toInt()
+          val rep = args[1].toInt()
+          if (rep != 0) {
+            bridge.getImportedResource<WaitableSet>(rep).join(waitableIndex)
+          } else {
+            // TODO: remove the waitable from its current waitable set.
+          }
           longArrayOf()
         },
       ),
@@ -84,8 +90,9 @@ internal class RealAsyncWorld : World<Async.Host, Async.Guest>() {
           listOf(),
         ),
         WasmFunctionHandle { instance, args ->
-          val result = bridge.drop<WaitableSet>(args[0].toInt())
-          result.close()
+          // TODO: implement this.
+          // val result = bridge.drop<WaitableSet>(args[0].toInt())
+          // result.close()
           longArrayOf()
         },
       ),

@@ -29,7 +29,7 @@ internal class RealAsyncHost : Async.Host {
   }
 
   override fun subtaskDrop(subtask: Int) {
-    TODO("Not yet implemented")
+    // TODO("Not yet implemented")
   }
 
   inner class RealWaitableSet : WaitableSet() {
