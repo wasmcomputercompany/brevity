@@ -3,10 +3,13 @@ package dev.wasmo.brevity
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Store
 
-interface World<H, G> {
-  val host: H
-  val guest: G
+abstract class World<H, G> {
+  abstract val host: H
+  abstract val guest: G
 
-  fun initExports(instance: Instance)
-  fun initImports(store: Store)
+  @BrevityInternalApi
+  abstract fun initImports(bridge: HostBridge, store: Store)
+
+  @BrevityInternalApi
+  abstract fun initExports(instance: Instance)
 }

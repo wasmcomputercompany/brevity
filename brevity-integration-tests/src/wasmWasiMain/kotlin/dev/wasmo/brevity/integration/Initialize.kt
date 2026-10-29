@@ -1,8 +1,7 @@
 package dev.wasmo.brevity.integration
 
-import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.milliseconds
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import wit.wasmo.testing.Calculator
@@ -51,12 +50,11 @@ val actuallyInitialize = run {
       return a + b
     }
 
-    override fun parallelSleep(coroutineCount: UInt, duration: ULong) {
-      val coroutineScope = CoroutineScope(EmptyCoroutineContext)
-      coroutineScope.launch {
+    override suspend fun parallelSleep(coroutineCount: UInt, durationMillis: ULong) {
+      coroutineScope {
         for (i in 0U until coroutineCount) {
           launch {
-            delay(duration.toLong().milliseconds)
+            delay(durationMillis.toLong().milliseconds)
           }
         }
       }

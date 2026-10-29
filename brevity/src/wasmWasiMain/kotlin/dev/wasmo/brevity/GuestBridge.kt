@@ -1,13 +1,9 @@
-@file:OptIn(
-  UnsafeWasmMemoryApi::class,
-  BrevityInternalApi::class,
-)
+@file:OptIn(BrevityInternalApi::class)
 
 package dev.wasmo.brevity
 
-import kotlin.wasm.unsafe.Pointer
-import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
 
 @BrevityInternalApi
@@ -16,12 +12,8 @@ object GuestBridge {
   private val repToExportedResource = mutableMapOf<Int, Resource>()
   private var nextRep = 4_040_000
 
-  private var taskResult: Any? = null
-
-  val brevityDispatcher = BrevityDispatcher()
-
-  private val brevityScope: CoroutineScope
-    get() = brevityDispatcher.scope
+  // TODO: use context to identify which task is executing?
+  private var theOnlyTask: BrevityTask? = null
 
   // Prevent kotlinx-coroutines DefaultExecutor from registering a hook when exported functions
   // exit. That hook is particularly problematic for `cabi_realloc`, because it prevents that
@@ -58,55 +50,45 @@ object GuestBridge {
     return existing as T
   }
 
-  fun taskReturn(value: Any? = Unit) {
-    this.taskResult = value
-  }
-
   fun launchTask(block: suspend () -> Unit): PackedAsyncResult {
-    brevityScope.launch {
-      block()
+    val task = BrevityTask()
+    theOnlyTask = task
+    task.scope.launch(task) {
+      try {
+        block()
+      } finally {
+        task.complete = true
+        theOnlyTask = null
+      }
     }
-    brevityDispatcher.runUntilIdle()
-    return PackedAsyncResult(CallbackCode.Exit)
+
+    return task.runUntilIdle()
   }
 
-  fun resumeTask(eventCode: Int, p1: Int, p2: Int): PackedAsyncResult {
-    return PackedAsyncResult(CallbackCode.Exit)
+  /**
+   * Suspends until the launched subtask completes.
+   *
+   * @throws CancellationException
+   */
+  suspend fun awaitSubtaskComplete(packedSubtaskResult: PackedSubtaskResult) {
+    when (packedSubtaskResult.subtaskState) {
+      SubtaskState.Starting, SubtaskState.Started -> {
+        // We're about to suspend, so the clear active task.
+        val task = currentCoroutineContext()[BrevityTask.Key]
+          ?: error("cannot launch subtask without a task")
+        task.awaitSubtaskComplete(packedSubtaskResult.subtaskIndex)
+      }
+
+      SubtaskState.Returned -> {
+      }
+
+      SubtaskState.CanceledBeforeStarted, SubtaskState.CanceledBeforeReturned ->
+        throw CancellationException()
+    }
   }
 
-  suspend fun <T> awaitTaskResult(): T {
-    return taskResult as T
-  }
-}
-
-@BrevityInternalApi
-fun Pointer.loadPointer(): Pointer {
-  return Pointer(loadInt().toUInt())
-}
-
-@BrevityInternalApi
-fun Pointer.loadString(byteCount: Int): String {
-  return loadByteArray(byteCount).decodeToString()
-}
-
-@BrevityInternalApi
-fun Pointer.loadByteArray(byteCount: Int): ByteArray {
-  val result = ByteArray(byteCount)
-  for (i in 0 until byteCount) {
-    result[i] = (this + i).loadByte()
-  }
-  return result
-}
-
-@BrevityInternalApi
-fun Pointer.storeString(value: String) {
-  val byteArray = value.encodeToByteArray()
-  storeByteArray(byteArray)
-}
-
-@BrevityInternalApi
-fun Pointer.storeByteArray(value: ByteArray) {
-  for ((i, element) in value.withIndex()) {
-    (this + i).storeByte(element)
+  fun resumeTask(event: Event): PackedAsyncResult {
+    val resumedTask = theOnlyTask!! // TODO: obviously inadequate.
+    return resumedTask.resume(event)
   }
 }

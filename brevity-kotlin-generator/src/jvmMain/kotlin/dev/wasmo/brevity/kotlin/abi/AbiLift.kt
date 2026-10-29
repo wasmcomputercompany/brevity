@@ -10,6 +10,7 @@ import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
 import dev.wasmo.brevity.kotlin.expressions.makeImmediate
 import dev.wasmo.brevity.kotlin.generator.FunctionEncoder
+import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 
 context(codeBuilder: CodeBuilder)
@@ -35,16 +36,7 @@ fun AbiLift(
       functionEncoder = functionEncoder,
     )
 
-    is FunctionName.AsyncExportCallback -> object : KtFunction {
-      context(codeBuilder: CodeBuilder)
-      override fun call(
-        receiver: KtExpression?,
-        parameters: List<KtExpression>,
-      ): KtExpression {
-        codeBuilder.addStatement("TODO(%S)", "implement AbiLift for AsyncLiftCallbacks")
-        return KtExpression.Unit
-      }
-    }
+    is FunctionName.AsyncExportCallback -> AbiAsyncExportCallbackLift()
 
     is FunctionName.TaskReturn -> AbiTaskReturnLift(
       functionEncoder = functionEncoder,
@@ -156,6 +148,31 @@ private class AbiResourceDropLift(
     codeBuilder.platform.afterLiftParameters()
     codeBuilder.addStatement("// TODO: AbiResourceDropLift")
     return KtExpression.Unit
+  }
+}
+
+private class AbiAsyncExportCallbackLift : KtFunction {
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    val packedAsyncResultName = codeBuilder.newName("packedAsyncResult")
+    codeBuilder.addStatement(
+      "val %N = %L.resumeTask(%T(%L, %L, %L))",
+      packedAsyncResultName,
+      codeBuilder.bridge,
+      Symbols.Brevity.Event,
+      parameters[0].code,
+      parameters[1].code,
+      parameters[2].code,
+    )
+    return CodeBlockExpression(
+      type = INT,
+      nameHint = "packedAsyncResultName",
+      code = CodeBlock.of("%L.value.toInt()", packedAsyncResultName),
+      immediate = true,
+    )
   }
 }
 

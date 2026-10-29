@@ -7,7 +7,6 @@ import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.LONG_ARRAY
 import com.squareup.kotlinpoet.TypeName
-import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
 import dev.wasmo.brevity.kotlin.expressions.KtExpression
@@ -78,7 +77,8 @@ class ChicoryExportFunction(
     check(receiver == null)
 
     val arrayName = codeBuilder.newName("resultArray")
-    if (abiFunction.result != AbiFunction.Result.Void && abiFunction.name !is FunctionName.AsyncExport) {
+    val loweredReturnType = abiFunction.loweredReturnType
+    if (loweredReturnType != null) {
       codeBuilder.add("val %N = ", arrayName)
     }
 
@@ -88,18 +88,12 @@ class ChicoryExportFunction(
     }
     codeBuilder.add("⇤)\n")
 
-    val resultValue = abiFunction.result.value
-    val loweredReturnType = abiFunction.loweredReturnType
-
-    if (resultValue == null
-      || abiFunction.name is FunctionName.AsyncExport
-      || loweredReturnType == null
-    ) {
+    if (loweredReturnType == null) {
       return KtExpression.Unit
     }
 
     return CodeBlockExpression(
-      type = resultValue.type,
+      type = loweredReturnType.kotlinCoreType,
       nameHint = "result",
       code = CodeBlock.of("%N[%L]", arrayName, 0).longToCoreValue(loweredReturnType.kotlinCoreType),
       immediate = true,

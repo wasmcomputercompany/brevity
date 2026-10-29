@@ -10,6 +10,7 @@ import okio.BufferedSink
 data class TestCase(
   val function: TestFunction,
   val valueIndex: Int,
+  val delayMillis: ULong,
 ) {
   val passingMechanism: PassingMechanism
     get() = function.passingMechanism
@@ -38,10 +39,10 @@ data class TestCase(
 
     writeUtf8(
       """
-      |  assertThat(
-      |    $valuePrefix${actual.replace("\n", "\n    ")}$valueSuffix,
-      |    "${this@TestCase}",
-      |  ).isEqualTo($valuePrefix$expected$valueSuffix)
+      |assertThat(
+      |  $valuePrefix${actual.replace("\n", "\n    ")}$valueSuffix,
+      |  "${this@TestCase}",
+      |).isEqualTo($valuePrefix$expected$valueSuffix)
       |
       """.trimMargin(),
     )
@@ -58,37 +59,46 @@ data class TestCase(
       else -> "world.guest"
     }
 
-    callMeasureTime {
+    callMeasureTestTime {
       val call = when (function.orientation) {
-        Orientation.Import -> function.kotlinCallTrampoline(callTarget, valueIndex)
-        Orientation.Export -> function.kotlinCall(callTarget, "$valueIndex", value.kotlin)
+        Orientation.Import -> function.kotlinCallTrampoline(callTarget, valueIndex, delayMillis)
+        Orientation.Export -> function.kotlinCall(
+          callTarget,
+          "$valueIndex",
+          value.kotlin,
+          "${delayMillis}UL",
+        )
       }
       callAssertEquals(call)
     }
   }
 
-  private fun BufferedSink.callMeasureTime(
+  private fun BufferedSink.callMeasureTestTime(
     block: BufferedSink.() -> Unit,
   ) {
-    val blockContent = Buffer()
-      .apply {
-        block()
-      }
-
-    if (!function.sleep) {
-      writeAll(blockContent)
-      return
+    val blockContent = Buffer().run {
+      block()
+      readUtf8().trim()
     }
 
-    writeUtf8(
-      """
-      |  assertThat(
-      |    measureTime {
-      |      ${blockContent.readUtf8().replace("\n", "\n    ")}
-      |    }
-      |  ).isGreaterThanOrEqualTo(100.milliseconds)
-      |
-      """.trimMargin(),
-    )
+    if (delayMillis > 0UL && function.callingMechanism == CallingMechanism.Async) {
+      writeUtf8(
+        """
+        |  assertThat(
+        |    measureTestTime {
+        |      ${blockContent.replace("\n", "\n      ")}
+        |    }
+        |  ).isEqualTo(${delayMillis}L.milliseconds)
+        |
+        """.trimMargin(),
+      )
+    } else {
+      writeUtf8(
+        """
+        |  ${blockContent.replace("\n", "\n  ")}
+        |
+        """.trimMargin(),
+      )
+    }
   }
 }

@@ -1,21 +1,23 @@
+@file:OptIn(BrevityInternalApi::class)
+
 package dev.wasmo.brevity
 
-@BrevityInternalApi
-class RealAsyncHost : Async.Host {
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.selects.SelectBuilder
+import kotlinx.coroutines.selects.select
+
+internal class RealAsyncHost : Async.Host {
+  lateinit var bridge: HostBridge
   val context = Array(2) { 0 }
 
-  override fun waitableSetNew(): WaitableSet {
-    TODO("Not yet implemented")
+  override fun waitableSetNew() = RealWaitableSet()
+
+  override fun contextGet(index: Int): Int {
+    return context[index]
   }
 
-  override fun <T> contextGet(index: Int, typeId: TypeId<T>): T {
-    check(typeId == TypeId.I32) { "only i32 implemented: $typeId" }
-    return context[index] as T
-  }
-
-  override fun <T> contextSet(index: Int, typeId: TypeId<T>, value: T) {
-    check(typeId == TypeId.I32) { "only i32 implemented: $typeId" }
-    context[index] = value as Int
+  override fun contextSet(index: Int, value: Int) {
+    context[index] = value
   }
 
   override fun taskCancel() {
@@ -28,5 +30,40 @@ class RealAsyncHost : Async.Host {
 
   override fun subtaskDrop(subtask: Int) {
     TODO("Not yet implemented")
+  }
+
+  inner class RealWaitableSet : WaitableSet() {
+    val waitableIndexes = ArrayDeque<Int>()
+
+    override fun join(waitableIndex: Int) {
+      waitableIndexes += waitableIndex
+    }
+
+    override fun poll(eventPointer: Int): Int {
+      error("not implemented")
+    }
+
+    /** Returns an arbitrary waitable that's ready, suspending if necessary. */
+    suspend fun waitForEvent(): Event {
+      return select {
+        for (waitableIndex in waitableIndexes) {
+          val waitable = bridge.waitables[waitableIndex] ?: error("no waitable: $waitableIndex")
+          waitable.select(this@select)
+        }
+      }
+    }
+  }
+
+  class Waitable(
+    val index: Int,
+    val job: Job,
+  ) {
+    fun select(selectBuilder: SelectBuilder<Event>) {
+      with(selectBuilder) {
+        job.onJoin.invoke {
+          Event.Subtask(index, SubtaskState.Returned)
+        }
+      }
+    }
   }
 }

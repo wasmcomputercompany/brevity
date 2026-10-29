@@ -19,11 +19,9 @@ data class TestFunction(
     get() = functionParent.orientation
 
   val testCases: List<TestCase>
-    get() = type.values.indices.map { TestCase(this, it) }
+    get() = type.values.indices.map { TestCase(this, it, 0UL) } + TestCase(this, 0, 100UL)
 
   val futures: Boolean
-    get() = false
-  val sleep: Boolean
     get() = false
 
   val identifier = Identifier(
@@ -73,17 +71,27 @@ data class TestFunction(
       else -> ""
     }
 
-    val syncModifier = when (callingMechanism) {
-      CallingMechanism.Async -> " async"
-      CallingMechanism.Sync -> ""
+    when (callingMechanism) {
+      CallingMechanism.Async -> {
+        writeUtf8(
+          """
+          |$orientationModifier$identifier: async func(
+          |  delay-millis: u64,
+          |
+          """.trimMargin(),
+        )
+      }
+
+      CallingMechanism.Sync -> {
+        writeUtf8(
+          """
+          |$orientationModifier$identifier: func(
+          |
+          """.trimMargin(),
+        )
+      }
     }
 
-    writeUtf8(
-      """
-      |$orientationModifier$identifier:$syncModifier func(
-      |
-      """.trimMargin(),
-    )
     for (i in 0 until padding) {
       writeUtf8(
         """
@@ -116,30 +124,47 @@ data class TestFunction(
   }
 
   fun BufferedSink.witDeclareTrampoline() {
-    val syncModifier = when (callingMechanism) {
-      CallingMechanism.Async -> " async"
-      CallingMechanism.Sync -> ""
+    when (callingMechanism) {
+      CallingMechanism.Async -> {
+        writeUtf8(
+          """
+          |export $trampolineIdentifier: async func(delay-millis: u64, index: s32) -> s32;
+          |
+          """.trimMargin(),
+        )
+      }
+
+      CallingMechanism.Sync -> {
+        writeUtf8(
+          """
+          |export $trampolineIdentifier: func(index: s32) -> s32;
+          |
+          """.trimMargin(),
+        )
+      }
     }
-    writeUtf8(
-      """
-      |export $trampolineIdentifier:$syncModifier func(index: s32) -> s32;
-      |
-      """.trimMargin(),
-    )
   }
 
   fun BufferedSink.rustDeclareTrampoline() {
-    val modifiers = when (callingMechanism) {
-      CallingMechanism.Async -> "async "
-      CallingMechanism.Sync -> ""
-    }
+    when (callingMechanism) {
+      CallingMechanism.Async -> {
+        writeUtf8(
+          """
+          |    async fn ${trampolineIdentifier.lowerSnakeCase}(delay_millis: u64, index: i32) -> i32 {
+          |
+          """.trimMargin(),
+        )
+      }
 
-    writeUtf8(
-      """
-      |    ${modifiers}fn ${trampolineIdentifier.lowerSnakeCase}(index: i32) -> i32 {
-      |
-      """.trimMargin(),
-    )
+      CallingMechanism.Sync -> {
+        writeUtf8(
+          """
+          |    fn ${trampolineIdentifier.lowerSnakeCase}(index: i32) -> i32 {
+          |
+          """.trimMargin(),
+        )
+      }
+    }
 
     val callTarget = when {
       functionParent.isWorld -> "bindings::"
@@ -187,7 +212,14 @@ data class TestFunction(
 
   fun BufferedSink.rustDeclare() {
     rustDeclareWithSignature {
-      maybeWriteSleepRust()
+      if (callingMechanism == CallingMechanism.Async) {
+        writeUtf8(
+          """
+          |if delay_millis > 0 { sleep(Duration::from_millis(delay_millis)); }
+          |
+          """.trimMargin(),
+        )
+      }
 
       when (passingMechanism) {
         is PassingMechanism.Parameter -> {
@@ -268,17 +300,27 @@ data class TestFunction(
       readUtf8().trim()
     }
 
-    val modifiers = when (callingMechanism) {
-      CallingMechanism.Async -> "async "
-      CallingMechanism.Sync -> ""
+    when (callingMechanism) {
+      CallingMechanism.Async -> {
+        writeUtf8(
+          """
+          |    async fn ${identifier.lowerSnakeCase}(
+          |        delay_millis: u64,
+          |
+          """.trimMargin(),
+        )
+      }
+
+      CallingMechanism.Sync -> {
+        writeUtf8(
+          """
+          |    fn ${identifier.lowerSnakeCase}(
+          |
+          """.trimMargin(),
+        )
+      }
     }
 
-    writeUtf8(
-      """
-      |    ${modifiers}fn ${identifier.lowerSnakeCase}(
-      |
-      """.trimMargin(),
-    )
     if (functionParent.isResource) {
       writeUtf8(
         """
@@ -329,17 +371,25 @@ data class TestFunction(
   }
 
   fun BufferedSink.kotlinDeclareTrampoline() {
-    val modifiers = when (callingMechanism) {
-      CallingMechanism.Async -> " suspend"
-      CallingMechanism.Sync -> ""
-    }
+    when (callingMechanism) {
+      CallingMechanism.Async -> {
+        writeUtf8(
+          """
+          |override suspend fun ${trampolineIdentifier.lowerCamelCase}(delayMillis: ULong, index: Int): Int {
+          |
+          """.trimMargin(),
+        )
+      }
 
-    writeUtf8(
-      """
-      |override$modifiers fun ${trampolineIdentifier.lowerCamelCase}(index: Int): Int {
-      |
-      """.trimMargin(),
-    )
+      CallingMechanism.Sync -> {
+        writeUtf8(
+          """
+          |override fun ${trampolineIdentifier.lowerCamelCase}(index: Int): Int {
+          |
+          """.trimMargin(),
+        )
+      }
+    }
 
     val callTarget = when {
       functionParent.isWorld -> "TestWorld.host"
@@ -352,10 +402,10 @@ data class TestFunction(
     when (passingMechanism) {
       is PassingMechanism.Parameter -> {
         val value = indexToValueFunction.kotlinCall("this", "index", "Nothing")
-        val call = kotlinCall(callTarget, "Nothing", value)
+        val call = kotlinCall(callTarget, "Nothing", value, "delayMillis")
         writeUtf8(
           """
-          |  return ${call.replace("\n", "\n    ")}
+          |  return ${call.replace("\n", "\n  ")}
           |}
           |
           """.trimMargin(),
@@ -363,12 +413,12 @@ data class TestFunction(
       }
 
       PassingMechanism.Return -> {
-        val call = kotlinCall(callTarget, "index", "Nothing")
+        val call = kotlinCall(callTarget, "index", "Nothing", "delayMillis")
         val resultIndex = valueToIndexFunction.kotlinCall("this", "Nothing", "value")
         writeUtf8(
           """
-          |  val value = ${call.replace("\n", "\n    ")}
-          |  return ${resultIndex.replace("\n", "\n    ")}
+          |  val value = ${call.replace("\n", "\n  ")}
+          |  return ${resultIndex.replace("\n", "\n  ")}
           |}
           |
           """.trimMargin(),
@@ -379,7 +429,14 @@ data class TestFunction(
 
   fun BufferedSink.kotlinDeclare() {
     kotlinDeclareWithSignature {
-      maybeWriteSleepKotlin()
+      if (callingMechanism == CallingMechanism.Async) {
+        writeUtf8(
+          """
+          |if (delayMillis > 0UL) delay(delayMillis.toLong().milliseconds)
+          |
+          """.trimMargin(),
+        )
+      }
 
       when (passingMechanism) {
         is PassingMechanism.Parameter -> {
@@ -457,17 +514,26 @@ data class TestFunction(
       readUtf8().trim()
     }
 
-    val modifiers = when (callingMechanism) {
-      CallingMechanism.Async -> " suspend"
-      CallingMechanism.Sync -> ""
-    }
+    when (callingMechanism) {
+      CallingMechanism.Async -> {
+        writeUtf8(
+          """
+          |  override suspend fun ${identifier.lowerCamelCase}(
+          |    delayMillis: ULong,
+          |
+          """.trimMargin(),
+        )
+      }
 
-    writeUtf8(
-      """
-      |  override$modifiers fun ${identifier.lowerCamelCase}(
-      |
-      """.trimMargin(),
-    )
+      CallingMechanism.Sync -> {
+        writeUtf8(
+          """
+          |  override fun ${identifier.lowerCamelCase}(
+          |
+          """.trimMargin(),
+        )
+      }
+    }
 
     val padding = (passingMechanism as? PassingMechanism.Parameter)?.padding ?: 0
     for (i in 0 until padding) {
@@ -514,6 +580,7 @@ data class TestFunction(
     callTarget: String,
     valueIndex: String,
     value: String,
+    delayMillis: String? = null,
   ): String {
     val call = Buffer().apply {
       writeUtf8(
@@ -522,6 +589,15 @@ data class TestFunction(
         |
         """.trimMargin(),
       )
+
+      if (delayMillis != null && callingMechanism == CallingMechanism.Async) {
+        writeUtf8(
+          """
+          |  delayMillis = $delayMillis,
+          |
+          """.trimMargin(),
+        )
+      }
 
       for (i in 0 until padding) {
         writeUtf8(
@@ -572,6 +648,15 @@ data class TestFunction(
         |
         """.trimMargin(),
       )
+
+      if (callingMechanism == CallingMechanism.Async) {
+        writeUtf8(
+          """
+          |    delay_millis,
+          |
+          """.trimMargin(),
+        )
+      }
 
       for (i in 0 until padding) {
         writeUtf8(
@@ -632,26 +717,13 @@ data class TestFunction(
   fun kotlinCallTrampoline(
     callTarget: String,
     valueIndex: Int,
-  ) = "$callTarget.${trampolineIdentifier.lowerCamelCase}($valueIndex)"
-
-  private fun BufferedSink.maybeWriteSleepKotlin() {
-    if (!sleep) return
-    writeUtf8(
-      """
-      |    delay(100.milliseconds)
-      |
-      """.trimMargin(),
-    )
-  }
-
-  private fun BufferedSink.maybeWriteSleepRust() {
-    if (!sleep) return
-    writeUtf8(
-      """
-      |        sleep(Duration::from_millis(4000));
-      |
-      """.trimMargin(),
-    )
+    delayMillis: ULong,
+  ): String = buildString {
+    append("$callTarget.${trampolineIdentifier.lowerCamelCase}(")
+    if (callingMechanism == CallingMechanism.Async) {
+      append("${delayMillis}UL, ")
+    }
+    append("$valueIndex)")
   }
 
   private val Orientation.keyword: String

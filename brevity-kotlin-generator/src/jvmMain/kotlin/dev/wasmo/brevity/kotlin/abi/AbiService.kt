@@ -20,7 +20,6 @@ import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.generator.instanceName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
-import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 
 sealed interface AbiService {
   val irDeclaration: IrDeclaration
@@ -180,7 +179,7 @@ data class AbiInterface(
       irDeclaration = irInterface,
       orientation = Import, // Arbitrary.
       worldServiceName = irInterface.serviceName,
-      instanceName = irInterface.serviceName.name.lowerCamelCase,
+      instanceName = "Nothing",
       resources = abiResourceFactory.createAll(
         types = irInterface.types,
         orientation = Import, // Arbitrary.

@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.buildCodeBlock
 import com.squareup.kotlinpoet.joinToCode
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.KotlinMapper
@@ -39,7 +40,7 @@ class EncoderFunctionCollector(
     values: List<CodeBlock>,
   ): CodeBlock {
     val type = encoder.type as TypeName.Declared
-    val name = "lift${type.serviceName.name.upperCamelCase}${type.name.upperCamelCase}$orientation"
+    val name = encoderName("lift", type, orientation)
 
     if (declaredFunctionNames.add(name)) {
       declareLiftFlatFunction(codeBuilder.bridge, encoderContext, encoder, typeMapper, name)
@@ -59,7 +60,7 @@ class EncoderFunctionCollector(
     value: CodeBlock,
   ) {
     val type = encoder.type as TypeName.Declared
-    val name = "lower${type.serviceName.name.upperCamelCase}${type.name.upperCamelCase}$orientation"
+    val name = encoderName("lower", type, orientation)
 
     if (declaredFunctionNames.add(name)) {
       declareLowerFlatFunction(codeBuilder.bridge, encoderContext, encoder, typeMapper, name)
@@ -93,7 +94,7 @@ class EncoderFunctionCollector(
     offset: Int,
   ): CodeBlock {
     val type = encoder.type as TypeName.Declared
-    val name = "load${type.serviceName.name.upperCamelCase}${type.name.upperCamelCase}$orientation"
+    val name = encoderName("load", type, orientation)
 
     if (declaredFunctionNames.add(name)) {
       declareLoadFunction(codeBuilder.bridge, encoderContext, encoder, typeMapper, name)
@@ -114,7 +115,7 @@ class EncoderFunctionCollector(
     value: CodeBlock,
   ) {
     val type = encoder.type as TypeName.Declared
-    val name = "store${type.serviceName.name.upperCamelCase}${type.name.upperCamelCase}$orientation"
+    val name = encoderName("store", type, orientation)
 
     if (declaredFunctionNames.add(name)) {
       declareStoreFunction(codeBuilder.bridge, encoderContext, encoder, typeMapper, name)
@@ -344,5 +345,22 @@ class EncoderFunctionCollector(
         name,
       )
     }
+  }
+
+  private fun encoderName(
+    operation: String,
+    type: TypeName.Declared,
+    orientation: Orientation,
+  ): String {
+    val names = buildList {
+      add(operation)
+      if (type.serviceName.name.name == "types") {
+        add(type.serviceName.packageName.names.last().name)
+      }
+      add(type.serviceName.name.name)
+      add(type.name.name)
+      add(orientation.identifier.name)
+    }
+    return Identifier(names.joinToString(separator = "-")).lowerCamelCase
   }
 }

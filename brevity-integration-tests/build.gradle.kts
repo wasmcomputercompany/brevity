@@ -20,6 +20,7 @@ kotlin {
       dependencies {
         implementation(libs.kotlinx.coroutines.core)
         implementation(projects.brevity)
+        implementation(projects.wasi.brevityWasiP3)
       }
     }
     jvmMain {
@@ -41,7 +42,6 @@ kotlin {
         implementation(projects.wasi.brevityWasi)
         implementation(projects.wasi.brevityWasiP1)
         implementation(projects.wasi.brevityWasiP2)
-        implementation(projects.wasi.brevityWasiP3)
       }
     }
   }

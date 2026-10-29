@@ -8,22 +8,25 @@ val Async.host: Async.Host
 
 @BrevityInternalApi
 private object AsyncHost : Async.Host {
-  override fun waitableSetNew() = GuestWaitableSet(waitableSetNew_export())
+  override fun waitableSetNew(): GuestWaitableSet {
+    return GuestWaitableSet().apply {
+      rep = waitableSetNew_export()
+      hasRep = true
+    }
+  }
 
-  override fun <T> contextGet(index: Int, typeId: TypeId<T>): T {
-    require(typeId == TypeId.I32)
+  override fun contextGet(index: Int): Int {
     return when (index) {
-      0 -> contextGet0_export() as T
-      1 -> contextGet1_export() as T
+      0 -> contextGet0_export()
+      1 -> contextGet1_export()
       else -> error("unexpected index: $index")
     }
   }
 
-  override fun <T> contextSet(index: Int, typeId: TypeId<T>, value: T) {
-    require(typeId == TypeId.I32)
+  override fun contextSet(index: Int, value: Int) {
     when (index) {
-      0 -> contextSet0_export(0, value as Int)
-      1 -> contextSet1_export(0, value as Int)
+      0 -> contextSet0_export(value)
+      1 -> contextSet1_export(value)
       else -> error("unexpected index: $index")
     }
   }
@@ -42,19 +45,17 @@ private object AsyncHost : Async.Host {
 }
 
 @BrevityInternalApi
-private class GuestWaitableSet(
-  private val waitableSetIndex: Int,
-) : WaitableSet() {
+private class GuestWaitableSet : WaitableSet() {
   override fun join(waitableIndex: Int) {
-    waitableJoin_export(waitableIndex, waitableSetIndex)
+    waitableJoin_export(waitableIndex, rep)
   }
 
   override fun poll(eventPointer: Int): Int {
-    return waitableSetPoll_export(waitableSetIndex, eventPointer)
+    return waitableSetPoll_export(rep, eventPointer)
   }
 
   override fun close() {
-    waitableSetDrop_export(waitableSetIndex)
+    waitableSetDrop_export(rep)
   }
 }
 
@@ -77,10 +78,10 @@ internal external fun contextGet0_export(): Int
 internal external fun contextGet1_export(): Int
 
 @WasmImport(module = $$"$root", name = "[context-set-0]")
-internal external fun contextSet0_export(type: Int, value: Int)
+internal external fun contextSet0_export(value: Int)
 
 @WasmImport(module = $$"$root", name = "[context-set-1]")
-internal external fun contextSet1_export(type: Int, value: Int)
+internal external fun contextSet1_export(value: Int)
 
 @WasmImport(module = $$"[export]$root", name = "[task-cancel]")
 internal external fun taskCancel_export()

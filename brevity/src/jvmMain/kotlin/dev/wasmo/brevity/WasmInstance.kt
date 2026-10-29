@@ -1,3 +1,5 @@
+@file:OptIn(BrevityInternalApi::class)
+
 package dev.wasmo.brevity
 
 import com.dylibso.chicory.runtime.Instance
@@ -6,10 +8,11 @@ import com.dylibso.chicory.runtime.internal.GcRefStore
 import com.dylibso.chicory.wasm.Parser
 import com.dylibso.chicory.wasm.WasmModule
 import java.lang.reflect.Field
+import kotlinx.coroutines.CoroutineScope
 import okio.FileSystem
 import okio.Path
 
-class WasmInstance(
+class WasmInstance private constructor(
   val store: Store,
   val wasmModule: WasmModule,
   val instance: Instance,
@@ -36,6 +39,7 @@ class WasmInstance(
 
   companion object {
     operator fun invoke(
+      scope: CoroutineScope,
       fileSystem: FileSystem = FileSystem.SYSTEM,
       path: Path,
       name: String = "name",
@@ -44,17 +48,20 @@ class WasmInstance(
       val wasmModule = fileSystem.read(path) {
         Parser.parse(readByteArray())
       }
-      return invoke(wasmModule, name, worlds)
+      return invoke(scope, wasmModule, name, worlds)
     }
 
     operator fun invoke(
+      scope: CoroutineScope,
       wasmModule: WasmModule,
       name: String = "name",
       worlds: List<World<*, *>>,
     ): WasmInstance {
       val store = Store()
+      val bridge = HostBridge(coroutineScope = scope)
+
       for (world in worlds) {
-        world.initImports(store)
+        world.initImports(bridge, store)
       }
 
       val instance = store.instantiate(name, wasmModule)
@@ -70,4 +77,3 @@ class WasmInstance(
     }
   }
 }
-

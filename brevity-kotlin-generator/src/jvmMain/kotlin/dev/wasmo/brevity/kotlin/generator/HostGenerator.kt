@@ -10,7 +10,6 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.buildCodeBlock
 import com.squareup.kotlinpoet.joinToCode
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
@@ -125,7 +124,7 @@ class HostGenerator(
     val className = typeNamer.hostClassName
     val builder = TypeSpec.classBuilder(className)
       .addModifiers(KModifier.INTERNAL)
-      .addSuperinterface(
+      .superclass(
         Symbols.Brevity.World.parameterizedBy(
           abiWorld.apiInterfaceName(Import),
           abiWorld.apiInterfaceName(Export),
@@ -137,19 +136,8 @@ class HostGenerator(
     val bridgeValue = CodeBlock.of("%N", "bridge")
     builder.addProperty(
       PropertySpec.builder("bridge", Symbols.Brevity.HostBridge)
-        .addModifiers(KModifier.PRIVATE)
-        .initializer(
-          buildCodeBlock {
-            add("%T()", Symbols.Brevity.HostBridge)
-            val allResources = (abiWorld.resources + abiWorld.interfaces.flatMap { it.resources })
-              .filter { it.orientation == Export }
-
-            if (allResources.isNotEmpty()) {
-              beginControlFlow(".apply")
-              endControlFlow()
-            }
-          },
-        )
+        .addModifiers(KModifier.PRIVATE, KModifier.LATEINIT)
+        .mutable(true)
         .build(),
     )
 
@@ -168,8 +156,10 @@ class HostGenerator(
       .addStatement("this.%N.init(%L)", "bridge", instanceValue)
 
     val initImportsBuilder = FunSpec.builder("initImports")
+      .addParameter("bridge", Symbols.Brevity.HostBridge)
       .addParameter("store", Symbols.ChicoryRuntime.Store)
       .addModifiers(KModifier.OVERRIDE)
+      .addStatement("this.%N = %N", "bridge", "bridge")
 
     run {
       builder.addProperty(

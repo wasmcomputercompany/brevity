@@ -3,13 +3,20 @@ package dev.wasmo.brevity
 import com.dylibso.chicory.runtime.ExportFunction
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
-import kotlinx.coroutines.runBlocking
+import dev.wasmo.brevity.RealAsyncHost.RealWaitableSet
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.yield
 
 @BrevityInternalApi
-class HostBridge {
+class HostBridge(
+  private val coroutineScope: CoroutineScope,
+) {
   private val repToExportedResource = mutableMapOf<Int, Resource>()
   private val repToImportedResource = mutableMapOf<Int, Resource>()
+  internal val waitables = mutableMapOf<Int, RealAsyncHost.Waitable>()
   private var nextRep = 6_060_000
+  private var nextWaitableIndex = 8_080_000
   private lateinit var _memory: Memory
 
   val memory: Memory
@@ -54,19 +61,52 @@ class HostBridge {
     return repToExportedResource.remove(rep)
   }
 
+  suspend fun <T> awaitTaskComplete(
+    packedAsyncResult: PackedAsyncResult,
+    callback: (event: Event) -> PackedAsyncResult,
+  ): T {
+    var packedAsyncResult = packedAsyncResult
+
+    while (true) {
+      when (packedAsyncResult.callbackCode) {
+        CallbackCode.Exit -> return taskResult as T
+
+        CallbackCode.Yield -> {
+          yield()
+          packedAsyncResult = callback(Event.None)
+        }
+
+        CallbackCode.Wait -> {
+          val waitableSet = getImportedResource<RealWaitableSet>(packedAsyncResult.waitableSetIndex)
+          val event = waitableSet.waitForEvent()
+          packedAsyncResult = callback(event)
+        }
+
+        CallbackCode.Max -> TODO()
+      }
+    }
+  }
+
   fun launchSubtask(block: suspend () -> Unit): PackedSubtaskResult {
-    runBlocking {
+    val job = coroutineScope.launch {
       block()
     }
-    return PackedSubtaskResult(SubtaskState.Returned)
+
+    return when {
+      job.isCancelled -> PackedSubtaskResult(SubtaskState.CanceledBeforeReturned)
+
+      !job.isCompleted -> {
+        val waitableIndex = nextWaitableIndex++
+        waitables[waitableIndex] = RealAsyncHost.Waitable(waitableIndex, job)
+        PackedSubtaskResult(SubtaskState.Started, waitableIndex)
+      }
+
+      else -> PackedSubtaskResult(SubtaskState.Returned)
+    }
   }
 
   fun taskReturn(value: Any? = Unit) {
     this.taskResult = value
-  }
-
-  suspend fun <T> awaitTaskResult(): T {
-    return taskResult as T
   }
 }
 
