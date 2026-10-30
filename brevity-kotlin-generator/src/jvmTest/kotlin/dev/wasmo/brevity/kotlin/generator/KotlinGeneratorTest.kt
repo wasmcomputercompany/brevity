@@ -148,9 +148,10 @@ class KotlinGeneratorTest {
           val stringByteCount = (elementAddress + 4).loadInt()
           Pointer(stringAddress.toUInt()).loadString(stringByteCount)
         }
+        val args_ = list
         freeAllComponentModelReallocAllocatedMemory()
         val result = guest_.run(
-          args = list,
+          args = args_,
         )
         return result
       }
@@ -300,7 +301,8 @@ class KotlinGeneratorTest {
                 listOf(ValType.I32),
               ),
               WasmFunctionHandle { instance, args ->
-                val receiver_ = bridge.getImportedResource<Pollable>(args[0].toInt())
+                val rep_ = args[0].toInt()
+                val receiver_ = bridge.getImportedResource<Pollable>(rep_)
                 val result = receiver_.ready()
                 val result_ = (if (result) 1 else 0)
                 return@WasmFunctionHandle longArrayOf(result_.toLong())
@@ -316,7 +318,8 @@ class KotlinGeneratorTest {
                 listOf(),
               ),
               WasmFunctionHandle { instance, args ->
-                val receiver_ = bridge.getImportedResource<Pollable>(args[0].toInt())
+                val rep_ = args[0].toInt()
+                val receiver_ = bridge.getImportedResource<Pollable>(rep_)
                 receiver_.close()
                 return@WasmFunctionHandle longArrayOf()
               },
