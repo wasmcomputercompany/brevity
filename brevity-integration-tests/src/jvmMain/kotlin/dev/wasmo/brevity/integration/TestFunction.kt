@@ -64,7 +64,7 @@ data class TestFunction(
       functionParent = functionParent.export(),
     )
 
-  override fun toString() = identifier.name
+  override fun toString() = "${identifier.name}-${functionParent.identifier}"
 
   fun BufferedSink.witDeclare() {
     val orientationModifier = when {

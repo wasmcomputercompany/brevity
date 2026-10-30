@@ -36,6 +36,7 @@ class HostKotlinTarget(
       |import assertk.assertions.isEqualTo
       |import dev.wasmo.brevity.WasmInstance
       |import dev.wasmo.brevity.asyncWorld
+      |import dev.wasmo.brevity.integration.isEqualTo
       |import dev.wasmo.brevity.wasi.p1.RealWasiP1Host
       |import dev.wasmo.brevity.wasi.p1.wasiP1World
       |import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
