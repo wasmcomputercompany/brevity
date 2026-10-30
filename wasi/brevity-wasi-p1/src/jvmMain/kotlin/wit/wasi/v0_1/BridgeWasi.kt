@@ -1,3 +1,5 @@
+@file:OptIn(BrevityInternalApi::class)
+
 package wit.wasi.v0_1
 
 import com.dylibso.chicory.runtime.HostFunction
@@ -6,25 +8,19 @@ import com.dylibso.chicory.runtime.Store
 import com.dylibso.chicory.runtime.WasmFunctionHandle
 import com.dylibso.chicory.wasm.types.FunctionType
 import com.dylibso.chicory.wasm.types.ValType
+import dev.wasmo.brevity.BrevityInternalApi
+import dev.wasmo.brevity.HostBridge
 import dev.wasmo.brevity.World
 import okio.Buffer
-
-fun Wasi.World(
-  hostFactory: (guest: Wasi.Guest) -> Wasi.Host,
-): World<Wasi.Host, Wasi.Guest> {
-  val guest = BridgeWasi.BridgeGuest()
-  val host = hostFactory(guest)
-  return BridgeWasi(guest, host)
-}
 
 internal class BridgeWasi(
   override val guest: Wasi.Guest,
   override val host: Wasi.Host,
-) : World<Wasi.Host, Wasi.Guest> {
+) : World<Wasi.Host, Wasi.Guest>() {
   override fun initExports(instance: Instance) {
   }
 
-  override fun initImports(store: Store) {
+  override fun initImports(bridge: HostBridge, store: Store) {
     store.addFunction(
       HostFunction(
         "wasi_snapshot_preview1",

@@ -1,6 +1,5 @@
 package dev.wasmo.brevity.kotlin.generator
 
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.DOUBLE
 import com.squareup.kotlinpoet.FLOAT
 import com.squareup.kotlinpoet.INT
@@ -8,7 +7,6 @@ import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Identifier
-import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrField
@@ -51,7 +49,20 @@ val FunctionName.kotlinIdentifier: Identifier
   }
 
 val IrExternalApi.instanceName: String
-  get() = (plainName ?: serviceName.name).lowerCamelCase
+  get() {
+    val names = buildList {
+      val plainName = plainName?.name
+      if (plainName != null) {
+        add(plainName)
+      } else {
+        if (serviceName.name.name == "types") {
+          add(serviceName.packageName.names.last().name)
+        }
+        add(serviceName.name.name)
+      }
+    }
+    return Identifier(names.joinToString(separator = "-")).lowerCamelCase
+  }
 
 val CoreType.kotlinCoreType: KtTypeName
   get() = when (this) {

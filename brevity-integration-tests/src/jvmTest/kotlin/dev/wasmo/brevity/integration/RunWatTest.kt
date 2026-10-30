@@ -6,11 +6,13 @@ import com.dylibso.chicory.wabt.Wat2Wasm
 import com.dylibso.chicory.wasm.Parser
 import dev.wasmo.brevity.WasmInstance
 import kotlin.test.Test
+import kotlinx.coroutines.test.runTest
 
 class RunWatTest {
   @Test
-  fun `run wat`() {
+  fun `run wat`() = runTest {
     val wasmInstance = WasmInstance(
+      scope = this,
       Parser.parse(
         Wat2Wasm.parse(
           """

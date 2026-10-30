@@ -1,20 +1,22 @@
 package dev.wasmo.brevity.integration
 
 import assertk.assertThat
-import assertk.assertions.isBetween
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.WasmInstance
+import dev.wasmo.brevity.asyncWorld
+import dev.wasmo.brevity.wasi.p1.wasiP1World
 import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
-import kotlin.test.Ignore
+import dev.wasmo.brevity.wasi.p2.wasiP2World
+import dev.wasmo.brevity.wasi.p3.RealWasiP3Host
+import dev.wasmo.brevity.wasi.p3.wasiP3World
 import kotlin.test.Test
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.measureTime
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import okio.Path.Companion.toPath
-import wit.wasi.cli.v0_2_0.Imports
-import wit.wasi.cli.v0_2_0.World
-import wit.wasi.v0_1.Wasi
-import wit.wasi.v0_1.World
 import wit.wasmo.testing.StringArgument
 import wit.wasmo.testing.StringResult
 import wit.wasmo.testing.Types
@@ -24,7 +26,7 @@ import wit.wasmo.testing.World
 class RunKotlinWasmTest {
   private val kotlinWasmPath = "build/compileSync/wasmWasi/main/developmentExecutable/kotlin/brevity-root-brevity-integration-tests.wasm".toPath()
   private val host = object : WasmoTesting.Host {
-    override val types: Types
+    override val testingTypes: Types
       get() = object : Types {}
   }
 
@@ -33,10 +35,13 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
+      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
-        Wasi.World({ wasiP1 }),
-        Imports.World { RealWasiP2Host() },
+        wasiP1World { wasiP1 },
+        wasiP2World { RealWasiP2Host() },
+        wasiP3World { RealWasiP3Host() },
+        asyncWorld,
         world,
       ),
     )
@@ -49,10 +54,13 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
+      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
-        Wasi.World({ wasiP1 }),
-        Imports.World { RealWasiP2Host() },
+        wasiP1World { wasiP1 },
+        wasiP2World { RealWasiP2Host() },
+        wasiP3World { RealWasiP3Host() },
+        asyncWorld,
         world,
       ),
     )
@@ -65,10 +73,13 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
+      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
-        Wasi.World({ wasiP1 }),
-        Imports.World { RealWasiP2Host() },
+        wasiP1World { wasiP1 },
+        wasiP2World { RealWasiP2Host() },
+        wasiP3World { RealWasiP3Host() },
+        asyncWorld,
         world,
       ),
     )
@@ -91,10 +102,13 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
+      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
-        Wasi.World({ wasiP1 }),
-        Imports.World { RealWasiP2Host() },
+        wasiP1World { wasiP1 },
+        wasiP2World { RealWasiP2Host() },
+        wasiP3World { RealWasiP3Host() },
+        asyncWorld,
         world,
       ),
     )
@@ -111,10 +125,13 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
+      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
-        Wasi.World({ wasiP1 }),
-        Imports.World { RealWasiP2Host() },
+        wasiP1World { wasiP1 },
+        wasiP2World { RealWasiP2Host() },
+        wasiP3World { RealWasiP3Host() },
+        asyncWorld,
         world,
       ),
     )
@@ -129,10 +146,13 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
+      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
-        Wasi.World({ wasiP1 }),
-        Imports.World { RealWasiP2Host() },
+        wasiP1World { wasiP1 },
+        wasiP2World { RealWasiP2Host() },
+        wasiP3World { RealWasiP3Host() },
+        asyncWorld,
         world,
       ),
     )
@@ -143,22 +163,31 @@ class RunKotlinWasmTest {
   }
 
   @Test
-  @Ignore("must be re-implemented with async")
   fun `parallel sleep`() = runTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
+      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
-        Wasi.World({ wasiP1 }),
-        Imports.World { RealWasiP2Host() },
+        wasiP1World { wasiP1 },
+        wasiP2World { RealWasiP2Host() },
+        wasiP3World { RealWasiP3Host() },
+        asyncWorld,
         world,
       ),
     )
 
-    val elapsed = measureTime {
+    val elapsed = measureTestTime {
       world.guest.parallelSleep(30U, 100UL)
     }
-    assertThat(elapsed).isBetween(100.milliseconds, 1_000.milliseconds)
+    assertThat(elapsed).isEqualTo(100.milliseconds)
+  }
+
+  @OptIn(ExperimentalCoroutinesApi::class)
+  suspend fun TestScope.measureTestTime(block: suspend () -> Unit): Duration {
+    val timeBefore = currentTime
+    block()
+    return (currentTime - timeBefore).milliseconds
   }
 }

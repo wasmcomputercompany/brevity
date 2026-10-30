@@ -1,3 +1,5 @@
+@file:OptIn(BrevityInternalApi::class)
+
 package dev.wasmo.brevity
 
 import com.dylibso.chicory.runtime.HostFunction
@@ -7,27 +9,26 @@ import com.dylibso.chicory.runtime.WasmFunctionHandle
 import com.dylibso.chicory.wasm.types.FunctionType
 import com.dylibso.chicory.wasm.types.ValType
 
-@BrevityInternalApi
-fun Async.World(
-  hostFactory: (Async.Guest) -> Async.Host,
-): World<Async.Host, Async.Guest> {
-  val bridge = HostBridge() // TODO: share this among all worlds
-  val guest = BridgeAsync.BridgeGuest()
-  val host = hostFactory(guest)
-  return BridgeAsync(bridge, guest, host)
-}
+val asyncWorld: World<*, *>
+  get() = RealAsyncWorld()
 
 @BrevityInternalApi
-internal class BridgeAsync(
-  private val bridge: HostBridge,
-  override val guest: Async.Guest,
-  override val host: Async.Host,
-) : World<Async.Host, Async.Guest> {
+internal class RealAsyncWorld : World<Async.Host, Async.Guest>() {
+  private val host_ = RealAsyncHost()
+
+  override val guest = BridgeGuest()
+  override val host: Async.Host
+    get() = host_
+
+  private lateinit var bridge: HostBridge
 
   override fun initExports(instance: Instance) {
   }
 
-  override fun initImports(store: Store) {
+  override fun initImports(bridge: HostBridge, store: Store) {
+    this.bridge = bridge
+    this.host_.bridge = bridge
+
     store.addFunction(
       HostFunction(
         $$"$root",
@@ -37,7 +38,13 @@ internal class BridgeAsync(
           listOf(),
         ),
         WasmFunctionHandle { instance, args ->
-          bridge.getImportedResource<WaitableSet>(args[1].toInt()).join(args[0].toInt())
+          val waitableIndex = args[0].toInt()
+          val rep = args[1].toInt()
+          if (rep != 0) {
+            bridge.getImportedResource<WaitableSet>(rep).join(waitableIndex)
+          } else {
+            // TODO: remove the waitable from its current waitable set.
+          }
           longArrayOf()
         },
       ),
@@ -83,8 +90,9 @@ internal class BridgeAsync(
           listOf(),
         ),
         WasmFunctionHandle { instance, args ->
-          val result = bridge.drop<WaitableSet>(args[0].toInt())
-          result.close()
+          // TODO: implement this.
+          // val result = bridge.drop<WaitableSet>(args[0].toInt())
+          // result.close()
           longArrayOf()
         },
       ),
@@ -140,7 +148,7 @@ internal class BridgeAsync(
           listOf(ValType.I32),
         ),
         WasmFunctionHandle { instance, args ->
-          val result = host.contextGet(index, TypeId.I32)
+          val result = host.contextGet(index)
           longArrayOf(result.toLong())
         },
       ),
@@ -154,7 +162,7 @@ internal class BridgeAsync(
           listOf(),
         ),
         WasmFunctionHandle { instance, args ->
-          host.contextSet(index, TypeId.I32, args[0].toInt())
+          host.contextSet(index, args[0].toInt())
           longArrayOf()
         },
       ),

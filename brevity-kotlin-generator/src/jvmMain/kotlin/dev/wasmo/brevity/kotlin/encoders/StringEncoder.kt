@@ -27,6 +27,9 @@ object StringEncoder : Encoder() {
   override val lowerAllocates: Boolean
     get() = true
 
+  override val lowerFlatRequiresCallBuilder: Boolean
+    get() = false
+
   context(codeBuilder: CodeBuilder, context: Context)
   override fun load(
     baseAddress: CodeBlock,

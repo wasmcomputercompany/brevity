@@ -158,7 +158,7 @@ class FunctionEncoder(
   context(codeBuilder: CodeBuilder)
   fun liftPointerParameter(
     p: Iterator<KtExpression>,
-  ): CodeBlock? {
+  ): KtExpression? {
     val result = function.result
     if (result !is Result.PointerParameter) return null
 
@@ -167,7 +167,12 @@ class FunctionEncoder(
       result.parameter.name,
       codeBuilder.platform.liftAddress(p.next().code),
     )
-    return CodeBlock.of("%N", result.parameter.name)
+    return CodeBlockExpression(
+      type = codeBuilder.platform.addressType,
+      nameHint = result.parameter.name,
+      code = CodeBlock.of("%N", result.parameter.name),
+      immediate = true,
+    )
   }
 
   context(codeBuilder: CodeBuilder)

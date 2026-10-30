@@ -58,7 +58,7 @@ class RealWasiP2Host(
   override val monotonicClock: MonotonicClock = RealMonotonicClock(monotonicTimeSource)
   override val wallClock: WallClock
     get() = TODO("Not yet implemented")
-  override val types: Types
+  override val filesystemTypes: Types
     get() = TODO("Not yet implemented")
   override val preopens: Preopens
     get() = TODO("Not yet implemented")

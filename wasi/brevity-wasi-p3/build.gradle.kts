@@ -30,5 +30,5 @@ brevity {
     "wasi:random@0.3.1",
     "wasi:sockets@0.3.1",
   )
-  worlds.add("wasi:http/service@0.3.1")
+  worlds.add("wasi:cli/imports@0.3.1")
 }

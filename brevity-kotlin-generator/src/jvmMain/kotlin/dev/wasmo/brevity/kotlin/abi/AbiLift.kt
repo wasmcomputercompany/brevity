@@ -10,6 +10,7 @@ import dev.wasmo.brevity.kotlin.expressions.KtExpression
 import dev.wasmo.brevity.kotlin.expressions.KtFunction
 import dev.wasmo.brevity.kotlin.expressions.makeImmediate
 import dev.wasmo.brevity.kotlin.generator.FunctionEncoder
+import dev.wasmo.brevity.kotlin.generator.Symbols
 import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 
 context(codeBuilder: CodeBuilder)
@@ -35,16 +36,7 @@ fun AbiLift(
       functionEncoder = functionEncoder,
     )
 
-    is FunctionName.AsyncExportCallback -> object : KtFunction {
-      context(codeBuilder: CodeBuilder)
-      override fun call(
-        receiver: KtExpression?,
-        parameters: List<KtExpression>,
-      ): KtExpression {
-        codeBuilder.addStatement("TODO(%S)", "implement AbiLift for AsyncLiftCallbacks")
-        return KtExpression.Unit
-      }
-    }
+    is FunctionName.AsyncExportCallback -> AbiAsyncExportCallbackLift()
 
     is FunctionName.TaskReturn -> AbiTaskReturnLift(
       functionEncoder = functionEncoder,
@@ -69,13 +61,9 @@ private class AbiSyncLift(
     check(receiver == null)
 
     val p = parameters.iterator()
-    val liftedParametersValues = functionEncoder.liftParameters(p)
-    val liftedPointerParameterValue = functionEncoder.liftPointerParameter(p)
-
-    check(!p.hasNext()) {
-      "unexpected parameter count"
-    }
-
+    val liftedParametersValues = functionEncoder.liftParameters(p).map { it.makeImmediate() }
+    val liftedPointerParameterValue = functionEncoder.liftPointerParameter(p)?.makeImmediate()
+    check(!p.hasNext()) { "unexpected parameter count" }
     codeBuilder.platform.afterLiftParameters()
 
     val resultValue = liftedFunction.call(
@@ -83,7 +71,7 @@ private class AbiSyncLift(
       liftedParametersValues,
     ).makeImmediate()
 
-    return functionEncoder.lowerResult(resultValue, liftedPointerParameterValue)
+    return functionEncoder.lowerResult(resultValue, liftedPointerParameterValue?.code)
   }
 }
 
@@ -98,9 +86,8 @@ private class AbiTaskReturnLift(
     check(receiver == null)
 
     val p = parameters.iterator()
-    val liftedParameterValues = functionEncoder.liftParameters(p)
-    check(!p.hasNext())
-
+    val liftedParameterValues = functionEncoder.liftParameters(p).map { it.makeImmediate() }
+    check(!p.hasNext()) { "unexpected parameter count" }
     codeBuilder.platform.afterLiftParameters()
 
     codeBuilder.add("%L.taskReturn(⇥", codeBuilder.bridge)
@@ -159,6 +146,31 @@ private class AbiResourceDropLift(
   }
 }
 
+private class AbiAsyncExportCallbackLift : KtFunction {
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    val packedAsyncResultName = codeBuilder.newName("packedAsyncResult")
+    codeBuilder.addStatement(
+      "val %N = %L.resumeTask(%T(%L, %L, %L))",
+      packedAsyncResultName,
+      codeBuilder.bridge,
+      Symbols.Brevity.Event,
+      parameters[0].code,
+      parameters[1].code,
+      parameters[2].code,
+    )
+    return CodeBlockExpression(
+      type = INT,
+      nameHint = "packedAsyncResultName",
+      code = CodeBlock.of("%L.value.toInt()", packedAsyncResultName),
+      immediate = true,
+    )
+  }
+}
+
 /** The function returns a `PackedAsyncResult`. */
 private class AbiLiftAsyncExport(
   private val functionEncoder: FunctionEncoder,
@@ -177,21 +189,17 @@ private class AbiLiftAsyncExport(
   ): KtExpression {
     check(receiver == null)
 
+    val p = parameters.iterator()
+    val liftedParametersValues = functionEncoder.liftParameters(p).map { it.makeImmediate() }
+    check(!p.hasNext()) { "unexpected parameter count" }
+    codeBuilder.platform.afterLiftParameters()
+
     val packedAsyncResultName = codeBuilder.newName("packedAsyncResult")
     codeBuilder.controlFlow(
       "val %N = %L.launchTask",
       packedAsyncResultName,
       codeBuilder.bridge,
     ) {
-      val p = parameters.iterator()
-      val liftedParametersValues = functionEncoder.liftParameters(p)
-
-      check(!p.hasNext()) {
-        "unexpected parameter count"
-      }
-
-      codeBuilder.platform.afterLiftParameters()
-
       val resultValue = liftedFunction.call(
         null,
         liftedParametersValues,
@@ -240,28 +248,24 @@ private class AbiLiftAsyncImport(
   ): KtExpression {
     check(receiver == null)
 
+    val p = parameters.iterator()
+    val liftedParametersValues = functionEncoder.liftParameters(p).map { it.makeImmediate() }
+    val liftedPointerParameterValue = functionEncoder.liftPointerParameter(p)?.makeImmediate()
+    check(!p.hasNext()) { "unexpected parameter count" }
+    codeBuilder.platform.afterLiftParameters()
+
     val packedSubtaskResultName = codeBuilder.newName("packedSubtaskResult")
     codeBuilder.controlFlow(
       "val %N = %L.launchSubtask",
       packedSubtaskResultName,
       codeBuilder.bridge,
     ) {
-      val p = parameters.iterator()
-      val liftedParametersValues = functionEncoder.liftParameters(p)
-      val liftedPointerParameterValue = functionEncoder.liftPointerParameter(p)
-
-      check(!p.hasNext()) {
-        "unexpected parameter count"
-      }
-
-      codeBuilder.platform.afterLiftParameters()
-
       val resultValue = liftedFunction.call(
         null,
         liftedParametersValues,
       ).makeImmediate()
 
-      functionEncoder.lowerResult(resultValue, liftedPointerParameterValue)
+      functionEncoder.lowerResult(resultValue, liftedPointerParameterValue?.code)
     }
 
     return CodeBlockExpression(

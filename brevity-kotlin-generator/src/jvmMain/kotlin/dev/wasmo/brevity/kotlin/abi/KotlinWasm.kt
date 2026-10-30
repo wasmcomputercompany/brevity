@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.MemberName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.expressions.CodeBlockExpression
@@ -21,10 +22,11 @@ class WasmImportFunction(
     check(parameters.size == abiFunction.loweredParameterTypes.size)
 
     val resultValue = abiFunction.result.value
-    val resultName = when {
-      abiFunction.result is AbiFunction.Result.PointerParameter -> null
-      resultValue != null -> codeBuilder.newName("result")
-      else -> null
+    val (resultName, resultType) = when {
+      abiFunction.isSubtask -> codeBuilder.newName("packedSubtaskResult") to INT
+      abiFunction.result is AbiFunction.Result.PointerParameter -> null to null
+      resultValue != null -> codeBuilder.newName("result") to resultValue.type
+      else -> null to null
     }
 
     if (resultName != null) {
@@ -43,10 +45,10 @@ class WasmImportFunction(
     }
     codeBuilder.add("⇤)\n")
 
-    if (resultName == null || resultValue == null) return KtExpression.Unit
+    if (resultName == null || resultType == null) return KtExpression.Unit
 
     return CodeBlockExpression(
-      type = resultValue.type,
+      type = resultType,
       nameHint = resultName,
       code = CodeBlock.of("%N", resultName),
       immediate = true,

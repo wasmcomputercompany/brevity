@@ -106,7 +106,7 @@ class KotlinGeneratorTest {
         }
 
         public interface Host {
-          public val types: Types
+          public val clocksTypes: Types
         }
       }
 
@@ -148,9 +148,10 @@ class KotlinGeneratorTest {
           val stringByteCount = (elementAddress + 4).loadInt()
           Pointer(stringAddress.toUInt()).loadString(stringByteCount)
         }
+        val args_ = list
         freeAllComponentModelReallocAllocatedMemory()
         val result = guest_.run(
-          args = list,
+          args = args_,
         )
         return result
       }
@@ -169,7 +170,7 @@ class KotlinGeneratorTest {
         get() = TimeBridge
 
       internal object TimeBridge : Time.Host {
-        override val types: Types = GuestTypes()
+        override val clocksTypes: Types = GuestTypes()
       }
 
       /**
@@ -204,7 +205,7 @@ class KotlinGeneratorTest {
       import kotlin.wasm.unsafe.Pointer
       import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 
-      public fun loadTypesDatetimeImport(address: Pointer): Datetime = Datetime(
+      public fun loadClocksTypesDatetimeImport(address: Pointer): Datetime = Datetime(
         seconds = (address).loadLong().toULong(),
         nanoseconds = (address + 8).loadInt().toUInt(),
       )
@@ -245,8 +246,8 @@ class KotlinGeneratorTest {
         return world
       }
 
-      internal class HostTime() : World<Time.Host, Time.Guest> {
-        private val bridge: HostBridge = HostBridge()
+      internal class HostTime() : World<Time.Host, Time.Guest>() {
+        private lateinit var bridge: HostBridge
 
         override lateinit var host: Time.Host
 
@@ -259,7 +260,8 @@ class KotlinGeneratorTest {
           this.run_export = instance.export("run")
         }
 
-        override fun initImports(store: Store) {
+        override fun initImports(bridge: HostBridge, store: Store) {
+          this.bridge = bridge
           store.addFunction(
             HostFunction(
               "wasi:clocks/types@0.2.12",
@@ -270,8 +272,8 @@ class KotlinGeneratorTest {
               ),
               WasmFunctionHandle { instance, args ->
                 val resultParameter = args[0].toInt()
-                val result = host.types.now()
-                storeTypesDatetimeImport(resultParameter, result)
+                val result = host.clocksTypes.now()
+                storeClocksTypesDatetimeImport(resultParameter, result)
                 return@WasmFunctionHandle longArrayOf()
               },
             )
@@ -299,7 +301,8 @@ class KotlinGeneratorTest {
                 listOf(ValType.I32),
               ),
               WasmFunctionHandle { instance, args ->
-                val receiver_ = bridge.getImportedResource<Pollable>(args[0].toInt())
+                val rep_ = args[0].toInt()
+                val receiver_ = bridge.getImportedResource<Pollable>(rep_)
                 val result = receiver_.ready()
                 val result_ = (if (result) 1 else 0)
                 return@WasmFunctionHandle longArrayOf(result_.toLong())
@@ -315,7 +318,8 @@ class KotlinGeneratorTest {
                 listOf(),
               ),
               WasmFunctionHandle { instance, args ->
-                val receiver_ = bridge.getImportedResource<Pollable>(args[0].toInt())
+                val rep_ = args[0].toInt()
+                val receiver_ = bridge.getImportedResource<Pollable>(rep_)
                 receiver_.close()
                 return@WasmFunctionHandle longArrayOf()
               },
@@ -323,7 +327,7 @@ class KotlinGeneratorTest {
           )
         }
 
-        public fun storeTypesDatetimeImport(address: Int, value_: Datetime) {
+        public fun storeClocksTypesDatetimeImport(address: Int, value_: Datetime) {
           bridge.memory.writeLong(address, value_.seconds.toLong())
           bridge.memory.writeI32(address + 8, value_.nanoseconds.toInt())
         }
@@ -488,7 +492,7 @@ class KotlinGeneratorTest {
             types_now_import(
               resultParameter.address.toInt(),
             )
-            loadTypesDatetimeImport(resultParameter)
+            loadClocksTypesDatetimeImport(resultParameter)
           }
           freeAllComponentModelReallocAllocatedMemory()
           return result

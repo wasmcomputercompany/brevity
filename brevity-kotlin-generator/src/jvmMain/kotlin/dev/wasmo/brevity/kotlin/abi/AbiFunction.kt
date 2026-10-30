@@ -48,13 +48,18 @@ data class AbiFunction(
   val result: Result = Result.Void,
   val isSupported: Boolean,
   val orientation: Orientation,
+  val asyncExportCallback: AbiFunction? = null,
   private val nameAllocator: NameAllocator,
 ) {
   val kotlinName: String
     get() = kotlinIdentifier.lowerCamelCase
 
   val async: Boolean
-    get() = name is FunctionName.AsyncExport || name is FunctionName.AsyncImport
+    get() = isTask || isSubtask
+  val isTask: Boolean
+    get() = name is FunctionName.AsyncExport
+  val isSubtask: Boolean
+    get() = name is FunctionName.AsyncImport
 
   /** Returns true if this function is not exposed to the application layer. */
   val isSynthetic: Boolean
@@ -262,23 +267,28 @@ data class AbiFunction(
             irFunction = irFunction,
             orientation = orientation.mirror,
           )
+          val asyncExportCallback = asyncExportCallback(
+            irFunction = irFunction,
+            isResource = isResource,
+          )
           listBuilder += create(
             irFunction = irFunction,
             orientation = orientation,
             isResource = isResource,
             taskReturn = taskReturn,
+            asyncExportCallback = asyncExportCallback,
           )
           if (includeSyntheticFunctions) {
-            listBuilder += asyncCallback(
-              irFunction = irFunction,
-              orientation = orientation,
-              isResource = isResource,
-            )
+            listBuilder += asyncExportCallback
             listBuilder += taskReturn
           }
         }
 
-        else -> listBuilder += create(irFunction, orientation, isResource)
+        else -> listBuilder += create(
+          irFunction = irFunction,
+          orientation = orientation,
+          isResource = isResource,
+        )
       }
     }
 
@@ -302,6 +312,7 @@ data class AbiFunction(
       orientation: Orientation,
       isResource: Boolean,
       taskReturn: AbiFunction? = null,
+      asyncExportCallback: AbiFunction? = null,
     ): AbiFunction {
       check(taskReturn == null || orientation == Export)
 
@@ -330,13 +341,13 @@ data class AbiFunction(
         result = result(nameAllocator, irFunction, orientation, taskReturn),
         isSupported = irFunction.isSupported,
         orientation = orientation,
+        asyncExportCallback = asyncExportCallback,
         nameAllocator = nameAllocator,
       )
     }
 
-    fun asyncCallback(
+    fun asyncExportCallback(
       irFunction: IrFunction,
-      orientation: Orientation,
       isResource: Boolean,
     ): AbiFunction {
       val nameAllocator = NameAllocator()
@@ -355,7 +366,8 @@ data class AbiFunction(
         kotlinIdentifier = irFunction.functionName.kotlinIdentifier,
         parameters = parameters(flatParameters, nameAllocator, name),
         isSupported = irFunction.isSupported,
-        orientation = orientation,
+        result = Result.SingleCoreValueReturn(Result.Value(IntEncoder, INT)),
+        orientation = Export,
         nameAllocator = nameAllocator,
       )
     }
@@ -397,7 +409,7 @@ data class AbiFunction(
         Result.Value(
           encoder = encoderFactory.get(WitTypeName.S32),
           type = kotlinMapper.get(WitTypeName.S32),
-        )
+        ),
       )
       val name = FunctionName.ResourceNew(resourceType)
       return AbiFunction(
@@ -436,7 +448,7 @@ data class AbiFunction(
     ): AbiFunction {
       val nameAllocator = NameAllocator()
       val flatParameters = listOf(
-        flatParameterResourceRep(nameAllocator)
+        flatParameterResourceRep(nameAllocator),
       )
       val name = FunctionName.ResourceClose(resourceType)
       return AbiFunction(

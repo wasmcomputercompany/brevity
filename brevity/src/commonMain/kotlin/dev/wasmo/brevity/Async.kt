@@ -2,6 +2,10 @@ package dev.wasmo.brevity
 
 import kotlin.jvm.JvmInline
 
+/**
+ * Note that a waitable can be in at most one set. Joining a set removes the waitable from its
+ * current set, if any. Joining waitable 0 removes it from all sets.
+ */
 @BrevityInternalApi
 abstract class WaitableSet : Resource() {
   /**
@@ -28,12 +32,12 @@ object Async {
     /**
      * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-contextget
      */
-    fun <T> contextGet(index: Int, typeId: TypeId<T>): T
+    fun contextGet(index: Int): Int
 
     /**
      * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-contextset
      */
-    fun <T> contextSet(index: Int, typeId: TypeId<T>, value: T)
+    fun contextSet(index: Int, value: Int)
 
     /**
      * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-taskcancel
@@ -53,29 +57,8 @@ object Async {
 }
 
 @BrevityInternalApi
-@JvmInline
-value class TypeId<T> private constructor(
-  val value: Int,
-) {
-  companion object {
-    val I32 = TypeId<Int>(0)
-  }
-}
-
-@BrevityInternalApi
 enum class CallbackCode {
   Exit, Yield, Wait, Max;
-}
-
-@BrevityInternalApi
-enum class EventCode {
-  None,
-  Subtask,
-  StreamRead,
-  StreamWrite,
-  FutureRead,
-  FutureWrite,
-  TaskCancelled,
 }
 
 /**
@@ -138,5 +121,60 @@ value class PackedSubtaskResult(val value: UInt) {
   companion object {
     private val SubtaskStateValues = SubtaskState.entries.toTypedArray()
     private val MaxSubtaskIndex = 1 shl 28
+  }
+}
+
+@BrevityInternalApi
+sealed class Event(
+  val code: Int,
+  val p1: Int = 0,
+  val p2: Int = 0,
+) {
+  object None : Event(
+    code = 0,
+  )
+
+  class Subtask(
+    subtaskIndex: Int,
+    subtaskState: SubtaskState,
+  ) : Event(
+    code = 1,
+    p1 = subtaskIndex,
+    p2 = subtaskState.ordinal,
+  ) {
+    val subtaskIndex: Int
+      get() = p1
+    val subtaskState: SubtaskState
+      get() = SubtaskState.entries[p2]
+  }
+
+  object StreamRead : Event(
+    code = 2,
+  )
+
+  object StreamWrite : Event(
+    code = 3,
+  )
+
+  object FutureRead : Event(
+    code = 4,
+  )
+
+  object FutureWrite : Event(
+    code = 5,
+  )
+
+  object TaskCancelled : Event(
+    code = 6,
+  )
+
+  companion object {
+    operator fun invoke(code: Int, p1: Int, p2: Int): Event {
+      return when (code) {
+        0 -> None
+        1 -> Subtask(p1, SubtaskState.entries[p2])
+        else -> error("unexpected event code")
+      }
+    }
   }
 }
