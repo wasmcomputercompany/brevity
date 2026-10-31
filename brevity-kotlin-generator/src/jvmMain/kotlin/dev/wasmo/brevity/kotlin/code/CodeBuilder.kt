@@ -50,5 +50,14 @@ class CodeBuilder(
     scopeStack.removeLast()
   }
 
+  fun <T> nameAllocatorScope(
+    block: context(CodeBuilder) () -> T,
+  ) : T {
+    scopeStack += nameAllocator.copy()
+    val result = block()
+    scopeStack.removeLast()
+    return result
+  }
+
   fun build(): CodeBlock = code.build()
 }

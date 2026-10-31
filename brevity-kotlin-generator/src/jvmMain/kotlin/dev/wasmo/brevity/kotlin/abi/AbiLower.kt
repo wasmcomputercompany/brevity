@@ -51,12 +51,12 @@ private class AbiLower(
         },
         memoryAllocator = memoryAllocator,
       )
-      val loweredResult = loweredFunction.call(receiver, loweredParameterValues)
 
       if (functionEncoder.function.isTask) {
-        return@withMemoryAllocator callAwaitTaskComplete(loweredResult, receiver)
+        return@withMemoryAllocator callLaunchTask(loweredParameterValues, receiver)
       }
 
+      val loweredResult = loweredFunction.call(receiver, loweredParameterValues)
       if (functionEncoder.function.isSubtask) {
         contextOf<CodeBuilder>().addStatement(
           "%L.awaitSubtaskComplete(%T(%L.toUInt()))",
@@ -75,8 +75,8 @@ private class AbiLower(
   }
 
   context(codeBuilder: CodeBuilder)
-  private fun callAwaitTaskComplete(
-    packedAsyncResult: KtExpression,
+  private fun callLaunchTask(
+    loweredParameterValues: List<KtExpression>,
     receiver: KtExpression?,
   ): KtExpression {
     val resultValue = functionEncoder.function.result.value
@@ -84,16 +84,21 @@ private class AbiLower(
       codeBuilder.newName("result")
         .also { codeBuilder.add("val %N = ", it) }
     }
+    codeBuilder.add("%L.launchTask<%T>(⇥\n", codeBuilder.bridge, resultValue?.type ?: UNIT)
+    codeBuilder.add("execute = {⇥\n")
+    codeBuilder.nameAllocatorScope {
+      val packedAsyncResult = loweredFunction.call(receiver, loweredParameterValues)
+      contextOf<CodeBuilder>().addStatement(
+        "%T(%L.toUInt())",
+        Symbols.Brevity.PackedAsyncResult,
+        packedAsyncResult.code,
+      )
+    }
+    codeBuilder.add("⇤},\n")
 
     val eventName = codeBuilder.newName("event")
-    codeBuilder.controlFlow(
-      "%L.awaitTaskComplete<%T>(%T(%L.toUInt())) { %N ->",
-      codeBuilder.bridge,
-      resultValue?.type ?: UNIT,
-      Symbols.Brevity.PackedAsyncResult,
-      packedAsyncResult.code,
-      eventName,
-    ) {
+    codeBuilder.add("callback = { %N ->⇥\n", eventName)
+    codeBuilder.nameAllocatorScope {
       val callback = codeBuilder.platform.createLowered(
         functionEncoder.service,
         functionEncoder.function.asyncExportCallback!!,
@@ -108,11 +113,13 @@ private class AbiLower(
         ),
       )
       contextOf<CodeBuilder>().addStatement(
-        "return@awaitTaskComplete %T(%L.toUInt())",
+        "%T(%L.toUInt())",
         Symbols.Brevity.PackedAsyncResult,
         callbackResult.code,
       )
     }
+    codeBuilder.add("⇤},\n")
+    codeBuilder.add("⇤)\n")
 
     if (resultName == null) return KtExpression.Unit
 
