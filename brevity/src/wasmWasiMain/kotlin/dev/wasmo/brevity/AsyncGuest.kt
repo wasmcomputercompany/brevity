@@ -15,22 +15,6 @@ private object AsyncHost : Async.Host {
     }
   }
 
-  override fun contextGet(index: Int): Int {
-    return when (index) {
-      0 -> contextGet0_export()
-      1 -> contextGet1_export()
-      else -> error("unexpected index: $index")
-    }
-  }
-
-  override fun contextSet(index: Int, value: Int) {
-    when (index) {
-      0 -> contextSet0_export(value)
-      1 -> contextSet1_export(value)
-      else -> error("unexpected index: $index")
-    }
-  }
-
   override fun taskCancel() {
     taskCancel_export()
   }
@@ -56,6 +40,10 @@ private class GuestWaitableSet : WaitableSet() {
 
   override fun close() {
     waitableSetDrop_export(rep)
+  }
+
+  override fun wait(): Event {
+    TODO("Not yet implemented")
   }
 }
 

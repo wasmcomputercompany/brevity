@@ -4,9 +4,9 @@ package dev.wasmo.brevity
 
 import kotlin.coroutines.CoroutineContext
 import kotlin.time.Duration
-import wit.wasi.cli.v0_3_1.Imports
-import wit.wasi.cli.v0_3_1.host
-import wit.wasi.clocks.v0_3_1.Duration as WasiDuration
+import wit.wasi.cli.v0_3_0.Imports
+import wit.wasi.cli.v0_3_0.host
+import wit.wasi.clocks.v0_3_0.Duration as WasiDuration
 
 @EagerInitialization
 private val initializeBrevity = run {

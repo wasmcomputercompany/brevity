@@ -50,6 +50,22 @@ object GuestBridge {
     return existing as T
   }
 
+  fun contextGet(index: Int): Int {
+    return when (index) {
+      0 -> contextGet0_export()
+      1 -> contextGet1_export()
+      else -> error("unexpected index: $index")
+    }
+  }
+
+  fun contextSet(index: Int, value: Int) {
+    when (index) {
+      0 -> contextSet0_export(value)
+      1 -> contextSet1_export(value)
+      else -> error("unexpected index: $index")
+    }
+  }
+
   fun launchTask(block: suspend () -> Unit): PackedAsyncResult {
     val task = BrevityTask()
     theOnlyTask = task

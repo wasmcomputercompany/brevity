@@ -23,12 +23,12 @@ kotlin {
 
 brevity {
   ociPackages.addAll(
-    "wasi:cli@0.3.1",
-    "wasi:clocks@0.3.1",
-    "wasi:filesystem@0.3.1",
-    "wasi:http@0.3.1",
-    "wasi:random@0.3.1",
-    "wasi:sockets@0.3.1",
+    "wasi:cli@0.3.0",
+    "wasi:clocks@0.3.0",
+    "wasi:filesystem@0.3.0",
+    "wasi:http@0.3.0",
+    "wasi:random@0.3.0",
+    "wasi:sockets@0.3.0",
   )
-  worlds.add("wasi:cli/imports@0.3.1")
+  worlds.add("wasi:cli/imports@0.3.0")
 }

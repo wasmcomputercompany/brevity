@@ -2,8 +2,8 @@ package dev.wasmo.brevity.wasi.p3
 
 import kotlin.time.Duration.Companion.nanoseconds
 import kotlinx.coroutines.delay
-import wit.wasi.clocks.v0_3_1.Duration
-import wit.wasi.clocks.v0_3_1.MonotonicClock
+import wit.wasi.clocks.v0_3_0.Duration
+import wit.wasi.clocks.v0_3_0.MonotonicClock
 
 internal class RealMonotonicClock : MonotonicClock {
   override fun now(): MonotonicClock.Mark {

@@ -63,8 +63,31 @@ internal class RealAsyncWorld : World<Async.Host, Async.Guest>() {
         },
       ),
     )
-    addContextFunctions(store, 0)
-    addContextFunctions(store, 1)
+    store.addFunction(
+      HostFunction(
+        $$"$root",
+        "[waitable-set-wait]",
+        FunctionType.of(
+          listOf(ValType.I32, ValType.I32),
+          listOf(ValType.I32),
+        ),
+        WasmFunctionHandle { instance, args ->
+          val waitableSet = bridge.getImportedResource<WaitableSet>(args[0].toInt())
+          val payloadAddress = args[1].toInt()
+          val event = waitableSet.wait()
+          bridge.memory.writeI32(payloadAddress, event.p1)
+          bridge.memory.writeI32(payloadAddress + 4, event.p2)
+          longArrayOf(event.code.toLong())
+        },
+      ),
+    )
+
+    // Context get + set functions are imported with two names each.
+    addContextFunctions(store, 0, $$"$root", "[context-get-0]", "[context-set-0]")
+    addContextFunctions(store, 0, "env", "__wasm_get_stack_pointer", "__wasm_set_stack_pointer")
+    addContextFunctions(store, 1, $$"$root", "[context-get-1]", "[context-set-1]")
+    addContextFunctions(store, 1, "env", "__wasm_get_tls_base", "__wasm_set_tls_base")
+
     store.addFunction(
       HostFunction(
         $$"$root",
@@ -138,31 +161,37 @@ internal class RealAsyncWorld : World<Async.Host, Async.Guest>() {
     )
   }
 
-  private fun addContextFunctions(store: Store, index: Int) {
+  private fun addContextFunctions(
+    store: Store,
+    index: Int,
+    moduleName: String,
+    getSymbolName: String,
+    setSymbolName: String,
+  ) {
     store.addFunction(
       HostFunction(
-        $$"$root",
-        "[context-get-$index]",
+        moduleName,
+        getSymbolName,
         FunctionType.of(
           listOf(),
           listOf(ValType.I32),
         ),
         WasmFunctionHandle { instance, args ->
-          val result = host.contextGet(index)
+          val result = bridge.currentThread.contextGet(index)
           longArrayOf(result.toLong())
         },
       ),
     )
     store.addFunction(
       HostFunction(
-        $$"$root",
-        "[context-set-$index]",
+        moduleName,
+        setSymbolName,
         FunctionType.of(
           listOf(ValType.I32),
           listOf(),
         ),
         WasmFunctionHandle { instance, args ->
-          host.contextSet(index, args[0].toInt())
+          bridge.currentThread.contextSet(index, args[0].toInt())
           longArrayOf()
         },
       ),

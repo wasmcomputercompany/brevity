@@ -18,6 +18,8 @@ class HostBridge(
   private var nextRep = 6_060_000
   private var nextWaitableIndex = 8_080_000
   private lateinit var _memory: Memory
+  internal var initialStackPointer: Int = 0
+  internal var initialTlsBase: Int = 0
 
   val memory: Memory
     get() = _memory
@@ -25,13 +27,22 @@ class HostBridge(
   lateinit var memoryAllocator: MemoryAllocator
     private set
 
-  private var taskResult: Any? = null
+  /** Thread used when an async task isn't currently running. */
+  val defaultThread = Thread(this, Task())
 
-  fun init(instance: Instance) {
+  /** The currently-executed thread, which implies the current task. */
+  var currentThread: Thread = defaultThread
+
+  fun init(symbolIndex: SymbolIndex, instance: Instance) {
     this._memory = instance.memory()
     this.memoryAllocator = MemoryAllocator(
       cabiRealloc = instance.export("cabi_realloc"),
     )
+    this.initialStackPointer = symbolIndex.initialStackPointer(instance)
+    this.defaultThread.contextSet(0, initialStackPointer)
+
+    this.initialTlsBase = symbolIndex.initialTlsBase(instance)
+    this.defaultThread.contextSet(1, initialTlsBase)
   }
 
   fun <T : Resource> putExportedResource(resource: T): Int {
@@ -61,25 +72,29 @@ class HostBridge(
     return repToExportedResource.remove(rep)
   }
 
-  suspend fun <T> awaitTaskComplete(
-    packedAsyncResult: PackedAsyncResult,
-    callback: (event: Event) -> PackedAsyncResult,
+  suspend fun <T> launchTask(
+    execute: () -> PackedAsyncResult,
+    callback: (Event) -> PackedAsyncResult,
   ): T {
-    var packedAsyncResult = packedAsyncResult
+    val thread = Thread(this, Task())
+
+    var packedAsyncResult = thread.execute { execute() }
 
     while (true) {
       when (packedAsyncResult.callbackCode) {
-        CallbackCode.Exit -> return taskResult as T
+        CallbackCode.Exit -> return thread.taskResult as T
 
         CallbackCode.Yield -> {
           yield()
-          packedAsyncResult = callback(Event.None)
+          packedAsyncResult = thread.execute { callback(Event.None) }
         }
 
         CallbackCode.Wait -> {
-          val waitableSet = getImportedResource<RealWaitableSet>(packedAsyncResult.waitableSetIndex)
+          val waitableSet = getImportedResource<RealWaitableSet>(
+            packedAsyncResult.waitableSetIndex,
+          )
           val event = waitableSet.waitForEvent()
-          packedAsyncResult = callback(event)
+          packedAsyncResult = thread.execute { callback(event) }
         }
 
         CallbackCode.Max -> TODO()
@@ -104,11 +119,50 @@ class HostBridge(
       else -> PackedSubtaskResult(SubtaskState.Returned)
     }
   }
+}
+
+@BrevityInternalApi
+class Thread(
+  val bridge: HostBridge,
+  val task: Task,
+) {
+  val context = intArrayOf(
+    bridge.initialStackPointer,
+    bridge.initialTlsBase,
+  )
+  var taskResult: Any? = null
+
+  /**
+   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-contextget
+   */
+  fun contextGet(index: Int): Int {
+    return context[index]
+  }
+
+  /**
+   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-contextset
+   */
+  fun contextSet(index: Int, value: Int) {
+    context[index] = value
+  }
 
   fun taskReturn(value: Any? = Unit) {
     this.taskResult = value
   }
+
+  inline fun <T> execute(block: () -> T): T {
+    check(bridge.currentThread == bridge.defaultThread)
+    bridge.currentThread = this
+    try {
+      return block()
+    } finally {
+      bridge.currentThread = bridge.defaultThread
+    }
+  }
 }
+
+@BrevityInternalApi
+class Task
 
 @BrevityInternalApi
 inline fun <reified T : Resource> HostBridge.drop(id: Int): T {

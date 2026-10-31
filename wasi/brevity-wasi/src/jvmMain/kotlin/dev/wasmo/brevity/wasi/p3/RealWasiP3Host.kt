@@ -1,26 +1,26 @@
 package dev.wasmo.brevity.wasi.p3
 
-import wit.wasi.cli.v0_3_1.Environment
-import wit.wasi.cli.v0_3_1.Exit
-import wit.wasi.cli.v0_3_1.Imports
-import wit.wasi.cli.v0_3_1.Stderr
-import wit.wasi.cli.v0_3_1.Stdin
-import wit.wasi.cli.v0_3_1.Stdout
-import wit.wasi.cli.v0_3_1.TerminalInput
-import wit.wasi.cli.v0_3_1.TerminalOutput
-import wit.wasi.cli.v0_3_1.TerminalStderr
-import wit.wasi.cli.v0_3_1.TerminalStdin
-import wit.wasi.cli.v0_3_1.TerminalStdout
-import wit.wasi.clocks.v0_3_1.MonotonicClock
-import wit.wasi.clocks.v0_3_1.SystemClock
-import wit.wasi.clocks.v0_3_1.Timezone
-import wit.wasi.filesystem.v0_3_1.Preopens
-import wit.wasi.filesystem.v0_3_1.Types as FilesystemTypes
-import wit.wasi.random.v0_3_1.Insecure
-import wit.wasi.random.v0_3_1.InsecureSeed
-import wit.wasi.random.v0_3_1.Random
-import wit.wasi.sockets.v0_3_1.IpNameLookup
-import wit.wasi.sockets.v0_3_1.Types as SocketsTypes
+import wit.wasi.cli.v0_3_0.Environment
+import wit.wasi.cli.v0_3_0.Exit
+import wit.wasi.cli.v0_3_0.Imports
+import wit.wasi.cli.v0_3_0.Stderr
+import wit.wasi.cli.v0_3_0.Stdin
+import wit.wasi.cli.v0_3_0.Stdout
+import wit.wasi.cli.v0_3_0.TerminalInput
+import wit.wasi.cli.v0_3_0.TerminalOutput
+import wit.wasi.cli.v0_3_0.TerminalStderr
+import wit.wasi.cli.v0_3_0.TerminalStdin
+import wit.wasi.cli.v0_3_0.TerminalStdout
+import wit.wasi.clocks.v0_3_0.MonotonicClock
+import wit.wasi.clocks.v0_3_0.SystemClock
+import wit.wasi.clocks.v0_3_0.Timezone
+import wit.wasi.filesystem.v0_3_0.Preopens
+import wit.wasi.filesystem.v0_3_0.Types as FilesystemTypes
+import wit.wasi.random.v0_3_0.Insecure
+import wit.wasi.random.v0_3_0.InsecureSeed
+import wit.wasi.random.v0_3_0.Random
+import wit.wasi.sockets.v0_3_0.IpNameLookup
+import wit.wasi.sockets.v0_3_0.Types as SocketsTypes
 
 /**
  * Implement WASI Preview 3.
