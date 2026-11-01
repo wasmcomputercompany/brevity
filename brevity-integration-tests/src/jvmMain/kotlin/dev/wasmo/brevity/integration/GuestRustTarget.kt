@@ -53,8 +53,16 @@ class GuestRustTarget(
       """
       |mod bindings {
       |    wit_bindgen::generate!({
-      |        path: "../wit/bridge-type-$name-test.wit",
+      |        path: [
+      |          "../../../../../wasi/brevity-wasi-p3/build/brevity/oci-wit/wasi_clocks@0.3.0/package.wit",
+      |          "wit/bridge-type-$name-test.wit",
+      |        ],
+      |        with: {
+      |          "wasi:clocks/types@0.3.0": generate,
+      |          "wasi:clocks/monotonic-clock@0.3.0": generate,
+      |        },
       |        additional_derives: [PartialEq],
+      |        world: "brevity:testing/test-world"
       |    });
       |
       |    use super::BrevityTesting;
@@ -134,5 +142,14 @@ class GuestRustTarget(
         """.trimMargin(),
       )
     }
+    writeUtf8(
+      """
+      |// We don't have a Rust async sleep function, so call the WASIp3 one directly.
+      |async fn sleep_millis(delay_millis: u64) {
+      |  bindings::wasi::clocks::monotonic_clock::wait_for(delay_millis * 1_000_000).await;
+      |}
+      |
+      """.trimMargin(),
+    )
   }
 }

@@ -95,15 +95,23 @@ class BrevityExecutionTester(
       launch { GuestRustTarget(name, fileSystem, layout, testFunctions).generate() }
       launch {
         WitTarget(
-          name = name,
+          path = layout.brevityWit / "bridge-type-$name-test.wit".toPath(),
           fileSystem = fileSystem,
-          layout = layout,
           rawWitTypeDeclarations = rawWitTypeDeclarations,
           rawWitUseStatements = rawWitUseStatements,
           testFunctions = testFunctions,
         ).generate()
-        sweepWit()
         generateBrevity()
+      }
+      launch {
+        WitTarget(
+          path = layout.rustWit / "bridge-type-$name-test.wit".toPath(),
+          fileSystem = fileSystem,
+          rawWitTypeDeclarations = rawWitTypeDeclarations,
+          rawWitUseStatements = rawWitUseStatements,
+          testFunctions = testFunctions,
+          extraImports = listOf("wasi:clocks/monotonic-clock@0.3.0"),
+        ).generate()
       }
     }
   }
@@ -158,16 +166,6 @@ class BrevityExecutionTester(
     }
   }
 
-  /**
-   * Delete any stray wit sources, but no build tool outputs. This is meant to be used between
-   * generating wit and running brevity.
-   */
-  private suspend fun sweepWit() {
-    executeIo("sweepWit") {
-      sweepRecursively(layout.wit)
-    }
-  }
-
   private fun sweepRecursively(dir: Path) {
     when (dir.name) {
       "build", "target" -> return
@@ -188,7 +186,7 @@ class BrevityExecutionTester(
       collectNoIssuesOrThrow {
         val generator = WitBridgeGenerator.precompile(
           fileSystem = fileSystem,
-          packageDirectories = listOf(layout.wit),
+          packageDirectories = listOf(layout.brevityWit),
           customTypeMappings = types
             .filter { it.kotlinTypeMapping }
             .associate { "brevity:testing/types.${it.witType}" to it.kotlinType },
