@@ -17,12 +17,11 @@ class HostBridge(
   internal val waitables = mutableMapOf<Int, RealAsyncHost.Waitable>()
   private var nextRep = 6_060_000
   private var nextWaitableIndex = 8_080_000
-  private lateinit var _memory: Memory
   internal var initialStackPointer: Int = 0
   internal var initialTlsBase: Int = 0
 
-  val memory: Memory
-    get() = _memory
+  lateinit var memory: Memory
+    private set
 
   lateinit var memoryAllocator: MemoryAllocator
     private set
@@ -34,10 +33,16 @@ class HostBridge(
   var currentThread: Thread = defaultThread
 
   fun init(symbolIndex: SymbolIndex, instance: Instance) {
-    this._memory = instance.memory()
-    this.memoryAllocator = MemoryAllocator(
-      cabiRealloc = instance.export("cabi_realloc"),
-    )
+    // A .wasm doesn't have to declare a memory, but you can't do much without it. If the memory is
+    // absent, leave the var uninitialized, and assume nothing will access it.
+    val instanceMemory = instance.memory()
+    if (instanceMemory != null) {
+      this.memory = instanceMemory
+      this.memoryAllocator = MemoryAllocator(
+        cabiRealloc = instance.export("cabi_realloc"),
+      )
+    }
+
     this.initialStackPointer = symbolIndex.initialStackPointer(instance)
     this.defaultThread.contextSet(0, initialStackPointer)
 
