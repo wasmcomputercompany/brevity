@@ -6,18 +6,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.selects.SelectBuilder
 import kotlinx.coroutines.selects.select
 
-internal class RealAsyncHost : Async.Host {
+@BrevityInternalApi
+class RealAsyncHost : Async.Host {
   lateinit var bridge: HostBridge
-  val context = Array(2) { 0 }
 
-  override fun waitableSetNew() = RealWaitableSet()
-
-  override fun contextGet(index: Int): Int {
-    return context[index]
-  }
-
-  override fun contextSet(index: Int, value: Int) {
-    context[index] = value
+  override fun waitableSetNew(): RealWaitableSet {
+    return RealWaitableSet()
   }
 
   override fun taskCancel() {
@@ -40,6 +34,10 @@ internal class RealAsyncHost : Async.Host {
     }
 
     override fun poll(eventPointer: Int): Int {
+      error("not implemented")
+    }
+
+    override fun wait(): Event {
       error("not implemented")
     }
 

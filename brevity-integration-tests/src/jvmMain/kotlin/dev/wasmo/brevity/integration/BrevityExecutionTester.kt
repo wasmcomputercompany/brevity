@@ -294,6 +294,7 @@ class BrevityExecutionTester(
           |dependencies:
           |  - ../brevity
           |  - com.squareup.okio:okio:3.16.4
+          |  - dev.wasmo.brevity:brevity-wasi-p3:0-testing
           |  - dev.wasmo.brevity:brevity:0-testing
           |  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2
           |

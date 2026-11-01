@@ -90,7 +90,7 @@ private class AbiTaskReturnLift(
     check(!p.hasNext()) { "unexpected parameter count" }
     codeBuilder.platform.afterLiftParameters()
 
-    codeBuilder.add("%L.taskReturn(⇥", codeBuilder.bridge)
+    codeBuilder.add("%L.currentThread.taskReturn(⇥", codeBuilder.bridge)
     if (functionEncoder.function.parameters.parameters.isNotEmpty()) {
       codeBuilder.add("\n%L,\n", liftedParameterValues.single().code)
     }

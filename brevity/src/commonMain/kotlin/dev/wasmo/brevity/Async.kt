@@ -17,6 +17,11 @@ abstract class WaitableSet : Resource() {
    * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setpoll
    */
   abstract fun poll(eventPointer: Int): Int
+
+  /**
+   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setwait
+   */
+  abstract fun wait(): Event
 }
 
 @BrevityInternalApi
@@ -28,16 +33,6 @@ object Async {
      * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setnew
      */
     fun waitableSetNew(): WaitableSet
-
-    /**
-     * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-contextget
-     */
-    fun contextGet(index: Int): Int
-
-    /**
-     * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-contextset
-     */
-    fun contextSet(index: Int, value: Int)
 
     /**
      * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-taskcancel

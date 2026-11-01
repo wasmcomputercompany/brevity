@@ -149,11 +149,9 @@ class HostGenerator(
         .build(),
     )
 
-    val instanceValue = CodeBlock.of("%N", "instance")
     val initExportsBuilder = FunSpec.builder("initExports")
       .addParameter("instance", Symbols.ChicoryRuntime.Instance)
       .addModifiers(KModifier.OVERRIDE)
-      .addStatement("this.%N.init(%L)", "bridge", instanceValue)
 
     val initImportsBuilder = FunSpec.builder("initImports")
       .addParameter("bridge", Symbols.Brevity.HostBridge)

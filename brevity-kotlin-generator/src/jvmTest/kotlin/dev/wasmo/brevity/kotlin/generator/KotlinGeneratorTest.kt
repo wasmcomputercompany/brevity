@@ -256,7 +256,6 @@ class KotlinGeneratorTest {
         internal lateinit var run_export: ExportFunction
 
         override fun initExports(instance: Instance) {
-          this.bridge.init(instance)
           this.run_export = instance.export("run")
         }
 
