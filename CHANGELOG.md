@@ -1,6 +1,19 @@
 Change Log
 ==========
 
+## Version 0.6.0
+
+_2026-11-01_
+
+ * New: Implement interface and resource functions.
+ * New: Implement import calls.
+ * New: Implement async calls.
+ * New: Implement the `map` type.
+ * New: Honor `__init_stack_pointer` and `__init_tls_base` globals.
+ * Fix: Fail when keywords are used as identifiers.
+ * Fix: Correctly implement alignment when encoding types.
+
+
 ## Version 0.5.0
 
 _2026-10-06_
