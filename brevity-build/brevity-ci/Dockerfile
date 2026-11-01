@@ -46,7 +46,7 @@ RUN apk add --no-cache \
 ENV RUSTUP_HOME="/usr/local/rustup"
 ENV CARGO_HOME="/usr/local/cargo"
 ENV PATH="/usr/local/cargo/bin:$PATH"
-ENV RUST_VERSION="1.99.0"
+ENV RUST_VERSION="1.100.0-beta.7"
 RUN set -eux; \
     \
     arch="$(apk --print-arch)"; \
@@ -82,7 +82,7 @@ RUN set -eux; \
     cargo --version; \
     rustc --version
 RUN echo "Adding Rust WebAssembly tools" \
-    && rustup target add wasm32-wasip2 \
+    && rustup target add wasm32-wasip3 \
     && cargo install --locked wasm-tools wkg \
     \
     && echo "Seeding the Rust cache" \
@@ -90,7 +90,7 @@ RUN echo "Adding Rust WebAssembly tools" \
     && cargo new sample_project \
     && cd /root/sample_project \
     && cargo add wit-bindgen \
-    && cargo build --target=wasm32-wasip2 --release \
+    && cargo build --target=wasm32-wasip3 --release \
     && rm -rf /root/sample_project
 
 # Gradle.
