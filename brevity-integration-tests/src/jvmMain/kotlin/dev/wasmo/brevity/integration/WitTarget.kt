@@ -10,19 +10,20 @@ import kotlinx.coroutines.withContext
 import okio.Buffer
 import okio.BufferedSink
 import okio.FileSystem
+import okio.Path
 
 class WitTarget(
-  private val name: String,
+  private val path: Path,
   private val fileSystem: FileSystem,
-  private val layout: ProjectLayout,
   private val rawWitTypeDeclarations: String,
   private val rawWitUseStatements: String,
   private val testFunctions: List<TestFunction>,
+  private val extraImports: List<String> = listOf(),
 ) {
   suspend fun generate() {
     withContext(Dispatchers.IO + CoroutineName("WitTarget")) {
-      fileSystem.createDirectories(layout.wit)
-      fileSystem.write(layout.wit / "bridge-type-$name-test.wit") { writeWit() }
+      fileSystem.createDirectories(path.parent!!)
+      fileSystem.write(path) { writeWit() }
     }
   }
 
@@ -112,6 +113,14 @@ class WitTarget(
 
     // The 'World' is the main parent.
     if (parent.isWorld) {
+      for (extraImport in extraImports) {
+        writeUtf8(
+          """
+          |  import ${extraImport};
+          |
+          """.trimMargin(),
+        )
+      }
       writeUtf8(
         """
         |  import types;

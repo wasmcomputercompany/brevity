@@ -5,8 +5,10 @@ import okio.Path
 class ProjectLayout(
   val path: Path,
 ) {
-  val wit: Path
+  val brevityWit: Path
     get() = path / "wit"
+  val rustWit: Path
+    get() = path / "rust" / "wit"
 
   val brevity: Path
     get() = path / "brevity"
