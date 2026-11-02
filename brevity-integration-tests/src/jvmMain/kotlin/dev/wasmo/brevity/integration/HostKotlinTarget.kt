@@ -154,27 +154,28 @@ class HostKotlinTarget(
       |    ),
       |  )
       |
+      |
       """.trimMargin(),
     )
 
     var testCount = 0
     for (testFunction in testFunctions) {
-      for (testCase in testFunction.testCases) {
-        val testIndex = testCount++
-        if (testIndex > 0 && testIndex % 100 == 0) {
-          writeUtf8(
-            """
-            |
-            |  wasmInstance.gc()
-            |
-            |
-            """.trimMargin(),
-          )
-        }
-
-        with(testCase) {
-          kotlinCallAndAssert()
-        }
+      writeUtf8(
+        """
+        |  test${testFunction.functionParent.identifier.upperCamelCase}${testFunction.identifier.upperCamelCase}()
+        |
+        """.trimMargin(),
+      )
+      val testIndex = testCount++
+      if (testIndex > 0 && testIndex % 10 == 0) {
+        writeUtf8(
+          """
+          |
+          |  wasmInstance.gc()
+          |
+          |
+          """.trimMargin(),
+        )
       }
     }
 
@@ -182,6 +183,33 @@ class HostKotlinTarget(
       """
       |}
       |
+      |
+      """.trimMargin(),
+    )
+
+    for (testFunction in testFunctions) {
+      writeUtf8(
+        """
+        |suspend fun TestScope.test${testFunction.functionParent.identifier.upperCamelCase}${testFunction.identifier.upperCamelCase}() {
+        |
+        """.trimMargin(),
+      )
+      for (testCase in testFunction.testCases) {
+        with(testCase) {
+          kotlinCallAndAssert()
+        }
+      }
+      writeUtf8(
+        """
+        |}
+        |
+        |
+        """.trimMargin(),
+      )
+    }
+
+    writeUtf8(
+      """
       |fun assertk.Assert<BooleanArray>.isEqualTo(expected: BooleanArray) = transform { it.toList() }.isEqualTo(expected.toList())
       |
       |@OptIn(ExperimentalCoroutinesApi::class)
