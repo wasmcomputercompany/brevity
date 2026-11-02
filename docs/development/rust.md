@@ -3,10 +3,19 @@ Rust
 
 Brevity uses Rust as a reference implementation of WIT and WebAssembly.
 
+We currently use a beta release `1.100.0-beta.7` because that's required for WASIp3.
+
 Rust
 ----
 
 The Rust folks recommend installing via [rustup] and not homebrew.
+
+Configure Brevity’s default Rust version:
+
+```bash
+$ rustup install 1.100.0-beta.7
+$ rustup override set 1.100.0-beta.7-aarch64-apple-darwin
+```
 
 Debug Rust with `cargo-expand`.
 
@@ -24,7 +33,7 @@ Web Assembly Target
 Once you've set up `rustup`, add a target to build `.wasm` files.
 
 ```bash
-$ rustup target add wasm32-wasip2
+$ rustup target add wasm32-wasip3
 ```
 
 wasm-tools

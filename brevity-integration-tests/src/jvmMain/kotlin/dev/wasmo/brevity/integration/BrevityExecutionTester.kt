@@ -435,7 +435,7 @@ class BrevityExecutionTester(
       layout.rust,
       "cargo",
       "build",
-      "--target=wasm32-wasip2",
+      "--target=wasm32-wasip3",
       "--release",
     )
 
@@ -450,7 +450,7 @@ class BrevityExecutionTester(
       "target/unbundled/",
       "--output",
       "target/unbundled/component.wasm",
-      "../../target/wasm32-wasip2/release/brevity_testing_${name}.wasm",
+      "../../target/wasm32-wasip3/release/brevity_testing_${name}.wasm",
     )
   }
 
