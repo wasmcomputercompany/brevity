@@ -18,19 +18,28 @@ private fun FunctionName.toExternalName(suffix: Identifier): String {
 }
 
 private fun FunctionName.segments(): List<Identifier> {
-  return when (this) {
-    is FunctionName.Constructor -> listOf(serviceName.name, name)
-    is FunctionName.Interface -> listOf(serviceName.name, name)
-    is FunctionName.Method -> listOf(serviceName.name, resourceName, name)
-    is FunctionName.ResourceNew -> listOf(resourceType.serviceName.name, resourceType.name, resourceNewSuffix)
-    is FunctionName.ResourceClose -> listOf(resourceType.serviceName.name, resourceType.name, resourceCloseName)
-    is FunctionName.ResourceDrop -> listOf(resourceType.serviceName.name, resourceType.name, resourceDropSuffix)
-    is FunctionName.Static -> listOf(serviceName.name, resourceName, name)
-    is FunctionName.World -> listOf(name)
-    is FunctionName.TaskReturn -> original.segments() + taskReturnSuffix
-    is FunctionName.AsyncExport -> original.segments() + asyncLiftSuffix
-    is FunctionName.AsyncExportCallback -> original.segments() + asyncLiftCallbackSuffix
-    is FunctionName.AsyncImport -> original.segments() + asyncLowerSuffix
+  return buildList {
+    val parent = parent
+    add(parent.serviceName.name)
+    if (parent is FunctionName.Parent.Resource) {
+      add(parent.type.name)
+    }
+    when (this@segments) {
+      is FunctionName.Standard -> add(name)
+      is FunctionName.Static -> add(name)
+      is FunctionName.Constructor -> {}
+      is FunctionName.ResourceClose -> add(resourceCloseName)
+      is FunctionName.ResourceDropExport -> add(resourceDropSuffix)
+      is FunctionName.ResourceDropImport -> add(resourceDropSuffix)
+      is FunctionName.ResourceNew -> add(resourceNewSuffix)
+    }
+    when (transform) {
+      FunctionName.Transform.AsyncExport -> add(asyncLiftSuffix)
+      FunctionName.Transform.AsyncExportCallback -> add(asyncLiftCallbackSuffix)
+      FunctionName.Transform.AsyncImport -> add(asyncLowerSuffix)
+      FunctionName.Transform.TaskReturn -> add(taskReturnSuffix)
+      null -> {}
+    }
   }
 }
 

@@ -3,6 +3,8 @@ package dev.wasmo.brevity.ir.validation
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.DeclarationIndex
+import dev.wasmo.brevity.FunctionNameMethod
+import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.ir.IrEnum
@@ -42,14 +44,16 @@ class SuccessorsTest {
     )
 
     assertSuccessors(
-      type = IrTypeAlias(serviceName = "wit:cli/console", name = "type-alias",
+      type = IrTypeAlias(
+        serviceName = "wit:cli/console", name = "type-alias",
         target = TypeNameDeclared("wit:cli/console", "some-other-type"),
       ),
-      expectedSuccessors = listOf(TypeNameDeclared("wit:cli/console", "some-other-type"))
+      expectedSuccessors = listOf(TypeNameDeclared("wit:cli/console", "some-other-type")),
     )
 
     assertSuccessors(
-      IrVariant(serviceName = "wit:cli/console", name = "variant",
+      IrVariant(
+        serviceName = "wit:cli/console", name = "variant",
         cases = listOf(
           IrCase(name = "int", type = TypeName.S32),
           IrCase(name = "record", type = TypeNameDeclared("wit:cli/console", "record")),
@@ -57,12 +61,13 @@ class SuccessorsTest {
           IrCase(name = "bool", type = TypeName.Bool),
           IrCase(name = "alias", type = TypeNameDeclared("wit:cli/console", "alias")),
           IrCase(name = "float", type = TypeName.F32),
-        )),
+        ),
+      ),
       expectedSuccessors = listOf(
         TypeNameDeclared("wit:cli/console", "record"),
         TypeNameDeclared("wit:cli/console", "variant"),
         TypeNameDeclared("wit:cli/console", "alias"),
-      )
+      ),
     )
 
     // Types with no successors
@@ -88,8 +93,14 @@ class SuccessorsTest {
       IrResource(
         serviceName = "wit:cli/console", name = "resource",
         functions = listOf(
-          IrFunction(name = "f1"),
-          IrFunction(name = "f2"),
+          IrFunction(
+            location = Location("file.wit"),
+            functionName = FunctionNameMethod("wit:cli/console", "resource", "f1"),
+          ),
+          IrFunction(
+            location = Location("file.wit"),
+            functionName = FunctionNameMethod("wit:cli/console", "resource", "f2"),
+          ),
         ),
       ),
     )

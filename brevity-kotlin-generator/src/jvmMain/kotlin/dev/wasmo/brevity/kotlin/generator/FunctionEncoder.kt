@@ -34,7 +34,7 @@ class FunctionEncoder(
       service is AbiResource -> collector.typeNamer.implementation(service.type)
 
       function.name is FunctionName.ResourceNew ->
-        collector.typeNamer.implementation(function.name.resourceType)
+        collector.typeNamer.implementation(function.name.parent.type)
 
       else -> null
     }

@@ -17,35 +17,39 @@ context(codeBuilder: CodeBuilder)
 fun AbiLift(
   functionEncoder: FunctionEncoder,
 ): KtFunction {
-  return when (functionEncoder.function.name) {
-    is FunctionName.AsyncExport -> AbiLiftAsyncExport(
+  val transform = functionEncoder.function.name.transform
+  return when (transform) {
+    FunctionName.Transform.AsyncExport -> AbiLiftAsyncExport(
       functionEncoder = functionEncoder,
       liftedFunction = CallLifted(functionEncoder),
     )
 
-    is FunctionName.AsyncImport -> AbiLiftAsyncImport(
+    FunctionName.Transform.AsyncImport -> AbiLiftAsyncImport(
       functionEncoder = functionEncoder,
       liftedFunction = CallLifted(functionEncoder),
     )
 
-    is FunctionName.ResourceNew -> AbiResourceNewLift(
+    FunctionName.Transform.AsyncExportCallback -> AbiAsyncExportCallbackLift()
+    FunctionName.Transform.TaskReturn -> AbiTaskReturnLift(
       functionEncoder = functionEncoder,
     )
 
-    is FunctionName.ResourceDrop -> AbiResourceDropLift(
-      functionEncoder = functionEncoder,
-    )
+    else -> when (functionEncoder.function.name) {
+      is FunctionName.ResourceNew -> AbiResourceNewLift(
+        functionEncoder = functionEncoder,
+      )
 
-    is FunctionName.AsyncExportCallback -> AbiAsyncExportCallbackLift()
+      is FunctionName.ResourceDropExport,
+      is FunctionName.ResourceDropImport,
+        -> AbiResourceDropLift(
+        functionEncoder = functionEncoder,
+      )
 
-    is FunctionName.TaskReturn -> AbiTaskReturnLift(
-      functionEncoder = functionEncoder,
-    )
-
-    else -> AbiSyncLift(
-      functionEncoder = functionEncoder,
-      liftedFunction = CallLifted(functionEncoder),
-    )
+      else -> AbiSyncLift(
+        functionEncoder = functionEncoder,
+        liftedFunction = CallLifted(functionEncoder),
+      )
+    }
   }
 }
 
@@ -179,7 +183,7 @@ private class AbiLiftAsyncExport(
   private val result = functionEncoder.function.result as AbiFunction.Result.CallTaskReturn
 
   init {
-    require(functionEncoder.function.name is FunctionName.AsyncExport)
+    require(functionEncoder.function.name.transform == FunctionName.Transform.AsyncExport)
   }
 
   context(codeBuilder: CodeBuilder)
@@ -238,7 +242,7 @@ private class AbiLiftAsyncImport(
   private val liftedFunction: KtFunction,
 ) : KtFunction {
   init {
-    require(functionEncoder.function.name is FunctionName.AsyncImport)
+    require(functionEncoder.function.name.transform == FunctionName.Transform.AsyncImport)
   }
 
   context(codeBuilder: CodeBuilder)

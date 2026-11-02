@@ -30,15 +30,17 @@ fun FunctionNameConstructor(
   serviceName: String,
   name: String,
 ) = FunctionName.Constructor(
-  serviceName = serviceName.toServiceName(),
-  name = Identifier(name),
+  TypeName.Declared(
+    serviceName = serviceName.toServiceName(),
+    name = Identifier(name),
+  ),
 )
 
 fun FunctionNameInterface(
   serviceName: String,
   name: String,
-) = FunctionName.Interface(
-  serviceName = serviceName.toServiceName(),
+) = FunctionName.Standard(
+  parent = FunctionName.Parent.Interface(serviceName.toServiceName()),
   name = Identifier(name),
 )
 
@@ -46,10 +48,11 @@ fun FunctionNameMethod(
   serviceName: String,
   name: String,
   resourceName: String,
-) = FunctionName.Method(
-  serviceName = serviceName.toServiceName(),
+) = FunctionName.Standard(
+  parent = FunctionName.Parent.Resource(
+    TypeName.Declared(serviceName.toServiceName(), Identifier(resourceName)),
+  ),
   name = Identifier(name),
-  resourceName = Identifier(resourceName),
 )
 
 fun FunctionNameStatic(
@@ -57,16 +60,19 @@ fun FunctionNameStatic(
   name: String,
   resourceName: String,
 ) = FunctionName.Static(
-  serviceName = serviceName.toServiceName(),
+  type = TypeName.Declared(serviceName.toServiceName(), Identifier(resourceName)),
   name = Identifier(name),
-  resourceName = Identifier(resourceName),
 )
 
 fun FunctionNameWorld(
+  serviceName: String,
   name: String,
   orientation: Orientation,
-) = FunctionName.World(
-  orientation = orientation,
+) = FunctionName.Standard(
+  parent = when (orientation) {
+    Orientation.Export -> FunctionName.Parent.WorldExport(serviceName.toServiceName())
+    Orientation.Import -> FunctionName.Parent.WorldImport(serviceName.toServiceName())
+  },
   name = Identifier(name),
 )
 

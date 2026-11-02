@@ -7,6 +7,8 @@ import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.Orientation
+import dev.wasmo.brevity.Orientation.Export
+import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
@@ -148,42 +150,30 @@ class IrMapper(
     worldFunction: Boolean = false,
     orientation: Orientation? = null,
     resourceName: Identifier? = null,
-  ) = IrFunction(
-    documentation = documentation,
-    gate = gate,
-    location = location,
-    async = async,
-    parameters = parameters.mapNotNull { it.parameterToIr() },
-    returnType = returnType?.typeNameToIr(location),
-    functionName = when {
-      worldFunction -> FunctionName.World(
-        orientation = orientation!!,
-        name = name,
-      )
-
-      constructor && resourceName != null -> FunctionName.Constructor(
-        serviceName = context.serviceName,
-        name = resourceName,
-      )
-
-      static && resourceName != null -> FunctionName.Static(
-        serviceName = context.serviceName,
-        resourceName = resourceName,
-        name = name,
-      )
-
-      resourceName != null -> FunctionName.Method(
-        serviceName = context.serviceName,
-        resourceName = resourceName,
-        name = name,
-      )
-
-      else -> FunctionName.Interface(
-        serviceName = context.serviceName,
-        name = name,
-      )
-    },
-  )
+  ): IrFunction {
+    val resourceType = resourceName?.let {
+      TypeName.Declared(context.serviceName, resourceName)
+    }
+    val parent = when {
+      worldFunction && orientation == Export -> FunctionName.Parent.WorldExport(context.serviceName)
+      worldFunction && orientation == Import -> FunctionName.Parent.WorldImport(context.serviceName)
+      resourceType != null -> FunctionName.Parent.Resource(resourceType)
+      else -> FunctionName.Parent.Interface(context.serviceName)
+    }
+    return IrFunction(
+      documentation = documentation,
+      gate = gate,
+      location = location,
+      async = async,
+      parameters = parameters.mapNotNull { it.parameterToIr() },
+      returnType = returnType?.typeNameToIr(location),
+      functionName = when {
+        constructor -> FunctionName.Constructor(resourceType!!)
+        static -> FunctionName.Static(resourceType!!, name)
+        else -> FunctionName.Standard(parent, name)
+      },
+    )
+  }
 
   context(context: Context, issueCollector: IssueCollector)
   private fun IoParameter.parameterToIr() = type.typeNameToIr(location)?.let { resolved ->
@@ -426,7 +416,7 @@ class IrMapper(
 
     val explicitImports = set.flatMap { included ->
       context(included.context) {
-        included.world.imports.mapNotNull { it.worldApiToIr(Orientation.Import) }
+        included.world.imports.mapNotNull { it.worldApiToIr(Import) }
       }
     }
     val implicitImports = collectImplicitImports(set)
@@ -444,7 +434,7 @@ class IrMapper(
       imports = explicitImports + implicitImports,
       exports = set.flatMap { included ->
         context(included.context) {
-          included.world.exports.mapNotNull { it.worldApiToIr(Orientation.Export) }
+          included.world.exports.mapNotNull { it.worldApiToIr(Export) }
         }
       },
     )

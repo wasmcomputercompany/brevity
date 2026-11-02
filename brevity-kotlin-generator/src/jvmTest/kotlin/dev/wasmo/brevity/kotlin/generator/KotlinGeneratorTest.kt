@@ -139,7 +139,7 @@ class KotlinGeneratorTest {
       import kotlin.wasm.unsafe.freeAllComponentModelReallocAllocatedMemory
 
       @WasmExport("run")
-      internal fun run_export(argsAddress: Int, argsSize: Int): Int {
+      internal fun time_run_export(argsAddress: Int, argsSize: Int): Int {
         val listAddress = Pointer(argsAddress.toUInt())
         val length = argsSize
         val list = List<String>(length) { i ->
@@ -182,7 +182,7 @@ class KotlinGeneratorTest {
       private fun retainWasmExportsForTime() {
         // Equivalent to 'if (true) return', but immune to dead code elimination.
         if ("".hashCode() == 0) return
-        run_export(0, 0)
+        time_run_export(0, 0)
       }
 
       """.trimIndent(),
@@ -253,10 +253,10 @@ class KotlinGeneratorTest {
 
         override val guest: Time.Guest = RealGuest()
 
-        internal lateinit var run_export: ExportFunction
+        internal lateinit var time_run_export: ExportFunction
 
         override fun initExports(instance: Instance) {
-          this.run_export = instance.export("run")
+          this.time_run_export = instance.export("run")
         }
 
         override fun initImports(bridge: HostBridge, store: Store) {
@@ -345,7 +345,7 @@ class KotlinGeneratorTest {
                 bridge.memory.writeI32(elementAddress, stringAddress_)
                 bridge.memory.writeI32(elementAddress + 4, stringByteCount)
               }
-              val resultArray = run_export.apply(
+              val resultArray = time_run_export.apply(
                 listAddress.toLong(),
                 args.size.toLong(),
               )
