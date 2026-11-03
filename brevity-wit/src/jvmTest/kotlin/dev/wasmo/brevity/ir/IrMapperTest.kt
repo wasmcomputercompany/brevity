@@ -443,7 +443,6 @@ class IrMapperTest {
             items = listOf(
               IrFunction(
                 location = monotonicClockLocation.at(4, 3),
-                name = "now",
                 returnType = TypeName.S64,
                 functionName = FunctionNameInterface(
                   serviceName = "wasi:clocks/monotonic-clock@0.3.0",
@@ -610,7 +609,6 @@ class IrMapperTest {
             items = listOf(
               IrFunction(
                 location = importsLocation.at(12, 5),
-                name = "now",
                 returnType = TypeName.S64,
                 functionName = FunctionNameInterface(
                   serviceName = "wasi:clocks/monotonic-clock@0.3.0",
@@ -656,7 +654,6 @@ class IrMapperTest {
             items = listOf(
               IrFunction(
                 location = location.at(5, 9),
-                name = "the-function",
                 functionName = FunctionNameInterface(
                   serviceName = "local:demo/out-of-line",
                   name = "the-function",
@@ -959,7 +956,6 @@ class IrMapperTest {
                 functions = listOf(
                   IrFunction(
                     location = location.at(17, 9),
-                    name = "write",
                     parameters = listOf(
                       IrParameter(
                         location = location.at(17, 21),

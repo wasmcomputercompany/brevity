@@ -1,12 +1,9 @@
 package dev.wasmo.brevity.ir
 
 import dev.wasmo.brevity.Documentation
-import dev.wasmo.brevity.FunctionName
-import dev.wasmo.brevity.FunctionNameWorld
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Location
-import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.io.toServiceName
@@ -102,26 +99,6 @@ fun IrFlag(
   gate = gate,
   location = location,
   name = Identifier(name),
-)
-
-fun IrFunction(
-  documentation: String? = null,
-  gate: Gate? = null,
-  location: Location = Location("file.wit"),
-  async: Boolean = false,
-  name: String,
-  orientation: Orientation = Orientation.Export,
-  parameters: List<IrParameter> = listOf(),
-  returnType: TypeName? = null,
-  functionName: FunctionName = FunctionNameWorld(name, orientation),
-) = IrFunction(
-  documentation = documentation?.let { Documentation(it) },
-  gate = gate,
-  location = location,
-  async = async,
-  parameters = parameters,
-  returnType = returnType,
-  functionName = functionName,
 )
 
 fun IrInterface(

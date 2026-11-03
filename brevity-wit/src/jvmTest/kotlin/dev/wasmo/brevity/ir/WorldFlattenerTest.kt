@@ -244,7 +244,6 @@ class WorldFlattenerTest {
                 functions = listOf(
                   IrFunction(
                     location = subjectLocation.at(17, 9),
-                    name = "write",
                     functionName = FunctionNameMethod(
                       serviceName = "test:subject/subject-world",
                       resourceName = "my-resource",

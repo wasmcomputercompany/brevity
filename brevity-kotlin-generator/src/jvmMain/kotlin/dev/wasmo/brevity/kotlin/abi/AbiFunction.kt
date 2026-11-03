@@ -35,10 +35,10 @@ import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
  *  * Synchronous calls are mapped to a single instance.
  *
  *  * Exported async calls are mapped to two instances in the same orientation:
- *    [FunctionName.AsyncExport] and [FunctionName.AsyncExportCallback], and one instance in the
- *    mirror orientation, [FunctionName.TaskReturn].
+ *    [FunctionName.Transform.AsyncExport] and [FunctionName.Transform.AsyncExportCallback], and one
+ *    instance in the mirror orientation, [FunctionName.Transform.TaskReturn].
  *
- *  * Imported async calls are mapped to an instance of [FunctionName.AsyncImport].
+ *  * Imported async calls use [FunctionName.Transform.AsyncImport].
  */
 data class AbiFunction(
   val name: FunctionName,
@@ -57,15 +57,16 @@ data class AbiFunction(
   val async: Boolean
     get() = isTask || isSubtask
   val isTask: Boolean
-    get() = name is FunctionName.AsyncExport
+    get() = name.transform == FunctionName.Transform.AsyncExport
   val isSubtask: Boolean
-    get() = name is FunctionName.AsyncImport
+    get() = name.transform == FunctionName.Transform.AsyncImport
 
   /** Returns true if this function is not exposed to the application layer. */
   val isSynthetic: Boolean
-    get() = name is FunctionName.TaskReturn ||
-      name is FunctionName.AsyncExportCallback ||
-      name is FunctionName.ResourceDrop ||
+    get() = name.transform == FunctionName.Transform.TaskReturn ||
+      name.transform == FunctionName.Transform.AsyncExportCallback ||
+      name is FunctionName.ResourceDropExport ||
+      name is FunctionName.ResourceDropImport ||
       name is FunctionName.ResourceNew
 
   val isResource: Boolean
@@ -181,7 +182,7 @@ data class AbiFunction(
    */
   val loweredReturnType: CoreType?
     get() {
-      if (name is FunctionName.AsyncImport) return CoreType.I32
+      if (name.transform == FunctionName.Transform.AsyncImport) return CoreType.I32
       return when (result) {
         is Result.CallTaskReturn -> CoreType.I32
         is Result.PointerParameter -> null
@@ -326,10 +327,12 @@ data class AbiFunction(
         }
       }
       val name = when {
-        irFunction.async -> when (orientation) {
-          Export -> FunctionName.AsyncExport(irFunction.functionName)
-          Import -> FunctionName.AsyncImport(irFunction.functionName)
-        }
+        irFunction.async -> irFunction.functionName.transform(
+          transform = when (orientation) {
+            Export -> FunctionName.Transform.AsyncExport
+            Import -> FunctionName.Transform.AsyncImport
+          },
+        )
 
         else -> irFunction.functionName
       }
@@ -360,7 +363,9 @@ data class AbiFunction(
         add(flatParameter(WitTypeName.U32, Identifier("p2"), nameAllocator))
       }
 
-      val name = FunctionName.AsyncExportCallback(irFunction.functionName)
+      val name = irFunction.functionName.transform(
+        transform = FunctionName.Transform.AsyncExportCallback,
+      )
       return AbiFunction(
         name = name,
         kotlinIdentifier = irFunction.functionName.kotlinIdentifier,
@@ -384,7 +389,9 @@ data class AbiFunction(
         }
       }
 
-      val name = FunctionName.TaskReturn(irFunction.functionName)
+      val name = irFunction.functionName.transform(
+        transform = FunctionName.Transform.TaskReturn,
+      )
       return AbiFunction(
         name = name,
         kotlinIdentifier = irFunction.functionName.kotlinIdentifier,
@@ -431,7 +438,10 @@ data class AbiFunction(
       val flatParameters = listOf(
         flatParameter(WitTypeName.S32, Identifier("index"), nameAllocator),
       )
-      val name = FunctionName.ResourceDrop(orientation, resourceType)
+      val name = when (orientation) {
+        Export -> FunctionName.ResourceDropExport(resourceType)
+        Import -> FunctionName.ResourceDropImport(resourceType)
+      }
       return AbiFunction(
         name = name,
         kotlinIdentifier = name.kotlinIdentifier,
@@ -499,7 +509,7 @@ data class AbiFunction(
       name: FunctionName,
     ): Parameters {
       val maxFlatParameters = when {
-        name is FunctionName.AsyncImport -> 4
+        name.transform == FunctionName.Transform.AsyncImport -> 4
         else -> 16
       }
       return when {

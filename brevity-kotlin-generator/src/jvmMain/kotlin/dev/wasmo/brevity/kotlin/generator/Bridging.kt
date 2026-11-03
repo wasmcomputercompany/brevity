@@ -12,16 +12,12 @@ import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrField
 import dev.wasmo.brevity.ir.IrFlag
 import dev.wasmo.brevity.ir.IrFunction
-import dev.wasmo.brevity.ir.IrParameter
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 
 const val kotlinPackagePrefix: String = "wit"
 
 val IrCase.kotlinName: String
   get() = name.upperCamelCase
-
-val IrParameter.kotlinName: String
-  get() = name.lowerCamelCase
 
 val IrField.kotlinName: String
   get() = name.lowerCamelCase
@@ -31,20 +27,22 @@ val IrFlag.kotlinName: String
 
 val FunctionName.kotlinIdentifier: Identifier
   get() {
-    return when (this) {
-      is FunctionName.Constructor -> name
-      is FunctionName.Interface -> name
-      is FunctionName.Method -> name
-      is FunctionName.Static -> name
-      is FunctionName.World -> name
-      is FunctionName.TaskReturn -> Identifier("${original.kotlinIdentifier}-$taskReturnSuffix")
-      is FunctionName.AsyncExport -> original.kotlinIdentifier
-      is FunctionName.AsyncExportCallback ->
-        Identifier("${original.kotlinIdentifier}-$asyncLiftCallbackSuffix")
-      is FunctionName.AsyncImport -> original.kotlinIdentifier
-      is FunctionName.ResourceNew -> Identifier("${resourceType.name}-$resourceNewSuffix")
-      is FunctionName.ResourceClose -> resourceCloseName
-      is FunctionName.ResourceDrop -> Identifier("${resourceType.name}-$resourceDropSuffix")
+    return when (transform) {
+      null -> {
+        when (this) {
+          is FunctionName.Constructor -> parent.type.name
+          is FunctionName.ResourceClose -> resourceCloseName
+          is FunctionName.ResourceDropExport -> Identifier("${parent.type.name}-$resourceDropSuffix")
+          is FunctionName.ResourceDropImport -> Identifier("${parent.type.name}-$resourceDropSuffix")
+          is FunctionName.ResourceNew -> Identifier("${parent.type.name}-$resourceNewSuffix")
+          else -> name!!
+        }
+      }
+
+      FunctionName.Transform.AsyncExport -> name!!
+      FunctionName.Transform.AsyncImport -> name!!
+      FunctionName.Transform.AsyncExportCallback -> Identifier("${name!!}-$asyncLiftCallbackSuffix")
+      FunctionName.Transform.TaskReturn -> Identifier("${name!!}-$taskReturnSuffix")
     }
   }
 
@@ -75,8 +73,8 @@ val CoreType.kotlinCoreType: KtTypeName
 
 /** Returns true if we've done the work to implement this. */
 val IrFunction.isSupported: Boolean
-  get() = when (functionName) {
-    is FunctionName.Constructor -> false
-    is FunctionName.Static -> false
+  get() = when {
+    functionName is FunctionName.Constructor -> false
+    functionName is FunctionName.Static -> false
     else -> true
   }

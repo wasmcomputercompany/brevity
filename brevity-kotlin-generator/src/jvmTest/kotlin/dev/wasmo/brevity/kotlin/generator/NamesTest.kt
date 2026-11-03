@@ -14,11 +14,12 @@ class NamesTest {
   @Test
   fun `function on world`() {
     val function = FunctionNameWorld(
+      serviceName = "wasi:http/proxy@0.3.0",
       orientation = Orientation.Export,
       name = "sum",
     )
-    assertThat(function.importFunctionName).isEqualTo("sum_import")
-    assertThat(function.exportFunctionName).isEqualTo("sum_export")
+    assertThat(function.importFunctionName).isEqualTo("proxy_sum_import")
+    assertThat(function.exportFunctionName).isEqualTo("proxy_sum_export")
   }
 
   @Test
