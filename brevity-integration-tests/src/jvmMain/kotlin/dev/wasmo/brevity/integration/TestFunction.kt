@@ -31,6 +31,7 @@ data class TestFunction(
         when (passingMechanism) {
           is PassingMechanism.Parameter -> "parameter"
           PassingMechanism.Return -> "return"
+          PassingMechanism.Stream -> "stream"
         },
       )
       add(type.id.name)
@@ -116,6 +117,16 @@ data class TestFunction(
           """
           |  index: s32,
           |) -> ${type.witType};
+          |
+          """.trimMargin(),
+        )
+      }
+
+      PassingMechanism.Stream -> {
+        writeUtf8(
+          """
+          |  index: s32,
+          |) -> stream<${type.witType}>;
           |
           """.trimMargin(),
         )
@@ -207,6 +218,20 @@ data class TestFunction(
           """.trimMargin(),
         )
       }
+
+      PassingMechanism.Stream -> {
+        val call = rustCall(callTarget, "index", "panic!()")
+        val resultIndex = valueToIndexFunction.rustCall("Self::", "panic!()", "value")
+        writeUtf8(
+          """
+          |        let mut stream = ${call.replace("\n", "\n        ")};
+          |        let value = stream.next().await.unwrap();
+          |        ${resultIndex.replace("\n", "\n        ")}
+          |    }
+          |
+          """.trimMargin(),
+        )
+      }
     }
   }
 
@@ -279,18 +304,26 @@ data class TestFunction(
             """.trimMargin(),
           )
         }
-      }
-    }
-  }
 
-  private fun BufferedSink.rustDeclareFunctionStub() {
-    rustDeclareWithSignature {
-      writeUtf8(
-        """
-        |panic!("unexpected call")
-        |
-        """.trimMargin(),
-      )
+        PassingMechanism.Stream -> {
+          val callTarget = when {
+            functionParent.isResource -> "self."
+            else -> "Self::"
+          }
+          val value = indexToValueFunction.rustCall(callTarget, "index", "panic!()")
+          writeUtf8(
+            """
+            |let (mut stream_writer, stream_reader) = bindings::wit_stream::new::<${type.rustType}>();
+            |let value = $value;
+            |wit_bindgen::rt::async_support::spawn_local(async move {
+            |    stream_writer.write_one(value).await;
+            |});
+            |stream_reader
+            |
+            """.trimMargin(),
+          )
+        }
+      }
     }
   }
 
@@ -367,6 +400,16 @@ data class TestFunction(
           """.trimMargin(),
         )
       }
+
+      PassingMechanism.Stream -> {
+        writeUtf8(
+          """
+          |        index: i32
+          |    ) -> wit_bindgen::StreamReader<${type.rustType}> {
+          |
+          """.trimMargin(),
+        )
+      }
     }
 
     writeUtf8(
@@ -420,7 +463,7 @@ data class TestFunction(
         )
       }
 
-      PassingMechanism.Return -> {
+      PassingMechanism.Return, PassingMechanism.Stream -> {
         val call = kotlinCall(callTarget, "index", "Nothing", "delayMillis")
         val resultIndex = valueToIndexFunction.kotlinCall("this", "Nothing", "value")
         writeUtf8(
@@ -512,6 +555,15 @@ data class TestFunction(
             """.trimMargin(),
           )
         }
+
+        PassingMechanism.Return, PassingMechanism.Stream -> {
+          writeUtf8(
+            """
+            |TODO("implement streams")
+            |
+            """.trimMargin(),
+          )
+        }
       }
     }
   }
@@ -573,6 +625,16 @@ data class TestFunction(
           """.trimMargin(),
         )
       }
+
+      PassingMechanism.Stream -> {
+        writeUtf8(
+          """
+          |    index: Int,
+          |  ): Stream<${type.kotlinType}> {
+          |
+          """.trimMargin(),
+        )
+      }
     }
 
     writeUtf8(
@@ -621,7 +683,7 @@ data class TestFunction(
           writeUtf8(
             """
             |  v = ${value.replace("\n", "\n  ")},
-            |
+            |)
             """.trimMargin(),
           )
         }
@@ -630,16 +692,20 @@ data class TestFunction(
           writeUtf8(
             """
             |  index = ${valueIndex},
-            |
+            |)
+            """.trimMargin(),
+          )
+        }
+
+        PassingMechanism.Stream -> {
+          writeUtf8(
+            """
+            |  index = ${valueIndex},
+            |).next()
             """.trimMargin(),
           )
         }
       }
-      writeUtf8(
-        """
-        |)
-        """.trimMargin(),
-      )
     }
     return call.readUtf8()
   }
@@ -692,7 +758,7 @@ data class TestFunction(
           )
         }
 
-        PassingMechanism.Return -> {
+        PassingMechanism.Return, PassingMechanism.Stream -> {
           writeUtf8(
             """
             |    ${valueIndex},
