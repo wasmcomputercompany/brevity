@@ -34,8 +34,8 @@ private class GuestWaitableSet : WaitableSet() {
     waitableJoin_export(waitableIndex, rep)
   }
 
-  override fun poll(eventPointer: Int): Int {
-    return waitableSetPoll_export(rep, eventPointer)
+  override fun poll(): Event {
+    TODO("Not yet implemented")
   }
 
   override fun close() {

@@ -58,8 +58,12 @@ internal class RealAsyncWorld : World<Async.Host, Async.Guest>() {
           listOf(ValType.I32),
         ),
         WasmFunctionHandle { instance, args ->
-          val result = bridge.getImportedResource<WaitableSet>(args[0].toInt()).poll(args[1].toInt())
-          longArrayOf(result.toLong())
+          val waitableSet = bridge.getImportedResource<WaitableSet>(args[0].toInt())
+          val payloadAddress = args[1].toInt()
+          val event = waitableSet.poll()
+          bridge.memory.writeI32(payloadAddress, event.p1)
+          bridge.memory.writeI32(payloadAddress + 4, event.p2)
+          longArrayOf(event.code.toLong())
         },
       ),
     )
