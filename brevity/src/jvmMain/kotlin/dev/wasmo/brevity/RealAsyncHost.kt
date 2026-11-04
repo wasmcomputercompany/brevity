@@ -33,8 +33,13 @@ class RealAsyncHost : Async.Host {
       waitableIndexes += waitableIndex
     }
 
-    override fun poll(eventPointer: Int): Int {
-      error("not implemented")
+    override fun poll(): Event {
+      for (waitableIndex in waitableIndexes) {
+        val waitable = bridge.waitables[waitableIndex] ?: error("no waitable: $waitableIndex")
+        val event = waitable.poll()
+        if (event != Event.None) return event
+      }
+      return Event.None
     }
 
     override fun wait(): Event {
@@ -56,9 +61,13 @@ class RealAsyncHost : Async.Host {
     val index: Int,
     val job: Job,
   ) {
+    fun poll(): Event {
+      return Event.None
+    }
+
     fun select(selectBuilder: SelectBuilder<Event>) {
       with(selectBuilder) {
-        job.onJoin.invoke {
+        job.onJoin {
           Event.Subtask(index, SubtaskState.Returned)
         }
       }

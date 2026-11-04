@@ -7,4 +7,7 @@ sealed interface PassingMechanism {
   ) : PassingMechanism
 
   data object Return : PassingMechanism
+
+  /** Returns a stream that emits a single value. */
+  data object Stream : PassingMechanism
 }

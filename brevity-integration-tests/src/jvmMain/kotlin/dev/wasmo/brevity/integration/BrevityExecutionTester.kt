@@ -323,7 +323,7 @@ class BrevityExecutionTester(
           |edition = "2024"
           |
           |[dependencies]
-          |wit-bindgen = "0.63.0"
+          |wit-bindgen = { version = "0.63.0", features = ["async-spawn"] }
           |
           """.trimMargin(),
         )

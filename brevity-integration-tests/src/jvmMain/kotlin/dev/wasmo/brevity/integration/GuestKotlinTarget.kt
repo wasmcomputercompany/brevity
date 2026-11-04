@@ -36,6 +36,7 @@ class GuestKotlinTarget(
       |)
       |package dev.wasmo.brevity.integration
       |
+      |import dev.wasmo.brevity.Stream
       |import kotlin.time.Duration.Companion.milliseconds
       |import kotlin.wasm.unsafe.ComponentModelInternalApi
       |import kotlin.wasm.unsafe.UnsafeWasmMemoryApi

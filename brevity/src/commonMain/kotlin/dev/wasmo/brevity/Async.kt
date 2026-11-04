@@ -16,7 +16,7 @@ abstract class WaitableSet : Resource() {
   /**
    * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setpoll
    */
-  abstract fun poll(eventPointer: Int): Int
+  abstract fun poll(): Event
 
   /**
    * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setwait
