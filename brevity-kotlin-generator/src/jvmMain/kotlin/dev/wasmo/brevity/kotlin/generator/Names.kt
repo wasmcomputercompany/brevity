@@ -29,9 +29,12 @@ private fun FunctionName.segments(): List<Identifier> {
       is FunctionName.Static -> add(name)
       is FunctionName.Constructor -> {}
       is FunctionName.ResourceClose -> add(resourceCloseName)
-      is FunctionName.ResourceDropExport -> add(resourceDropSuffix)
-      is FunctionName.ResourceDropImport -> add(resourceDropSuffix)
+      is FunctionName.ResourceDrop -> add(resourceDropSuffix)
       is FunctionName.ResourceNew -> add(resourceNewSuffix)
+      is FunctionName.StreamNew -> add(Identifier("${base.name}-stream-new$id"))
+      is FunctionName.StreamIo -> add(Identifier("${base.name}-stream-${op.verb}$id"))
+      is FunctionName.StreamCancel -> add(Identifier("${base.name}-stream-cancel-${op.verb}$id"))
+      is FunctionName.StreamDrop -> add(Identifier("${base.name}-stream-drop-${op.noun}$id"))
     }
     when (transform) {
       FunctionName.Transform.AsyncExport -> add(asyncLiftSuffix)

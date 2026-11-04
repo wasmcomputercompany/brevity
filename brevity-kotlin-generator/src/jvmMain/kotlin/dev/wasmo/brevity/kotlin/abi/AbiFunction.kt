@@ -65,8 +65,7 @@ data class AbiFunction(
   val isSynthetic: Boolean
     get() = name.transform == FunctionName.Transform.TaskReturn ||
       name.transform == FunctionName.Transform.AsyncExportCallback ||
-      name is FunctionName.ResourceDropExport ||
-      name is FunctionName.ResourceDropImport ||
+      name is FunctionName.ResourceDrop ||
       name is FunctionName.ResourceNew
 
   val isResource: Boolean
@@ -438,10 +437,10 @@ data class AbiFunction(
       val flatParameters = listOf(
         flatParameter(WitTypeName.S32, Identifier("index"), nameAllocator),
       )
-      val name = when (orientation) {
-        Export -> FunctionName.ResourceDropExport(resourceType)
-        Import -> FunctionName.ResourceDropImport(resourceType)
-      }
+      val name = FunctionName.ResourceDrop(
+        type = resourceType,
+        exportPrefix = orientation == Export,
+      )
       return AbiFunction(
         name = name,
         kotlinIdentifier = name.kotlinIdentifier,

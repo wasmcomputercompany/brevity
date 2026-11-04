@@ -19,17 +19,17 @@ class WorldFilterTest {
         packageName = "wasi:cli@0.3.0".toPackageName(),
         files = listOf(
           """
-        |package wasi:cli@0.3.0;
-        |
-        |world command {
-        |}
-        """.trimMargin().toWitFile(commandLocation),
+          |package wasi:cli@0.3.0;
+          |
+          |world command {
+          |}
+          """.trimMargin().toWitFile(commandLocation),
           """
-        |package wasi:cli@0.3.0;
-        |
-        |world imports {
-        |}
-        """.trimMargin().toWitFile(importsLocation),
+          |package wasi:cli@0.3.0;
+          |
+          |world imports {
+          |}
+          """.trimMargin().toWitFile(importsLocation),
         ),
       ),
     )

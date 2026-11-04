@@ -139,14 +139,20 @@ class FunctionNameTest {
 
   @Test
   fun `resource close drop export`() {
-    val function = FunctionName.ResourceDropExport(resourceParent)
+    val function = FunctionName.ResourceDrop(
+      type = resourceParent,
+      exportPrefix = true,
+    )
     assertThat(function.moduleName).isEqualTo("[export]wasi:http/types@0.3.0")
     assertThat(function.abiName).isEqualTo("[resource-drop]fields")
   }
 
   @Test
   fun `resource close drop import`() {
-    val function = FunctionName.ResourceDropImport(resourceParent)
+    val function = FunctionName.ResourceDrop(
+      type = resourceParent,
+      exportPrefix = false,
+    )
     assertThat(function.moduleName).isEqualTo("wasi:http/types@0.3.0")
     assertThat(function.abiName).isEqualTo("[resource-drop]fields")
   }
@@ -193,5 +199,197 @@ class FunctionNameTest {
     val function = FunctionName.Constructor(resourceParent)
     assertThat(function.moduleName).isEqualTo("wasi:http/types@0.3.0")
     assertThat(function.abiName).isEqualTo("[constructor]fields")
+  }
+
+  @Test
+  fun `new stream no export`() {
+    val function = FunctionName.Standard(
+      parent = FunctionName.Parent.Interface("wasi:http/types@0.3.0".toServiceName()),
+      name = Identifier("get-response"),
+    )
+    val streamNew = FunctionName.StreamNew(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+    )
+    assertThat(streamNew.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamNew.abiName).isEqualTo("[stream-new-0]get-response")
+  }
+
+  @Test
+  fun `new stream export`() {
+    val function = FunctionName.Standard(
+      parent = FunctionName.Parent.Interface("wasi:http/types@0.3.0".toServiceName()),
+      name = Identifier("get-response"),
+    )
+    val streamNew = FunctionName.StreamNew(
+      base = function,
+      exportPrefix = true,
+      id = 0,
+    )
+    assertThat(streamNew.moduleName).isEqualTo("[export]wasi:http/types@0.3.0")
+    assertThat(streamNew.abiName).isEqualTo("[stream-new-0]get-response")
+  }
+
+  @Test
+  fun `stream read and write`() {
+    val function = FunctionName.Standard(
+      parent = FunctionName.Parent.Interface("wasi:http/types@0.3.0".toServiceName()),
+      name = Identifier("get-response"),
+    )
+    val streamRead = FunctionName.StreamIo(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(streamRead.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamRead.abiName).isEqualTo("[async-lower][stream-read-0]get-response")
+
+    val streamWrite = FunctionName.StreamIo(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Write,
+    )
+    assertThat(streamWrite.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamWrite.abiName).isEqualTo("[async-lower][stream-write-0]get-response")
+  }
+
+  @Test
+  fun `stream cancel read and cancel write`() {
+    val function = FunctionName.Standard(
+      parent = FunctionName.Parent.Interface("wasi:http/types@0.3.0".toServiceName()),
+      name = Identifier("get-response"),
+    )
+    val streamCancelRead = FunctionName.StreamCancel(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(streamCancelRead.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamCancelRead.abiName).isEqualTo("[stream-cancel-read-0]get-response")
+
+    val streamCancelWrite = FunctionName.StreamCancel(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Write,
+    )
+    assertThat(streamCancelWrite.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamCancelWrite.abiName).isEqualTo("[stream-cancel-write-0]get-response")
+  }
+
+  @Test
+  fun `stream drop readable and drop writable`() {
+    val function = FunctionName.Standard(
+      parent = FunctionName.Parent.Interface("wasi:http/types@0.3.0".toServiceName()),
+      name = Identifier("get-response"),
+    )
+    val streamDropReadable = FunctionName.StreamDrop(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(streamDropReadable.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamDropReadable.abiName).isEqualTo("[stream-drop-readable-0]get-response")
+
+    val streamDropWritable = FunctionName.StreamDrop(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Write,
+    )
+    assertThat(streamDropWritable.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamDropWritable.abiName).isEqualTo("[stream-drop-writable-0]get-response")
+  }
+
+  @Test
+  fun `stream functions on world`() {
+    val serviceName = "wasi:http/proxy@0.3.0".toServiceName()
+    val function = FunctionName.Standard(
+      parent = FunctionName.Parent.WorldExport(serviceName),
+      name = Identifier("sum"),
+    )
+
+    val streamNew = FunctionName.StreamNew(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+    )
+    assertThat(streamNew.moduleName).isNull()
+    assertThat(streamNew.abiName).isEqualTo("[stream-new-0]sum")
+
+    val streamRead = FunctionName.StreamIo(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(streamRead.moduleName).isNull()
+    assertThat(streamRead.abiName).isEqualTo("[async-lower][stream-read-0]sum")
+
+    val streamCancelRead = FunctionName.StreamCancel(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(streamCancelRead.moduleName).isNull()
+    assertThat(streamCancelRead.abiName).isEqualTo("[stream-cancel-read-0]sum")
+
+    val streamDropReadable = FunctionName.StreamDrop(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(streamDropReadable.moduleName).isNull()
+    assertThat(streamDropReadable.abiName).isEqualTo("[stream-drop-readable-0]sum")
+  }
+
+  @Test
+  fun `stream functions on resource`() {
+    val function = FunctionName.Standard(
+      parent = FunctionName.Parent.Resource(resourceParent),
+      name = Identifier("get"),
+    )
+
+    val streamNew = FunctionName.StreamNew(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+    )
+    assertThat(streamNew.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamNew.abiName).isEqualTo("[stream-new-0][method]fields.get")
+
+    val streamRead = FunctionName.StreamIo(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(streamRead.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamRead.abiName).isEqualTo("[async-lower][stream-read-0][method]fields.get")
+
+    val streamCancelRead = FunctionName.StreamCancel(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(streamCancelRead.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamCancelRead.abiName).isEqualTo("[stream-cancel-read-0][method]fields.get")
+
+    val streamDropReadable = FunctionName.StreamDrop(
+      base = function,
+      exportPrefix = false,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(streamDropReadable.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(streamDropReadable.abiName).isEqualTo("[stream-drop-readable-0][method]fields.get")
   }
 }

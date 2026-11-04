@@ -30,8 +30,7 @@ class PlatformFunctionFactory(
     return apiFunctionFactory.builder(abiFunction)
       .addModifiers(
         when (abiFunction.name) {
-          is FunctionName.ResourceDropExport -> listOf()
-          is FunctionName.ResourceDropImport -> listOf()
+          is FunctionName.ResourceDrop -> listOf()
           else -> listOf(KModifier.OVERRIDE)
         },
       )

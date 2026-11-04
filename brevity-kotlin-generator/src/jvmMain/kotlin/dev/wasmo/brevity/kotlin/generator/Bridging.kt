@@ -32,8 +32,7 @@ val FunctionName.kotlinIdentifier: Identifier
         when (this) {
           is FunctionName.Constructor -> parent.type.name
           is FunctionName.ResourceClose -> resourceCloseName
-          is FunctionName.ResourceDropExport -> Identifier("${parent.type.name}-$resourceDropSuffix")
-          is FunctionName.ResourceDropImport -> Identifier("${parent.type.name}-$resourceDropSuffix")
+          is FunctionName.ResourceDrop -> Identifier("${parent.type.name}-$resourceDropSuffix")
           is FunctionName.ResourceNew -> Identifier("${parent.type.name}-$resourceNewSuffix")
           else -> name!!
         }
