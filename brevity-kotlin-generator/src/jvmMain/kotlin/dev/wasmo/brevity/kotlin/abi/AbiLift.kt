@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.INT
+import com.squareup.kotlinpoet.LONG
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
@@ -17,29 +18,44 @@ context(codeBuilder: CodeBuilder)
 fun AbiLift(
   functionEncoder: FunctionEncoder,
 ): KtFunction {
-  val transform = functionEncoder.function.name.transform
-  return when (transform) {
-    FunctionName.Transform.AsyncExport -> AbiLiftAsyncExport(
-      functionEncoder = functionEncoder,
-      liftedFunction = CallLifted(functionEncoder),
-    )
-
-    FunctionName.Transform.AsyncImport -> AbiLiftAsyncImport(
-      functionEncoder = functionEncoder,
-      liftedFunction = CallLifted(functionEncoder),
-    )
-
-    FunctionName.Transform.AsyncExportCallback -> AbiAsyncExportCallbackLift()
-    FunctionName.Transform.TaskReturn -> AbiTaskReturnLift(
+  return when (functionEncoder.function.name) {
+    is FunctionName.ResourceNew -> AbiResourceNewLift(
       functionEncoder = functionEncoder,
     )
 
-    else -> when (functionEncoder.function.name) {
-      is FunctionName.ResourceNew -> AbiResourceNewLift(
+    is FunctionName.ResourceDrop -> AbiResourceDropLift(
+      functionEncoder = functionEncoder,
+    )
+
+    is FunctionName.StreamNew -> AbiStreamNewLift(
+      functionEncoder = functionEncoder,
+    )
+
+    is FunctionName.StreamIo -> AbiStreamIoLift(
+      functionEncoder = functionEncoder,
+    )
+
+    is FunctionName.StreamCancel -> AbiStreamCancelLift(
+      functionEncoder = functionEncoder,
+    )
+
+    is FunctionName.StreamDrop -> AbiStreamDropLift(
+      functionEncoder = functionEncoder,
+    )
+
+    else -> when (functionEncoder.function.name.transform) {
+      FunctionName.Transform.AsyncExport -> AbiLiftAsyncExport(
         functionEncoder = functionEncoder,
+        liftedFunction = CallLifted(functionEncoder),
       )
 
-      is FunctionName.ResourceDrop -> AbiResourceDropLift(
+      FunctionName.Transform.AsyncImport -> AbiLiftAsyncImport(
+        functionEncoder = functionEncoder,
+        liftedFunction = CallLifted(functionEncoder),
+      )
+
+      FunctionName.Transform.AsyncExportCallback -> AbiAsyncExportCallbackLift()
+      FunctionName.Transform.TaskReturn -> AbiTaskReturnLift(
         functionEncoder = functionEncoder,
       )
 
@@ -278,3 +294,73 @@ private class AbiLiftAsyncImport(
     )
   }
 }
+
+private class AbiStreamNewLift(
+  private val functionEncoder: FunctionEncoder,
+) : KtFunction {
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    check(receiver == null)
+    codeBuilder.platform.afterLiftParameters()
+    return CodeBlockExpression(
+      type = LONG,
+      nameHint = "x",
+      code = CodeBlock.of("TODO(%S)", "AbiStreamNewLift")
+    )
+  }
+}
+
+private class AbiStreamIoLift(
+  private val functionEncoder: FunctionEncoder,
+) : KtFunction {
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    check(receiver == null)
+    codeBuilder.platform.afterLiftParameters()
+    return CodeBlockExpression(
+      type = INT,
+      nameHint = "x",
+      code = CodeBlock.of("TODO(%S)", "AbiStreamIoLift")
+    )
+  }
+}
+
+private class AbiStreamCancelLift(
+  private val functionEncoder: FunctionEncoder,
+) : KtFunction {
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    check(receiver == null)
+    codeBuilder.platform.afterLiftParameters()
+    return CodeBlockExpression(
+      type = INT,
+      nameHint = "x",
+      code = CodeBlock.of("TODO(%S)", "AbiStreamCancelLift")
+    )
+  }
+}
+
+private class AbiStreamDropLift(
+  private val functionEncoder: FunctionEncoder,
+) : KtFunction {
+  context(codeBuilder: CodeBuilder)
+  override fun call(
+    receiver: KtExpression?,
+    parameters: List<KtExpression>,
+  ): KtExpression {
+    check(receiver == null)
+    codeBuilder.platform.afterLiftParameters()
+    codeBuilder.addStatement("// TODO: AbiStreamDropLift")
+    return KtExpression.Unit
+  }
+}
+
