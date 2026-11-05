@@ -32,6 +32,15 @@ allprojects {
         }
       }
     }
+    // Refuse to publish the test repo marker anywhere but a test repository.
+    tasks.withType<AbstractPublishToMaven>().configureEach {
+      val isRelease = release
+      doFirst {
+        check(isRelease || name.endsWith("ToTestRepository")) {
+          "Attempting to publish `0-testing`, pass -Pbrevity.release=true to publish a real version"
+        }
+      }
+    }
     extensions.configure<MavenPublishBaseExtension> {
       publishToMavenCentral(automaticRelease = true)
       if (project.hasProperty("signingInMemoryKey")) {
