@@ -29,10 +29,11 @@ import okio.source
  * This uses the Kotlin Toolchain.
  * https://kotlin-toolchain.org/latest/
  *
- * This requires Brevity artifacts are published to Maven Local.
+ * Brevity's runtime is resolved as 0-testing from build/localMaven. Gradle's jvmTest publishes it
+ * there before running. To run these tests outside of Gradle publish it first:
  *
  * ```
- * ./gradlew publishAllPublicationsToMavenLocalRepository
+ * ./gradlew publishAllPublicationsToTestRepository
  * ```
  */
 class BrevityExecutionTester(
@@ -50,6 +51,10 @@ class BrevityExecutionTester(
   private val layout = ProjectLayout(
     path = "build/BrevityExecutionTester/$name".toPath(),
   )
+
+  private val testRepository: String
+    get() = System.getProperty("brevity.testRepository")
+      ?: fileSystem.canonicalize("../build/localMaven".toPath()).toString()
 
   private val testFunctions: List<TestFunction> = buildList {
     for (functionParent in FunctionParent.entries) {
@@ -491,6 +496,13 @@ class BrevityExecutionTester(
       val process = ProcessBuilder()
         .directory(directory.toFile())
         .command(*command)
+        .apply {
+          val options = listOfNotNull(
+            System.getenv("KOTLIN_CLI_JAVA_OPTIONS"),
+            "-Dmaven.repo.local=$testRepository",
+          )
+          environment()["KOTLIN_CLI_JAVA_OPTIONS"] = options.joinToString(" ")
+        }
         .start()
 
       val stdout = async {
