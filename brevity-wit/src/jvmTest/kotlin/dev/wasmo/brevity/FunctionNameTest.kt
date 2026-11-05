@@ -202,7 +202,7 @@ class FunctionNameTest {
   }
 
   @Test
-  fun `new stream no export`() {
+  fun `future and stream new no export`() {
     val function = FunctionName.Standard(
       parent = FunctionName.Parent.Interface("wasi:http/types@0.3.0".toServiceName()),
       name = Identifier("get-response"),
@@ -210,21 +210,42 @@ class FunctionNameTest {
     val streamNew = FunctionName.StreamNew(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
     )
     assertThat(streamNew.moduleName).isEqualTo("wasi:http/types@0.3.0")
     assertThat(streamNew.abiName).isEqualTo("[stream-new-0]get-response")
+
+    val futureNew = FunctionName.StreamNew(
+      base = function,
+      exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Future,
+      id = 0,
+    )
+    assertThat(futureNew.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(futureNew.abiName).isEqualTo("[future-new-0]get-response")
   }
 
   @Test
-  fun `new stream export`() {
+  fun `future and stream export`() {
     val function = FunctionName.Standard(
       parent = FunctionName.Parent.Interface("wasi:http/types@0.3.0".toServiceName()),
       name = Identifier("get-response"),
     )
+
+    val futureNew = FunctionName.StreamNew(
+      base = function,
+      exportPrefix = true,
+      cardinality = FunctionName.StreamCardinality.Future,
+      id = 0,
+    )
+    assertThat(futureNew.moduleName).isEqualTo("[export]wasi:http/types@0.3.0")
+    assertThat(futureNew.abiName).isEqualTo("[future-new-0]get-response")
+
     val streamNew = FunctionName.StreamNew(
       base = function,
       exportPrefix = true,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
     )
     assertThat(streamNew.moduleName).isEqualTo("[export]wasi:http/types@0.3.0")
@@ -232,23 +253,46 @@ class FunctionNameTest {
   }
 
   @Test
-  fun `stream read and write`() {
+  fun `future and stream read and write`() {
     val function = FunctionName.Standard(
       parent = FunctionName.Parent.Interface("wasi:http/types@0.3.0".toServiceName()),
       name = Identifier("get-response"),
     )
+
+    val futureRead = FunctionName.StreamIo(
+      base = function,
+      exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Future,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(futureRead.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(futureRead.abiName).isEqualTo("[async-lower][future-read-0]get-response")
+
     val streamRead = FunctionName.StreamIo(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Read,
     )
     assertThat(streamRead.moduleName).isEqualTo("wasi:http/types@0.3.0")
     assertThat(streamRead.abiName).isEqualTo("[async-lower][stream-read-0]get-response")
 
+    val futureWrite = FunctionName.StreamIo(
+      base = function,
+      exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Future,
+      id = 0,
+      op = FunctionName.StreamOp.Write,
+    )
+    assertThat(futureWrite.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(futureWrite.abiName).isEqualTo("[async-lower][future-write-0]get-response")
+
     val streamWrite = FunctionName.StreamIo(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Write,
     )
@@ -257,23 +301,46 @@ class FunctionNameTest {
   }
 
   @Test
-  fun `stream cancel read and cancel write`() {
+  fun `future and stream cancel read and cancel write`() {
     val function = FunctionName.Standard(
       parent = FunctionName.Parent.Interface("wasi:http/types@0.3.0".toServiceName()),
       name = Identifier("get-response"),
     )
+
+    val futureCancelRead = FunctionName.StreamCancel(
+      base = function,
+      exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Future,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(futureCancelRead.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(futureCancelRead.abiName).isEqualTo("[future-cancel-read-0]get-response")
+
     val streamCancelRead = FunctionName.StreamCancel(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Read,
     )
     assertThat(streamCancelRead.moduleName).isEqualTo("wasi:http/types@0.3.0")
     assertThat(streamCancelRead.abiName).isEqualTo("[stream-cancel-read-0]get-response")
 
+    val futureCancelWrite = FunctionName.StreamCancel(
+      base = function,
+      exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Future,
+      id = 0,
+      op = FunctionName.StreamOp.Write,
+    )
+    assertThat(futureCancelWrite.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(futureCancelWrite.abiName).isEqualTo("[future-cancel-write-0]get-response")
+
     val streamCancelWrite = FunctionName.StreamCancel(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Write,
     )
@@ -282,23 +349,46 @@ class FunctionNameTest {
   }
 
   @Test
-  fun `stream drop readable and drop writable`() {
+  fun `future and stream drop readable and drop writable`() {
     val function = FunctionName.Standard(
       parent = FunctionName.Parent.Interface("wasi:http/types@0.3.0".toServiceName()),
       name = Identifier("get-response"),
     )
+
+    val futureDropReadable = FunctionName.StreamDrop(
+      base = function,
+      exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Future,
+      id = 0,
+      op = FunctionName.StreamOp.Read,
+    )
+    assertThat(futureDropReadable.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(futureDropReadable.abiName).isEqualTo("[future-drop-readable-0]get-response")
+
     val streamDropReadable = FunctionName.StreamDrop(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Read,
     )
     assertThat(streamDropReadable.moduleName).isEqualTo("wasi:http/types@0.3.0")
     assertThat(streamDropReadable.abiName).isEqualTo("[stream-drop-readable-0]get-response")
 
+    val futureDropWritable = FunctionName.StreamDrop(
+      base = function,
+      exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Future,
+      id = 0,
+      op = FunctionName.StreamOp.Write,
+    )
+    assertThat(futureDropWritable.moduleName).isEqualTo("wasi:http/types@0.3.0")
+    assertThat(futureDropWritable.abiName).isEqualTo("[future-drop-writable-0]get-response")
+
     val streamDropWritable = FunctionName.StreamDrop(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Write,
     )
@@ -317,6 +407,7 @@ class FunctionNameTest {
     val streamNew = FunctionName.StreamNew(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
     )
     assertThat(streamNew.moduleName).isNull()
@@ -325,6 +416,7 @@ class FunctionNameTest {
     val streamRead = FunctionName.StreamIo(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Read,
     )
@@ -334,6 +426,7 @@ class FunctionNameTest {
     val streamCancelRead = FunctionName.StreamCancel(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Read,
     )
@@ -343,6 +436,7 @@ class FunctionNameTest {
     val streamDropReadable = FunctionName.StreamDrop(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Read,
     )
@@ -360,6 +454,7 @@ class FunctionNameTest {
     val streamNew = FunctionName.StreamNew(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
     )
     assertThat(streamNew.moduleName).isEqualTo("wasi:http/types@0.3.0")
@@ -368,6 +463,7 @@ class FunctionNameTest {
     val streamRead = FunctionName.StreamIo(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Read,
     )
@@ -377,6 +473,7 @@ class FunctionNameTest {
     val streamCancelRead = FunctionName.StreamCancel(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Read,
     )
@@ -386,6 +483,7 @@ class FunctionNameTest {
     val streamDropReadable = FunctionName.StreamDrop(
       base = function,
       exportPrefix = false,
+      cardinality = FunctionName.StreamCardinality.Stream,
       id = 0,
       op = FunctionName.StreamOp.Read,
     )

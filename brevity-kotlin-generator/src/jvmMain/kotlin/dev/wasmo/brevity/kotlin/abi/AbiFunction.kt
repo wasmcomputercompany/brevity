@@ -259,26 +259,6 @@ data class AbiFunction(
           includeSyntheticFunctions = includeSyntheticFunctions,
         )
       }
-      if (includeSyntheticFunctions) {
-        for (irFunction in functions) {
-          val types = streamsAndFuturesFinder.find(function = irFunction).withIndex()
-          for ((id, type) in types) {
-            when (type) {
-              is WitTypeName.Stream -> {
-                collectStreamFunctions(
-                  listBuilder = listBuilder,
-                  irFunction = irFunction,
-                  orientation = orientation,
-                  elementType = type.type ?: continue,
-                  id = id,
-                )
-              }
-
-              else -> continue
-            }
-          }
-        }
-      }
     }
 
     fun collectAll(
@@ -316,6 +296,19 @@ data class AbiFunction(
           orientation = orientation,
           isResource = isResource,
         )
+      }
+
+      if (includeSyntheticFunctions) {
+        val types = streamsAndFuturesFinder.find(function = irFunction)
+        for ((id, type) in types) {
+          collectStreamFunctions(
+            listBuilder = listBuilder,
+            irFunction = irFunction,
+            orientation = orientation,
+            type = type,
+            id = id,
+          )
+        }
       }
     }
 
@@ -501,13 +494,19 @@ data class AbiFunction(
       listBuilder: MutableList<AbiFunction>,
       irFunction: IrFunction,
       orientation: Orientation,
-      elementType: WitTypeName,
+      type: WitTypeName,
       id: Int,
     ) {
+      val cardinality = when {
+        type is WitTypeName.Future -> FunctionName.StreamCardinality.Future
+        type is WitTypeName.Stream -> FunctionName.StreamCardinality.Stream
+        else -> error("unexpected type $type")
+      }
       listBuilder += streamNew(
         name = FunctionName.StreamNew(
           base = irFunction.functionName,
           id = id,
+          cardinality = cardinality,
           exportPrefix = orientation == Export,
         ),
       )
@@ -516,6 +515,7 @@ data class AbiFunction(
           name = FunctionName.StreamIo(
             base = irFunction.functionName,
             id = id,
+            cardinality = cardinality,
             exportPrefix = orientation == Export,
             op = streamOp,
           ),
@@ -524,6 +524,7 @@ data class AbiFunction(
           name = FunctionName.StreamCancel(
             base = irFunction.functionName,
             id = id,
+            cardinality = cardinality,
             exportPrefix = orientation == Export,
             op = streamOp,
           ),
@@ -532,6 +533,7 @@ data class AbiFunction(
           name = FunctionName.StreamDrop(
             base = irFunction.functionName,
             id = id,
+            cardinality = cardinality,
             exportPrefix = orientation == Export,
             op = streamOp,
           ),
@@ -566,11 +568,13 @@ data class AbiFunction(
       name: FunctionName.StreamIo,
     ): AbiFunction {
       val nameAllocator = NameAllocator()
-      val flatParameters = listOf(
-        flatParameter(WitTypeName.S32, Identifier("a"), nameAllocator),
-        flatParameter(WitTypeName.S32, Identifier("b"), nameAllocator),
-        flatParameter(WitTypeName.S32, Identifier("c"), nameAllocator),
-      )
+      val flatParameters = buildList {
+        add(flatParameter(WitTypeName.S32, Identifier("index"), nameAllocator))
+        add(flatParameter(WitTypeName.S32, Identifier("address"), nameAllocator))
+        if (name.cardinality == FunctionName.StreamCardinality.Stream) {
+          add(flatParameter(WitTypeName.S32, Identifier("length"), nameAllocator))
+        }
+      }
       val result = Result.SingleCoreValueReturn(
         Result.Value(
           encoder = encoderFactory.get(WitTypeName.S32),

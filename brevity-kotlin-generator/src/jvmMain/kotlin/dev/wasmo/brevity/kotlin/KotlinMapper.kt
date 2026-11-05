@@ -85,7 +85,7 @@ class KotlinMapper(
       TypeName.Char -> Symbols.Kotlin.Int
       TypeName.String -> Symbols.Kotlin.String
       is TypeName.Borrow -> get(name.type)
-      is TypeName.Future -> Symbols.KotlinCoroutines.Deferred.parameterizedBy(
+      is TypeName.Future -> Symbols.Brevity.Future.parameterizedBy(
         name.type?.let { get(it) } ?: STAR,
       )
 
