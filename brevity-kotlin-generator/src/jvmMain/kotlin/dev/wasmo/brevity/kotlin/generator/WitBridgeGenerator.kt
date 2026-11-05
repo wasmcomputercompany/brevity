@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.generator
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.IssueCollector
+import dev.wasmo.brevity.StreamsAndFuturesFinder
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.io.IoWitPackageReader
 import dev.wasmo.brevity.io.validation.buildSymbolTable
@@ -125,6 +126,9 @@ class WitBridgeGenerator private constructor(
       val abiFunctionFactory = AbiFunction.Factory(
         kotlinMapper = kotlinMapper,
         encoderFactory = encoderFactory,
+        streamsAndFuturesFinder = StreamsAndFuturesFinder(
+          declarationIndex = declarationIndex,
+        ),
       )
       val abiResourceFactory = AbiResource.Factory(
         kotlinMapper = kotlinMapper,
@@ -167,6 +171,9 @@ class WitBridgeGenerator private constructor(
       val abiFunctionFactory = AbiFunction.Factory(
         kotlinMapper = kotlinMapper,
         encoderFactory = encoderFactory,
+        streamsAndFuturesFinder = StreamsAndFuturesFinder(
+          declarationIndex = declarationIndex,
+        ),
       )
       val abiResourceFactory = AbiResource.Factory(
         kotlinMapper = kotlinMapper,
@@ -208,6 +215,9 @@ class WitBridgeGenerator private constructor(
       val abiFunctionFactory = AbiFunction.Factory(
         kotlinMapper = kotlinMapper,
         encoderFactory = encoderFactory,
+        streamsAndFuturesFinder = StreamsAndFuturesFinder(
+          declarationIndex = declarationIndex,
+        ),
       )
       val abiResourceFactory = AbiResource.Factory(
         kotlinMapper = kotlinMapper,

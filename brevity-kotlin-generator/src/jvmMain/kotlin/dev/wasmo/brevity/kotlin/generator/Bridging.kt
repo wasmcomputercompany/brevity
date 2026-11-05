@@ -27,21 +27,20 @@ val IrFlag.kotlinName: String
 
 val FunctionName.kotlinIdentifier: Identifier
   get() {
-    return when (transform) {
-      null -> {
-        when (this) {
-          is FunctionName.Constructor -> parent.type.name
-          is FunctionName.ResourceClose -> resourceCloseName
-          is FunctionName.ResourceDrop -> Identifier("${parent.type.name}-$resourceDropSuffix")
-          is FunctionName.ResourceNew -> Identifier("${parent.type.name}-$resourceNewSuffix")
-          else -> name!!
-        }
+    return when (this) {
+      is FunctionName.Constructor -> parent.type.name
+      is FunctionName.ResourceClose -> resourceCloseName
+      is FunctionName.ResourceDrop -> Identifier("${parent.type.name}-$resourceDropSuffix")
+      is FunctionName.ResourceNew -> Identifier("${parent.type.name}-$resourceNewSuffix")
+      is FunctionName.StreamNew -> Identifier("${base.name}-stream-new$id")
+      is FunctionName.StreamIo -> Identifier("${base.name}-stream-${op.verb}$id")
+      is FunctionName.StreamCancel -> Identifier("${base.name}-stream-cancel-${op.verb}$id")
+      is FunctionName.StreamDrop -> Identifier("${base.name}-stream-drop-${op.noun}$id")
+      else -> when (transform) {
+        FunctionName.Transform.AsyncExportCallback -> Identifier("${name!!}-$asyncLiftCallbackSuffix")
+        FunctionName.Transform.TaskReturn -> Identifier("${name!!}-$taskReturnSuffix")
+        else -> name!!
       }
-
-      FunctionName.Transform.AsyncExport -> name!!
-      FunctionName.Transform.AsyncImport -> name!!
-      FunctionName.Transform.AsyncExportCallback -> Identifier("${name!!}-$asyncLiftCallbackSuffix")
-      FunctionName.Transform.TaskReturn -> Identifier("${name!!}-$taskReturnSuffix")
     }
   }
 

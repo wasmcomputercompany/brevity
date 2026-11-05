@@ -6,10 +6,12 @@ import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.TypeName
 import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.FunctionName.StreamOp
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
+import dev.wasmo.brevity.StreamsAndFuturesFinder
 import dev.wasmo.brevity.TypeName as WitTypeName
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrResource
@@ -66,7 +68,11 @@ data class AbiFunction(
     get() = name.transform == FunctionName.Transform.TaskReturn ||
       name.transform == FunctionName.Transform.AsyncExportCallback ||
       name is FunctionName.ResourceDrop ||
-      name is FunctionName.ResourceNew
+      name is FunctionName.ResourceNew ||
+      name is FunctionName.StreamNew ||
+      name is FunctionName.StreamIo ||
+      name is FunctionName.StreamCancel ||
+      name is FunctionName.StreamDrop
 
   val isResource: Boolean
     get() = parameters.resourceRep != null
@@ -235,6 +241,7 @@ data class AbiFunction(
   class Factory(
     private val kotlinMapper: KotlinMapper,
     private val encoderFactory: EncoderFactory,
+    private val streamsAndFuturesFinder: StreamsAndFuturesFinder,
   ) {
     fun collectAll(
       listBuilder: MutableList<AbiFunction>,
@@ -251,6 +258,26 @@ data class AbiFunction(
           isResource = isResource,
           includeSyntheticFunctions = includeSyntheticFunctions,
         )
+      }
+      if (includeSyntheticFunctions) {
+        for (irFunction in functions) {
+          val types = streamsAndFuturesFinder.find(function = irFunction).withIndex()
+          for ((id, type) in types) {
+            when (type) {
+              is WitTypeName.Stream -> {
+                collectStreamFunctions(
+                  listBuilder = listBuilder,
+                  irFunction = irFunction,
+                  orientation = orientation,
+                  elementType = type.type ?: continue,
+                  id = id,
+                )
+              }
+
+              else -> continue
+            }
+          }
+        }
       }
     }
 
@@ -466,6 +493,138 @@ data class AbiFunction(
         parameters = parameters(flatParameters, nameAllocator, name),
         isSupported = true,
         orientation = orientation,
+        nameAllocator = nameAllocator,
+      )
+    }
+
+    fun collectStreamFunctions(
+      listBuilder: MutableList<AbiFunction>,
+      irFunction: IrFunction,
+      orientation: Orientation,
+      elementType: WitTypeName,
+      id: Int,
+    ) {
+      listBuilder += streamNew(
+        name = FunctionName.StreamNew(
+          base = irFunction.functionName,
+          id = id,
+          exportPrefix = orientation == Export,
+        ),
+      )
+      for (streamOp in StreamOp.entries) {
+        listBuilder += streamIo(
+          name = FunctionName.StreamIo(
+            base = irFunction.functionName,
+            id = id,
+            exportPrefix = orientation == Export,
+            op = streamOp,
+          ),
+        )
+        listBuilder += streamCancel(
+          name = FunctionName.StreamCancel(
+            base = irFunction.functionName,
+            id = id,
+            exportPrefix = orientation == Export,
+            op = streamOp,
+          ),
+        )
+        listBuilder += streamDrop(
+          name = FunctionName.StreamDrop(
+            base = irFunction.functionName,
+            id = id,
+            exportPrefix = orientation == Export,
+            op = streamOp,
+          ),
+        )
+      }
+    }
+
+    private fun streamNew(
+      name: FunctionName.StreamNew,
+    ): AbiFunction {
+      val nameAllocator = NameAllocator()
+      val flatParameters = listOf<FlatParameter>(
+      )
+      val result = Result.SingleCoreValueReturn(
+        Result.Value(
+          encoder = encoderFactory.get(WitTypeName.S64),
+          type = kotlinMapper.get(WitTypeName.S64),
+        ),
+      )
+      return AbiFunction(
+        name = name,
+        kotlinIdentifier = name.kotlinIdentifier,
+        parameters = parameters(flatParameters, nameAllocator, name),
+        result = result,
+        isSupported = true,
+        orientation = Import,
+        nameAllocator = nameAllocator,
+      )
+    }
+
+    private fun streamIo(
+      name: FunctionName.StreamIo,
+    ): AbiFunction {
+      val nameAllocator = NameAllocator()
+      val flatParameters = listOf(
+        flatParameter(WitTypeName.S32, Identifier("a"), nameAllocator),
+        flatParameter(WitTypeName.S32, Identifier("b"), nameAllocator),
+        flatParameter(WitTypeName.S32, Identifier("c"), nameAllocator),
+      )
+      val result = Result.SingleCoreValueReturn(
+        Result.Value(
+          encoder = encoderFactory.get(WitTypeName.S32),
+          type = kotlinMapper.get(WitTypeName.S32),
+        ),
+      )
+      return AbiFunction(
+        name = name,
+        kotlinIdentifier = name.kotlinIdentifier,
+        parameters = parameters(flatParameters, nameAllocator, name),
+        result = result,
+        isSupported = true,
+        orientation = Import,
+        nameAllocator = nameAllocator,
+      )
+    }
+
+    private fun streamCancel(
+      name: FunctionName.StreamCancel,
+    ): AbiFunction {
+      val nameAllocator = NameAllocator()
+      val flatParameters = listOf(
+        flatParameter(WitTypeName.S32, Identifier("index"), nameAllocator),
+      )
+      val result = Result.SingleCoreValueReturn(
+        Result.Value(
+          encoder = encoderFactory.get(WitTypeName.S32),
+          type = kotlinMapper.get(WitTypeName.S32),
+        ),
+      )
+      return AbiFunction(
+        name = name,
+        kotlinIdentifier = name.kotlinIdentifier,
+        parameters = parameters(flatParameters, nameAllocator, name),
+        result = result,
+        isSupported = true,
+        orientation = Import,
+        nameAllocator = nameAllocator,
+      )
+    }
+
+    private fun streamDrop(
+      name: FunctionName.StreamDrop,
+    ): AbiFunction {
+      val nameAllocator = NameAllocator()
+      val flatParameters = listOf(
+        flatParameter(WitTypeName.S32, Identifier("index"), nameAllocator),
+      )
+      return AbiFunction(
+        name = name,
+        kotlinIdentifier = name.kotlinIdentifier,
+        parameters = parameters(flatParameters, nameAllocator, name),
+        isSupported = true,
+        orientation = Import,
         nameAllocator = nameAllocator,
       )
     }

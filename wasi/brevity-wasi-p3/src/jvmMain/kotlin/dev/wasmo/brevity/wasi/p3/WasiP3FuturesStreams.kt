@@ -30,17 +30,10 @@ internal class RealWasiP3FuturesStreamsWorld : World<Unit, Unit>() {
 
   override fun initImports(bridge: HostBridge, store: Store) {
     store.addFunction(
-      HostFunction("wasi:cli/stdin@0.3.0",        "[stream-new-0]read-via-stream",                                   FunctionType.of(listOf(),                                      listOf(ValType.I64)), WasmFunctionHandle { instance, args -> TODO() }),
-      HostFunction("wasi:cli/stdin@0.3.0",        "[stream-drop-readable-0]read-via-stream",                         FunctionType.of(listOf(ValType.I32),                           listOf<ValType>()),   WasmFunctionHandle { instance, args -> TODO() }),
       HostFunction("wasi:cli/stdin@0.3.0",        "[async-lower][future-read-1]read-via-stream",                     FunctionType.of(listOf(ValType.I32,ValType.I32),               listOf(ValType.I32)), WasmFunctionHandle { instance, args -> TODO() }),
       HostFunction("wasi:cli/stdin@0.3.0",        "[future-drop-readable-1]read-via-stream",                         FunctionType.of(listOf(ValType.I32),                           listOf<ValType>()),   WasmFunctionHandle { instance, args -> TODO() }),
       HostFunction("wasi:cli/stdout@0.3.0",       "[async-lower][future-read-1]write-via-stream",                    FunctionType.of(listOf(ValType.I32, ValType.I32),              listOf(ValType.I32)), WasmFunctionHandle { instance, args -> TODO() }),
       HostFunction("wasi:cli/stdout@0.3.0",       "[future-drop-readable-1]write-via-stream",                        FunctionType.of(listOf(ValType.I32),                           listOf<ValType>()),   WasmFunctionHandle { instance, args -> TODO() }),
-      HostFunction("wasi:filesystem/types@0.3.0", "[async-lower][stream-write-0][method]descriptor.read-via-stream", FunctionType.of(listOf(ValType.I32, ValType.I32, ValType.I32), listOf(ValType.I32)), WasmFunctionHandle { instance, args -> TODO() }),
-      HostFunction("wasi:filesystem/types@0.3.0", "[stream-cancel-read-0][method]descriptor.read-via-stream",        FunctionType.of(listOf(ValType.I32),                           listOf(ValType.I32)), WasmFunctionHandle { instance, args -> TODO() }),
-      HostFunction("wasi:filesystem/types@0.3.0", "[stream-cancel-write-0][method]descriptor.read-via-stream",       FunctionType.of(listOf(ValType.I32),                           listOf(ValType.I32)), WasmFunctionHandle { instance, args -> TODO() }),
-      HostFunction("wasi:filesystem/types@0.3.0", "[stream-drop-readable-0][method]descriptor.read-via-stream",      FunctionType.of(listOf(ValType.I32),                           listOf<ValType>()),   WasmFunctionHandle { instance, args -> TODO() }),
-      HostFunction("wasi:filesystem/types@0.3.0", "[stream-drop-writable-0][method]descriptor.read-via-stream",      FunctionType.of(listOf(ValType.I32),                           listOf<ValType>()),   WasmFunctionHandle { instance, args -> TODO() }),
     )
   }
 }
