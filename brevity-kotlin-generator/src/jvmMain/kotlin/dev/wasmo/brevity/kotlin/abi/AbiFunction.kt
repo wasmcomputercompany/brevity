@@ -545,8 +545,7 @@ data class AbiFunction(
       name: FunctionName.StreamNew,
     ): AbiFunction {
       val nameAllocator = NameAllocator()
-      val flatParameters = listOf<FlatParameter>(
-      )
+      val flatParameters = listOf<FlatParameter>()
       val result = Result.SingleCoreValueReturn(
         Result.Value(
           encoder = encoderFactory.get(WitTypeName.S64),

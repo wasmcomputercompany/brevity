@@ -157,6 +157,7 @@ sealed class FunctionName {
   ) : FunctionName() {
     override val parent: Parent.Resource
       get() = Parent.Resource(type)
+
     override fun toString() = super.toString()
   }
 
@@ -170,6 +171,7 @@ sealed class FunctionName {
       get() = Parent.Resource(type)
     override val exportPrefix: Boolean
       get() = true
+
     override fun toString() = super.toString()
   }
 
@@ -178,6 +180,7 @@ sealed class FunctionName {
   ) : FunctionName() {
     override val parent: Parent.Resource
       get() = Parent.Resource(type)
+
     override fun toString() = super.toString()
   }
 
@@ -190,10 +193,10 @@ sealed class FunctionName {
   ) : FunctionName() {
     override val parent: Parent.Resource
       get() = Parent.Resource(type)
+
     override fun toString() = super.toString()
   }
 
-  /** `(func (result i64))` */
   data class StreamNew(
     val base: FunctionName,
     val id: Int,
@@ -202,10 +205,10 @@ sealed class FunctionName {
   ) : FunctionName() {
     override val parent: Parent
       get() = base.parent
+
     override fun toString() = super.toString()
   }
 
-  /** `(func (param i32 i32 i32) (result i32))` */
   data class StreamIo(
     val base: FunctionName,
     val id: Int,
@@ -217,10 +220,10 @@ sealed class FunctionName {
       get() = base.parent
     override val transform: Transform
       get() = Transform.AsyncImport
+
     override fun toString() = super.toString()
   }
 
-  /** `(func (param i32) (result i32))` */
   data class StreamCancel(
     val base: FunctionName,
     val id: Int,
@@ -230,10 +233,10 @@ sealed class FunctionName {
   ) : FunctionName() {
     override val parent: Parent
       get() = base.parent
+
     override fun toString() = super.toString()
   }
 
-  /** `(func (param i32))` */
   data class StreamDrop(
     val base: FunctionName,
     val id: Int,
@@ -243,6 +246,7 @@ sealed class FunctionName {
   ) : FunctionName() {
     override val parent: Parent
       get() = base.parent
+
     override fun toString() = super.toString()
   }
 

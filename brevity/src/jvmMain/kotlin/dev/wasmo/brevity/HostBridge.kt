@@ -3,7 +3,6 @@ package dev.wasmo.brevity
 import com.dylibso.chicory.runtime.ExportFunction
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
-import dev.wasmo.brevity.RealAsyncHost.RealWaitableSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
@@ -14,7 +13,7 @@ class HostBridge(
 ) {
   private val repToExportedResource = mutableMapOf<Int, Resource>()
   private val repToImportedResource = mutableMapOf<Int, Resource>()
-  internal val waitables = mutableMapOf<Int, RealAsyncHost.Waitable>()
+  internal val waitables = mutableMapOf<Int, Waitable>()
   private var nextRep = 6_060_000
   private var nextWaitableIndex = 8_080_000
   internal var initialStackPointer: Int = 0
@@ -95,7 +94,7 @@ class HostBridge(
         }
 
         CallbackCode.Wait -> {
-          val waitableSet = getImportedResource<RealWaitableSet>(
+          val waitableSet = getImportedResource<HostWaitableSet>(
             packedAsyncResult.waitableSetIndex,
           )
           val event = waitableSet.waitForEvent()
@@ -117,7 +116,7 @@ class HostBridge(
 
       !job.isCompleted -> {
         val waitableIndex = nextWaitableIndex++
-        waitables[waitableIndex] = RealAsyncHost.Waitable(waitableIndex, job)
+        waitables[waitableIndex] = Subtask(waitableIndex, job)
         PackedSubtaskResult(SubtaskState.Started, waitableIndex)
       }
 

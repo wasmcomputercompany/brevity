@@ -84,6 +84,7 @@ object Symbols {
     val PackedAsyncResult = ClassName("dev.wasmo.brevity", "PackedAsyncResult")
     val PackedSubtaskResult = ClassName("dev.wasmo.brevity", "PackedSubtaskResult")
     val Quad = ClassName("dev.wasmo.brevity", "Quad")
+    val ReceiveStream = ClassName("dev.wasmo.brevity", "ReceiveStream")
     val Resource = ClassName("dev.wasmo.brevity", "Resource")
     val Result = ClassName("dev.wasmo.brevity", "Result")
     val ResultError = Result.nestedClass("Error")
@@ -93,7 +94,6 @@ object Symbols {
       "retainWasmExportsForGuestBridge",
     )
     val StoreByteArray = MemberName("dev.wasmo.brevity", "storeByteArray")
-    val Stream = ClassName("dev.wasmo.brevity", "Stream")
     val WitAdapter = ClassName("dev.wasmo.brevity", "WitAdapter")
     val World = ClassName("dev.wasmo.brevity", "World")
   }

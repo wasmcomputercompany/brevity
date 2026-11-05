@@ -121,7 +121,7 @@ class KotlinMapper(
 
       is TypeName.Declared -> get(name)
 
-      is TypeName.Stream -> Symbols.Brevity.Stream.parameterizedBy(
+      is TypeName.Stream -> Symbols.Brevity.ReceiveStream.parameterizedBy(
         name.type?.let { get(it) } ?: STAR,
       )
 

@@ -13,10 +13,6 @@ interface Future<T> {
   suspend fun await(): T
 }
 
-interface Stream<T> {
-  suspend fun next(): T
-}
-
 sealed interface Result<out S, out F> {
   data class Ok<out S, out F>(
     val value: S,
