@@ -101,6 +101,7 @@ class BrevityExecutionTester(
           rawWitUseStatements = rawWitUseStatements,
           testFunctions = testFunctions,
         ).generate()
+        sweepWit()
         generateBrevity()
       }
       launch {
@@ -163,6 +164,17 @@ class BrevityExecutionTester(
   private suspend fun sweep() {
     executeIo("sweep") {
       sweepRecursively(layout.path)
+    }
+  }
+
+  /**
+   * Delete any stray wit sources, but no build tool outputs. This is meant to be used between
+   * generating wit and running brevity.
+   */
+  private suspend fun sweepWit() {
+    executeIo("sweepWit") {
+      sweepRecursively(layout.brevityWit)
+      sweepRecursively(layout.rustWit)
     }
   }
 
