@@ -22,13 +22,8 @@ sealed class FunctionName {
   open val transform: Transform?
     get() = null
 
-  private val exportPrefix: Boolean
-    get() {
-      if (transform == Transform.TaskReturn) return true
-      if (this is ResourceNew) return true
-      if (this is ResourceDropExport) return true
-      return false
-    }
+  open val exportPrefix: Boolean
+    get() = transform == Transform.TaskReturn
 
   /** Returns null for exported world functions that don't have an `[export]` prefix. */
   val moduleName: String?
@@ -56,7 +51,6 @@ sealed class FunctionName {
 
   val abiName: String
     get() = buildString {
-      val parent = parent
       if (parent is Parent.WorldExport) {
         when (transform) {
           Transform.AsyncExport -> append("[async-lift]")
@@ -71,24 +65,48 @@ sealed class FunctionName {
         else -> {}
       }
 
+      val baseName = when (this@FunctionName) {
+        is StreamNew -> {
+          append("[stream-new-${id}]")
+          base
+        }
+
+        is StreamIo -> {
+          append("[stream-${op.verb}-${id}]")
+          base
+        }
+
+        is StreamCancel -> {
+          append("[stream-cancel-${op.verb}-${id}]")
+          base
+        }
+
+        is StreamDrop -> {
+          append("[stream-drop-${op.noun}-${id}]")
+          base
+        }
+
+        else -> this@FunctionName
+      }
+
+      val parent = baseName.parent
       if (parent is Parent.Resource) {
-        when (this@FunctionName) {
+        when (baseName) {
           is Constructor -> append("[constructor]")
           is Static -> append("[static]")
           is ResourceNew -> append("[resource-new]")
           is ResourceClose -> append("[dtor]")
-          is ResourceDropExport -> append("[resource-drop]")
-          is ResourceDropImport -> append("[resource-drop]")
+          is ResourceDrop -> append("[resource-drop]")
           else -> append("[method]")
         }
 
         append(parent.type.name)
-        if (name != null) {
+        if (baseName.name != null) {
           append(".")
         }
       }
 
-      name?.let { append(it) }
+      baseName.name?.let { append(it) }
     }
 
   open fun transform(transform: Transform): FunctionName {
@@ -150,6 +168,8 @@ sealed class FunctionName {
   ) : FunctionName() {
     override val parent: Parent.Resource
       get() = Parent.Resource(type)
+    override val exportPrefix: Boolean
+      get() = true
     override fun toString() = super.toString()
   }
 
@@ -164,20 +184,70 @@ sealed class FunctionName {
   /**
    * https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#canon-resourcedrop
    */
-  data class ResourceDropExport(
+  data class ResourceDrop(
     val type: TypeName.Declared,
+    override val exportPrefix: Boolean,
   ) : FunctionName() {
     override val parent: Parent.Resource
       get() = Parent.Resource(type)
     override fun toString() = super.toString()
   }
 
-  data class ResourceDropImport(
-    val type: TypeName.Declared,
+  /** `(func (result i64))` */
+  data class StreamNew(
+    val base: FunctionName,
+    val id: Int,
+    override val exportPrefix: Boolean,
   ) : FunctionName() {
-    override val parent: Parent.Resource
-      get() = Parent.Resource(type)
+    override val parent: Parent
+      get() = base.parent
     override fun toString() = super.toString()
+  }
+
+  /** `(func (param i32 i32 i32) (result i32))` */
+  data class StreamIo(
+    val base: FunctionName,
+    val id: Int,
+    override val exportPrefix: Boolean,
+    val op: StreamOp,
+  ) : FunctionName() {
+    override val parent: Parent
+      get() = base.parent
+    override val transform: Transform
+      get() = Transform.AsyncImport
+    override fun toString() = super.toString()
+  }
+
+  /** `(func (param i32) (result i32))` */
+  data class StreamCancel(
+    val base: FunctionName,
+    val id: Int,
+    override val exportPrefix: Boolean,
+    val op: StreamOp,
+  ) : FunctionName() {
+    override val parent: Parent
+      get() = base.parent
+    override fun toString() = super.toString()
+  }
+
+  /** `(func (param i32))` */
+  data class StreamDrop(
+    val base: FunctionName,
+    val id: Int,
+    override val exportPrefix: Boolean,
+    val op: StreamOp,
+  ) : FunctionName() {
+    override val parent: Parent
+      get() = base.parent
+    override fun toString() = super.toString()
+  }
+
+  enum class StreamOp(
+    val verb: Identifier,
+    val noun: Identifier,
+  ) {
+    Read(Identifier("read"), Identifier("readable")),
+    Write(Identifier("write"), Identifier("writable")),
   }
 
   sealed interface Parent {

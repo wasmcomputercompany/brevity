@@ -39,9 +39,7 @@ fun AbiLift(
         functionEncoder = functionEncoder,
       )
 
-      is FunctionName.ResourceDropExport,
-      is FunctionName.ResourceDropImport,
-        -> AbiResourceDropLift(
+      is FunctionName.ResourceDrop -> AbiResourceDropLift(
         functionEncoder = functionEncoder,
       )
 
