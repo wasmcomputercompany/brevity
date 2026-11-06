@@ -34,9 +34,9 @@ class StreamsAndFuturesFinderTest {
 
     val finder = StreamsAndFuturesFinder(declarationIndex)
     assertThat(finder.find(foo)).containsExactly(
-      TypeName.Future(TypeName.U32),
-      TypeName.Future(TypeName.Future(TypeName.U32)),
-      TypeName.Stream(TypeName.U8),
+      IndexedValue(0, TypeName.Future(TypeName.U32)),
+      IndexedValue(1, TypeName.Future(TypeName.Future(TypeName.U32))),
+      IndexedValue(2, TypeName.Stream(TypeName.U8)),
     )
   }
 }
