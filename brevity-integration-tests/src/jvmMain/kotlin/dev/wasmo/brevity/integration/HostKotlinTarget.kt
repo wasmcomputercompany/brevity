@@ -34,6 +34,7 @@ class HostKotlinTarget(
       |
       |import assertk.assertThat
       |import assertk.assertions.isEqualTo
+      |import dev.wasmo.brevity.Future
       |import dev.wasmo.brevity.Stream
       |import dev.wasmo.brevity.WasmInstance
       |import dev.wasmo.brevity.asyncWorld
@@ -43,7 +44,6 @@ class HostKotlinTarget(
       |import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
       |import dev.wasmo.brevity.wasi.p2.wasiP2World
       |import dev.wasmo.brevity.wasi.p3.RealWasiP3Host
-      |import dev.wasmo.brevity.wasi.p3.wasiP3FuturesStreamsWorld
       |import dev.wasmo.brevity.wasi.p3.wasiP3World
       |import kotlin.time.Duration
       |import kotlin.time.Duration.Companion.milliseconds
@@ -148,7 +148,6 @@ class HostKotlinTarget(
       |    worlds = listOf(
       |      wasiP1World { RealWasiP1Host() },
       |      wasiP2World { RealWasiP2Host() },
-      |      wasiP3FuturesStreamsWorld,
       |      wasiP3World { RealWasiP3Host() },
       |      asyncWorld,
       |      world,

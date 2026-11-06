@@ -41,10 +41,6 @@ object Symbols {
     val Map = ClassName("kotlin.collections", "Map")
   }
 
-  object KotlinCoroutines {
-    val Deferred = ClassName("kotlinx.coroutines", "Deferred")
-  }
-
   object KotlinWasm {
     val ComponentModelInternalApi = ClassName("kotlin.wasm.unsafe", "ComponentModelInternalApi")
     val ExperimentalWasmInterop = ClassName("kotlin.wasm", "ExperimentalWasmInterop")
@@ -76,15 +72,13 @@ object Symbols {
   }
 
   object Brevity {
-    val Borrow = ClassName("dev.wasmo.brevity", "Borrow")
     val BrevityInternalApi = ClassName("dev.wasmo.brevity", "BrevityInternalApi")
     val CallBuilder = ClassName("dev.wasmo.brevity", "CallBuilder")
     val CallbackCode = ClassName("dev.wasmo.brevity", "CallbackCode")
     val Event = ClassName("dev.wasmo.brevity", "Event")
+    val Future = ClassName("dev.wasmo.brevity", "Future")
     val GuestBridge = ClassName("dev.wasmo.brevity", "GuestBridge")
     val HostBridge = ClassName("dev.wasmo.brevity", "HostBridge")
-    val HostBridgeGet = MemberName("dev.wasmo.brevity", "get")
-    val LoadPointer = MemberName("dev.wasmo.brevity", "loadPointer")
     val LoadString = MemberName("dev.wasmo.brevity", "loadString")
     val MemoryAllocator = ClassName("dev.wasmo.brevity", "MemoryAllocator")
     val PackedAsyncResult = ClassName("dev.wasmo.brevity", "PackedAsyncResult")

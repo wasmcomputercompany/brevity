@@ -31,6 +31,7 @@ data class TestFunction(
         when (passingMechanism) {
           is PassingMechanism.Parameter -> "parameter"
           PassingMechanism.Return -> "return"
+          PassingMechanism.Future -> "future"
           PassingMechanism.Stream -> "stream"
         },
       )
@@ -117,6 +118,16 @@ data class TestFunction(
           """
           |  index: s32,
           |) -> ${type.witType};
+          |
+          """.trimMargin(),
+        )
+      }
+
+      PassingMechanism.Future -> {
+        writeUtf8(
+          """
+          |  index: s32,
+          |) -> future<${type.witType}>;
           |
           """.trimMargin(),
         )
@@ -219,6 +230,20 @@ data class TestFunction(
         )
       }
 
+      PassingMechanism.Future -> {
+        val call = rustCall(callTarget, "index", "panic!()")
+        val resultIndex = valueToIndexFunction.rustCall("Self::", "panic!()", "value")
+        writeUtf8(
+          """
+          |        let future = ${call.replace("\n", "\n        ")};
+          |        let value = future.await;
+          |        ${resultIndex.replace("\n", "\n        ")}
+          |    }
+          |
+          """.trimMargin(),
+        )
+      }
+
       PassingMechanism.Stream -> {
         val call = rustCall(callTarget, "index", "panic!()")
         val resultIndex = valueToIndexFunction.rustCall("Self::", "panic!()", "value")
@@ -300,6 +325,25 @@ data class TestFunction(
             """
             |    _ => panic!("unexpected index {}", index)
             |}
+            |
+            """.trimMargin(),
+          )
+        }
+
+        PassingMechanism.Future -> {
+          val callTarget = when {
+            functionParent.isResource -> "self."
+            else -> "Self::"
+          }
+          val value = indexToValueFunction.rustCall(callTarget, "index", "panic!()")
+          writeUtf8(
+            """
+            |let (mut future_writer, future_reader) = bindings::wit_future::new::<${type.rustType}>(|| panic!());
+            |let value = $value;
+            |wit_bindgen::rt::async_support::spawn_local(async move {
+            |    future_writer.write(value).await.unwrap();
+            |});
+            |future_reader
             |
             """.trimMargin(),
           )
@@ -401,6 +445,16 @@ data class TestFunction(
         )
       }
 
+      PassingMechanism.Future -> {
+        writeUtf8(
+          """
+          |        index: i32
+          |    ) -> wit_bindgen::FutureReader<${type.rustType}> {
+          |
+          """.trimMargin(),
+        )
+      }
+
       PassingMechanism.Stream -> {
         writeUtf8(
           """
@@ -463,7 +517,7 @@ data class TestFunction(
         )
       }
 
-      PassingMechanism.Return, PassingMechanism.Stream -> {
+      PassingMechanism.Return, PassingMechanism.Future, PassingMechanism.Stream -> {
         val call = kotlinCall(callTarget, "index", "Nothing", "delayMillis")
         val resultIndex = valueToIndexFunction.kotlinCall("this", "Nothing", "value")
         writeUtf8(
@@ -556,10 +610,10 @@ data class TestFunction(
           )
         }
 
-        PassingMechanism.Return, PassingMechanism.Stream -> {
+        PassingMechanism.Future, PassingMechanism.Stream -> {
           writeUtf8(
             """
-            |TODO("implement streams")
+            |TODO("implement futures and streams")
             |
             """.trimMargin(),
           )
@@ -621,6 +675,16 @@ data class TestFunction(
           """
           |    index: Int,
           |  ): ${type.kotlinType} {
+          |
+          """.trimMargin(),
+        )
+      }
+
+      PassingMechanism.Future -> {
+        writeUtf8(
+          """
+          |    index: Int,
+          |  ): Future<${type.kotlinType}> {
           |
           """.trimMargin(),
         )
@@ -697,6 +761,15 @@ data class TestFunction(
           )
         }
 
+        PassingMechanism.Future -> {
+          writeUtf8(
+            """
+            |  index = ${valueIndex},
+            |).await()
+            """.trimMargin(),
+          )
+        }
+
         PassingMechanism.Stream -> {
           writeUtf8(
             """
@@ -758,7 +831,7 @@ data class TestFunction(
           )
         }
 
-        PassingMechanism.Return, PassingMechanism.Stream -> {
+        PassingMechanism.Return, PassingMechanism.Future, PassingMechanism.Stream -> {
           writeUtf8(
             """
             |    ${valueIndex},

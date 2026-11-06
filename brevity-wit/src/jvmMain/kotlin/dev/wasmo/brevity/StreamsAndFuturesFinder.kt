@@ -12,7 +12,7 @@ class Type
 class StreamsAndFuturesFinder(
   private val declarationIndex: DeclarationIndex,
 ) {
-  fun find(function: IrFunction): List<TypeName> {
+  fun find(function: IrFunction): List<IndexedValue<TypeName>> {
     val sequence = sequence {
       for (parameter in function.parameters) {
         declarationIndex.collectTypesDepthFirst(parameter.type)
@@ -22,6 +22,7 @@ class StreamsAndFuturesFinder(
 
     return sequence
       .filter { it is TypeName.Future || it is TypeName.Stream }
+      .withIndex()
       .toList()
   }
 }

@@ -9,16 +9,12 @@ data class Quad<A, B, C, D>(
   override fun toString() = "($a, $b, $c, $d)"
 }
 
-class Borrow<T : Any>(val value: T) {
-  override fun equals(other: Any?) = other is Borrow<*> && other.value == value
-
-  override fun hashCode() = value.hashCode()
-
-  override fun toString() = "Borrow($value)"
+interface Future<T> {
+  suspend fun await(): T
 }
 
-interface Stream<T : Any> {
-  fun next(): T
+interface Stream<T> {
+  suspend fun next(): T
 }
 
 sealed interface Result<out S, out F> {

@@ -67,22 +67,22 @@ sealed class FunctionName {
 
       val baseName = when (this@FunctionName) {
         is StreamNew -> {
-          append("[stream-new-${id}]")
+          append("[${cardinality.identifier}-new-${id}]")
           base
         }
 
         is StreamIo -> {
-          append("[stream-${op.verb}-${id}]")
+          append("[${cardinality.identifier}-${op.verb}-${id}]")
           base
         }
 
         is StreamCancel -> {
-          append("[stream-cancel-${op.verb}-${id}]")
+          append("[${cardinality.identifier}-cancel-${op.verb}-${id}]")
           base
         }
 
         is StreamDrop -> {
-          append("[stream-drop-${op.noun}-${id}]")
+          append("[${cardinality.identifier}-drop-${op.noun}-${id}]")
           base
         }
 
@@ -197,6 +197,7 @@ sealed class FunctionName {
   data class StreamNew(
     val base: FunctionName,
     val id: Int,
+    val cardinality: StreamCardinality,
     override val exportPrefix: Boolean,
   ) : FunctionName() {
     override val parent: Parent
@@ -208,6 +209,7 @@ sealed class FunctionName {
   data class StreamIo(
     val base: FunctionName,
     val id: Int,
+    val cardinality: StreamCardinality,
     override val exportPrefix: Boolean,
     val op: StreamOp,
   ) : FunctionName() {
@@ -222,6 +224,7 @@ sealed class FunctionName {
   data class StreamCancel(
     val base: FunctionName,
     val id: Int,
+    val cardinality: StreamCardinality,
     override val exportPrefix: Boolean,
     val op: StreamOp,
   ) : FunctionName() {
@@ -234,12 +237,21 @@ sealed class FunctionName {
   data class StreamDrop(
     val base: FunctionName,
     val id: Int,
+    val cardinality: StreamCardinality,
     override val exportPrefix: Boolean,
     val op: StreamOp,
   ) : FunctionName() {
     override val parent: Parent
       get() = base.parent
     override fun toString() = super.toString()
+  }
+
+  enum class StreamCardinality(val identifier: Identifier) {
+    /** Exactly one async value. */
+    Future(Identifier("future")),
+
+    /** Any number of async values. */
+    Stream(Identifier("stream")),
   }
 
   enum class StreamOp(
