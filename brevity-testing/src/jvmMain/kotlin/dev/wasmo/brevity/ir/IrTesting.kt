@@ -198,6 +198,7 @@ fun IrWorld(
   types: List<IrTypeDeclaration> = listOf(),
   imports: List<IrWorld.Api> = listOf(),
   exports: List<IrWorld.Api> = listOf(),
+  streams: List<IrStream> = listOf(),
 ) = IrWorld(
   documentation = documentation?.let { Documentation(it) },
   gate = gate,
@@ -206,4 +207,5 @@ fun IrWorld(
   types = types,
   imports = imports,
   exports = exports,
+  streams = streams,
 )

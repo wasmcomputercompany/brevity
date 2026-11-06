@@ -5,13 +5,16 @@ import assertk.assertions.containsExactly
 import assertk.assertions.containsExactlyInAnyOrder
 import assertk.assertions.isEqualTo
 import assertk.assertions.isNull
+import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.FunctionNameConstructor
 import dev.wasmo.brevity.FunctionNameInterface
 import dev.wasmo.brevity.FunctionNameMethod
 import dev.wasmo.brevity.FunctionNameStatic
+import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Issue
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.collectIssues
@@ -995,6 +998,53 @@ class IrMapperTest {
             ),
           ),
         ),
+      ),
+    )
+  }
+
+  @Test
+  fun `streams and futures`() = collectNoIssuesOrThrow {
+    val ioPackages = listOf(
+      IoToplevelWitPackage(
+        packageName = "test:test".toPackageName(),
+        files = listOf(
+          """
+          |package test:test;
+          |
+          |world sample {
+          |    export foo: func(x: future<future<u32>>, y: u32) -> stream<u8>;
+          |}
+          """.trimMargin().toWitFile(Location("test.wit")),
+        ),
+      ),
+    )
+    val irPackages = IrMapper(ioPackages).map()
+    val serviceName = "test:test/sample".toServiceName()
+
+    val irPackage = irPackages.single()
+    val irWorld = irPackage.services.single() as IrWorld
+    val functionName = FunctionName.Standard(
+      FunctionName.Parent.WorldExport(serviceName),
+      name = Identifier("foo"),
+    )
+    assertThat(irWorld.streams).containsExactly(
+      IrStream(
+        functionName = functionName,
+        orientation = Orientation.Export,
+        type = TypeName.Future(TypeName.U32),
+        id = 0,
+      ),
+      IrStream(
+        functionName = functionName,
+        orientation = Orientation.Export,
+        type = TypeName.Future(TypeName.Future(TypeName.U32)),
+        id = 1,
+      ),
+      IrStream(
+        functionName = functionName,
+        orientation = Orientation.Export,
+        type = TypeName.Stream(TypeName.U8),
+        id = 2,
       ),
     )
   }

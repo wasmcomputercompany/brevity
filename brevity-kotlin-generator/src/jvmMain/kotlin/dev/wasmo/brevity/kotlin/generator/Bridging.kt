@@ -6,12 +6,16 @@ import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.FunctionName.StreamOp
 import dev.wasmo.brevity.Identifier
+import dev.wasmo.brevity.Orientation.Export
+import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrField
 import dev.wasmo.brevity.ir.IrFlag
 import dev.wasmo.brevity.ir.IrFunction
+import dev.wasmo.brevity.ir.IrStream
 import dev.wasmo.brevity.kotlin.encoders.CoreType
 
 const val kotlinPackagePrefix: String = "wit"
@@ -75,4 +79,42 @@ val IrFunction.isSupported: Boolean
     functionName is FunctionName.Constructor -> false
     functionName is FunctionName.Static -> false
     else -> true
+  }
+
+fun IrStream.newFunctionName() = FunctionName.StreamNew(
+  base = functionName,
+  id = id,
+  cardinality = cardinality,
+  exportPrefix = orientation == Export,
+)
+
+fun IrStream.ioFunctionName(streamOp: StreamOp) = FunctionName.StreamIo(
+  base = functionName,
+  id = id,
+  cardinality = cardinality,
+  exportPrefix = orientation == Export,
+  op = streamOp,
+)
+
+fun IrStream.cancelFunctionName(streamOp: StreamOp) = FunctionName.StreamCancel(
+  base = functionName,
+  id = id,
+  cardinality = cardinality,
+  exportPrefix = orientation == Export,
+  op = streamOp,
+)
+
+fun IrStream.dropFunctionName(streamOp: StreamOp) = FunctionName.StreamDrop(
+  base = functionName,
+  id = id,
+  cardinality = cardinality,
+  exportPrefix = orientation == Export,
+  op = streamOp,
+)
+
+val IrStream.cardinality: FunctionName.StreamCardinality
+  get() = when (type) {
+    is TypeName.Future -> FunctionName.StreamCardinality.Future
+    is TypeName.Stream -> FunctionName.StreamCardinality.Stream
+    else -> error("unexpected type ${type}")
   }

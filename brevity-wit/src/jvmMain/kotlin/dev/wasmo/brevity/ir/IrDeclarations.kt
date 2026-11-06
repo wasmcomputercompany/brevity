@@ -5,6 +5,7 @@ import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Gate
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Location
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.PackageName
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
@@ -61,6 +62,7 @@ data class IrWorld(
    */
   val imports: List<Api>,
   val exports: List<Api>,
+  val streams: List<IrStream>,
 ) : IrWitPackage.Service {
   sealed interface Api : IrDeclaration
   sealed interface Item : IrDeclaration
@@ -161,3 +163,11 @@ data class IrExternalApi(
   val plainName: Identifier? = null,
   val serviceName: ServiceName,
 ) : IrWorld.Api
+
+/** A fully-specified `stream<T>` or `future<T>` type. */
+data class IrStream(
+  val functionName: FunctionName,
+  val orientation: Orientation,
+  val type: TypeName,
+  val id: Int,
+)

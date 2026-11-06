@@ -44,7 +44,7 @@ class IrMapper(
   private val packages: List<IoToplevelWitPackage>,
   private val ioSymbolTable: IoSymbolTable,
 ) {
-  private val irPackages = mutableMapOf<PackageName, PackageBuilder>()
+  private val packageBuilders = mutableMapOf<PackageName, PackageBuilder>()
 
   internal class PackageBuilder {
     val documentation = mutableListOf<Documentation>()
@@ -53,13 +53,28 @@ class IrMapper(
 
   context(issueCollector: IssueCollector)
   fun map(): List<IrWitPackage> {
-    check(irPackages.isEmpty())
+    check(packageBuilders.isEmpty())
 
     for (ioPackage in packages) {
       addPackage(ioPackage)
     }
 
-    return irPackages.map { (name, builder) ->
+    val irStreamMapper = IrStreamMapper(
+      services = packageBuilders.values.flatMap { it.services },
+    )
+
+    for (packageBuilder in packageBuilders.values) {
+      for ((i, service) in packageBuilder.services.withIndex()) {
+        if (service !is IrWorld) continue
+
+        val streams = irStreamMapper.create(service)
+        if (streams.isEmpty()) continue
+
+        packageBuilder.services[i] = service.copy(streams = streams)
+      }
+    }
+
+    return packageBuilders.map { (name, builder) ->
       IrWitPackage(
         packageDocumentation = when {
           builder.documentation.isEmpty() -> null
@@ -73,7 +88,7 @@ class IrMapper(
 
   context(issueCollector: IssueCollector)
   private fun addPackage(ioPackage: IoWitPackage) {
-    val builder = irPackages.getOrPut(ioPackage.packageName) { PackageBuilder() }
+    val builder = packageBuilders.getOrPut(ioPackage.packageName) { PackageBuilder() }
 
     context(builder) {
       for (item in ioPackage.items) {
@@ -437,6 +452,7 @@ class IrMapper(
           included.world.exports.mapNotNull { it.worldApiToIr(Export) }
         }
       },
+      streams = listOf(), // Placeholder; true value will be computed later.
     )
   }
 
