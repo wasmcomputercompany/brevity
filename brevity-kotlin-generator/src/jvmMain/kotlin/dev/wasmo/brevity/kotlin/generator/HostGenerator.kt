@@ -52,6 +52,9 @@ class HostGenerator(
         world = abiWorld,
         typeNamer = typeNamer,
       )
+      val streamBindingsCollector = StreamBindingsCollector(
+        typeNamer = typeNamer,
+      )
       val collector = result.collector(
         sourceSet = QualifiedSpec.SourceSet.JvmMain,
         packageName = typeNamer.apiClassName.packageName,
@@ -61,7 +64,7 @@ class HostGenerator(
       )
       context(collector) {
         generateWorldFactoryFunction(abiWorld, typeNamer)
-        generateWorld(encoderFunctionCollector, abiWorld, typeNamer)
+        generateWorld(encoderFunctionCollector, streamBindingsCollector, abiWorld, typeNamer)
       }
     }
 
@@ -118,6 +121,7 @@ class HostGenerator(
   context(collector: QualifiedSpecCollector)
   private fun generateWorld(
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
     abiWorld: AbiWorld,
     typeNamer: HostTypeNamer,
   ) {
@@ -169,6 +173,7 @@ class HostGenerator(
       initExports(initExportsBuilder, builder, abiWorld.functions)
       initImports(
         encoderFunctionCollector = encoderFunctionCollector,
+        streamBindingsCollector = streamBindingsCollector,
         initImportsBuilder = initImportsBuilder,
         bridgeValue = bridgeValue,
         parentService = abiWorld,
@@ -176,6 +181,7 @@ class HostGenerator(
       builder.addType(
         generateExportsImplementation(
           encoderFunctionCollector = encoderFunctionCollector,
+          streamBindingsCollector = streamBindingsCollector,
           abiService = abiWorld,
         ),
       )
@@ -185,6 +191,7 @@ class HostGenerator(
       initExports(initExportsBuilder, builder, abiResource.functions)
       initImports(
         encoderFunctionCollector = encoderFunctionCollector,
+        streamBindingsCollector = streamBindingsCollector,
         initImportsBuilder = initImportsBuilder,
         bridgeValue = bridgeValue,
         parentService = abiResource,
@@ -193,6 +200,7 @@ class HostGenerator(
         builder.addType(
           generateExportsImplementation(
             encoderFunctionCollector = encoderFunctionCollector,
+            streamBindingsCollector = streamBindingsCollector,
             abiService = abiResource,
           ),
         )
@@ -203,6 +211,7 @@ class HostGenerator(
       initExports(initExportsBuilder, builder, abiInterface.functions)
       initImports(
         encoderFunctionCollector = encoderFunctionCollector,
+        streamBindingsCollector = streamBindingsCollector,
         initImportsBuilder = initImportsBuilder,
         bridgeValue = bridgeValue,
         parentService = abiInterface,
@@ -211,6 +220,7 @@ class HostGenerator(
         builder.addType(
           generateExportsImplementation(
             encoderFunctionCollector = encoderFunctionCollector,
+            streamBindingsCollector = streamBindingsCollector,
             abiService = abiInterface,
           ),
         )
@@ -225,6 +235,35 @@ class HostGenerator(
     }
     for (abiResource in abiWorld.resources) {
       generateResource(abiResource)
+    }
+
+    val generatedStreamTypes = mutableSetOf<TypeName>()
+    for (abiStream in abiWorld.streams) {
+      initExports(
+        initExportsBuilder = initExportsBuilder,
+        worldBuilder = builder,
+        functions = abiStream.functions,
+      )
+      initImports(
+        encoderFunctionCollector = encoderFunctionCollector,
+        streamBindingsCollector = streamBindingsCollector,
+        initImportsBuilder = initImportsBuilder,
+        bridgeValue = bridgeValue,
+        parentService = abiWorld,
+        functions = abiStream.functions,
+      )
+
+      if (generatedStreamTypes.add(abiStream.irStream.type)) {
+        builder.addType(
+          StreamBindingGenerator(
+            platform = platform,
+            kotlinMapper = kotlinMapper,
+            typeNamer = typeNamer,
+            abiWorld = abiWorld,
+            abiStream = abiStream,
+          ).generateHost(),
+        )
+      }
     }
 
     collector.addType(
@@ -266,17 +305,20 @@ class HostGenerator(
 
   private fun initImports(
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
     initImportsBuilder: FunSpec.Builder,
     bridgeValue: CodeBlock,
     parentService: AbiService,
+    functions: List<AbiFunction> = parentService.functions,
   ) {
     val store = CodeBlock.of("%N", "store")
-    for (abiFunction in parentService.functions) {
+    for (abiFunction in functions) {
       if (!abiFunction.isSupported) continue
       if (abiFunction.orientation != Import) continue
       initImportsBuilder.addCode(
         declareHost(
           encoderFunctionCollector = encoderFunctionCollector,
+          streamBindingsCollector = streamBindingsCollector,
           bridge = bridgeValue,
           store = store,
           parentService = parentService,
@@ -289,6 +331,7 @@ class HostGenerator(
   /** Generates a class to implement [abiService] for this orientation. */
   private fun generateExportsImplementation(
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
     abiService: AbiService,
   ): TypeSpec {
     return TypeSpec.classBuilder(encoderFunctionCollector.typeNamer.implementation(abiService))
@@ -328,6 +371,7 @@ class HostGenerator(
           addFunction(
             platformFunctionFactory.create(
               encoderFunctionCollector = encoderFunctionCollector,
+              streamBindingsCollector = streamBindingsCollector,
               bridge = bridgeValue,
               abiService = abiService,
               abiFunction = abiFunction,
@@ -341,6 +385,7 @@ class HostGenerator(
   /** Adds a host function using the Chicory API. */
   private fun declareHost(
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
     bridge: CodeBlock,
     store: CodeBlock,
     parentService: AbiService,
@@ -357,7 +402,8 @@ class HostGenerator(
         abiFunction,
         AbiLift(
           functionEncoder = FunctionEncoder(
-            collector = encoderFunctionCollector,
+            encoderFunctionCollector = encoderFunctionCollector,
+            streamBindingsCollector = streamBindingsCollector,
             service = parentService,
             function = abiFunction,
           ),
@@ -448,7 +494,7 @@ private val hostOptIns = setOf(
 )
 
 private class HostTypeNamer(
-  abiWorld: AbiWorld,
+  private val abiWorld: AbiWorld,
 ) : TypeNamer() {
   val apiClassName = abiWorld.apiClassName
   val hostClassName = apiClassName.wrap(prefix = "Host")
@@ -461,4 +507,13 @@ private class HostTypeNamer(
 
   override fun implementation(type: TypeName.Declared) =
     hostClassName.nestedClass(type.handleName)
+
+  override fun streamImplementation(type: TypeName): ClassName {
+    val abiStreamIndex = abiWorld.streams.indexOfFirst { it.irStream.type == type }
+    require(abiStreamIndex != -1) { "unexpected stream $type" }
+    return hostClassName.nestedClass("HostStream$abiStreamIndex")
+  }
+
+  override fun streamInstance(typeName: TypeName) =
+    CodeBlock.of("%T()", streamImplementation(typeName))
 }

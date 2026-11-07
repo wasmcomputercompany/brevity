@@ -5,13 +5,14 @@ import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
-import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.encoders.Encoder
 
 class RealEncoderContext(
   private val collector: EncoderFunctionCollector,
+  private val streamBindingsCollector: StreamBindingsCollector,
   private val function: AbiFunction,
 ) : Encoder.Context {
   override val typeNamer: TypeNamer
@@ -51,6 +52,16 @@ class RealEncoderContext(
         )
       }
 
+      is TypeName.Future, is TypeName.Stream -> {
+        val toLower = typeMapper.toWit(value)
+        streamBindingsCollector.initBindingsAndLowerFlat(
+          encoder = encoder,
+          memoryAllocator = memoryAllocator,
+          lowerFlatIo = lowerFlatIo,
+          value = toLower,
+        )
+      }
+
       else -> context(this) {
         val toLower = typeMapper.toWit(value)
         encoder.lowerFlat(memoryAllocator, lowerFlatIo, toLower)
@@ -75,6 +86,10 @@ class RealEncoderContext(
         )
       }
 
+      is TypeName.Future, is TypeName.Stream -> {
+        typeMapper.fromWit(streamBindingsCollector.liftFlatAndInitBindings(encoder, values))
+      }
+
       else -> context(this) {
         typeMapper.fromWit(encoder.liftFlat(values))
       }
@@ -97,6 +112,16 @@ class RealEncoderContext(
           orientation = function.orientation,
           baseAddress = baseAddress,
           offset = offset,
+        )
+      }
+
+      is TypeName.Future, is TypeName.Stream -> {
+        typeMapper.fromWit(
+          streamBindingsCollector.loadAndInitBindings(
+            encoder = encoder,
+            baseAddress = baseAddress,
+            offset = offset,
+          ),
         )
       }
 
@@ -126,6 +151,14 @@ class RealEncoderContext(
           baseAddress = baseAddress,
           offset = offset,
           value = value,
+        )
+      }
+
+      is TypeName.Future, is TypeName.Stream -> {
+        val toStore = typeMapper.toWit(value)
+        streamBindingsCollector.initBindingsAndStore(
+          encoder = encoder,
+          memoryAllocator, baseAddress, offset, toStore,
         )
       }
 

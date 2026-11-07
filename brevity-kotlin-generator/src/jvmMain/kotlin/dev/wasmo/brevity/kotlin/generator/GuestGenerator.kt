@@ -32,6 +32,7 @@ class GuestGenerator(
     val result = mutableListOf<QualifiedSpec>()
 
     for (abiWorld in worlds) {
+      val typeNamer = GuestTypeNamer(abiWorld)
       val worldClassName = abiWorld.apiClassName
       val encoderFunctionCollector = EncoderFunctionCollector(
         platform = platform,
@@ -44,7 +45,10 @@ class GuestGenerator(
           fileName = "${worldClassName.simpleName}GuestEncoders",
         ),
         world = abiWorld,
-        typeNamer = GuestTypeNamer,
+        typeNamer = typeNamer,
+      )
+      val streamBindingsCollector = StreamBindingsCollector(
+        typeNamer = typeNamer,
       )
 
       for (abiService in abiWorld.allServices) {
@@ -58,16 +62,63 @@ class GuestGenerator(
             fileName = "${className.simpleName}Guest",
           ),
         ) {
-          generateServiceFunctions(encoderFunctionCollector, abiService)
+          generateServiceFunctions(
+            encoderFunctionCollector = encoderFunctionCollector,
+            streamBindingsCollector = streamBindingsCollector,
+            abiService = abiService,
+          )
           when (abiService) {
-            is AbiResource -> generateAbiResourceClass(encoderFunctionCollector, abiService)
-            is AbiInterface -> generateAbiInterfaceClass(encoderFunctionCollector, abiService)
+            is AbiResource -> generateAbiResourceClass(
+              typeNamer = typeNamer,
+              encoderFunctionCollector = encoderFunctionCollector,
+              streamBindingsCollector = streamBindingsCollector,
+              abiResource = abiService,
+            )
+
+            is AbiInterface -> generateAbiInterfaceClass(
+              typeNamer = typeNamer,
+              encoderFunctionCollector = encoderFunctionCollector,
+              streamBindingsCollector = streamBindingsCollector,
+              abiInterface = abiService,
+            )
+
             is AbiWorld -> {
-              generateWorldEntryPoint(abiWorld)
-              generateAbiWorldClass(encoderFunctionCollector, abiWorld)
+              generateWorldEntryPoint(
+                typeNamer = typeNamer,
+                abiWorld = abiWorld,
+              )
+              generateAbiWorldClass(
+                typeNamer = typeNamer,
+                encoderFunctionCollector = encoderFunctionCollector,
+                streamBindingsCollector = streamBindingsCollector,
+                abiWorld = abiWorld,
+              )
               retainWasmExportsFunction(abiWorld)
             }
           }
+        }
+      }
+
+      val generatedStreamTypes = mutableSetOf<TypeName>()
+      for (abiStream in abiWorld.streams) {
+        if (!generatedStreamTypes.add(abiStream.irStream.type)) continue
+        val guestStreamsCollector = result.collector(
+          sourceSet = QualifiedSpec.SourceSet.WasmWasiMain,
+          locations = setOf(),
+          optIns = guestOptIns,
+          packageName = worldClassName.packageName,
+          fileName = "${worldClassName.simpleName}GuestStreams",
+        )
+        val generator = StreamBindingGenerator(
+          platform = platform,
+          kotlinMapper = kotlinMapper,
+          typeNamer = typeNamer,
+          abiWorld = abiWorld,
+          abiStream = abiStream,
+        )
+        guestStreamsCollector.addType(generator.className, generator.generateGuest())
+        for (abiFunction in abiStream.functions) {
+          guestStreamsCollector += wasmImport(abiFunction)
         }
       }
     }
@@ -76,7 +127,10 @@ class GuestGenerator(
   }
 
   context(collector: QualifiedSpecCollector)
-  private fun generateWorldEntryPoint(abiWorld: AbiWorld) {
+  private fun generateWorldEntryPoint(
+    typeNamer: TypeNamer,
+    abiWorld: AbiWorld,
+  ) {
     val guestApisType = abiWorld.apiInterfaceName(Export)
     val guestApisInstanceName = "guest"
     collector += PropertySpec.builder("${guestApisInstanceName}_", guestApisType)
@@ -108,7 +162,7 @@ class GuestGenerator(
       .receiver(abiWorld.apiClassName)
       .getter(
         FunSpec.getterBuilder()
-          .addCode("return %T", GuestTypeNamer.implementation(abiWorld))
+          .addCode("return %T", typeNamer.implementation(abiWorld))
           .build(),
       )
       .build()
@@ -117,9 +171,11 @@ class GuestGenerator(
   context(collector: QualifiedSpecCollector)
   private fun generateAbiWorldClass(
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
+    typeNamer: TypeNamer,
     abiWorld: AbiWorld,
   ) {
-    val className = GuestTypeNamer.implementation(abiWorld)
+    val className = typeNamer.implementation(abiWorld)
     collector.addType(
       className,
       TypeSpec.objectBuilder(className)
@@ -130,52 +186,65 @@ class GuestGenerator(
             addProperty(
               PropertySpec.builder(abiInterface.instanceName, abiInterface.apiClassName)
                 .addModifiers(KModifier.OVERRIDE)
-                .initializer("%T()", GuestTypeNamer.implementation(abiInterface))
+                .initializer("%T()", typeNamer.implementation(abiInterface))
                 .build(),
             )
           }
         }
-        .declareServiceClassFunctions(encoderFunctionCollector, abiWorld)
+        .declareServiceClassFunctions(encoderFunctionCollector, streamBindingsCollector, abiWorld)
         .build(),
     )
   }
 
   context(collector: QualifiedSpecCollector)
   private fun generateAbiInterfaceClass(
+    typeNamer: TypeNamer,
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
     abiInterface: AbiInterface,
   ) {
     if (abiInterface.orientation != Import) return
-    val className = GuestTypeNamer.implementation(abiInterface)
+    val className = typeNamer.implementation(abiInterface)
     collector.addType(
       className,
       TypeSpec.classBuilder(className)
         .addModifiers(KModifier.INTERNAL)
         .addSuperinterface(abiInterface.apiInterfaceName(Import))
-        .declareServiceClassFunctions(encoderFunctionCollector, abiInterface)
+        .declareServiceClassFunctions(
+          encoderFunctionCollector,
+          streamBindingsCollector,
+          abiInterface,
+        )
         .build(),
     )
   }
 
   context(collector: QualifiedSpecCollector)
   private fun generateAbiResourceClass(
+    typeNamer: TypeNamer,
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
     abiResource: AbiResource,
   ) {
     if (abiResource.orientation != Import) return
-    val className = GuestTypeNamer.implementation(abiResource)
+    val className = typeNamer.implementation(abiResource)
     collector.addType(
       className,
       TypeSpec.classBuilder(className)
         .addModifiers(KModifier.INTERNAL)
         .superclass(abiResource.apiInterfaceName(Import))
-        .declareServiceClassFunctions(encoderFunctionCollector, abiResource)
+        .declareServiceClassFunctions(
+          encoderFunctionCollector,
+          streamBindingsCollector,
+          abiResource,
+        )
         .build(),
     )
   }
 
   private fun TypeSpec.Builder.declareServiceClassFunctions(
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
     abiService: AbiService,
   ) = apply {
     val bridgeValue = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
@@ -186,6 +255,7 @@ class GuestGenerator(
       addFunction(
         platformFunctionFactory.create(
           encoderFunctionCollector = encoderFunctionCollector,
+          streamBindingsCollector = streamBindingsCollector,
           bridge = bridgeValue,
           abiService = abiService,
           abiFunction = abiFunction,
@@ -197,12 +267,19 @@ class GuestGenerator(
   context(collector: QualifiedSpecCollector)
   private fun generateServiceFunctions(
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
     abiService: AbiService,
   ) {
     for (abiFunction in abiService.functions) {
       if (!abiFunction.isSupported) continue
       collector += when (abiFunction.orientation) {
-        Export -> wasmExport(encoderFunctionCollector, abiService, abiFunction)
+        Export -> wasmExport(
+          encoderFunctionCollector = encoderFunctionCollector,
+          streamBindingsCollector = streamBindingsCollector,
+          parentService = abiService,
+          abiFunction = abiFunction,
+        )
+
         Import -> wasmImport(abiFunction)
       }
     }
@@ -211,6 +288,7 @@ class GuestGenerator(
   /** Returns the `@WasmExport`-annotated function. It must be added directly to a file. */
   private fun wasmExport(
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
     parentService: AbiService,
     abiFunction: AbiFunction,
   ): FunSpec {
@@ -230,7 +308,8 @@ class GuestGenerator(
         context(codeBuilder) {
           val function = AbiLift(
             functionEncoder = FunctionEncoder(
-              collector = encoderFunctionCollector,
+              encoderFunctionCollector = encoderFunctionCollector,
+              streamBindingsCollector = streamBindingsCollector,
               service = parentService,
               function = abiFunction,
             ),
@@ -321,7 +400,9 @@ private val guestOptIns = setOf(
 )
 
 /** Guests implementations are named using a top-level class. */
-private object GuestTypeNamer : TypeNamer() {
+private class GuestTypeNamer(
+  private val abiWorld: AbiWorld,
+) : TypeNamer() {
   override fun implementation(abiWorld: AbiWorld): ClassName {
     val apiClassName = abiWorld.apiClassName
     return apiClassName.peerClass("${apiClassName.simpleName}Bridge")
@@ -338,4 +419,14 @@ private object GuestTypeNamer : TypeNamer() {
       "${type.serviceName.name.upperCamelCase}${type.name.upperCamelCase}Handle",
     )
   }
+
+  override fun streamImplementation(type: TypeName): ClassName {
+    val abiStreamIndex = abiWorld.streams.indexOfFirst { it.irStream.type == type }
+    require(abiStreamIndex != -1) { "unexpected stream $type" }
+    val worldClassName = abiWorld.apiClassName
+    return worldClassName.peerClass("${worldClassName.simpleName}GuestStream$abiStreamIndex")
+  }
+
+  override fun streamInstance(typeName: TypeName) =
+    CodeBlock.of("%T", streamImplementation(typeName))
 }

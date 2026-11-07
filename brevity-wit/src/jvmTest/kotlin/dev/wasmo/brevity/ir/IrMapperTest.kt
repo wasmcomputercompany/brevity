@@ -1013,38 +1013,82 @@ class IrMapperTest {
           |
           |world sample {
           |    export foo: func(x: future<future<u32>>, y: u32) -> stream<u8>;
+          |    export handler;
           |}
+          |
+          |interface types {
+          |    variant response {
+          |        fail,
+          |        success(response-body),
+          |    }
+          |
+          |    resource request-body {
+          |        content: func() -> stream<u8>;
+          |    }
+          |
+          |    record response-body {
+          |        content-type: string,
+          |        content: stream<u8>,
+          |    }
+          |
+          |}
+          |
+          |interface handler {
+          |    use types.{request-body, response};
+          |    handle: func(request: option<request-body>) -> response;
+          |}
+          |
           """.trimMargin().toWitFile(Location("test.wit")),
         ),
       ),
     )
     val irPackages = IrMapper(ioPackages).map()
-    val serviceName = "test:test/sample".toServiceName()
+    val worldServiceName = "test:test/sample".toServiceName()
 
     val irPackage = irPackages.single()
-    val irWorld = irPackage.services.single() as IrWorld
-    val functionName = FunctionName.Standard(
-      FunctionName.Parent.WorldExport(serviceName),
+    val irWorld = irPackage.services.filterIsInstance<IrWorld>().single()
+    val fooFunctionName = FunctionName.Standard(
+      parent = FunctionName.Parent.WorldExport(worldServiceName),
       name = Identifier("foo"),
     )
     assertThat(irWorld.streams).containsExactly(
       IrStream(
-        functionName = functionName,
+        functionName = fooFunctionName,
         orientation = Orientation.Export,
         type = TypeName.Future(TypeName.U32),
         id = 0,
       ),
       IrStream(
-        functionName = functionName,
+        functionName = fooFunctionName,
         orientation = Orientation.Export,
         type = TypeName.Future(TypeName.Future(TypeName.U32)),
         id = 1,
       ),
       IrStream(
-        functionName = functionName,
+        functionName = fooFunctionName,
         orientation = Orientation.Export,
         type = TypeName.Stream(TypeName.U8),
         id = 2,
+      ),
+      IrStream(
+        functionName = FunctionName.Standard(
+          parent = FunctionName.Parent.Interface("test:test/handler".toServiceName()),
+          name = Identifier("handle"),
+        ),
+        orientation = Orientation.Export,
+        type = TypeName.Stream(TypeName.U8),
+        id = 0,
+      ),
+      IrStream(
+        functionName = FunctionName.Standard(
+          parent = FunctionName.Parent.Resource(
+            TypeName.Declared("test:test/types".toServiceName(), Identifier("request-body")),
+          ),
+          name = Identifier("content"),
+        ),
+        orientation = Orientation.Import,
+        type = TypeName.Stream(TypeName.U8),
+        id = 0,
       ),
     )
   }

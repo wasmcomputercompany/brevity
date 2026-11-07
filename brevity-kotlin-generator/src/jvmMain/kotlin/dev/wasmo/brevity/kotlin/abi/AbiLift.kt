@@ -226,7 +226,8 @@ private class AbiLiftAsyncExport(
       val taskReturn = AbiLower(
         resourceId = null,
         functionEncoder = FunctionEncoder(
-          collector = functionEncoder.collector,
+          encoderFunctionCollector = functionEncoder.encoderFunctionCollector,
+          streamBindingsCollector = functionEncoder.streamBindingsCollector,
           service = functionEncoder.service,
           function = result.taskReturn,
         ),
