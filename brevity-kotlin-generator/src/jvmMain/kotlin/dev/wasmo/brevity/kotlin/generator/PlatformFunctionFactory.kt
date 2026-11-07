@@ -23,6 +23,7 @@ class PlatformFunctionFactory(
 ) {
   fun create(
     encoderFunctionCollector: EncoderFunctionCollector,
+    streamBindingsCollector: StreamBindingsCollector,
     bridge: CodeBlock,
     abiService: AbiService,
     abiFunction: AbiFunction,
@@ -44,7 +45,8 @@ class PlatformFunctionFactory(
         context(codeBuilder) {
           val abiLower = AbiLower(
             functionEncoder = FunctionEncoder(
-              collector = encoderFunctionCollector,
+              encoderFunctionCollector = encoderFunctionCollector,
+              streamBindingsCollector = streamBindingsCollector,
               service = abiService,
               function = abiFunction,
             ),

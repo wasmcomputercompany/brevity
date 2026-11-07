@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
 import dev.wasmo.brevity.kotlin.abi.AbiResource
@@ -27,4 +28,8 @@ abstract class TypeNamer {
 
   /** Returns the implementation class for a resource type. */
   abstract fun implementation(type: TypeName.Declared): ClassName
+
+  abstract fun streamImplementation(type: TypeName): ClassName
+
+  abstract fun streamInstance(typeName: TypeName): CodeBlock
 }

@@ -9,6 +9,7 @@ import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName as KtTypeName
 import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.generator.IdentityTypeMapper
@@ -85,8 +86,8 @@ class KotlinMapper(
       TypeName.Char -> Symbols.Kotlin.Int
       TypeName.String -> Symbols.Kotlin.String
       is TypeName.Borrow -> get(name.type)
-      is TypeName.Future -> Symbols.Brevity.Future.parameterizedBy(
-        name.type?.let { get(it) } ?: STAR,
+      is TypeName.Future -> Symbols.Brevity.ReceiveFuture.parameterizedBy(
+        name.type?.let { get(it) } ?: UNIT,
       )
 
       is TypeName.List if name.size != null -> {
@@ -121,8 +122,8 @@ class KotlinMapper(
 
       is TypeName.Declared -> get(name)
 
-      is TypeName.Stream -> Symbols.Brevity.Stream.parameterizedBy(
-        name.type?.let { get(it) } ?: STAR,
+      is TypeName.Stream -> Symbols.Brevity.ReceiveStream.parameterizedBy(
+        name.type?.let { get(it) } ?: UNIT,
       )
 
       is TypeName.Tuple -> when (name.types.size) {
