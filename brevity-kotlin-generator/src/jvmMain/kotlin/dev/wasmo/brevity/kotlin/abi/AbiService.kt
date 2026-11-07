@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.abi
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.Documentation
+import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
@@ -101,6 +102,15 @@ data class AbiWorld(
             orientation = Import,
             isResource = false,
           )
+        }
+      }
+
+      for (irStream in irWorld.streams) {
+        abiFunctions += abiFunctionFactory.streamNew(irStream)
+        for (streamOp in FunctionName.StreamOp.entries) {
+          abiFunctions += abiFunctionFactory.streamIo(irStream, streamOp)
+          abiFunctions += abiFunctionFactory.streamCancel(irStream, streamOp)
+          abiFunctions += abiFunctionFactory.streamDrop(irStream, streamOp)
         }
       }
 
