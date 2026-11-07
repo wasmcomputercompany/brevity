@@ -10,6 +10,10 @@ plugins {
   id("dev.wasmo.brevity-build")
 }
 
+// Non release builds publish with the marker version so the integration tests resolve what this
+// build just built from the test repository. Releases pass this flag.
+val release = hasProperty("brevity.release")
+
 allprojects {
   group = "dev.wasmo.brevity"
   version = project.property("brevity.version")!!
@@ -21,7 +25,20 @@ allprojects {
           name = "test"
           url = project.rootProject.layout.buildDirectory.dir("localMaven").get().asFile.toURI()
         }
-        mavenLocal()
+      }
+      if (!release) {
+        publications.withType<MavenPublication>().configureEach {
+          version = "0-testing"
+        }
+      }
+    }
+    // Refuse to publish the test repo marker anywhere but a test repository.
+    tasks.withType<AbstractPublishToMaven>().configureEach {
+      val isRelease = release
+      doFirst {
+        check(isRelease || name.endsWith("ToTestRepository")) {
+          "Attempting to publish `0-testing`, pass -Pbrevity.release=true to publish a real version"
+        }
       }
     }
     extensions.configure<MavenPublishBaseExtension> {

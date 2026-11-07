@@ -46,13 +46,10 @@ This is implemented by `BrevityExecutionTester`, which generates projects struct
 | ` '- bridge-type-test.wit`               | Brevity input    |
 
 
-Maven Local
------------
+Test Repository
+---------------
 
-The inputs to this program include both Brevity's generated code, but also the Brevity runtime
-libraries and dependencies. The easiest way to provide these libraries to the Kotlin Toolchain is
-via Maven Local (`~/.m2/repository`), published with a special marker version (`0-testing`).
-
-To publish concurrently with the rest of the Brevity build, we fork a Gradle build with a separate
-output directory (`build/publish-for-tests`). We'd prefer to not fork a Gradle build, but that would
-contaminate Maven Local!
+The inputs to these tests include both Brevity's generated code as well as Brevity's runtime
+and dependencies. The Kotlin Toolchain resolves libraries from Maven Central or Maven Local
+so `jvmTest` publishes Brevity to `build/localMaven` under the marker version `0-testing`
+and points the toolchain there.

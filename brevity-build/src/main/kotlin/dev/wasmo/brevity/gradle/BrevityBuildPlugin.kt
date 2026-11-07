@@ -23,13 +23,6 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 @Suppress("unused") // Used reflectively.
 class BrevityBuildPlugin : Plugin<Project> {
   override fun apply(project: Project) {
-    val buildDirectory = project.findProperty("brevity.build.directory")
-    if (buildDirectory != null) {
-      project.layout.buildDirectory.set(
-        project.rootDir.resolve(buildDirectory.toString()).resolve(project.name),
-      )
-    }
-
     val libs = project.extensions.getByName("libs") as LibrariesForLibs
 
     project.extensions.add(

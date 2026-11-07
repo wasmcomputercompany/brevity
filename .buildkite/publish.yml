@@ -2,7 +2,7 @@ steps:
   - label: ":gradle: Publish"
     commands:
       - "cat .buildkite/gradle.properties >> gradle.properties"
-      - "gradle publishAndReleaseToMavenCentral"
+      - "gradle -Pbrevity.release=true publishAndReleaseToMavenCentral"
     plugins:
       - docker#v5.13.0:
           image: wasmo/brevity-ci@sha256:7fb07653a720d433130f5fb0eb1c0ca9d7b4e6d1bea7b39ae2e7d18c48a6b001
