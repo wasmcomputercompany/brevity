@@ -76,7 +76,8 @@ object Symbols {
     val CallBuilder = ClassName("dev.wasmo.brevity", "CallBuilder")
     val CallbackCode = ClassName("dev.wasmo.brevity", "CallbackCode")
     val Event = ClassName("dev.wasmo.brevity", "Event")
-    val Future = ClassName("dev.wasmo.brevity", "Future")
+    val FuturePair = ClassName("dev.wasmo.brevity", "FuturePair")
+    val ReceiveFuture = ClassName("dev.wasmo.brevity", "ReceiveFuture")
     val GuestBridge = ClassName("dev.wasmo.brevity", "GuestBridge")
     val HostBridge = ClassName("dev.wasmo.brevity", "HostBridge")
     val LoadString = MemberName("dev.wasmo.brevity", "loadString")
@@ -84,6 +85,9 @@ object Symbols {
     val PackedAsyncResult = ClassName("dev.wasmo.brevity", "PackedAsyncResult")
     val PackedSubtaskResult = ClassName("dev.wasmo.brevity", "PackedSubtaskResult")
     val Quad = ClassName("dev.wasmo.brevity", "Quad")
+    val ReceiveFutureBinding = ClassName("dev.wasmo.brevity", "ReceiveFuture", "Binding")
+    val ReceiveStream = ClassName("dev.wasmo.brevity", "ReceiveStream")
+    val ReceiveStreamBinding = ClassName("dev.wasmo.brevity", "ReceiveStream", "Binding")
     val Resource = ClassName("dev.wasmo.brevity", "Resource")
     val Result = ClassName("dev.wasmo.brevity", "Result")
     val ResultError = Result.nestedClass("Error")
@@ -93,7 +97,7 @@ object Symbols {
       "retainWasmExportsForGuestBridge",
     )
     val StoreByteArray = MemberName("dev.wasmo.brevity", "storeByteArray")
-    val Stream = ClassName("dev.wasmo.brevity", "Stream")
+    val StreamPair = ClassName("dev.wasmo.brevity", "StreamPair")
     val WitAdapter = ClassName("dev.wasmo.brevity", "WitAdapter")
     val World = ClassName("dev.wasmo.brevity", "World")
   }

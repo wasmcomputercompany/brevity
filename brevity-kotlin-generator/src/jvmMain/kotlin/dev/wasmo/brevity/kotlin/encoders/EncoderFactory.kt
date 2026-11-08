@@ -1,5 +1,7 @@
 package dev.wasmo.brevity.kotlin.encoders
 
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrEnum
@@ -33,7 +35,15 @@ class EncoderFactory(
       TypeName.Char -> CharEncoder
       TypeName.String -> StringEncoder
 
-      is TypeName.Stream -> FallbackEncoder(kotlinMapper, typeName, CoreType.I32)
+      is TypeName.Stream -> {
+        val elementType = typeName.type?.let { kotlinMapper.get(it) } ?: UNIT
+        StreamEncoder(
+          type = typeName,
+          streamType = Symbols.Brevity.ReceiveStream.parameterizedBy(elementType),
+          pairType = Symbols.Brevity.StreamPair.parameterizedBy(elementType),
+        )
+      }
+
       is TypeName.Tuple -> {
         val fieldEncoders = typeName.types.map { element -> get(element) }
         when (fieldEncoders.size) {
@@ -66,7 +76,15 @@ class EncoderFactory(
         getDeclaredTypeEncoder(declaredType)
       }
 
-      is TypeName.Future -> FallbackEncoder(kotlinMapper, typeName, CoreType.I32)
+      is TypeName.Future -> {
+        val elementType = typeName.type?.let { kotlinMapper.get(it) } ?: UNIT
+        StreamEncoder(
+          type = typeName,
+          streamType = Symbols.Brevity.ReceiveFuture.parameterizedBy(elementType),
+          pairType = Symbols.Brevity.FuturePair.parameterizedBy(elementType),
+        )
+      }
+
       is TypeName.List -> {
         val staticSize = typeName.size
         when {
@@ -160,8 +178,8 @@ class EncoderFactory(
       )
 
       is IrResource -> ResourceEncoder(
+        declaredType = type.type,
         abiClassName = kotlinMapper.getAbiClassName(type.type),
-        type = type.type,
       )
 
       is IrTypeAlias -> TypeAliasEncoder(
@@ -169,6 +187,7 @@ class EncoderFactory(
         ktType = kotlinType,
         delegate = get(type.target),
       )
+
       is IrVariant -> VariantEncoder(
         type = type.type,
         kotlinType = kotlinType,

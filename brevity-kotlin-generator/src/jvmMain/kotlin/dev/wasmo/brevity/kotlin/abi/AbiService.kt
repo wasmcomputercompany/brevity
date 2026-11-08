@@ -3,7 +3,7 @@ package dev.wasmo.brevity.kotlin.abi
 import com.squareup.kotlinpoet.ClassName
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.Documentation
-import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.FunctionName.StreamOp
 import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
@@ -42,6 +42,7 @@ data class AbiWorld(
   val interfaces: List<AbiInterface>,
   override val resources: List<AbiResource>,
   override val functions: List<AbiFunction>,
+  val streams: List<AbiStream>,
 ) : AbiService {
   override val apiClassName: ClassName
     get() = irDeclaration.serviceName.kotlinApi
@@ -105,13 +106,17 @@ data class AbiWorld(
         }
       }
 
-      for (irStream in irWorld.streams) {
-        abiFunctions += abiFunctionFactory.streamNew(irStream)
-        for (streamOp in FunctionName.StreamOp.entries) {
-          abiFunctions += abiFunctionFactory.streamIo(irStream, streamOp)
-          abiFunctions += abiFunctionFactory.streamCancel(irStream, streamOp)
-          abiFunctions += abiFunctionFactory.streamDrop(irStream, streamOp)
-        }
+      val abiStreams = irWorld.streams.map { irStream ->
+        AbiStream(
+          irStream = irStream,
+          new = abiFunctionFactory.streamNew(irStream),
+          ioRead = abiFunctionFactory.streamIo(irStream, StreamOp.Read),
+          cancelRead = abiFunctionFactory.streamCancel(irStream, StreamOp.Read),
+          dropRead = abiFunctionFactory.streamDrop(irStream, StreamOp.Read),
+          ioWrite = abiFunctionFactory.streamIo(irStream, StreamOp.Write),
+          cancelWrite = abiFunctionFactory.streamCancel(irStream, StreamOp.Write),
+          dropWrite = abiFunctionFactory.streamDrop(irStream, StreamOp.Write),
+        )
       }
 
       abiFunctionFactory.collectAllResourceFunctions(
@@ -128,6 +133,7 @@ data class AbiWorld(
           orientation = Import, // World member resources are imported.
         ),
         functions = abiFunctions,
+        streams = abiStreams,
       )
     }
   }
