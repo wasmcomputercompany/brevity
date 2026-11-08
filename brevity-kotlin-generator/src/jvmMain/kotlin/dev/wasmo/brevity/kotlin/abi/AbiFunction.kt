@@ -12,6 +12,7 @@ import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
 import dev.wasmo.brevity.TypeName as WitTypeName
+import dev.wasmo.brevity.TypeName.Stream.Cardinality
 import dev.wasmo.brevity.ir.IrFunction
 import dev.wasmo.brevity.ir.IrResource
 import dev.wasmo.brevity.ir.IrStream
@@ -507,7 +508,7 @@ data class AbiFunction(
       val flatParameters = buildList {
         add(flatParameter(WitTypeName.S32, Identifier("index"), nameAllocator))
         add(flatParameter(WitTypeName.S32, Identifier("address"), nameAllocator))
-        if (name.cardinality == FunctionName.StreamCardinality.Stream) {
+        if (name.cardinality == Cardinality.Stream) {
           add(flatParameter(WitTypeName.S32, Identifier("length"), nameAllocator))
         }
       }

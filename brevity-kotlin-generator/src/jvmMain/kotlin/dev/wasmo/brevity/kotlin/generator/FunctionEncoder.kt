@@ -10,6 +10,7 @@ import dev.wasmo.brevity.kotlin.abi.AbiFunction.Result
 import dev.wasmo.brevity.kotlin.abi.AbiInterface
 import dev.wasmo.brevity.kotlin.abi.AbiResource
 import dev.wasmo.brevity.kotlin.abi.AbiService
+import dev.wasmo.brevity.kotlin.abi.AbiStream
 import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
@@ -28,6 +29,7 @@ class FunctionEncoder(
   val encoderFunctionCollector: EncoderFunctionCollector,
   val streamBindingsCollector: StreamBindingsCollector,
   val service: AbiService,
+  val stream: AbiStream? = null,
   val function: AbiFunction,
 ) {
   val resourceImplementation: ClassName?

@@ -16,6 +16,7 @@ import dev.wasmo.brevity.kotlin.abi.AbiInterface
 import dev.wasmo.brevity.kotlin.abi.AbiLift
 import dev.wasmo.brevity.kotlin.abi.AbiResource
 import dev.wasmo.brevity.kotlin.abi.AbiService
+import dev.wasmo.brevity.kotlin.abi.AbiStream
 import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.GuestPlatform
@@ -290,6 +291,7 @@ class GuestGenerator(
     encoderFunctionCollector: EncoderFunctionCollector,
     streamBindingsCollector: StreamBindingsCollector,
     parentService: AbiService,
+    parentStream: AbiStream? = null,
     abiFunction: AbiFunction,
   ): FunSpec {
     val codeBuilder = CodeBuilder(
@@ -311,6 +313,7 @@ class GuestGenerator(
               encoderFunctionCollector = encoderFunctionCollector,
               streamBindingsCollector = streamBindingsCollector,
               service = parentService,
+              stream = parentStream,
               function = abiFunction,
             ),
           )
@@ -427,6 +430,6 @@ private class GuestTypeNamer(
     return worldClassName.peerClass("${worldClassName.simpleName}GuestStream$abiStreamIndex")
   }
 
-  override fun streamInstance(typeName: TypeName) =
+  override fun streamBindingInstance(typeName: TypeName) =
     CodeBlock.of("%T", streamImplementation(typeName))
 }

@@ -86,10 +86,6 @@ class KotlinMapper(
       TypeName.Char -> Symbols.Kotlin.Int
       TypeName.String -> Symbols.Kotlin.String
       is TypeName.Borrow -> get(name.type)
-      is TypeName.Future -> Symbols.Brevity.ReceiveFuture.parameterizedBy(
-        name.type?.let { get(it) } ?: UNIT,
-      )
-
       is TypeName.List if name.size != null -> {
         LIST.parameterizedBy(get(name.type))
       }
@@ -122,9 +118,10 @@ class KotlinMapper(
 
       is TypeName.Declared -> get(name)
 
-      is TypeName.Stream -> Symbols.Brevity.ReceiveStream.parameterizedBy(
-        name.type?.let { get(it) } ?: UNIT,
-      )
+      is TypeName.Stream -> {
+        val elementType = name.type?.let { get(it) } ?: UNIT
+        Symbols.Brevity.streamType(name.cardinality).parameterizedBy(elementType)
+      }
 
       is TypeName.Tuple -> when (name.types.size) {
         2 -> Symbols.Kotlin.Pair.parameterizedBy(

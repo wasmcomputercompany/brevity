@@ -139,6 +139,8 @@ class WitBridgeGenerator private constructor(
         abiInterfaceFactory = abiInterfaceFactory,
         abiResourceFactory = abiResourceFactory,
         abiFunctionFactory = abiFunctionFactory,
+        encoderFactory = encoderFactory,
+        kotlinMapper = kotlinMapper,
       )
       val worlds = abiWorldFactory.createAll(irPackages)
       val platformFunctionFactory = PlatformFunctionFactory(
@@ -181,6 +183,8 @@ class WitBridgeGenerator private constructor(
         abiInterfaceFactory = abiInterfaceFactory,
         abiResourceFactory = abiResourceFactory,
         abiFunctionFactory = abiFunctionFactory,
+        encoderFactory = encoderFactory,
+        kotlinMapper = kotlinMapper,
       )
       val worlds = abiWorldFactory.createAll(irPackages)
       val platformFunctionFactory = PlatformFunctionFactory(
@@ -222,6 +226,8 @@ class WitBridgeGenerator private constructor(
         abiInterfaceFactory = abiInterfaceFactory,
         abiResourceFactory = abiResourceFactory,
         abiFunctionFactory = abiFunctionFactory,
+        encoderFactory = encoderFactory,
+        kotlinMapper = kotlinMapper,
       )
       val worlds = abiWorldFactory.createAll(irPackages)
       val interfaces = irPackages.flatMap { it.services }

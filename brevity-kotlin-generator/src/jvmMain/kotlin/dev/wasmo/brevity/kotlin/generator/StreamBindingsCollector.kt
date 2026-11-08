@@ -8,7 +8,7 @@ import dev.wasmo.brevity.kotlin.encoders.Encoder
 import dev.wasmo.brevity.kotlin.encoders.Encoder.Context
 
 class StreamBindingsCollector(
-  private val typeNamer: TypeNamer,
+  val typeNamer: TypeNamer,
 ) {
   /** Lower an API value like a resource instance to an ABI value like a memory address. */
   context(codeBuilder: CodeBuilder, context: Context)
@@ -23,7 +23,7 @@ class StreamBindingsCollector(
     codeBuilder.addStatement(
       "%N.initBinding(%L)",
       valueName,
-      typeNamer.streamInstance(encoder.type),
+      typeNamer.streamBindingInstance(encoder.type),
     )
     encoder.lowerFlat(memoryAllocator, lowerFlatIo, CodeBlock.of("%N", valueName))
   }

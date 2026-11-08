@@ -3,6 +3,7 @@ package dev.wasmo.brevity.kotlin.abi
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.LONG
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.encoders.CoreType
@@ -12,6 +13,7 @@ import dev.wasmo.brevity.kotlin.expressions.KtFunction
 import dev.wasmo.brevity.kotlin.expressions.makeImmediate
 import dev.wasmo.brevity.kotlin.generator.FunctionEncoder
 import dev.wasmo.brevity.kotlin.generator.Symbols
+import dev.wasmo.brevity.kotlin.generator.TypeNamer
 import dev.wasmo.brevity.kotlin.generator.kotlinCoreType
 
 context(codeBuilder: CodeBuilder)
@@ -29,18 +31,22 @@ fun AbiLift(
 
     is FunctionName.StreamNew -> AbiStreamNewLift(
       functionEncoder = functionEncoder,
+      stream = functionEncoder.stream!!,
     )
 
     is FunctionName.StreamIo -> AbiStreamIoLift(
       functionEncoder = functionEncoder,
+      stream = functionEncoder.stream!!,
     )
 
     is FunctionName.StreamCancel -> AbiStreamCancelLift(
       functionEncoder = functionEncoder,
+      stream = functionEncoder.stream!!,
     )
 
     is FunctionName.StreamDrop -> AbiStreamDropLift(
       functionEncoder = functionEncoder,
+      stream = functionEncoder.stream!!,
     )
 
     else -> when (functionEncoder.function.name.transform) {
@@ -229,6 +235,7 @@ private class AbiLiftAsyncExport(
           encoderFunctionCollector = functionEncoder.encoderFunctionCollector,
           streamBindingsCollector = functionEncoder.streamBindingsCollector,
           service = functionEncoder.service,
+          stream = functionEncoder.stream,
           function = result.taskReturn,
         ),
       )
@@ -298,7 +305,11 @@ private class AbiLiftAsyncImport(
 
 private class AbiStreamNewLift(
   private val functionEncoder: FunctionEncoder,
+  private val stream: AbiStream,
 ) : KtFunction {
+  private val typeNamer: TypeNamer
+    get() = functionEncoder.streamBindingsCollector.typeNamer
+
   context(codeBuilder: CodeBuilder)
   override fun call(
     receiver: KtExpression?,
@@ -306,16 +317,36 @@ private class AbiStreamNewLift(
   ): KtExpression {
     check(receiver == null)
     codeBuilder.platform.afterLiftParameters()
+
+    val streamPairName = codeBuilder.newName("streamPair")
+    val resultName = codeBuilder.newName("result")
+    codeBuilder.addStatement(
+      "val %N = %T()",
+      streamPairName,
+      Symbols.Brevity.streamPair(stream.cardinality).parameterizedBy(stream.elementType),
+    )
+    codeBuilder.addStatement(
+      "%N.receive.initBinding(%L)",
+      streamPairName,
+      typeNamer.streamBindingInstance(this.stream.irStream.type),
+    )
+    codeBuilder.addStatement(
+      "val %N = (%N.send.rep.toLong() shl 32) or %N.receive.rep.toLong()",
+      resultName,
+      streamPairName,
+      streamPairName,
+    )
     return CodeBlockExpression(
       type = LONG,
-      nameHint = "x",
-      code = CodeBlock.of("TODO(%S)", "AbiStreamNewLift")
+      nameHint = "result",
+      code = CodeBlock.of("%N", resultName),
     )
   }
 }
 
 private class AbiStreamIoLift(
   private val functionEncoder: FunctionEncoder,
+  private val stream: AbiStream,
 ) : KtFunction {
   context(codeBuilder: CodeBuilder)
   override fun call(
@@ -327,13 +358,14 @@ private class AbiStreamIoLift(
     return CodeBlockExpression(
       type = INT,
       nameHint = "x",
-      code = CodeBlock.of("TODO(%S)", "AbiStreamIoLift")
+      code = CodeBlock.of("TODO(%S)", "AbiStreamIoLift"),
     )
   }
 }
 
 private class AbiStreamCancelLift(
   private val functionEncoder: FunctionEncoder,
+  private val stream: AbiStream,
 ) : KtFunction {
   context(codeBuilder: CodeBuilder)
   override fun call(
@@ -345,13 +377,14 @@ private class AbiStreamCancelLift(
     return CodeBlockExpression(
       type = INT,
       nameHint = "x",
-      code = CodeBlock.of("TODO(%S)", "AbiStreamCancelLift")
+      code = CodeBlock.of("TODO(%S)", "AbiStreamCancelLift"),
     )
   }
 }
 
 private class AbiStreamDropLift(
   private val functionEncoder: FunctionEncoder,
+  private val stream: AbiStream,
 ) : KtFunction {
   context(codeBuilder: CodeBuilder)
   override fun call(

@@ -168,6 +168,6 @@ data class IrExternalApi(
 data class IrStream(
   val functionName: FunctionName,
   val orientation: Orientation,
-  val type: TypeName,
+  val type: TypeName.Stream,
   val id: Int,
 )

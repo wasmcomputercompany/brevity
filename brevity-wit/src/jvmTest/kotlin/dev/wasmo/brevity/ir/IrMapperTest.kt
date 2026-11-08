@@ -17,6 +17,7 @@ import dev.wasmo.brevity.Location
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.ServiceName
 import dev.wasmo.brevity.TypeName
+import dev.wasmo.brevity.TypeName.Stream.Cardinality
 import dev.wasmo.brevity.collectIssues
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.io.IoToplevelWitPackage
@@ -1055,19 +1056,22 @@ class IrMapperTest {
       IrStream(
         functionName = fooFunctionName,
         orientation = Orientation.Export,
-        type = TypeName.Future(TypeName.U32),
+        type = TypeName.Stream(TypeName.U32, Cardinality.Future),
         id = 0,
       ),
       IrStream(
         functionName = fooFunctionName,
         orientation = Orientation.Export,
-        type = TypeName.Future(TypeName.Future(TypeName.U32)),
+        type = TypeName.Stream(
+          TypeName.Stream(TypeName.U32, Cardinality.Future),
+          Cardinality.Future,
+        ),
         id = 1,
       ),
       IrStream(
         functionName = fooFunctionName,
         orientation = Orientation.Export,
-        type = TypeName.Stream(TypeName.U8),
+        type = TypeName.Stream(TypeName.U8, Cardinality.Stream),
         id = 2,
       ),
       IrStream(
@@ -1076,7 +1080,7 @@ class IrMapperTest {
           name = Identifier("handle"),
         ),
         orientation = Orientation.Export,
-        type = TypeName.Stream(TypeName.U8),
+        type = TypeName.Stream(TypeName.U8, Cardinality.Stream),
         id = 0,
       ),
       IrStream(
@@ -1087,7 +1091,7 @@ class IrMapperTest {
           name = Identifier("content"),
         ),
         orientation = Orientation.Import,
-        type = TypeName.Stream(TypeName.U8),
+        type = TypeName.Stream(TypeName.U8, Cardinality.Stream),
         id = 0,
       ),
     )

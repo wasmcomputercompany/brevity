@@ -31,5 +31,5 @@ abstract class TypeNamer {
 
   abstract fun streamImplementation(type: TypeName): ClassName
 
-  abstract fun streamInstance(typeName: TypeName): CodeBlock
+  abstract fun streamBindingInstance(typeName: TypeName): CodeBlock
 }

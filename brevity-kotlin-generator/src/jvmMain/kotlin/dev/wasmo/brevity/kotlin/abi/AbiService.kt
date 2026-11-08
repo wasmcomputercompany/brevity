@@ -1,6 +1,7 @@
 package dev.wasmo.brevity.kotlin.abi
 
 import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.DeclarationIndex
 import dev.wasmo.brevity.Documentation
 import dev.wasmo.brevity.FunctionName.StreamOp
@@ -19,6 +20,7 @@ import dev.wasmo.brevity.ir.IrTypeDeclaration
 import dev.wasmo.brevity.ir.IrWitPackage
 import dev.wasmo.brevity.ir.IrWorld
 import dev.wasmo.brevity.kotlin.KotlinMapper
+import dev.wasmo.brevity.kotlin.encoders.EncoderFactory
 import dev.wasmo.brevity.kotlin.generator.instanceName
 import dev.wasmo.brevity.kotlin.generator.kotlinApi
 
@@ -62,6 +64,8 @@ data class AbiWorld(
     private val abiInterfaceFactory: AbiInterface.Factory,
     private val abiResourceFactory: AbiResource.Factory,
     private val abiFunctionFactory: AbiFunction.Factory,
+    private val encoderFactory: EncoderFactory,
+    private val kotlinMapper: KotlinMapper,
   ) {
     fun createAll(packages: List<IrWitPackage>): List<AbiWorld> {
       return packages.flatMap { it.services }
@@ -107,8 +111,11 @@ data class AbiWorld(
       }
 
       val abiStreams = irWorld.streams.map { irStream ->
+        val elementType = irStream.type.type?.let { kotlinMapper.get(it) } ?: UNIT
         AbiStream(
           irStream = irStream,
+          elementEncoder = irStream.type.type?.let { encoderFactory.get(it) },
+          elementType = elementType,
           new = abiFunctionFactory.streamNew(irStream),
           ioRead = abiFunctionFactory.streamIo(irStream, StreamOp.Read),
           cancelRead = abiFunctionFactory.streamCancel(irStream, StreamOp.Read),

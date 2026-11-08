@@ -52,7 +52,7 @@ class RealEncoderContext(
         )
       }
 
-      is TypeName.Future, is TypeName.Stream -> {
+      is TypeName.Stream -> {
         val toLower = typeMapper.toWit(value)
         streamBindingsCollector.initBindingsAndLowerFlat(
           encoder = encoder,
@@ -86,7 +86,7 @@ class RealEncoderContext(
         )
       }
 
-      is TypeName.Future, is TypeName.Stream -> {
+      is TypeName.Stream -> {
         typeMapper.fromWit(streamBindingsCollector.liftFlatAndInitBindings(encoder, values))
       }
 
@@ -115,7 +115,7 @@ class RealEncoderContext(
         )
       }
 
-      is TypeName.Future, is TypeName.Stream -> {
+      is TypeName.Stream -> {
         typeMapper.fromWit(
           streamBindingsCollector.loadAndInitBindings(
             encoder = encoder,
@@ -154,7 +154,7 @@ class RealEncoderContext(
         )
       }
 
-      is TypeName.Future, is TypeName.Stream -> {
+      is TypeName.Stream -> {
         val toStore = typeMapper.toWit(value)
         streamBindingsCollector.initBindingsAndStore(
           encoder = encoder,

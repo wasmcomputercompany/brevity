@@ -39,6 +39,10 @@ object GuestBridge {
     return rep
   }
 
+  fun <T : Resource> putImportedResource(rep: Int, resource: T) {
+    repToImportedResource[rep] = resource
+  }
+
   fun <T : Resource> getImportedResource(rep: Int, newHandle: () -> T): T {
     val existing = repToImportedResource[rep]
     if (existing == null) {
@@ -89,7 +93,6 @@ object GuestBridge {
   suspend fun awaitSubtaskComplete(packedSubtaskResult: PackedSubtaskResult) {
     when (packedSubtaskResult.subtaskState) {
       SubtaskState.Starting, SubtaskState.Started -> {
-        // We're about to suspend, so the clear active task.
         val task = currentCoroutineContext()[BrevityTask.Key]
           ?: error("cannot launch subtask without a task")
         task.awaitSubtaskComplete(packedSubtaskResult.subtaskIndex)

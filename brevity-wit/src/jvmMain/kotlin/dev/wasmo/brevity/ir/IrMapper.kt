@@ -303,7 +303,11 @@ class IrMapper(
       IoTypeName.String -> TypeName.String
       is IoTypeName.Borrow -> type.typeNameToIr(referenceSite)?.let { TypeName.Borrow(it) }
       is IoTypeName.Declared -> declaredTypeToIr(referenceSite)
-      is IoTypeName.Future -> type?.typeNameToIr(referenceSite)?.let { TypeName.Future(it) }
+      is IoTypeName.Future -> TypeName.Stream(
+        type?.let { it.typeNameToIr(referenceSite) ?: return@typeNameToIr null },
+        TypeName.Stream.Cardinality.Future,
+      )
+
       is IoTypeName.List -> type.typeNameToIr(referenceSite)?.let { TypeName.List(it, size) }
       is IoTypeName.Map -> (key.typeNameToIr(referenceSite) to value.typeNameToIr(referenceSite)).let { (resolvedKey, resolvedValue) ->
         if (resolvedKey != null && resolvedValue != null) {
@@ -318,7 +322,11 @@ class IrMapper(
         TypeName.Result(resolvedOk, resolvedError)
       }
 
-      is IoTypeName.Stream -> TypeName.Stream(type?.typeNameToIr(referenceSite))
+      is IoTypeName.Stream -> TypeName.Stream(
+        type?.let { it.typeNameToIr(referenceSite) ?: return@typeNameToIr null },
+        TypeName.Stream.Cardinality.Stream,
+      )
+
       is IoTypeName.Tuple -> TypeName.Tuple(types.mapNotNull { it.typeNameToIr(referenceSite) })
     }
   }
