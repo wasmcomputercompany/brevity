@@ -59,10 +59,10 @@ internal class BrevityTask : CoroutineContext.Element {
         return runUntilIdle()
       }
 
-      Event.FutureRead -> TODO()
-      Event.FutureWrite -> TODO()
-      Event.StreamRead -> TODO()
-      Event.StreamWrite -> TODO()
+      is Event.FutureRead -> TODO()
+      is Event.FutureWrite -> TODO()
+      is Event.StreamRead -> TODO()
+      is Event.StreamWrite -> TODO()
       Event.TaskCancelled -> TODO()
     }
   }

@@ -66,8 +66,8 @@ actual class StreamPair<T> {
   abstract class Binding<T> {
     abstract val byteCount: Int
     abstract fun new(): Long
-    abstract fun read(index: Int, address: Int, length: Int): Int
-    abstract fun write(index: Int, address: Int, length: Int): Int
+    abstract fun read(index: Int, address: Int, count: Int): Int
+    abstract fun write(index: Int, address: Int, count: Int): Int
     abstract fun cancelRead(index: Int): Int
     abstract fun cancelWrite(index: Int): Int
     abstract fun dropRead(index: Int)

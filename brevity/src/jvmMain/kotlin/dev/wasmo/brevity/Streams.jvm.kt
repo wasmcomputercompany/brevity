@@ -3,6 +3,9 @@
 
 package dev.wasmo.brevity
 
+import dev.wasmo.brevity.RealAsyncHost.Waitable
+import kotlinx.coroutines.selects.SelectBuilder
+
 actual class FuturePair<T> actual constructor() {
   actual val send = SendFuture(this)
   actual val receive = ReceiveFuture(this)
@@ -22,25 +25,33 @@ actual class FuturePair<T> actual constructor() {
 
 actual class SendFuture<T> internal actual constructor(
   private val pair: FuturePair<T>,
-) : Resource() {
+) : Resource(), Waitable {
   actual suspend fun complete(value: T) {
     TODO()
   }
 
   @BrevityInternalApi
   fun write(address: Int): Int {
-    TODO()
+    return PackedCopyResult.Blocked.value.toInt()
   }
 
   @BrevityInternalApi
   fun cancel(): Int {
     TODO()
   }
+
+  override fun poll(): Event {
+    TODO("Not yet implemented")
+  }
+
+  override fun select(selectBuilder: SelectBuilder<Event>) {
+    TODO("Not yet implemented")
+  }
 }
 
 actual class ReceiveFuture<T> internal actual constructor(
   private val pair: FuturePair<T>,
-) : Resource() {
+) : Resource(), Waitable {
   @BrevityInternalApi
   val peer: SendFuture<T>
     get() = pair.send
@@ -61,12 +72,20 @@ actual class ReceiveFuture<T> internal actual constructor(
 
   @BrevityInternalApi
   fun read(address: Int): Int {
-    TODO()
+    return PackedCopyResult.Blocked.value.toInt()
   }
 
   @BrevityInternalApi
   fun cancel(): Int {
     TODO()
+  }
+
+  override fun poll(): Event {
+    TODO("Not yet implemented")
+  }
+
+  override fun select(selectBuilder: SelectBuilder<Event>) {
+    TODO("Not yet implemented")
   }
 }
 
@@ -91,25 +110,35 @@ actual class StreamPair<T> {
 
 actual class SendStream<T> internal actual constructor(
   private val pair: StreamPair<T>,
-) : Resource() {
+) : Resource(), Waitable {
   actual suspend fun send(value: T) {
     TODO()
   }
 
   @BrevityInternalApi
-  fun write(address: Int, length: Int): Int {
-    TODO()
+  fun write(address: Int, count: Int): Int {
+    // TODO: return Blocked or p2 of the pending event
+    // CopyResult code packed with, for streams, the number of elements copied)
+    return PackedCopyResult.Blocked.value.toInt()
   }
 
   @BrevityInternalApi
   fun cancel(): Int {
     TODO()
   }
+
+  override fun poll(): Event {
+    TODO("Not yet implemented")
+  }
+
+  override fun select(selectBuilder: SelectBuilder<Event>) {
+    TODO("Not yet implemented")
+  }
 }
 
 actual class ReceiveStream<T> internal actual constructor(
   private val pair: StreamPair<T>,
-) : Resource() {
+) : Resource(), Waitable {
   @BrevityInternalApi
   val peer: SendStream<T>
     get() = pair.send
@@ -129,12 +158,20 @@ actual class ReceiveStream<T> internal actual constructor(
   }
 
   @BrevityInternalApi
-  fun read(address: Int, length: Int): Int {
-    TODO()
+  fun read(address: Int, count: Int): Int {
+    return PackedCopyResult.Blocked.value.toInt()
   }
 
   @BrevityInternalApi
   fun cancel(): Int {
     TODO()
+  }
+
+  override fun poll(): Event {
+    TODO("Not yet implemented")
+  }
+
+  override fun select(selectBuilder: SelectBuilder<Event>) {
+    TODO("Not yet implemented")
   }
 }

@@ -509,7 +509,7 @@ data class AbiFunction(
         add(flatParameter(WitTypeName.S32, Identifier("index"), nameAllocator))
         add(flatParameter(WitTypeName.S32, Identifier("address"), nameAllocator))
         if (name.cardinality == Cardinality.Stream) {
-          add(flatParameter(WitTypeName.S32, Identifier("length"), nameAllocator))
+          add(flatParameter(WitTypeName.S32, Identifier("count"), nameAllocator))
         }
       }
       val result = Result.SingleCoreValueReturn(
