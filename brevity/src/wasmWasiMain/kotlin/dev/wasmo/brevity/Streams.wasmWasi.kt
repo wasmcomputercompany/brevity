@@ -1,8 +1,10 @@
 @file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-@file:OptIn(BrevityInternalApi::class)
+@file:OptIn(BrevityInternalApi::class, UnsafeWasmMemoryApi::class)
 
 package dev.wasmo.brevity
 
+import kotlin.wasm.unsafe.MemoryAllocator
+import kotlin.wasm.unsafe.Pointer
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlin.wasm.unsafe.withScopedMemoryAllocator
 
@@ -23,8 +25,8 @@ actual class FuturePair<T> actual constructor() {
     abstract fun cancelWrite(index: Int): Int
     abstract fun dropRead(index: Int)
     abstract fun dropWrite(index: Int)
-    abstract fun lower(address: Int, value: T)
-    abstract fun lift(address: Int): T
+    abstract fun store(memoryAllocator: MemoryAllocator, address: Pointer, value: T)
+    abstract fun load(address: Pointer): T
   }
 }
 
@@ -70,8 +72,8 @@ actual class StreamPair<T> {
     abstract fun cancelWrite(index: Int): Int
     abstract fun dropRead(index: Int)
     abstract fun dropWrite(index: Int)
-    abstract fun lower(address: Int, value: T)
-    abstract fun lift(address: Int): T
+    abstract fun store(memoryAllocator: MemoryAllocator, address: Pointer, value: T)
+    abstract fun load(address: Pointer): T
   }
 }
 
@@ -86,7 +88,7 @@ actual class SendStream<T> internal actual constructor(
     withScopedMemoryAllocator { memoryAllocator ->
       val byteCount = binding.byteCount
       val address = memoryAllocator.allocate(byteCount)
-      binding.lower(address.address.toInt(), value)
+      binding.store(memoryAllocator, address, value)
       val packedAsyncResult = binding.write(rep, address.address.toInt(), byteCount)
       // TODO: GuestBridge.awaitStreamWriteComplete.
     }

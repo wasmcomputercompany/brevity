@@ -45,7 +45,7 @@ class FunctionEncoder(
   private val encoderContext = RealEncoderContext(
     collector = encoderFunctionCollector,
     streamBindingsCollector = streamBindingsCollector,
-    function = function,
+    orientation = function.orientation,
   )
 
   context(codeBuilder: CodeBuilder)

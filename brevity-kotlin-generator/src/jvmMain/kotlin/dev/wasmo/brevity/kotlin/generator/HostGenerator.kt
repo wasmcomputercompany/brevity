@@ -258,9 +258,12 @@ class HostGenerator(
       if (generatedStreamTypes.add(abiStream.irStream.type)) {
         builder.addType(
           StreamBindingGenerator(
+            encoderFunctionCollector = encoderFunctionCollector,
+            streamBindingsCollector = streamBindingsCollector,
             platform = platform,
             kotlinMapper = kotlinMapper,
             typeNamer = typeNamer,
+            bridge = bridgeValue,
             abiWorld = abiWorld,
             abiStream = abiStream,
           ).generateHost(),

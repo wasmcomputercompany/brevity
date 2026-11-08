@@ -12,8 +12,8 @@ actual class FuturePair<T> actual constructor() {
   @BrevityInternalApi
   abstract class Binding<T> {
     abstract val byteCount: Int
-    abstract fun lower(address: Int, value: T)
-    abstract fun lift(address: Int): T
+    abstract fun store(memoryAllocator: MemoryAllocator, address: Int, value: T)
+    abstract fun load(address: Int): T
   }
 }
 
@@ -23,17 +23,41 @@ actual class SendFuture<T> internal actual constructor(
   actual suspend fun complete(value: T) {
     TODO()
   }
+
+  @BrevityInternalApi
+  fun write(address: Int): Int {
+    TODO()
+  }
+
+  @BrevityInternalApi
+  fun cancel(): Int {
+    TODO()
+  }
 }
 
 actual class ReceiveFuture<T> internal actual constructor(
   private val pair: FuturePair<T>,
 ) : Resource() {
+  @BrevityInternalApi
+  val peer: SendFuture<T>
+    get() = pair.send
+
   actual suspend fun await(): T {
     TODO()
   }
 
   @BrevityInternalApi
   fun initBinding(binding: FuturePair.Binding<T>) {
+    TODO()
+  }
+
+  @BrevityInternalApi
+  fun read(address: Int): Int {
+    TODO()
+  }
+
+  @BrevityInternalApi
+  fun cancel(): Int {
     TODO()
   }
 }
@@ -50,8 +74,8 @@ actual class StreamPair<T> {
   @BrevityInternalApi
   abstract class Binding<T> {
     abstract val byteCount: Int
-    abstract fun lower(address: Int, value: T)
-    abstract fun lift(address: Int): T
+    abstract fun store(memoryAllocator: MemoryAllocator, address: Int, value: T)
+    abstract fun load(address: Int): T
   }
 }
 
@@ -61,17 +85,41 @@ actual class SendStream<T> internal actual constructor(
   actual suspend fun send(value: T) {
     TODO()
   }
+
+  @BrevityInternalApi
+  fun write(address: Int, length: Int): Int {
+    TODO()
+  }
+
+  @BrevityInternalApi
+  fun cancel(): Int {
+    TODO()
+  }
 }
 
 actual class ReceiveStream<T> internal actual constructor(
   private val pair: StreamPair<T>,
 ) : Resource() {
+  @BrevityInternalApi
+  val peer: SendStream<T>
+    get() = pair.send
+
   actual suspend fun receive(): T {
     TODO()
   }
 
   @BrevityInternalApi
   fun initBinding(binding: StreamPair.Binding<T>) {
+    TODO()
+  }
+
+  @BrevityInternalApi
+  fun read(address: Int, length: Int): Int {
+    TODO()
+  }
+
+  @BrevityInternalApi
+  fun cancel(): Int {
     TODO()
   }
 }
