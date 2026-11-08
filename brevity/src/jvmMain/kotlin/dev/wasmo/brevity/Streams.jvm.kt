@@ -8,6 +8,13 @@ actual class FuturePair<T> actual constructor() {
 
   actual operator fun component1() = send
   actual operator fun component2() = receive
+
+  @BrevityInternalApi
+  abstract class Binding<T> {
+    abstract val byteCount: Int
+    abstract fun lower(address: Int, value: T)
+    abstract fun lift(address: Int): T
+  }
 }
 
 actual class SendFuture<T> internal actual constructor(
@@ -26,14 +33,8 @@ actual class ReceiveFuture<T> internal actual constructor(
   }
 
   @BrevityInternalApi
-  actual fun initBinding(binding: Binding<T>) {
+  fun initBinding(binding: FuturePair.Binding<T>) {
     TODO()
-  }
-
-  @BrevityInternalApi
-  actual abstract class Binding<T> {
-    actual abstract fun lower(address: Int, value: T)
-    actual abstract fun lift(address: Int): T
   }
 }
 
@@ -45,6 +46,13 @@ actual class StreamPair<T> {
 
   actual operator fun component1() = send
   actual operator fun component2() = receive
+
+  @BrevityInternalApi
+  abstract class Binding<T> {
+    abstract val byteCount: Int
+    abstract fun lower(address: Int, value: T)
+    abstract fun lift(address: Int): T
+  }
 }
 
 actual class SendStream<T> internal actual constructor(
@@ -63,13 +71,7 @@ actual class ReceiveStream<T> internal actual constructor(
   }
 
   @BrevityInternalApi
-  actual fun initBinding(binding: Binding<T>) {
+  fun initBinding(binding: StreamPair.Binding<T>) {
     TODO()
-  }
-
-  @BrevityInternalApi
-  actual abstract class Binding<T> {
-    actual abstract fun lower(address: Int, value: T)
-    actual abstract fun lift(address: Int): T
   }
 }

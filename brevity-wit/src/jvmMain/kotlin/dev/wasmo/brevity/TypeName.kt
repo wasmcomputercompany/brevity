@@ -57,11 +57,16 @@ sealed class TypeName {
     val value: TypeName,
   ) : TypeName()
 
-  data class Future(
-    val type: TypeName? = null,
-  ) : TypeName()
-
   data class Stream(
     val type: TypeName? = null,
-  ) : TypeName()
+    val cardinality: Cardinality,
+  ) : TypeName() {
+    enum class Cardinality {
+      /** Exactly one async value. */
+      Future,
+
+      /** Any number of async values. */
+      Stream,
+    }
+  }
 }

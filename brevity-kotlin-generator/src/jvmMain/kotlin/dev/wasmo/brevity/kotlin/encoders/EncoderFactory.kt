@@ -39,8 +39,10 @@ class EncoderFactory(
         val elementType = typeName.type?.let { kotlinMapper.get(it) } ?: UNIT
         StreamEncoder(
           type = typeName,
-          streamType = Symbols.Brevity.ReceiveStream.parameterizedBy(elementType),
-          pairType = Symbols.Brevity.StreamPair.parameterizedBy(elementType),
+          streamType = Symbols.Brevity.streamType(typeName.cardinality)
+            .parameterizedBy(elementType),
+          pairType = Symbols.Brevity.streamPair(typeName.cardinality)
+            .parameterizedBy(elementType),
         )
       }
 
@@ -74,15 +76,6 @@ class EncoderFactory(
         val declaredType = declarationIndex[typeName]
           ?: error("unexpected type: $typeName")
         getDeclaredTypeEncoder(declaredType)
-      }
-
-      is TypeName.Future -> {
-        val elementType = typeName.type?.let { kotlinMapper.get(it) } ?: UNIT
-        StreamEncoder(
-          type = typeName,
-          streamType = Symbols.Brevity.ReceiveFuture.parameterizedBy(elementType),
-          pairType = Symbols.Brevity.FuturePair.parameterizedBy(elementType),
-        )
       }
 
       is TypeName.List -> {

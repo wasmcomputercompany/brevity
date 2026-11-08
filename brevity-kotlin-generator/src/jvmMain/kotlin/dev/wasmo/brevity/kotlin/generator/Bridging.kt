@@ -9,7 +9,6 @@ import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.FunctionName.StreamOp
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation.Export
-import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.ir.IrCase
 import dev.wasmo.brevity.ir.IrExternalApi
 import dev.wasmo.brevity.ir.IrField
@@ -84,14 +83,14 @@ val IrFunction.isSupported: Boolean
 fun IrStream.newFunctionName() = FunctionName.StreamNew(
   base = functionName,
   id = id,
-  cardinality = cardinality,
+  cardinality = type.cardinality,
   exportPrefix = orientation == Export,
 )
 
 fun IrStream.ioFunctionName(streamOp: StreamOp) = FunctionName.StreamIo(
   base = functionName,
   id = id,
-  cardinality = cardinality,
+  cardinality = type.cardinality,
   exportPrefix = orientation == Export,
   op = streamOp,
 )
@@ -99,7 +98,7 @@ fun IrStream.ioFunctionName(streamOp: StreamOp) = FunctionName.StreamIo(
 fun IrStream.cancelFunctionName(streamOp: StreamOp) = FunctionName.StreamCancel(
   base = functionName,
   id = id,
-  cardinality = cardinality,
+  cardinality = type.cardinality,
   exportPrefix = orientation == Export,
   op = streamOp,
 )
@@ -107,14 +106,7 @@ fun IrStream.cancelFunctionName(streamOp: StreamOp) = FunctionName.StreamCancel(
 fun IrStream.dropFunctionName(streamOp: StreamOp) = FunctionName.StreamDrop(
   base = functionName,
   id = id,
-  cardinality = cardinality,
+  cardinality = type.cardinality,
   exportPrefix = orientation == Export,
   op = streamOp,
 )
-
-val IrStream.cardinality: FunctionName.StreamCardinality
-  get() = when (type) {
-    is TypeName.Future -> FunctionName.StreamCardinality.Future
-    is TypeName.Stream -> FunctionName.StreamCardinality.Stream
-    else -> error("unexpected type ${type}")
-  }

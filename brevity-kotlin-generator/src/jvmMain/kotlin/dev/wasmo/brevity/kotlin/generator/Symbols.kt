@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
+import dev.wasmo.brevity.TypeName.Stream.Cardinality
 
 object Symbols {
   object Kotlin {
@@ -77,7 +78,7 @@ object Symbols {
     val CallbackCode = ClassName("dev.wasmo.brevity", "CallbackCode")
     val Event = ClassName("dev.wasmo.brevity", "Event")
     val FuturePair = ClassName("dev.wasmo.brevity", "FuturePair")
-    val ReceiveFuture = ClassName("dev.wasmo.brevity", "ReceiveFuture")
+    val FuturePairBinding = ClassName("dev.wasmo.brevity", "FuturePair", "Binding")
     val GuestBridge = ClassName("dev.wasmo.brevity", "GuestBridge")
     val HostBridge = ClassName("dev.wasmo.brevity", "HostBridge")
     val LoadString = MemberName("dev.wasmo.brevity", "loadString")
@@ -85,9 +86,8 @@ object Symbols {
     val PackedAsyncResult = ClassName("dev.wasmo.brevity", "PackedAsyncResult")
     val PackedSubtaskResult = ClassName("dev.wasmo.brevity", "PackedSubtaskResult")
     val Quad = ClassName("dev.wasmo.brevity", "Quad")
-    val ReceiveFutureBinding = ClassName("dev.wasmo.brevity", "ReceiveFuture", "Binding")
     val ReceiveStream = ClassName("dev.wasmo.brevity", "ReceiveStream")
-    val ReceiveStreamBinding = ClassName("dev.wasmo.brevity", "ReceiveStream", "Binding")
+    val ReceiveFuture = ClassName("dev.wasmo.brevity", "ReceiveFuture")
     val Resource = ClassName("dev.wasmo.brevity", "Resource")
     val Result = ClassName("dev.wasmo.brevity", "Result")
     val ResultError = Result.nestedClass("Error")
@@ -98,7 +98,29 @@ object Symbols {
     )
     val StoreByteArray = MemberName("dev.wasmo.brevity", "storeByteArray")
     val StreamPair = ClassName("dev.wasmo.brevity", "StreamPair")
+    val StreamPairBinding = ClassName("dev.wasmo.brevity", "StreamPair", "Binding")
     val WitAdapter = ClassName("dev.wasmo.brevity", "WitAdapter")
     val World = ClassName("dev.wasmo.brevity", "World")
+
+    fun streamPair(cardinality: Cardinality): ClassName {
+      return when (cardinality) {
+        Cardinality.Future -> FuturePair
+        Cardinality.Stream -> StreamPair
+      }
+    }
+
+    fun streamType(cardinality: Cardinality): ClassName {
+      return when (cardinality) {
+        Cardinality.Future -> ReceiveFuture
+        Cardinality.Stream -> ReceiveStream
+      }
+    }
+
+    fun streamBindingType(cardinality: Cardinality): ClassName {
+      return when (cardinality) {
+        Cardinality.Future -> FuturePairBinding
+        Cardinality.Stream -> StreamPairBinding
+      }
+    }
   }
 }

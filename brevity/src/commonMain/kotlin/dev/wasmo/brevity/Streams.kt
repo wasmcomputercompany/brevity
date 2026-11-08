@@ -22,15 +22,6 @@ expect class ReceiveFuture<T> : Resource {
   internal constructor(pair: FuturePair<T>)
 
   suspend fun await(): T
-
-  @BrevityInternalApi
-  fun initBinding(binding: Binding<T>)
-
-  @BrevityInternalApi
-  abstract class Binding<T> {
-    abstract fun lower(address: Int, value: T)
-    abstract fun lift(address: Int): T
-  }
 }
 
 expect class StreamPair<T> {
@@ -53,13 +44,4 @@ expect class ReceiveStream<T> : Resource {
   internal constructor(pair: StreamPair<T>)
 
   suspend fun receive(): T
-
-  @BrevityInternalApi
-  fun initBinding(binding: Binding<T>)
-
-  @BrevityInternalApi
-  abstract class Binding<T> {
-    abstract fun lower(address: Int, value: T)
-    abstract fun lift(address: Int): T
-  }
 }

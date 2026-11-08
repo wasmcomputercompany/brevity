@@ -106,7 +106,7 @@ internal class IrStreamMapper(
     }
   }
 
-  context(sequenceScope: SequenceScope<TypeName>)
+  context(sequenceScope: SequenceScope<TypeName.Stream>)
   private suspend fun collectStreamTypesDepthFirst(type: TypeName) {
     when (type) {
       is TypeName.Borrow -> {
@@ -115,11 +115,6 @@ internal class IrStreamMapper(
 
       is TypeName.Declared -> {
         collectStreamTypesDepthFirst(typeIndex[type]!!)
-      }
-
-      is TypeName.Future -> {
-        type.type?.let { collectStreamTypesDepthFirst(it) }
-        sequenceScope.yield(type)
       }
 
       is TypeName.List -> {
@@ -155,7 +150,7 @@ internal class IrStreamMapper(
     }
   }
 
-  context(sequenceScope: SequenceScope<TypeName>)
+  context(sequenceScope: SequenceScope<TypeName.Stream>)
   private suspend fun collectStreamTypesDepthFirst(type: IrTypeDeclaration) {
     when (type) {
       is IrRecord -> {

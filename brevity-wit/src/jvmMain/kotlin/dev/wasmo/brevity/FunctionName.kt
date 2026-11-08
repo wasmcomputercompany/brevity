@@ -1,5 +1,7 @@
 package dev.wasmo.brevity
 
+import dev.wasmo.brevity.TypeName.Stream
+
 /**
  * An external function name, used as a unique identifier in a .wasm files.
  *
@@ -109,6 +111,12 @@ sealed class FunctionName {
       baseName.name?.let { append(it) }
     }
 
+  private val Stream.Cardinality.identifier: String
+    get() = when (this) {
+      Stream.Cardinality.Future -> "future"
+      Stream.Cardinality.Stream -> "stream"
+    }
+
   open fun transform(transform: Transform): FunctionName {
     error("unexpected call to transform on $this")
   }
@@ -197,7 +205,7 @@ sealed class FunctionName {
   data class StreamNew(
     val base: FunctionName,
     val id: Int,
-    val cardinality: StreamCardinality,
+    val cardinality: Stream.Cardinality,
     override val exportPrefix: Boolean,
   ) : FunctionName() {
     override val parent: Parent
@@ -209,7 +217,7 @@ sealed class FunctionName {
   data class StreamIo(
     val base: FunctionName,
     val id: Int,
-    val cardinality: StreamCardinality,
+    val cardinality: Stream.Cardinality,
     override val exportPrefix: Boolean,
     val op: StreamOp,
   ) : FunctionName() {
@@ -224,7 +232,7 @@ sealed class FunctionName {
   data class StreamCancel(
     val base: FunctionName,
     val id: Int,
-    val cardinality: StreamCardinality,
+    val cardinality: Stream.Cardinality,
     override val exportPrefix: Boolean,
     val op: StreamOp,
   ) : FunctionName() {
@@ -237,21 +245,13 @@ sealed class FunctionName {
   data class StreamDrop(
     val base: FunctionName,
     val id: Int,
-    val cardinality: StreamCardinality,
+    val cardinality: Stream.Cardinality,
     override val exportPrefix: Boolean,
     val op: StreamOp,
   ) : FunctionName() {
     override val parent: Parent
       get() = base.parent
     override fun toString() = super.toString()
-  }
-
-  enum class StreamCardinality(val identifier: Identifier) {
-    /** Exactly one async value. */
-    Future(Identifier("future")),
-
-    /** Any number of async values. */
-    Stream(Identifier("stream")),
   }
 
   enum class StreamOp(

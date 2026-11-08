@@ -21,6 +21,7 @@ import dev.wasmo.brevity.kotlin.abi.AbiInterface
 import dev.wasmo.brevity.kotlin.abi.AbiLift
 import dev.wasmo.brevity.kotlin.abi.AbiResource
 import dev.wasmo.brevity.kotlin.abi.AbiService
+import dev.wasmo.brevity.kotlin.abi.AbiStream
 import dev.wasmo.brevity.kotlin.abi.AbiWorld
 import dev.wasmo.brevity.kotlin.abi.ChicoryImportFunction
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
@@ -250,6 +251,7 @@ class HostGenerator(
         initImportsBuilder = initImportsBuilder,
         bridgeValue = bridgeValue,
         parentService = abiWorld,
+        parentStream = abiStream,
         functions = abiStream.functions,
       )
 
@@ -309,6 +311,7 @@ class HostGenerator(
     initImportsBuilder: FunSpec.Builder,
     bridgeValue: CodeBlock,
     parentService: AbiService,
+    parentStream: AbiStream? = null,
     functions: List<AbiFunction> = parentService.functions,
   ) {
     val store = CodeBlock.of("%N", "store")
@@ -322,6 +325,7 @@ class HostGenerator(
           bridge = bridgeValue,
           store = store,
           parentService = parentService,
+          parentStream = parentStream,
           abiFunction = abiFunction,
         ),
       )
@@ -389,6 +393,7 @@ class HostGenerator(
     bridge: CodeBlock,
     store: CodeBlock,
     parentService: AbiService,
+    parentStream: AbiStream?,
     abiFunction: AbiFunction,
   ): CodeBlock {
     val codeBuilder = CodeBuilder(
@@ -405,6 +410,7 @@ class HostGenerator(
             encoderFunctionCollector = encoderFunctionCollector,
             streamBindingsCollector = streamBindingsCollector,
             service = parentService,
+            stream = parentStream,
             function = abiFunction,
           ),
         ),
@@ -514,6 +520,6 @@ private class HostTypeNamer(
     return hostClassName.nestedClass("HostStream$abiStreamIndex")
   }
 
-  override fun streamInstance(typeName: TypeName) =
+  override fun streamBindingInstance(typeName: TypeName) =
     CodeBlock.of("%T()", streamImplementation(typeName))
 }
