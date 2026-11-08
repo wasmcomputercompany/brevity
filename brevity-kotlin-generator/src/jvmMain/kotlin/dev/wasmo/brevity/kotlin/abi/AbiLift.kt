@@ -327,8 +327,9 @@ private class AbiStreamNewLift(
       Symbols.Brevity.streamPair(stream.cardinality).parameterizedBy(stream.elementType),
     )
     codeBuilder.addStatement(
-      "%N.receive.initBinding(%L)",
+      "%N.receive.initBinding(%L, %L)",
       streamPairName,
+      codeBuilder.bridge,
       typeNamer.streamBindingInstance(this.stream.irStream.type),
     )
     codeBuilder.addStatement(
@@ -356,25 +357,25 @@ private class AbiStreamIoLift(
   ): KtExpression {
     check(receiver == null)
 
-    val receiveStreamName = codeBuilder.newName("receiveStream")
-    val resultName = codeBuilder.newName("result")
+    val streamName = codeBuilder.newName("stream")
+    val streamType = when (functionName.op) {
+      FunctionName.StreamOp.Read -> Symbols.Brevity.receiveStream(stream.cardinality)
+      FunctionName.StreamOp.Write -> Symbols.Brevity.sendStream(stream.cardinality)
+    }
     codeBuilder.addStatement(
       "val %N = %L.getImportedResource<%T>(%L)",
-      receiveStreamName,
+      streamName,
       codeBuilder.bridge,
-      Symbols.Brevity.streamType(stream.cardinality).parameterizedBy(stream.elementType),
+      streamType.parameterizedBy(stream.elementType),
       parameters[0].code,
     )
     codeBuilder.platform.afterLiftParameters()
 
-    val receiver = when (functionName.op) {
-      FunctionName.StreamOp.Read -> CodeBlock.of("%N", receiveStreamName)
-      FunctionName.StreamOp.Write -> CodeBlock.of("%N.peer", receiveStreamName)
-    }
+    val resultName = codeBuilder.newName("result")
     codeBuilder.add(
-      "val %N = %L.%N(%L",
+      "val %N = %N.%N(%L",
       resultName,
-      receiver,
+      streamName,
       functionName.op.verb.name,
       parameters[1].code,
     )
@@ -401,25 +402,25 @@ private class AbiStreamCancelLift(
   ): KtExpression {
     check(receiver == null)
 
-    val receiveStreamName = codeBuilder.newName("receiveStream")
-    val resultName = codeBuilder.newName("result")
+    val streamName = codeBuilder.newName("stream")
+    val streamType = when (functionName.op) {
+      FunctionName.StreamOp.Read -> Symbols.Brevity.receiveStream(stream.cardinality)
+      FunctionName.StreamOp.Write -> Symbols.Brevity.sendStream(stream.cardinality)
+    }
     codeBuilder.addStatement(
       "val %N = %L.getImportedResource<%T>(%L)",
-      receiveStreamName,
+      streamName,
       codeBuilder.bridge,
-      Symbols.Brevity.streamType(stream.cardinality).parameterizedBy(stream.elementType),
+      streamType.parameterizedBy(stream.elementType),
       parameters[0].code,
     )
     codeBuilder.platform.afterLiftParameters()
 
-    val receiver = when (functionName.op) {
-      FunctionName.StreamOp.Read -> CodeBlock.of("%N", receiveStreamName)
-      FunctionName.StreamOp.Write -> CodeBlock.of("%N.peer", receiveStreamName)
-    }
+    val resultName = codeBuilder.newName("result")
     codeBuilder.addStatement(
-      "val %N = %L.cancel()",
+      "val %N = %N.cancel()",
       resultName,
-      receiver,
+      streamName,
     )
 
     return CodeBlockExpression(
@@ -441,21 +442,20 @@ private class AbiStreamDropLift(
   ): KtExpression {
     check(receiver == null)
 
-    val receiveStreamName = codeBuilder.newName("receiveStream")
+    val streamName = codeBuilder.newName("stream")
+    val streamType = when (functionName.op) {
+      FunctionName.StreamOp.Read -> Symbols.Brevity.receiveStream(stream.cardinality)
+      FunctionName.StreamOp.Write -> Symbols.Brevity.sendStream(stream.cardinality)
+    }
     codeBuilder.addStatement(
       "val %N = %L.getImportedResource<%T>(%L)",
-      receiveStreamName,
+      streamName,
       codeBuilder.bridge,
-      Symbols.Brevity.streamType(stream.cardinality).parameterizedBy(stream.elementType),
+      streamType.parameterizedBy(stream.elementType),
       parameters[0].code,
     )
     codeBuilder.platform.afterLiftParameters()
-
-    val receiver = when (functionName.op) {
-      FunctionName.StreamOp.Read -> CodeBlock.of("%N", receiveStreamName)
-      FunctionName.StreamOp.Write -> CodeBlock.of("%N.peer", receiveStreamName)
-    }
-    codeBuilder.addStatement("%L.close()", receiver)
+    codeBuilder.addStatement("%N.close()", streamName)
 
     return KtExpression.Unit
   }

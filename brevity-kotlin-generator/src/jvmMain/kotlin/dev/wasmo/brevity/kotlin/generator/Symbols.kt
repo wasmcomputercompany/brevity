@@ -96,6 +96,8 @@ object Symbols {
       "dev.wasmo.brevity",
       "retainWasmExportsForGuestBridge",
     )
+    val SendFuture = ClassName("dev.wasmo.brevity", "SendFuture")
+    val SendStream = ClassName("dev.wasmo.brevity", "SendStream")
     val StoreByteArray = MemberName("dev.wasmo.brevity", "storeByteArray")
     val StreamPair = ClassName("dev.wasmo.brevity", "StreamPair")
     val StreamPairBinding = ClassName("dev.wasmo.brevity", "StreamPair", "Binding")
@@ -109,10 +111,17 @@ object Symbols {
       }
     }
 
-    fun streamType(cardinality: Cardinality): ClassName {
+    fun receiveStream(cardinality: Cardinality): ClassName {
       return when (cardinality) {
         Cardinality.Future -> ReceiveFuture
         Cardinality.Stream -> ReceiveStream
+      }
+    }
+
+    fun sendStream(cardinality: Cardinality): ClassName {
+      return when (cardinality) {
+        Cardinality.Future -> SendFuture
+        Cardinality.Stream -> SendStream
       }
     }
 

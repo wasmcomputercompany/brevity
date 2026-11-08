@@ -1,5 +1,5 @@
 @file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
-@file:OptIn(BrevityInternalApi::class, UnsafeWasmMemoryApi::class)
+@file:OptIn(UnsafeWasmMemoryApi::class, BrevityInternalApi::class)
 
 package dev.wasmo.brevity
 

@@ -1,10 +1,13 @@
 @file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
+@file:OptIn(BrevityInternalApi::class)
 
 package dev.wasmo.brevity
 
 actual class FuturePair<T> actual constructor() {
   actual val send = SendFuture(this)
   actual val receive = ReceiveFuture(this)
+
+  internal var binding: Binding<T>? = null
 
   actual operator fun component1() = send
   actual operator fun component2() = receive
@@ -47,8 +50,13 @@ actual class ReceiveFuture<T> internal actual constructor(
   }
 
   @BrevityInternalApi
-  fun initBinding(binding: FuturePair.Binding<T>) {
-    TODO()
+  fun initBinding(bridge: HostBridge, binding: FuturePair.Binding<T>) {
+    check(!this.hasRep && !this.peer.hasRep && pair.binding == null)
+    this.rep = bridge.putImportedResource(this)
+    this.hasRep = true
+    this.peer.rep = bridge.putImportedResource(this.peer)
+    this.peer.hasRep = true
+    pair.binding = binding
   }
 
   @BrevityInternalApi
@@ -65,6 +73,8 @@ actual class ReceiveFuture<T> internal actual constructor(
 actual class StreamPair<T> {
   actual val send = SendStream(this)
   actual val receive = ReceiveStream(this)
+
+  internal var binding: Binding<T>? = null
 
   actual constructor()
 
@@ -109,8 +119,13 @@ actual class ReceiveStream<T> internal actual constructor(
   }
 
   @BrevityInternalApi
-  fun initBinding(binding: StreamPair.Binding<T>) {
-    TODO()
+  fun initBinding(bridge: HostBridge, binding: StreamPair.Binding<T>) {
+    check(!this.hasRep && !this.peer.hasRep && pair.binding == null)
+    this.rep = bridge.putImportedResource(this)
+    this.hasRep = true
+    this.peer.rep = bridge.putImportedResource(this.peer)
+    this.peer.hasRep = true
+    pair.binding = binding
   }
 
   @BrevityInternalApi
