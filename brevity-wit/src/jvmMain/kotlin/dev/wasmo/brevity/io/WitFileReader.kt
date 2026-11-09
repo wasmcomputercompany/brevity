@@ -780,11 +780,19 @@ internal class WitFileReader(
 
   /**
    * ```ebnf
+   * world-api ::= id ':' extern-type
+   *             | use-path ';'
+   * ```
+   *
+   * The above does not appear in the spec; it is the common part at the end of the following productions:
+   *
+   * ```ebnf
    * import-item ::= 'import' id ':' extern-type
    *               | 'import' use-path ';'
    * export-item ::= 'export' id ':' extern-type
    *               | 'export' use-path ';'
    * ```
+   *
    */
   context(issueCollector: IssueCollector)
   private fun readWorldApi(
@@ -792,18 +800,132 @@ internal class WitFileReader(
     gate: Gate?,
     location: Location,
   ): IoWorld.Api {
-    return source.select(
-      {
-        source.skipWhitespace()
-        val identifier = source.readIdentifier()
-        source.skipWhitespace()
+    source.skipWhitespace()
+
+    // Parsing this production without speculatively running down each branch
+    // is complicated! Let's look at it, and include all the productions that a sequence of
+    // ids and colons might lead us down:
+    //
+    // world-api ::= id ':' extern-type
+    //             | use-path ';'
+    // extern-type ::= func-type ';'
+    //               | 'interface' '{' interface-items* '}'
+    //               | use-path ';'
+    // use-path ::= id
+    //            | id ':' id '/' id ('@' valid-semver)?
+    //            | ( id ':' )+ id ( '/' id )+ ('@' valid-semver)?
+    // func-type ::= 'async'? 'func' param-list result-list
+    //
+    // Will tease this out as we go!
+
+
+    // First things first: we read an id, which starts any of these productions:
+    //
+    // world-api ::= id ':' extern-type
+    //               ^
+    //             | use-path ';'
+    // use-path ::= id
+    //              ^
+    //            | id ':' id '/' id ('@' valid-semver)?
+    //              ^
+    //            | ( id ':' )+ id ( '/' id )+ ('@' valid-semver)?
+    //              ^
+    val initialIdentifier = source.readIdentifier()
+
+    // Next up, we check two things: whether we read some whitespace or not,
+    // and whether the next character is a ';' or a ':'. Whitespace can't occur
+    // within a use-path, so that helps narrow down our productions.
+    //
+    // world-api ::= id ':' extern-type
+    //                ^
+    //             | use-path ';'
+    // use-path ::= id
+    //               ^
+    //            | id ':' id '/' id ('@' valid-semver)?
+    //               ^
+    //            | ( id ':' )+ id ( '/' id )+ ('@' valid-semver)?
+    //               ^
+
+    val whitespaceAfterInitialId = source.skipWhitespace()
+    val nextChar = source.peek()
+    when {
+      // If nextChar is a ';', then our initial identifier is a use path.
+      nextChar == ';' -> {
+        source.readLiteral(';')
+        return IoExternalApi(
+          documentation = documentation,
+          gate = gate,
+          location = location,
+          path = UsePath(packageName = null, name = initialIdentifier),
+        )
+      }
+      // If it's a ':' and we have some whitespace, then we are
+      // about to read an extern-type and we can just return that.
+      whitespaceAfterInitialId && nextChar == ':'-> {
         source.readLiteral(':')
-        readExternalType(documentation, gate, location, identifier)
-      },
-      {
-        source.skipWhitespace()
-        val path = source.readUsePath()
-        source.skipWhitespace()
+        return readExternalType(documentation, gate, location, initialIdentifier)
+      }
+      // Otherwise, we could be either reading more use-path or an extern type,
+      // so we have more work to do.
+      nextChar == ':' -> source.readLiteral(':')
+      else -> errorWit(location, "unexpected character: '$nextChar'")
+    }
+
+    // So now we've read a ':', which means things seemingly open WAY up...
+    //
+    // world-api ::= id ':' extern-type
+    //                     ^
+    //             | use-path ';'
+    //
+    // use-path ::= id ':' id '/' id ('@' valid-semver)?
+    //                     ^
+    //            | ( id ':' )+ id ( '/' id )+ ('@' valid-semver)?
+    //                ^         ^
+    // extern-type ::= func-type ';'
+    //                 ^
+    //               | 'interface' '{' interface-items* '}'
+    //                 ^
+    //               | use-path ';'
+    //                 ^
+    //
+    // The presence of whitespace again tells us that we're *not* in the middle of a use-path.
+    // That lets us safely proceed to extern-type again.
+    if (source.skipWhitespace()) {
+      return readExternalType(documentation, gate, location, initialIdentifier)
+    }
+
+    // Now we're getting to the home stretch... the use-path production of extern-type
+    // is gone, which means the parse will continue with a use-path, a func-type,
+    // or an interface.
+    // (NB: once we've parsed an id and a ':' with no spaces, it is no longer valid
+    //  to parse that as `id ':' extern-type`: https://github.com/WebAssembly/component-model/blob/main/design/mvp/WIT.md?plain=1#L1487-L1495)
+    //
+    // world-api ::= id ':' extern-type
+    //                     ^
+    //             | use-path ';'
+    //
+    // use-path ::= id ':' id '/' id ('@' valid-semver)?
+    //                     ^
+    //            | ( id ':' )+ id ( '/' id )+ ('@' valid-semver)?
+    //                ^         ^
+    // extern-type ::= func-type ';'
+    //                 ^
+    //               | 'interface' '{' interface-items* '}'
+    //                 ^
+    // All the extern-type productions begin with keywords. So if we get a keyword,
+    // we return an extern-type. If not, we return a use-path (making sure to preserve
+    // the namespace pieces we have already parsed)
+    //
+    // All done!
+    return when (source.peekIdentifierOrKeyword()) {
+      is Keyword -> {
+        readExternalType(documentation, gate, location, initialIdentifier)
+      }
+      is Identifier -> {
+        val path = source.readUsePath(preReadNamespaceComponents = listOf(
+          initialIdentifier,
+          source.readIdentifier(),
+        ))
         source.readLiteral(';')
         IoExternalApi(
           documentation = documentation,
@@ -811,8 +933,8 @@ internal class WitFileReader(
           location = location,
           path = path,
         )
-      },
-    )
+      }
+    }
   }
 
   /**
