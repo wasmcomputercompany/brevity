@@ -3,7 +3,6 @@
 
 package dev.wasmo.brevity
 
-import dev.wasmo.brevity.RealAsyncHost.Waitable
 import kotlinx.coroutines.selects.SelectBuilder
 
 actual class FuturePair<T> actual constructor() {
@@ -117,9 +116,7 @@ actual class SendStream<T> internal actual constructor(
 
   @BrevityInternalApi
   fun write(address: Int, count: Int): Int {
-    // TODO: return Blocked or p2 of the pending event
-    // CopyResult code packed with, for streams, the number of elements copied)
-    return PackedCopyResult.Blocked.value.toInt()
+    return Event.StreamWrite(rep, PackedCopyResult.Blocked).p2
   }
 
   @BrevityInternalApi
@@ -128,7 +125,7 @@ actual class SendStream<T> internal actual constructor(
   }
 
   override fun poll(): Event {
-    TODO("Not yet implemented")
+    return Event.StreamWrite(rep, PackedCopyResult.Blocked)
   }
 
   override fun select(selectBuilder: SelectBuilder<Event>) {
@@ -159,7 +156,7 @@ actual class ReceiveStream<T> internal actual constructor(
 
   @BrevityInternalApi
   fun read(address: Int, count: Int): Int {
-    return PackedCopyResult.Blocked.value.toInt()
+    return Event.StreamRead(rep, PackedCopyResult.Blocked).p2
   }
 
   @BrevityInternalApi
@@ -168,7 +165,7 @@ actual class ReceiveStream<T> internal actual constructor(
   }
 
   override fun poll(): Event {
-    TODO("Not yet implemented")
+    return Event.StreamRead(rep, PackedCopyResult.Blocked)
   }
 
   override fun select(selectBuilder: SelectBuilder<Event>) {

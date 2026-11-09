@@ -37,7 +37,6 @@ class HostKotlinTarget(
       |import dev.wasmo.brevity.ReceiveFuture
       |import dev.wasmo.brevity.ReceiveStream
       |import dev.wasmo.brevity.WasmInstance
-      |import dev.wasmo.brevity.asyncWorld
       |import dev.wasmo.brevity.integration.isEqualTo
       |import dev.wasmo.brevity.wasi.p1.RealWasiP1Host
       |import dev.wasmo.brevity.wasi.p1.wasiP1World
@@ -149,7 +148,6 @@ class HostKotlinTarget(
       |      wasiP1World { RealWasiP1Host() },
       |      wasiP2World { RealWasiP2Host() },
       |      wasiP3World { RealWasiP3Host() },
-      |      asyncWorld,
       |      world,
       |    ),
       |  )

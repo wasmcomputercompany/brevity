@@ -3,7 +3,6 @@ package dev.wasmo.brevity.integration
 import assertk.assertThat
 import assertk.assertions.isEqualTo
 import dev.wasmo.brevity.WasmInstance
-import dev.wasmo.brevity.asyncWorld
 import dev.wasmo.brevity.wasi.p1.wasiP1World
 import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
 import dev.wasmo.brevity.wasi.p2.wasiP2World
@@ -41,7 +40,6 @@ class RunKotlinWasmTest {
         wasiP1World { wasiP1 },
         wasiP2World { RealWasiP2Host() },
         wasiP3World { RealWasiP3Host() },
-        asyncWorld,
         world,
       ),
     )
@@ -60,7 +58,6 @@ class RunKotlinWasmTest {
         wasiP1World { wasiP1 },
         wasiP2World { RealWasiP2Host() },
         wasiP3World { RealWasiP3Host() },
-        asyncWorld,
         world,
       ),
     )
@@ -79,7 +76,6 @@ class RunKotlinWasmTest {
         wasiP1World { wasiP1 },
         wasiP2World { RealWasiP2Host() },
         wasiP3World { RealWasiP3Host() },
-        asyncWorld,
         world,
       ),
     )
@@ -108,7 +104,6 @@ class RunKotlinWasmTest {
         wasiP1World { wasiP1 },
         wasiP2World { RealWasiP2Host() },
         wasiP3World { RealWasiP3Host() },
-        asyncWorld,
         world,
       ),
     )
@@ -131,7 +126,6 @@ class RunKotlinWasmTest {
         wasiP1World { wasiP1 },
         wasiP2World { RealWasiP2Host() },
         wasiP3World { RealWasiP3Host() },
-        asyncWorld,
         world,
       ),
     )
@@ -152,7 +146,6 @@ class RunKotlinWasmTest {
         wasiP1World { wasiP1 },
         wasiP2World { RealWasiP2Host() },
         wasiP3World { RealWasiP3Host() },
-        asyncWorld,
         world,
       ),
     )
@@ -173,7 +166,6 @@ class RunKotlinWasmTest {
         wasiP1World { wasiP1 },
         wasiP2World { RealWasiP2Host() },
         wasiP3World { RealWasiP3Host() },
-        asyncWorld,
         world,
       ),
     )

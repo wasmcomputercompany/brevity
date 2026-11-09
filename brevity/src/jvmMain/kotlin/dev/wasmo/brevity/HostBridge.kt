@@ -1,9 +1,7 @@
 package dev.wasmo.brevity
 
-import com.dylibso.chicory.runtime.ExportFunction
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
-import dev.wasmo.brevity.RealAsyncHost.RealWaitableSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.yield
@@ -70,6 +68,11 @@ class HostBridge(
     return resource as T
   }
 
+  @BrevityInternalApi
+  inline fun <reified T : Resource> drop(id: Int): T {
+    return dropInternal(id) as T
+  }
+
   @PublishedApi
   internal fun dropInternal(rep: Int): Resource? {
     return repToExportedResource.remove(rep)
@@ -115,7 +118,7 @@ class HostBridge(
 
       !job.isCompleted -> {
         val rep = nextRep++
-        val subtask = RealAsyncHost.Subtask(job)
+        val subtask = Subtask(job)
         subtask.rep = rep
         subtask.hasRep = true
         repToImportedResource[rep] = subtask
@@ -125,60 +128,18 @@ class HostBridge(
       else -> PackedSubtaskResult(SubtaskState.Returned)
     }
   }
-}
 
-@BrevityInternalApi
-class Thread(
-  val bridge: HostBridge,
-  val task: Task,
-) {
-  val context = intArrayOf(
-    bridge.initialStackPointer,
-    bridge.initialTlsBase,
-  )
-  var taskResult: Any? = null
+  fun waitableSetNew(): WaitableSet = RealWaitableSet(this)
 
-  /**
-   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-contextget
-   */
-  fun contextGet(index: Int): Int {
-    return context[index]
+  fun taskCancel() {
+    TODO("Not yet implemented")
   }
 
-  /**
-   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-contextset
-   */
-  fun contextSet(index: Int, value: Int) {
-    context[index] = value
+  fun subtaskCancel(subtask: Int): Int {
+    TODO("Not yet implemented")
   }
 
-  fun taskReturn(value: Any? = Unit) {
-    this.taskResult = value
+  fun subtaskDrop(subtask: Int) {
+    // TODO("Not yet implemented")
   }
-
-  inline fun <T> execute(block: () -> T): T {
-    check(bridge.currentThread == bridge.defaultThread)
-    bridge.currentThread = this
-    try {
-      return block()
-    } finally {
-      bridge.currentThread = bridge.defaultThread
-    }
-  }
-}
-
-@BrevityInternalApi
-class Task
-
-@BrevityInternalApi
-inline fun <reified T : Resource> HostBridge.drop(id: Int): T {
-  return dropInternal(id) as T
-}
-
-@BrevityInternalApi
-class MemoryAllocator internal constructor(
-  private val cabiRealloc: ExportFunction,
-) {
-  /** Invoke `cabi_realloc(originalAddress, originalSize, align, newSize)`. */
-  fun allocate(byteCount: Int): Int = cabiRealloc.apply(0L, 0L, 0L, byteCount.toLong())[0].toInt()
 }
