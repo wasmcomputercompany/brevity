@@ -684,7 +684,7 @@ data class TestFunction(
         writeUtf8(
           """
           |    index: Int,
-          |  ): Future<${type.kotlinType}> {
+          |  ): ReceiveFuture<${type.kotlinType}> {
           |
           """.trimMargin(),
         )
@@ -694,7 +694,7 @@ data class TestFunction(
         writeUtf8(
           """
           |    index: Int,
-          |  ): Stream<${type.kotlinType}> {
+          |  ): ReceiveStream<${type.kotlinType}> {
           |
           """.trimMargin(),
         )
@@ -774,7 +774,7 @@ data class TestFunction(
           writeUtf8(
             """
             |  index = ${valueIndex},
-            |).next()
+            |).receive()
             """.trimMargin(),
           )
         }

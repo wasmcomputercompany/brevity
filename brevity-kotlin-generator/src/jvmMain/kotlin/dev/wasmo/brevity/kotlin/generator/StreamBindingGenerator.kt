@@ -4,11 +4,13 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.NameAllocator
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.PropertySpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.FunctionName
+import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.kotlin.KotlinMapper
 import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.abi.AbiStream
@@ -19,9 +21,12 @@ import dev.wasmo.brevity.kotlin.code.Platform
 import dev.wasmo.brevity.kotlin.expressions.valueExpression
 
 internal class StreamBindingGenerator(
+  private val encoderFunctionCollector: EncoderFunctionCollector,
+  private val streamBindingsCollector: StreamBindingsCollector,
   private val platform: Platform,
   kotlinMapper: KotlinMapper,
   typeNamer: TypeNamer,
+  private val bridge: CodeBlock,
   private val abiWorld: AbiWorld,
   private val abiStream: AbiStream,
 ) {
@@ -37,19 +42,24 @@ internal class StreamBindingGenerator(
     return TypeSpec.objectBuilder(className)
       .addModifiers(KModifier.INTERNAL)
       .superclass(bindingSuperclass)
+      .addProperty(byteCountProperty())
       .apply {
         for (abiFunction in abiStream.functions) {
           addFunction(guestFunction(abiFunction))
         }
       }
-      .addCommonBindings()
+      .addFunction(storeFunction())
+      .addFunction(loadFunction())
       .build()
   }
 
   fun generateHost(): TypeSpec {
     return TypeSpec.classBuilder(className)
+      .addModifiers(KModifier.INNER)
       .superclass(bindingSuperclass)
-      .addCommonBindings()
+      .addProperty(byteCountProperty())
+      .addFunction(storeFunction())
+      .addFunction(loadFunction())
       .build()
   }
 
@@ -70,7 +80,7 @@ internal class StreamBindingGenerator(
         }
 
         val codeBuilder = CodeBuilder(
-          bridge = CodeBlock.of("%T", Symbols.Brevity.GuestBridge),
+          bridge = bridge,
           platform = platform,
           nameAllocator = abiFunction.newNameAllocator(),
         )
@@ -91,29 +101,88 @@ internal class StreamBindingGenerator(
       .build()
   }
 
-  private fun TypeSpec.Builder.addCommonBindings() = apply {
-    addProperty(
-      PropertySpec.builder("byteCount", INT)
-        .addModifiers(KModifier.OVERRIDE)
-        .getter(FunSpec.getterBuilder()
+  private fun byteCountProperty(): PropertySpec {
+    return PropertySpec.builder("byteCount", INT)
+      .addModifiers(KModifier.OVERRIDE)
+      .getter(
+        FunSpec.getterBuilder()
           .addStatement("return %L", abiStream.elementEncoder?.byteCount ?: 0)
-          .build())
-        .build()
+          .build(),
+      )
+      .build()
+  }
+
+  private fun loadFunction(): FunSpec {
+    val codeBuilder = CodeBuilder(
+      bridge = bridge,
+      platform = platform,
+      nameAllocator = NameAllocator(),
     )
-    addFunction(
-      FunSpec.builder("lower")
-        .addModifiers(KModifier.OVERRIDE)
-        .addParameter("address", INT)
-        .addParameter("value", elementTypeKt)
-        .build(),
+
+    val addressName = codeBuilder.newName("address")
+    val encoderContext = RealEncoderContext(
+      collector = encoderFunctionCollector,
+      streamBindingsCollector = streamBindingsCollector,
+      orientation = Orientation.Import, // TODO: orientation of stream-declaring function?
     )
-    addFunction(
-      FunSpec.builder("lift")
-        .addModifiers(KModifier.OVERRIDE)
-        .addParameter("address", INT)
-        .returns(elementTypeKt)
-        .addStatement("TODO(%S)", "implement this!")
-        .build(),
+
+    return FunSpec.builder("load")
+      .addModifiers(KModifier.OVERRIDE)
+      .addParameter(addressName, platform.addressType)
+      .returns(elementTypeKt)
+      .apply {
+        context(codeBuilder) {
+          if (abiStream.elementEncoder != null) {
+            val result = encoderContext.load(
+              encoder = abiStream.elementEncoder,
+              baseAddress = CodeBlock.of("%N", addressName),
+              offset = 0,
+            )
+            codeBuilder.addStatement("return %L", result)
+          }
+          addCode(codeBuilder.build())
+        }
+      }
+      .build()
+  }
+
+  private fun storeFunction(): FunSpec {
+    val codeBuilder = CodeBuilder(
+      bridge = bridge,
+      platform = platform,
+      nameAllocator = NameAllocator(),
     )
+
+    val memoryAllocatorName = codeBuilder.newName("memoryAllocator")
+    val addressName = codeBuilder.newName("address")
+    val valueName = codeBuilder.newName("value")
+    val memoryAllocator = platform.getMemoryAllocator(memoryAllocatorName)
+
+    val encoderContext = RealEncoderContext(
+      collector = encoderFunctionCollector,
+      streamBindingsCollector = streamBindingsCollector,
+      orientation = Orientation.Import, // TODO: orientation of stream-declaring function?
+    )
+
+    return FunSpec.builder("store")
+      .addModifiers(KModifier.OVERRIDE)
+      .addParameter(memoryAllocator.name, memoryAllocator.type)
+      .addParameter(addressName, platform.addressType)
+      .addParameter(valueName, elementTypeKt)
+      .apply {
+        context(codeBuilder) {
+          if (abiStream.elementEncoder != null) {
+            encoderContext.store(
+              encoder = abiStream.elementEncoder,
+              memoryAllocator = memoryAllocator,
+              baseAddress = CodeBlock.of("%N", addressName),
+              offset = 0,
+              value = CodeBlock.of("%N", valueName),
+            )
+          }
+          addCode(codeBuilder.build())
+        }
+      }
+      .build()
   }
 }

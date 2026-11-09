@@ -2,6 +2,7 @@ package dev.wasmo.brevity.kotlin.generator
 
 import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
+import dev.wasmo.brevity.kotlin.code.HostPlatform
 import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
 import dev.wasmo.brevity.kotlin.encoders.Encoder
@@ -20,11 +21,13 @@ class StreamBindingsCollector(
   ) {
     val valueName = codeBuilder.newName("value")
     codeBuilder.addStatement("val %N = %L", valueName, value)
-    codeBuilder.addStatement(
-      "%N.initBinding(%L)",
-      valueName,
-      typeNamer.streamBindingInstance(encoder.type),
-    )
+
+    codeBuilder.add("%N.initBinding(", valueName)
+    if (codeBuilder.platform is HostPlatform) {
+      codeBuilder.add("%L, ", codeBuilder.bridge)
+    }
+    codeBuilder.add("%L)\n", typeNamer.streamBindingInstance(encoder.type))
+
     encoder.lowerFlat(memoryAllocator, lowerFlatIo, CodeBlock.of("%N", valueName))
   }
 

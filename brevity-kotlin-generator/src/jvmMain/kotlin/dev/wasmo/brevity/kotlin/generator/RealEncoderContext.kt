@@ -4,7 +4,6 @@ import com.squareup.kotlinpoet.CodeBlock
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.TypeName
-import dev.wasmo.brevity.kotlin.abi.AbiFunction
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
 import dev.wasmo.brevity.kotlin.code.LowerFlatIo
 import dev.wasmo.brevity.kotlin.code.MemoryAllocator
@@ -13,7 +12,7 @@ import dev.wasmo.brevity.kotlin.encoders.Encoder
 class RealEncoderContext(
   private val collector: EncoderFunctionCollector,
   private val streamBindingsCollector: StreamBindingsCollector,
-  private val function: AbiFunction,
+  private val orientation: Orientation,
 ) : Encoder.Context {
   override val typeNamer: TypeNamer
     get() = collector.typeNamer
@@ -21,7 +20,7 @@ class RealEncoderContext(
   /** Returns the orientation of the resource with respect to this function. */
   override fun getOrientation(type: TypeName.Declared): Orientation {
     return when {
-      function.orientation == Export && resourceInterfaceIsExported(type) -> Export
+      orientation == Export && resourceInterfaceIsExported(type) -> Export
       else -> Orientation.Import
     }
   }
@@ -45,7 +44,7 @@ class RealEncoderContext(
           encoderContext = this,
           encoder = encoder,
           typeMapper = typeMapper,
-          orientation = function.orientation,
+          orientation = orientation,
           memoryAllocator = memoryAllocator,
           lowerFlatIo = lowerFlatIo,
           value = value,
@@ -81,7 +80,7 @@ class RealEncoderContext(
           encoderContext = this,
           encoder = encoder,
           typeMapper = typeMapper,
-          orientation = function.orientation,
+          orientation = orientation,
           values = values,
         )
       }
@@ -109,7 +108,7 @@ class RealEncoderContext(
           encoderContext = this,
           encoder = encoder,
           typeMapper = typeMapper,
-          orientation = function.orientation,
+          orientation = orientation,
           baseAddress = baseAddress,
           offset = offset,
         )
@@ -146,7 +145,7 @@ class RealEncoderContext(
           encoderContext = this,
           encoder = encoder,
           typeMapper = typeMapper,
-          orientation = function.orientation,
+          orientation = orientation,
           memoryAllocator = memoryAllocator,
           baseAddress = baseAddress,
           offset = offset,

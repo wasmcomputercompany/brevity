@@ -110,10 +110,14 @@ class GuestGenerator(
           packageName = worldClassName.packageName,
           fileName = "${worldClassName.simpleName}GuestStreams",
         )
+        val bridgeValue = CodeBlock.of("%T", Symbols.Brevity.GuestBridge)
         val generator = StreamBindingGenerator(
+          encoderFunctionCollector = encoderFunctionCollector,
+          streamBindingsCollector = streamBindingsCollector,
           platform = platform,
           kotlinMapper = kotlinMapper,
           typeNamer = typeNamer,
+          bridge = bridgeValue,
           abiWorld = abiWorld,
           abiStream = abiStream,
         )
