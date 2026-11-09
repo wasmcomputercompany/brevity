@@ -14,9 +14,7 @@ class HostBridge(
 ) {
   private val repToExportedResource = mutableMapOf<Int, Resource>()
   private val repToImportedResource = mutableMapOf<Int, Resource>()
-  internal val waitables = mutableMapOf<Int, RealAsyncHost.Waitable>()
   private var nextRep = 6_060_000
-  private var nextWaitableIndex = 8_080_000
   internal var initialStackPointer: Int = 0
   internal var initialTlsBase: Int = 0
 
@@ -116,9 +114,12 @@ class HostBridge(
       job.isCancelled -> PackedSubtaskResult(SubtaskState.CanceledBeforeReturned)
 
       !job.isCompleted -> {
-        val waitableIndex = nextWaitableIndex++
-        waitables[waitableIndex] = RealAsyncHost.Waitable(waitableIndex, job)
-        PackedSubtaskResult(SubtaskState.Started, waitableIndex)
+        val rep = nextRep++
+        val subtask = RealAsyncHost.Subtask(job)
+        subtask.rep = rep
+        subtask.hasRep = true
+        repToImportedResource[rep] = subtask
+        PackedSubtaskResult(SubtaskState.Started, rep)
       }
 
       else -> PackedSubtaskResult(SubtaskState.Returned)

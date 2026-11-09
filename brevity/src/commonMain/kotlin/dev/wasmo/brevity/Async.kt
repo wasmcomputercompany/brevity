@@ -92,6 +92,9 @@ enum class SubtaskState {
   CanceledBeforeReturned,
 }
 
+@BrevityInternalApi
+private val SubtaskStateValues = SubtaskState.entries.toTypedArray()
+
 /**
  * https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#canon-lower
  */
@@ -114,8 +117,46 @@ value class PackedSubtaskResult(val value: UInt) {
   }
 
   companion object {
-    private val SubtaskStateValues = SubtaskState.entries.toTypedArray()
     private val MaxSubtaskIndex = 1 shl 28
+  }
+}
+
+@BrevityInternalApi
+enum class CopyResult {
+  /** Copy is done. */
+  Completed, // 0
+
+  /** When the _other_ end is dropped, and no more I/O is possible. */
+  Dropped, // 1
+
+  /** This end is canceled and the memory is no longer shared. */
+  Cancelled, // 2
+}
+
+@BrevityInternalApi
+private val CopyResultValues = CopyResult.entries.toTypedArray()
+
+@BrevityInternalApi
+@JvmInline
+value class PackedCopyResult(val value: UInt) {
+  init {
+    require(value == 0xffffffffU || (value.toInt() and 0xf) < CopyResultValues.size)
+  }
+
+  val copyResult: CopyResult
+    get() = CopyResultValues[value.toInt() and 0xf]
+
+  val progress: Int
+    get() = value.toInt() ushr 4
+
+  constructor(copyResult: CopyResult, progress: Int = 0)
+    : this((copyResult.ordinal or (progress shl 4)).toUInt()) {
+    require(progress < MaxProgress)
+  }
+
+  companion object {
+    val Blocked = PackedCopyResult(0xffffffffU)
+    private val MaxProgress = 1 shl 28
   }
 }
 
@@ -143,21 +184,49 @@ sealed class Event(
       get() = SubtaskState.entries[p2]
   }
 
-  object StreamRead : Event(
+  class StreamRead(index: Int, result: PackedCopyResult) : Event(
     code = 2,
-  )
+    p1 = index,
+    p2 = result.value.toInt(),
+  ) {
+    val index: Int
+      get() = p1
+    val result: PackedCopyResult
+      get() = PackedCopyResult(p2.toUInt())
+  }
 
-  object StreamWrite : Event(
+  class StreamWrite(index: Int, result: PackedCopyResult) : Event(
     code = 3,
-  )
+    p1 = index,
+    p2 = result.value.toInt(),
+  ) {
+    val index: Int
+      get() = p1
+    val result: PackedCopyResult
+      get() = PackedCopyResult(p2.toUInt())
+  }
 
-  object FutureRead : Event(
+  class FutureRead(index: Int, copyResult: CopyResult) : Event(
     code = 4,
-  )
+    p1 = index,
+    p2 = copyResult.ordinal,
+  ) {
+    val index: Int
+      get() = p1
+    val result: CopyResult
+      get() = CopyResultValues[p2]
+  }
 
-  object FutureWrite : Event(
+  class FutureWrite(index: Int, copyResult: CopyResult) : Event(
     code = 5,
-  )
+    p1 = index,
+    p2 = copyResult.ordinal,
+  ) {
+    val index: Int
+      get() = p1
+    val result: CopyResult
+      get() = CopyResultValues[p2]
+  }
 
   object TaskCancelled : Event(
     code = 6,
