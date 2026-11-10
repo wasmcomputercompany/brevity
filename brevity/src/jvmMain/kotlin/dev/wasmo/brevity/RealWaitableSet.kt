@@ -3,35 +3,27 @@ package dev.wasmo.brevity
 import kotlinx.coroutines.selects.select
 
 @BrevityInternalApi
-class RealWaitableSet(
+class WaitableSet(
   val bridge: HostBridge,
-) : WaitableSet() {
-  val waitableIndexes = ArrayDeque<Int>()
+) : Resource() {
+  val waitables = ArrayDeque<Waitable>()
 
-  override fun join(waitableIndex: Int) {
-    waitableIndexes += waitableIndex
-  }
-
-  override fun poll(): Event {
-    for (waitableIndex in waitableIndexes) {
-      val waitable = bridge.getImportedResource(waitableIndex) as? Waitable
-        ?: error("no waitable: $waitableIndex")
+  fun poll(): Event {
+    for (waitable in waitables) {
       val event = waitable.poll()
       if (event != Event.None) return event
     }
     return Event.None
   }
 
-  override fun wait(): Event {
+  fun wait(): Event {
     error("not implemented")
   }
 
   /** Returns an arbitrary waitable that's ready, suspending if necessary. */
   suspend fun waitForEvent(): Event {
     return select {
-      for (waitableIndex in waitableIndexes) {
-        val waitable = bridge.getImportedResource(waitableIndex) as? Waitable
-          ?: error("no waitable: $waitableIndex")
+      for (waitable in waitables) {
         waitable.select(this@select)
       }
     }

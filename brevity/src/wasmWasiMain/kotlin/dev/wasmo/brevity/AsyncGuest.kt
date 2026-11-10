@@ -2,57 +2,22 @@
 
 package dev.wasmo.brevity
 
-@BrevityInternalApi
-val Async.host: Async.Host
-  get() = AsyncHost
-
-@BrevityInternalApi
-private object AsyncHost : Async.Host {
-  override fun waitableSetNew(): GuestWaitableSet {
-    return GuestWaitableSet().apply {
-      rep = waitableSetNew_export()
-      hasRep = true
-    }
-  }
-
-  override fun taskCancel() {
-    taskCancel_export()
-  }
-
-  override fun subtaskCancel(subtask: Int): Int {
-    return subtaskCancel_export(subtask)
-  }
-
-  override fun subtaskDrop(subtask: Int) {
-    subtaskDrop_export(subtask)
-  }
-}
-
-@BrevityInternalApi
-private class GuestWaitableSet : WaitableSet() {
-  override fun join(waitableIndex: Int) {
-    waitableJoin_export(waitableIndex, rep)
-  }
-
-  override fun poll(): Event {
-    TODO("Not yet implemented")
-  }
-
-  override fun close() {
-    waitableSetDrop_export(rep)
-  }
-
-  override fun wait(): Event {
-    TODO("Not yet implemented")
-  }
-}
-
+/**
+ * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setnew
+ */
 @WasmImport(module = $$"$root", name = "[waitable-set-new]")
-internal external fun waitableSetNew_export(): Int
+internal external fun newWaitableSet(): Int
 
+/**
+ * Note that a waitable can be in at most one set. Joining a set removes the waitable from its
+ * current set, if any. Joining waitable 0 removes it from all sets.
+ */
 @WasmImport(module = $$"$root", name = "[waitable-join]")
-internal external fun waitableJoin_export(waitableIndex: Int, waitableSet: Int)
+internal external fun waitableJoin(waitableIndex: Int, waitableSet: Int)
 
+/**
+ * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setpoll
+ */
 @WasmImport(module = $$"$root", name = "[waitable-set-poll]")
 internal external fun waitableSetPoll_export(waitableSet: Int, eventPointer: Int): Int
 
@@ -71,11 +36,20 @@ internal external fun contextSet0_export(value: Int)
 @WasmImport(module = $$"$root", name = "[context-set-1]")
 internal external fun contextSet1_export(value: Int)
 
+/**
+ * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-taskcancel
+ */
 @WasmImport(module = $$"[export]$root", name = "[task-cancel]")
-internal external fun taskCancel_export()
+internal external fun taskCancel()
 
+/**
+ * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-subtaskcancel
+ */
 @WasmImport(module = $$"$root", name = "[subtask-cancel]")
-internal external fun subtaskCancel_export(subtask: Int): Int
+internal external fun subtaskCancel(subtask: Int): Int
 
+/**
+ * https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#-canon-subtaskdrop
+ */
 @WasmImport(module = $$"$root", name = "[subtask-drop]")
-internal external fun subtaskDrop_export(subtask: Int)
+internal external fun subtaskDrop(subtask: Int)

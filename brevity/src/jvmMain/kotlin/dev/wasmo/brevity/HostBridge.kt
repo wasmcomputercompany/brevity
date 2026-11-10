@@ -96,7 +96,7 @@ class HostBridge(
         }
 
         CallbackCode.Wait -> {
-          val waitableSet = getImportedResource<RealWaitableSet>(
+          val waitableSet = getImportedResource<WaitableSet>(
             packedAsyncResult.waitableSetIndex,
           )
           val event = waitableSet.waitForEvent()
@@ -128,8 +128,6 @@ class HostBridge(
       else -> PackedSubtaskResult(SubtaskState.Returned)
     }
   }
-
-  fun waitableSetNew(): WaitableSet = RealWaitableSet(this)
 
   fun taskCancel() {
     TODO("Not yet implemented")

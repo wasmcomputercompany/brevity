@@ -23,12 +23,16 @@ internal fun HostBridge.initImports(store: Store) {
       ),
       WasmFunctionHandle { instance, args ->
         val waitableIndex = args[0].toInt()
-        val rep = args[1].toInt()
-        if (rep != 0) {
-          getImportedResource<WaitableSet>(rep).join(waitableIndex)
-        } else {
-          // TODO: remove the waitable from its current waitable set.
-        }
+        val waitableSetIndex = args[1].toInt()
+
+        val waitable = getImportedResource<Waitable>(waitableIndex)
+        waitable.join(
+          waitableSet = when {
+            waitableSetIndex == 0 -> null
+            else -> getImportedResource(waitableSetIndex)
+          },
+        )
+
         longArrayOf()
       },
     ),
@@ -85,8 +89,11 @@ internal fun HostBridge.initImports(store: Store) {
         listOf(ValType.I32),
       ),
       WasmFunctionHandle { instance, args ->
-        val waitableSet = waitableSetNew()
+        val waitableSet = WaitableSet(
+          bridge = this@initImports,
+        )
         waitableSet.rep = putImportedResource(waitableSet)
+        waitableSet.hasRep = true
         val result = waitableSet.rep
         longArrayOf(result.toLong())
       },

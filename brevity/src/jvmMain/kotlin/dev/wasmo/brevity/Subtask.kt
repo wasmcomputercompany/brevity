@@ -6,7 +6,7 @@ import kotlinx.coroutines.selects.SelectBuilder
 @BrevityInternalApi
 class Subtask(
   val job: Job,
-) : Resource(), Waitable {
+) : Waitable() {
   override fun poll(): Event {
     return Event.None
   }

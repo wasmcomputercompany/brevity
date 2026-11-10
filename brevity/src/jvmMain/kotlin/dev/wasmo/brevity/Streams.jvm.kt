@@ -24,7 +24,7 @@ actual class FuturePair<T> actual constructor() {
 
 actual class SendFuture<T> internal actual constructor(
   private val pair: FuturePair<T>,
-) : Resource(), Waitable {
+) : Waitable() {
   actual suspend fun complete(value: T) {
     TODO()
   }
@@ -39,10 +39,12 @@ actual class SendFuture<T> internal actual constructor(
     TODO()
   }
 
+  @BrevityInternalApi
   override fun poll(): Event {
     TODO("Not yet implemented")
   }
 
+  @BrevityInternalApi
   override fun select(selectBuilder: SelectBuilder<Event>) {
     TODO("Not yet implemented")
   }
@@ -50,7 +52,7 @@ actual class SendFuture<T> internal actual constructor(
 
 actual class ReceiveFuture<T> internal actual constructor(
   private val pair: FuturePair<T>,
-) : Resource(), Waitable {
+) : Waitable() {
   @BrevityInternalApi
   val peer: SendFuture<T>
     get() = pair.send
@@ -79,10 +81,12 @@ actual class ReceiveFuture<T> internal actual constructor(
     TODO()
   }
 
+  @BrevityInternalApi
   override fun poll(): Event {
     TODO("Not yet implemented")
   }
 
+  @BrevityInternalApi
   override fun select(selectBuilder: SelectBuilder<Event>) {
     TODO("Not yet implemented")
   }
@@ -109,7 +113,7 @@ actual class StreamPair<T> {
 
 actual class SendStream<T> internal actual constructor(
   private val pair: StreamPair<T>,
-) : Resource(), Waitable {
+) : Waitable() {
   actual suspend fun send(value: T) {
     TODO()
   }
@@ -124,10 +128,12 @@ actual class SendStream<T> internal actual constructor(
     TODO()
   }
 
+  @BrevityInternalApi
   override fun poll(): Event {
     return Event.StreamWrite(rep, PackedCopyResult.Blocked)
   }
 
+  @BrevityInternalApi
   override fun select(selectBuilder: SelectBuilder<Event>) {
     TODO("Not yet implemented")
   }
@@ -135,7 +141,7 @@ actual class SendStream<T> internal actual constructor(
 
 actual class ReceiveStream<T> internal actual constructor(
   private val pair: StreamPair<T>,
-) : Resource(), Waitable {
+) : Waitable() {
   @BrevityInternalApi
   val peer: SendStream<T>
     get() = pair.send
@@ -164,10 +170,12 @@ actual class ReceiveStream<T> internal actual constructor(
     TODO()
   }
 
+  @BrevityInternalApi
   override fun poll(): Event {
     return Event.StreamRead(rep, PackedCopyResult.Blocked)
   }
 
+  @BrevityInternalApi
   override fun select(selectBuilder: SelectBuilder<Event>) {
     TODO("Not yet implemented")
   }
