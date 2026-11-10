@@ -4,7 +4,7 @@ import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.yield
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 @BrevityInternalApi
 class HostBridge(
@@ -22,11 +22,14 @@ class HostBridge(
   lateinit var memoryAllocator: MemoryAllocator
     private set
 
-  /** Thread used when an async task isn't currently running. */
-  val defaultThread = Thread(this, Task())
+  val defaultThread = DefaultThread()
 
-  /** The currently-executed thread, which implies the current task. */
+  /** The currently-executing thread. */
   var currentThread: Thread = defaultThread
+
+  /** The currently-executing task. */
+  val currentTask: Task<*>
+    get() = (currentThread as TaskThread).task
 
   fun init(symbolIndex: SymbolIndex, instance: Instance) {
     // A .wasm doesn't have to declare a memory, but you can't do much without it. If the memory is
@@ -40,10 +43,10 @@ class HostBridge(
     }
 
     this.initialStackPointer = symbolIndex.initialStackPointer(instance)
-    this.defaultThread.contextSet(0, initialStackPointer)
+    this.defaultThread.stackPointer = initialStackPointer
 
     this.initialTlsBase = symbolIndex.initialTlsBase(instance)
-    this.defaultThread.contextSet(1, initialTlsBase)
+    this.defaultThread.tlsBase = initialTlsBase
   }
 
   fun <T : Resource> putExportedResource(resource: T): Int {
@@ -82,28 +85,20 @@ class HostBridge(
     execute: () -> PackedAsyncResult,
     callback: (Event) -> PackedAsyncResult,
   ): T {
-    val thread = Thread(this, Task())
+    return suspendCancellableCoroutine { continuation ->
+      val thread = TaskThread(
+        bridge = this,
+        task = Task(continuation),
+      ).apply {
+        this.stackPointer = initialStackPointer
+        this.tlsBase = initialTlsBase
+      }
 
-    var packedAsyncResult = thread.execute { execute() }
-
-    while (true) {
-      when (packedAsyncResult.callbackCode) {
-        CallbackCode.Exit -> return thread.taskResult as T
-
-        CallbackCode.Yield -> {
-          yield()
-          packedAsyncResult = thread.execute { callback(Event.None) }
-        }
-
-        CallbackCode.Wait -> {
-          val waitableSet = getImportedResource<WaitableSet>(
-            packedAsyncResult.waitableSetIndex,
-          )
-          val event = waitableSet.waitForEvent()
-          packedAsyncResult = thread.execute { callback(event) }
-        }
-
-        CallbackCode.Max -> TODO()
+      coroutineScope.launch {
+        thread.execute(
+          execute = execute,
+          callback = callback,
+        )
       }
     }
   }
@@ -139,5 +134,18 @@ class HostBridge(
 
   fun subtaskDrop(subtask: Int) {
     // TODO("Not yet implemented")
+  }
+
+  inline fun <T> executeThread(
+    thread: Thread,
+    block: () -> T,
+  ): T {
+    check(currentThread == defaultThread)
+    currentThread = thread
+    try {
+      return block()
+    } finally {
+      currentThread = defaultThread
+    }
   }
 }
