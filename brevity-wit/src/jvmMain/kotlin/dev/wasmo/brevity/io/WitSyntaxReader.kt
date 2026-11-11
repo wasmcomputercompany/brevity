@@ -121,6 +121,17 @@ class WitSyntaxReader(
     )
 
   /**
+   * Calls [readIdentifierOrKeyword], then rewinds the read head.
+   */
+  context(issueCollector: IssueCollector)
+  fun peekIdentifierOrKeyword(): IdentifierOrKeyword {
+    val initialPos = pos
+    return readIdentifierOrKeywordInternal(IdentifierOrKeyword::class.java).also {
+      pos = initialPos
+    }
+  }
+
+  /**
    * Reads a well-formed identifier or keyword instance and returns it. If the input file contains
    * an identifier that is not well-formed (such as 'incomingHandler' that mixes case in a single
    * segment), this function reports an error and returns a placeholder.
@@ -241,7 +252,7 @@ class WitSyntaxReader(
     }
   }
 
-  private fun peek(): Char = when {
+  fun peek(): Char = when {
     exhausted -> '\u0000'
     else -> chars[pos]
   }
@@ -469,13 +480,16 @@ class WitSyntaxReader(
    *            | id ':' id '/' id ('@' valid-semver)?
    *            | ( id ':' )+ id ( '/' id )+ ('@' valid-semver)?
    * ```
+   *
+   * @param preReadNamespaceComponents Some identifiers that have already been read
+   * before invocation started.
    */
   context(issueCollector: IssueCollector)
-  fun readUsePath(): UsePath {
-    val namespaces = mutableListOf<Identifier>()
+  fun readUsePath(preReadNamespaceComponents: List<Identifier> = emptyList()): UsePath {
+    val namespaces = (preReadNamespaceComponents.dropLast(1)).toMutableList()
     val packageNames = mutableListOf<Identifier>()
 
-    var identifier = readIdentifier()
+    var identifier = preReadNamespaceComponents.lastOrNull() ?: readIdentifier()
     while (peek() == ':') {
       pos++ // Consume ':'.
       namespaces += identifier
@@ -512,7 +526,12 @@ class WitSyntaxReader(
     )
   }
 
-  fun skipWhitespace() {
+  /**
+   * Returns true if whitespace was consumed.
+   */
+  fun skipWhitespace(): Boolean {
+    val initialPos = pos
+
     while (!exhausted) {
       val c = chars[pos]
       when (c) {
@@ -535,7 +554,7 @@ class WitSyntaxReader(
               val commentEnd = chars.indexOf("\n", pos)
               if (commentEnd == -1) {
                 pos = chars.size
-                return
+                break
               }
               // If the comment starts with '///', it is documentation.
               if (pos + 2 < chars.size && chars[pos + 2] == '/') {
@@ -568,8 +587,9 @@ class WitSyntaxReader(
         }
       }
 
-      return
+      break
     }
+    return initialPos != pos
   }
 
   /**
