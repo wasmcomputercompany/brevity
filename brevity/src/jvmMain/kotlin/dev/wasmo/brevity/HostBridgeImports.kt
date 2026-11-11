@@ -89,9 +89,7 @@ internal fun HostBridge.initImports(store: Store) {
         listOf(ValType.I32),
       ),
       WasmFunctionHandle { instance, args ->
-        val waitableSet = WaitableSet(
-          bridge = this@initImports,
-        )
+        val waitableSet = WaitableSet()
         waitableSet.rep = putImportedResource(waitableSet)
         waitableSet.hasRep = true
         val result = waitableSet.rep

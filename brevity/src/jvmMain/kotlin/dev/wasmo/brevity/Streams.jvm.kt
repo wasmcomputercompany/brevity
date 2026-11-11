@@ -3,8 +3,6 @@
 
 package dev.wasmo.brevity
 
-import kotlinx.coroutines.selects.SelectBuilder
-
 actual class FuturePair<T> actual constructor() {
   actual val send = SendFuture(this)
   actual val receive = ReceiveFuture(this)
@@ -38,16 +36,6 @@ actual class SendFuture<T> internal actual constructor(
   fun cancel(): Int {
     TODO()
   }
-
-  @BrevityInternalApi
-  override fun poll(): Event {
-    TODO("Not yet implemented")
-  }
-
-  @BrevityInternalApi
-  override fun select(selectBuilder: SelectBuilder<Event>) {
-    TODO("Not yet implemented")
-  }
 }
 
 actual class ReceiveFuture<T> internal actual constructor(
@@ -79,16 +67,6 @@ actual class ReceiveFuture<T> internal actual constructor(
   @BrevityInternalApi
   fun cancel(): Int {
     TODO()
-  }
-
-  @BrevityInternalApi
-  override fun poll(): Event {
-    TODO("Not yet implemented")
-  }
-
-  @BrevityInternalApi
-  override fun select(selectBuilder: SelectBuilder<Event>) {
-    TODO("Not yet implemented")
   }
 }
 
@@ -127,16 +105,6 @@ actual class SendStream<T> internal actual constructor(
   fun cancel(): Int {
     TODO()
   }
-
-  @BrevityInternalApi
-  override fun poll(): Event {
-    return Event.StreamWrite(rep, PackedCopyResult.Blocked)
-  }
-
-  @BrevityInternalApi
-  override fun select(selectBuilder: SelectBuilder<Event>) {
-    TODO("Not yet implemented")
-  }
 }
 
 actual class ReceiveStream<T> internal actual constructor(
@@ -168,15 +136,5 @@ actual class ReceiveStream<T> internal actual constructor(
   @BrevityInternalApi
   fun cancel(): Int {
     TODO()
-  }
-
-  @BrevityInternalApi
-  override fun poll(): Event {
-    return Event.StreamRead(rep, PackedCopyResult.Blocked)
-  }
-
-  @BrevityInternalApi
-  override fun select(selectBuilder: SelectBuilder<Event>) {
-    TODO("Not yet implemented")
   }
 }

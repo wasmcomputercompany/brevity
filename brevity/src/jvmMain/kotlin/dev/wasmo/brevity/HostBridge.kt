@@ -3,6 +3,7 @@ package dev.wasmo.brevity
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
@@ -94,7 +95,7 @@ class HostBridge(
         this.tlsBase = initialTlsBase
       }
 
-      coroutineScope.launch {
+      coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
         thread.execute(
           execute = execute,
           callback = callback,
@@ -104,24 +105,8 @@ class HostBridge(
   }
 
   fun launchSubtask(block: suspend () -> Unit): PackedSubtaskResult {
-    val job = coroutineScope.launch {
-      block()
-    }
-
-    return when {
-      job.isCancelled -> PackedSubtaskResult(SubtaskState.CanceledBeforeReturned)
-
-      !job.isCompleted -> {
-        val rep = nextRep++
-        val subtask = Subtask(job)
-        subtask.rep = rep
-        subtask.hasRep = true
-        repToImportedResource[rep] = subtask
-        PackedSubtaskResult(SubtaskState.Started, rep)
-      }
-
-      else -> PackedSubtaskResult(SubtaskState.Returned)
-    }
+    val subtask = Subtask(this)
+    return subtask.start(coroutineScope, block)
   }
 
   fun taskCancel() {

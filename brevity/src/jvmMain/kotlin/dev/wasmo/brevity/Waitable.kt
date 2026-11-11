@@ -1,10 +1,22 @@
 package dev.wasmo.brevity
 
-import kotlinx.coroutines.selects.SelectBuilder
-
 abstract class Waitable : Resource() {
   @BrevityInternalApi
   var waitableSet: WaitableSet? = null
+
+  @BrevityInternalApi
+  private var pendingEvent: PendingEvent = PendingEvent.None
+
+  /**
+   * If a waitable set is already waiting, immediately deliver the event. Otherwise, store it in
+   * [pendingEvent] so it's available for a forthcoming call to [take].
+   */
+  @BrevityInternalApi
+  protected fun enqueueEvent(pendingEvent: PendingEvent) {
+    val waitableSet = this.waitableSet
+    if (waitableSet?.resume(pendingEvent) == true) return
+    this.pendingEvent = pendingEvent
+  }
 
   /**
    * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitablejoin
@@ -24,9 +36,11 @@ abstract class Waitable : Resource() {
     }
   }
 
+  /** This always returns an event, but the event may be [Event.None]. */
   @BrevityInternalApi
-  abstract fun poll(): Event
-
-  @BrevityInternalApi
-  abstract fun select(selectBuilder: SelectBuilder<Event>)
+  fun take(): Event {
+    val pendingEvent = this.pendingEvent
+    this.pendingEvent = PendingEvent.None
+    return pendingEvent.take()
+  }
 }
