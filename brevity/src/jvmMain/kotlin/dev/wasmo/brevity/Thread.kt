@@ -1,41 +1,64 @@
 package dev.wasmo.brevity
 
+import kotlinx.coroutines.yield
+
 @BrevityInternalApi
-class Thread internal constructor(
+abstract class Thread {
+  var stackPointer: Int = 0
+  var tlsBase: Int = 0
+}
+
+/**
+ * The thread used when an async task isn't currently running. For example, this is used when a
+ * synchronous task is running.
+ */
+@BrevityInternalApi
+class DefaultThread : Thread()
+
+/**
+ * A thread that belongs to a launched task.
+ *
+ * Launch a task by calling an async function, which creates its initial thread. The task may spawn
+ * additional threads that all service the same task.
+ */
+@BrevityInternalApi
+class TaskThread internal constructor(
   val bridge: HostBridge,
-  val task: Task,
-) {
-  val context = intArrayOf(
-    bridge.initialStackPointer,
-    bridge.initialTlsBase,
-  )
-  var taskResult: Any? = null
+  val task: Task<*>,
+) : Thread() {
+  suspend fun execute(
+    execute: () -> PackedAsyncResult,
+    callback: (Event) -> PackedAsyncResult,
+  ) {
+    var packedAsyncResult = bridge.executeThread(this) {
+      execute()
+    }
 
-  /**
-   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-contextget
-   */
-  fun contextGet(index: Int): Int {
-    return context[index]
-  }
+    while (true) {
+      val event = when (packedAsyncResult.callbackCode) {
+        CallbackCode.Exit -> {
+          task.cancel()
+          return
+        }
 
-  /**
-   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-contextset
-   */
-  fun contextSet(index: Int, value: Int) {
-    context[index] = value
-  }
+        CallbackCode.Yield -> {
+          yield()
+          Event.None
+        }
 
-  fun taskReturn(value: Any? = Unit) {
-    this.taskResult = value
-  }
+        CallbackCode.Wait -> {
+          val waitableSet = bridge.getImportedResource<WaitableSet>(
+            packedAsyncResult.waitableSetIndex,
+          )
+          waitableSet.waitForEvent()
+        }
 
-  inline fun <T> execute(block: () -> T): T {
-    check(bridge.currentThread == bridge.defaultThread)
-    bridge.currentThread = this
-    try {
-      return block()
-    } finally {
-      bridge.currentThread = bridge.defaultThread
+        CallbackCode.Max -> TODO()
+      }
+
+      packedAsyncResult = bridge.executeThread(this) {
+        callback(event)
+      }
     }
   }
 }

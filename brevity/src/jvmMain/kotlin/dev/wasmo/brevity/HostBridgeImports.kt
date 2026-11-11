@@ -23,12 +23,16 @@ internal fun HostBridge.initImports(store: Store) {
       ),
       WasmFunctionHandle { instance, args ->
         val waitableIndex = args[0].toInt()
-        val rep = args[1].toInt()
-        if (rep != 0) {
-          getImportedResource<WaitableSet>(rep).join(waitableIndex)
-        } else {
-          // TODO: remove the waitable from its current waitable set.
-        }
+        val waitableSetIndex = args[1].toInt()
+
+        val waitable = getImportedResource<Waitable>(waitableIndex)
+        waitable.join(
+          waitableSet = when {
+            waitableSetIndex == 0 -> null
+            else -> getImportedResource(waitableSetIndex)
+          },
+        )
+
         longArrayOf()
       },
     ),
@@ -71,10 +75,10 @@ internal fun HostBridge.initImports(store: Store) {
   )
 
   // Context get + set functions are imported with two names each.
-  addContextFunctions(store, 0, $$"$root", "[context-get-0]", "[context-set-0]")
-  addContextFunctions(store, 0, "env", "__wasm_get_stack_pointer", "__wasm_set_stack_pointer")
-  addContextFunctions(store, 1, $$"$root", "[context-get-1]", "[context-set-1]")
-  addContextFunctions(store, 1, "env", "__wasm_get_tls_base", "__wasm_set_tls_base")
+  addStackPointerFunctions(store, $$"$root", "[context-get-0]", "[context-set-0]")
+  addStackPointerFunctions(store, "env", "__wasm_get_stack_pointer", "__wasm_set_stack_pointer")
+  addTlsBaseFunctions(store, $$"$root", "[context-get-1]", "[context-set-1]")
+  addTlsBaseFunctions(store, "env", "__wasm_get_tls_base", "__wasm_set_tls_base")
 
   store.addFunction(
     HostFunction(
@@ -85,8 +89,11 @@ internal fun HostBridge.initImports(store: Store) {
         listOf(ValType.I32),
       ),
       WasmFunctionHandle { instance, args ->
-        val waitableSet = waitableSetNew()
+        val waitableSet = WaitableSet(
+          bridge = this@initImports,
+        )
         waitableSet.rep = putImportedResource(waitableSet)
+        waitableSet.hasRep = true
         val result = waitableSet.rep
         longArrayOf(result.toLong())
       },
@@ -149,9 +156,8 @@ internal fun HostBridge.initImports(store: Store) {
   )
 }
 
-private fun HostBridge.addContextFunctions(
+private fun HostBridge.addStackPointerFunctions(
   store: Store,
-  index: Int,
   moduleName: String,
   getSymbolName: String,
   setSymbolName: String,
@@ -165,7 +171,7 @@ private fun HostBridge.addContextFunctions(
         listOf(ValType.I32),
       ),
       WasmFunctionHandle { instance, args ->
-        val result = currentThread.contextGet(index)
+        val result = currentThread.stackPointer
         longArrayOf(result.toLong())
       },
     ),
@@ -179,7 +185,43 @@ private fun HostBridge.addContextFunctions(
         listOf(),
       ),
       WasmFunctionHandle { instance, args ->
-        currentThread.contextSet(index, args[0].toInt())
+        currentThread.stackPointer = args[0].toInt()
+        longArrayOf()
+      },
+    ),
+  )
+}
+
+private fun HostBridge.addTlsBaseFunctions(
+  store: Store,
+  moduleName: String,
+  getSymbolName: String,
+  setSymbolName: String,
+) {
+  store.addFunction(
+    HostFunction(
+      moduleName,
+      getSymbolName,
+      FunctionType.of(
+        listOf(),
+        listOf(ValType.I32),
+      ),
+      WasmFunctionHandle { instance, args ->
+        val result = currentThread.tlsBase
+        longArrayOf(result.toLong())
+      },
+    ),
+  )
+  store.addFunction(
+    HostFunction(
+      moduleName,
+      setSymbolName,
+      FunctionType.of(
+        listOf(ValType.I32),
+        listOf(),
+      ),
+      WasmFunctionHandle { instance, args ->
+        currentThread.tlsBase = args[0].toInt()
         longArrayOf()
       },
     ),

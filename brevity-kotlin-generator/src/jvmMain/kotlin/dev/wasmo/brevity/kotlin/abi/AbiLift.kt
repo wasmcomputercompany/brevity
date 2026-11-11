@@ -4,6 +4,7 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.INT
 import com.squareup.kotlinpoet.LONG
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.UNIT
 import dev.wasmo.brevity.FunctionName
 import dev.wasmo.brevity.TypeName
 import dev.wasmo.brevity.kotlin.code.CodeBuilder
@@ -115,9 +116,11 @@ private class AbiTaskReturnLift(
     check(!p.hasNext()) { "unexpected parameter count" }
     codeBuilder.platform.afterLiftParameters()
 
-    codeBuilder.add("%L.currentThread.taskReturn(⇥", codeBuilder.bridge)
+    codeBuilder.add("%L.currentTask.complete(⇥", codeBuilder.bridge)
     if (functionEncoder.function.parameters.parameters.isNotEmpty()) {
       codeBuilder.add("\n%L,\n", liftedParameterValues.single().code)
+    } else {
+      codeBuilder.add("\n%T,\n", UNIT)
     }
     codeBuilder.add("⇤)\n")
     return KtExpression.Unit

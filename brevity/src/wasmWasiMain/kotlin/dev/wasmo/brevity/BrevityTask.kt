@@ -82,11 +82,11 @@ internal class BrevityTask : CoroutineContext.Element {
 
     if (complete) return PackedAsyncResult(CallbackCode.Exit)
 
-    val waitableSet = Async.host.waitableSetNew()
+    val waitableSet = newWaitableSet()
     for (subtaskIndex in subtaskContinuations.keys) {
-      waitableSet.join(subtaskIndex)
+      waitableJoin(subtaskIndex, waitableSet)
     }
-    return PackedAsyncResult(CallbackCode.Wait, waitableSet.rep)
+    return PackedAsyncResult(CallbackCode.Wait, waitableSet)
   }
 
   @BrevityInternalApi

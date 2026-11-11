@@ -2,55 +2,6 @@ package dev.wasmo.brevity
 
 import kotlin.jvm.JvmInline
 
-/**
- * Note that a waitable can be in at most one set. Joining a set removes the waitable from its
- * current set, if any. Joining waitable 0 removes it from all sets.
- */
-@BrevityInternalApi
-abstract class WaitableSet : Resource() {
-  /**
-   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitablejoin
-   */
-  abstract fun join(waitableIndex: Int)
-
-  /**
-   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setpoll
-   */
-  abstract fun poll(): Event
-
-  /**
-   * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setwait
-   */
-  abstract fun wait(): Event
-}
-
-@BrevityInternalApi
-object Async {
-  interface Guest
-
-  interface Host {
-    /**
-     * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-waitable-setnew
-     */
-    fun waitableSetNew(): WaitableSet
-
-    /**
-     * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-taskcancel
-     */
-    fun taskCancel()
-
-    /**
-     * https://github.com/WebAssembly/component-model/blob/main/design/mvp/Explainer.md#-subtaskcancel
-     */
-    fun subtaskCancel(subtask: Int): Int
-
-    /**
-     * https://github.com/WebAssembly/component-model/blob/main/design/mvp/CanonicalABI.md#-canon-subtaskdrop
-     */
-    fun subtaskDrop(subtask: Int)
-  }
-}
-
 @BrevityInternalApi
 enum class CallbackCode {
   Exit, Yield, Wait, Max;
