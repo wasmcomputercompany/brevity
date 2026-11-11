@@ -10,6 +10,7 @@ import dev.wasmo.brevity.Identifier.Companion.feature
 import dev.wasmo.brevity.Identifier.Companion.since
 import dev.wasmo.brevity.Identifier.Companion.unstable
 import dev.wasmo.brevity.Identifier.Companion.version
+import dev.wasmo.brevity.IdentifierOrKeyword
 import dev.wasmo.brevity.IssueCollector
 import dev.wasmo.brevity.Keyword
 import dev.wasmo.brevity.Location
@@ -624,13 +625,21 @@ internal class WitFileReader(
     gate: Gate?,
     location: Location,
     identifier: Identifier,
+    preReading: Keyword? = null,
   ): IoFunction {
     var async = false
     var static = false
+    var hasPreReading = preReading != null
 
     while (true) {
       source.skipWhitespace()
-      when (val modifier = source.readKeyword()) {
+      val modifier = if (hasPreReading) {
+        hasPreReading = false
+        preReading
+      } else {
+        source.readKeyword()
+      }
+      when (modifier) {
         Keyword.async -> async = true
         Keyword.static -> static = true
         Keyword.func -> break
@@ -917,14 +926,14 @@ internal class WitFileReader(
     // the namespace pieces we have already parsed)
     //
     // All done!
-    return when (source.peekIdentifierOrKeyword()) {
+    return when (val selector = source.readIdentifierOrKeyword()) {
       is Keyword -> {
         readExternalType(documentation, gate, location, initialIdentifier)
       }
       is Identifier -> {
         val path = source.readUsePath(preReadNamespaceComponents = listOf(
           initialIdentifier,
-          source.readIdentifier(),
+          selector,
         ))
         source.readLiteral(';')
         IoExternalApi(
@@ -950,14 +959,11 @@ internal class WitFileReader(
     gate: Gate?,
     location: Location,
     identifier: Identifier,
+    preReadingKeyword: Keyword? = null,
   ): IoWorld.Api {
-    return source.select(
-      {
-        readFuncType(documentation, gate, location, identifier)
-      },
-      {
-        source.skipWhitespace()
-        source.readLiteral("interface")
+    source.skipWhitespace()
+    return when (val selector = preReadingKeyword ?: source.readIdentifierOrKeyword()) {
+      Keyword.`interface` -> {
         val declarations = readInterfaceItems()
         IoInterface(
           documentation = documentation,
@@ -966,10 +972,20 @@ internal class WitFileReader(
           name = identifier,
           items = declarations,
         )
-      },
-      {
-        source.skipWhitespace()
-        val path = source.readUsePath()
+      }
+      is Keyword -> {
+        readFuncType(documentation, gate, location, identifier, preReading = selector)
+      }
+      is Identifier -> {
+        val path = when (val nextChar = source.peek()) {
+          ':' -> {
+            source.readUsePath(preReadNamespaceComponents = listOf(selector))
+          }
+          ';' -> {
+            UsePath(selector)
+          }
+          else -> errorWit(location, "unexpected character: $nextChar")
+        }
         source.readLiteral(';')
         IoExternalApi(
           documentation = documentation,
@@ -978,8 +994,8 @@ internal class WitFileReader(
           plainName = identifier,
           path = path,
         )
-      },
-    )
+      }
+    }
   }
 
   /**
