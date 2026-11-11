@@ -8,6 +8,7 @@ import kotlin.wasm.unsafe.Pointer
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlin.wasm.unsafe.withScopedMemoryAllocator
 
+
 actual class FuturePair<T> actual constructor() {
   actual val send = SendFuture(this)
   actual val receive = ReceiveFuture(this)
@@ -15,19 +16,6 @@ actual class FuturePair<T> actual constructor() {
   actual operator fun component1() = send
   actual operator fun component2() = receive
 
-  @BrevityInternalApi
-  abstract class Binding<T> {
-    abstract val byteCount: Int
-    abstract fun new(): Long
-    abstract fun read(index: Int, address: Int): Int
-    abstract fun write(index: Int, address: Int): Int
-    abstract fun cancelRead(index: Int): Int
-    abstract fun cancelWrite(index: Int): Int
-    abstract fun dropRead(index: Int)
-    abstract fun dropWrite(index: Int)
-    abstract fun store(memoryAllocator: MemoryAllocator, address: Pointer, value: T)
-    abstract fun load(address: Pointer): T
-  }
 }
 
 actual class SendFuture<T> internal actual constructor(
@@ -46,7 +34,7 @@ actual class ReceiveFuture<T> internal actual constructor(
   }
 
   @BrevityInternalApi
-  fun initBinding(binding: FuturePair.Binding<T>) {
+  fun initBinding(binding: StreamBinding<T>) {
     TODO()
   }
 }
@@ -55,26 +43,13 @@ actual class StreamPair<T> {
   actual val send = SendStream(this)
   actual val receive = ReceiveStream(this)
 
-  internal var binding: Binding<T>? = null
+  internal var binding: StreamBinding<T>? = null
 
   actual constructor()
 
   actual operator fun component1() = send
   actual operator fun component2() = receive
 
-  @BrevityInternalApi
-  abstract class Binding<T> {
-    abstract val byteCount: Int
-    abstract fun new(): Long
-    abstract fun read(index: Int, address: Int, count: Int): Int
-    abstract fun write(index: Int, address: Int, count: Int): Int
-    abstract fun cancelRead(index: Int): Int
-    abstract fun cancelWrite(index: Int): Int
-    abstract fun dropRead(index: Int)
-    abstract fun dropWrite(index: Int)
-    abstract fun store(memoryAllocator: MemoryAllocator, address: Pointer, value: T)
-    abstract fun load(address: Pointer): T
-  }
 }
 
 @OptIn(UnsafeWasmMemoryApi::class)
@@ -103,7 +78,7 @@ actual class ReceiveStream<T> internal actual constructor(
   }
 
   @BrevityInternalApi
-  fun initBinding(binding: StreamPair.Binding<T>) {
+  fun initBinding(binding: StreamBinding<T>) {
     if (pair.binding == null) return
 
     val streamIds = binding.new()
@@ -112,4 +87,20 @@ actual class ReceiveStream<T> internal actual constructor(
     GuestBridge.putImportedResource(pair.send.rep, pair.send)
     GuestBridge.putImportedResource(pair.receive.rep, pair.receive)
   }
+}
+
+@BrevityInternalApi
+abstract class StreamBinding<T> {
+  abstract val byteCount: Int
+  abstract fun new(): Long
+  open fun read(index: Int, address: Int, count: Int): Int = error("streams only")
+  open fun read(index: Int, address: Int): Int = error("futures only")
+  open fun write(index: Int, address: Int, count: Int): Int = error("streams only")
+  open fun write(index: Int, address: Int): Int = error("futures only")
+  abstract fun cancelRead(index: Int): Int
+  abstract fun cancelWrite(index: Int): Int
+  abstract fun dropRead(index: Int)
+  abstract fun dropWrite(index: Int)
+  abstract fun store(memoryAllocator: MemoryAllocator, address: Pointer, value: T)
+  abstract fun load(address: Pointer): T
 }

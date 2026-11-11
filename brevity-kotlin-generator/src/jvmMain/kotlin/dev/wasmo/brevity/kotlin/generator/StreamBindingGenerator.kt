@@ -31,10 +31,9 @@ internal class StreamBindingGenerator(
   private val abiStream: AbiStream,
 ) {
   private val streamType = abiStream.irStream.type
-  private val streamTypeKt = Symbols.Brevity.streamBindingType(abiStream.cardinality)
   private val elementTypeKt = streamType.type?.let { kotlinMapper.get(it) } ?: UNIT
 
-  private val bindingSuperclass = streamTypeKt.parameterizedBy(elementTypeKt)
+  private val bindingSuperclass = Symbols.Brevity.StreamBinding.parameterizedBy(elementTypeKt)
 
   val className = typeNamer.streamImplementation(streamType)
 
