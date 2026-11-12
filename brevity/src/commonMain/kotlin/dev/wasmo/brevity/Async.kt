@@ -111,6 +111,19 @@ value class PackedCopyResult(val value: UInt) {
   }
 }
 
+/**
+ * Note that calling [take] returns the latest-known state of the waitable, which may be different
+ * from the state it was in when the event was enqueued.
+ */
+@BrevityInternalApi
+fun interface PendingEvent {
+  fun take(): Event
+
+  object None : PendingEvent {
+    override fun take() = Event.None
+  }
+}
+
 @BrevityInternalApi
 sealed class Event(
   val code: Int,
