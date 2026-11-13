@@ -12,7 +12,7 @@ abstract class Waitable : Resource() {
    * [pendingEvent] so it's available for a forthcoming call to [take].
    */
   @BrevityInternalApi
-  protected fun enqueueEvent(pendingEvent: PendingEvent) {
+  internal fun enqueueEvent(pendingEvent: PendingEvent) {
     val waitableSet = this.waitableSet
     if (waitableSet?.resume(pendingEvent) == true) return
     this.pendingEvent = pendingEvent

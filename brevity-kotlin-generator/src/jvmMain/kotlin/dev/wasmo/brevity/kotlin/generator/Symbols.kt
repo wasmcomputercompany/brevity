@@ -78,7 +78,6 @@ object Symbols {
     val CallbackCode = ClassName("dev.wasmo.brevity", "CallbackCode")
     val Event = ClassName("dev.wasmo.brevity", "Event")
     val FuturePair = ClassName("dev.wasmo.brevity", "FuturePair")
-    val FuturePairBinding = ClassName("dev.wasmo.brevity", "FuturePair", "Binding")
     val GuestBridge = ClassName("dev.wasmo.brevity", "GuestBridge")
     val HostBridge = ClassName("dev.wasmo.brevity", "HostBridge")
     val LoadString = MemberName("dev.wasmo.brevity", "loadString")
@@ -98,9 +97,9 @@ object Symbols {
     )
     val SendFuture = ClassName("dev.wasmo.brevity", "SendFuture")
     val SendStream = ClassName("dev.wasmo.brevity", "SendStream")
+    val StreamBinding = ClassName("dev.wasmo.brevity", "StreamBinding")
     val StoreByteArray = MemberName("dev.wasmo.brevity", "storeByteArray")
     val StreamPair = ClassName("dev.wasmo.brevity", "StreamPair")
-    val StreamPairBinding = ClassName("dev.wasmo.brevity", "StreamPair", "Binding")
     val WitAdapter = ClassName("dev.wasmo.brevity", "WitAdapter")
     val World = ClassName("dev.wasmo.brevity", "World")
 
@@ -127,8 +126,8 @@ object Symbols {
 
     fun streamBindingType(cardinality: Cardinality): ClassName {
       return when (cardinality) {
-        Cardinality.Future -> FuturePairBinding
-        Cardinality.Stream -> StreamPairBinding
+        Cardinality.Future -> StreamBinding
+        Cardinality.Stream -> StreamBinding
       }
     }
   }
