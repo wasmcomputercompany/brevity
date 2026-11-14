@@ -1,6 +1,11 @@
 package dev.wasmo.brevity.wasi.p3
 
+import dev.wasmo.brevity.FuturePair
+import dev.wasmo.brevity.ReceiveFuture
+import dev.wasmo.brevity.ReceiveStream
+import dev.wasmo.brevity.Result
 import wit.wasi.cli.v0_3_0.Environment
+import wit.wasi.cli.v0_3_0.ErrorCode
 import wit.wasi.cli.v0_3_0.Exit
 import wit.wasi.cli.v0_3_0.Imports
 import wit.wasi.cli.v0_3_0.Stderr
@@ -24,18 +29,24 @@ import wit.wasi.sockets.v0_3_0.Types as SocketsTypes
 
 /**
  * Implement WASI Preview 3.
+ *
+ * Note: when Rust panics, it checks [environment] for `RUST_BACKTRACE=1`.
  */
 class RealWasiP3Host : Imports.Host {
-  override val environment: Environment
-    get() = TODO("Not yet implemented")
+  override val environment: Environment = RealEnvironment()
   override val exit: Exit
     get() = TODO("Not yet implemented")
   override val stdin: Stdin
     get() = TODO("Not yet implemented")
   override val stdout: Stdout
     get() = TODO("Not yet implemented")
-  override val stderr: Stderr
-    get() = TODO("Not yet implemented")
+  override val stderr: Stderr = object : Stderr {
+    override fun writeViaStream(data_: ReceiveStream<UByte>): ReceiveFuture<Result<*, ErrorCode>> {
+      val (send, receive) = FuturePair<Result<*, ErrorCode>>()
+      // TODO: actually write.
+      return receive
+    }
+  }
   override val terminalInput: TerminalInput
     get() = TODO("Not yet implemented")
   override val terminalOutput: TerminalOutput

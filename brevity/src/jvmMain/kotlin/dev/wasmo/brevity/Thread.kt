@@ -13,7 +13,9 @@ abstract class Thread {
  * synchronous task is running.
  */
 @BrevityInternalApi
-class DefaultThread : Thread()
+class DefaultThread : Thread() {
+  override fun toString() = "DefaultThread"
+}
 
 /**
  * A thread that belongs to a launched task.
@@ -23,6 +25,7 @@ class DefaultThread : Thread()
  */
 @BrevityInternalApi
 class TaskThread internal constructor(
+  val name: String,
   val bridge: HostBridge,
   val task: Task<*>,
 ) : Thread() {
@@ -61,4 +64,6 @@ class TaskThread internal constructor(
       }
     }
   }
+
+  override fun toString() = name
 }

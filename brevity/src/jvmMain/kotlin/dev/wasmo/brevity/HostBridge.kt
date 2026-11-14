@@ -2,6 +2,7 @@ package dev.wasmo.brevity
 
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
@@ -13,6 +14,7 @@ class HostBridge(
 ) {
   private val repToExportedResource = mutableMapOf<Int, Resource>()
   private val repToImportedResource = mutableMapOf<Int, Resource>()
+  private var nextTaskThreadId = 1001
   private var nextRep = 6_060_000
   internal var initialStackPointer: Int = 0
   internal var initialTlsBase: Int = 0
@@ -83,19 +85,25 @@ class HostBridge(
   }
 
   suspend fun <T> launchTask(
+    name: String,
     execute: () -> PackedAsyncResult,
     callback: (Event) -> PackedAsyncResult,
   ): T {
+    val name = "$name ${nextTaskThreadId++}"
     return suspendCancellableCoroutine { continuation ->
       val thread = TaskThread(
         bridge = this,
         task = Task(continuation),
+        name = name,
       ).apply {
         this.stackPointer = initialStackPointer
         this.tlsBase = initialTlsBase
       }
 
-      coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+      coroutineScope.launch(
+        start = CoroutineStart.UNDISPATCHED,
+        context = CoroutineName(name),
+      ) {
         thread.execute(
           execute = execute,
           callback = callback,
