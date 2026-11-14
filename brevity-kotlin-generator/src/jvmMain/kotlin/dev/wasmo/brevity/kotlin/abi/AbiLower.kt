@@ -85,6 +85,7 @@ private class AbiLower(
         .also { codeBuilder.add("val %N = ", it) }
     }
     codeBuilder.add("%L.launchTask<%T>(⇥\n", codeBuilder.bridge, resultValue?.type ?: UNIT)
+    codeBuilder.add("name = %S,", functionEncoder.function.kotlinName)
     codeBuilder.add("execute = {⇥\n")
     codeBuilder.nameAllocatorScope {
       val packedAsyncResult = loweredFunction.call(receiver, loweredParameterValues)

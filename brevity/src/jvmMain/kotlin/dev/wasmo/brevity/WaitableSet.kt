@@ -20,6 +20,8 @@ class WaitableSet : Resource() {
   }
 
   fun wait(): Event {
+    // Yikes, here we want to execute coroutines until one of them emits an event. But the hazard
+    // is we are concurrency-constrained.
     error("not implemented")
   }
 
@@ -31,7 +33,7 @@ class WaitableSet : Resource() {
     if (event != Event.None) return event
 
     return suspendCancellableCoroutine { continuation ->
-        this.continuation = continuation
+      this.continuation = continuation
     }
   }
 

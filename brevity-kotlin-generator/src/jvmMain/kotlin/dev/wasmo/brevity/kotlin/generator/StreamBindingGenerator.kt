@@ -56,6 +56,7 @@ internal class StreamBindingGenerator(
     return TypeSpec.classBuilder(className)
       .addModifiers(KModifier.INNER)
       .superclass(bindingSuperclass)
+      .addProperty(alignmentProperty())
       .addProperty(byteCountProperty())
       .addFunction(storeFunction())
       .addFunction(loadFunction())
@@ -106,6 +107,17 @@ internal class StreamBindingGenerator(
       .getter(
         FunSpec.getterBuilder()
           .addStatement("return %L", abiStream.elementEncoder?.byteCount ?: 0)
+          .build(),
+      )
+      .build()
+  }
+
+  private fun alignmentProperty(): PropertySpec {
+    return PropertySpec.builder("alignment", INT)
+      .addModifiers(KModifier.OVERRIDE)
+      .getter(
+        FunSpec.getterBuilder()
+          .addStatement("return %L", abiStream.elementEncoder?.alignment ?: 1)
           .build(),
       )
       .build()
