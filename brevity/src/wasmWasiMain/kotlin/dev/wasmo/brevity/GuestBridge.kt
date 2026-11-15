@@ -13,7 +13,7 @@ object GuestBridge {
   private var nextRep = 4_040_000
 
   // TODO: use context to identify which task is executing?
-  private var theOnlyTask: BrevityTask? = null
+  private var theOnlyRootTask: RootTask? = null
 
   // Prevent kotlinx-coroutines DefaultExecutor from registering a hook when exported functions
   // exit. That hook is particularly problematic for `cabi_realloc`, because it prevents that
@@ -71,14 +71,14 @@ object GuestBridge {
   }
 
   fun launchTask(block: suspend () -> Unit): PackedAsyncResult {
-    val task = BrevityTask()
-    theOnlyTask = task
+    val task = RootTask()
+    theOnlyRootTask = task
     task.scope.launch(task) {
       try {
         block()
       } finally {
         task.complete = true
-        theOnlyTask = null
+        theOnlyRootTask = null
       }
     }
 
@@ -93,7 +93,7 @@ object GuestBridge {
   suspend fun awaitSubtaskComplete(packedSubtaskResult: PackedSubtaskResult) {
     when (packedSubtaskResult.subtaskState) {
       SubtaskState.Starting, SubtaskState.Started -> {
-        val task = currentCoroutineContext()[BrevityTask.Key]
+        val task = (currentCoroutineContext()[WasmTask.Key] as? RootTask)
           ?: error("cannot launch subtask without a task")
         task.awaitSubtaskComplete(packedSubtaskResult.subtaskIndex)
       }
@@ -107,7 +107,7 @@ object GuestBridge {
   }
 
   fun resumeTask(event: Event): PackedAsyncResult {
-    val resumedTask = theOnlyTask!! // TODO: obviously inadequate.
+    val resumedTask = theOnlyRootTask!! // TODO: obviously inadequate.
     return resumedTask.resume(event)
   }
 }

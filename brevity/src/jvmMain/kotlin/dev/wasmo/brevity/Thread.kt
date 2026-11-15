@@ -25,22 +25,24 @@ class DefaultThread : Thread() {
  */
 @BrevityInternalApi
 class TaskThread internal constructor(
-  val name: String,
   val bridge: HostBridge,
-  val task: Task<*>,
+  val task: RootTask<*>,
 ) : Thread() {
   suspend fun execute(
     execute: () -> PackedAsyncResult,
     callback: (Event) -> PackedAsyncResult,
   ) {
-    var packedAsyncResult = bridge.executeThread(this) {
+    var packedAsyncResult = bridge.executeThread(
+      thread = this,
+      startLocation = WasmTaskHookLocation.AsyncLiftedFunctionStart,
+    ) {
       execute()
     }
 
     while (true) {
       val event = when (packedAsyncResult.callbackCode) {
         CallbackCode.Exit -> {
-          task.cancel()
+          task.cancelIfIncomplete()
           return
         }
 
@@ -59,11 +61,14 @@ class TaskThread internal constructor(
         CallbackCode.Max -> TODO()
       }
 
-      packedAsyncResult = bridge.executeThread(this) {
+      packedAsyncResult = bridge.executeThread(
+        thread = this,
+        startLocation = WasmTaskHookLocation.AsyncLiftedFunctionCallbackStart,
+      ) {
         callback(event)
       }
     }
   }
 
-  override fun toString() = name
+  override fun toString() = task.name
 }

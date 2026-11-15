@@ -15,7 +15,6 @@ actual class FuturePair<T> actual constructor() {
 
   actual operator fun component1() = send
   actual operator fun component2() = receive
-
 }
 
 actual class SendFuture<T> internal actual constructor(

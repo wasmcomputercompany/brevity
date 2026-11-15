@@ -19,16 +19,8 @@ class StreamBindingsCollector(
     lowerFlatIo: LowerFlatIo,
     value: CodeBlock,
   ) {
-    val valueName = codeBuilder.newName("value")
-    codeBuilder.addStatement("val %N = %L", valueName, value)
-
-    codeBuilder.add("%N.initBinding(", valueName)
-    if (codeBuilder.platform is HostPlatform) {
-      codeBuilder.add("%L, ", codeBuilder.bridge)
-    }
-    codeBuilder.add("%L)\n", typeNamer.streamBindingInstance(encoder.type))
-
-    encoder.lowerFlat(memoryAllocator, lowerFlatIo, CodeBlock.of("%N", valueName))
+    val receiveStream = initBinding(encoder, value)
+    encoder.lowerFlat(memoryAllocator, lowerFlatIo, receiveStream)
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
@@ -36,7 +28,8 @@ class StreamBindingsCollector(
     encoder: Encoder,
     values: List<CodeBlock>,
   ): CodeBlock {
-    return encoder.liftFlat(values)
+    val value = encoder.liftFlat(values)
+    return initBinding(encoder, value)
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
@@ -45,7 +38,8 @@ class StreamBindingsCollector(
     baseAddress: CodeBlock,
     offset: Int,
   ): CodeBlock {
-    return encoder.load(baseAddress, offset)
+    val value = encoder.load(baseAddress, offset)
+    return initBinding(encoder, value)
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
@@ -56,6 +50,26 @@ class StreamBindingsCollector(
     offset: Int,
     value: CodeBlock,
   ) {
-    encoder.store(memoryAllocator, baseAddress, offset, value)
+    val receiveStream = initBinding(encoder, value)
+    encoder.store(memoryAllocator, baseAddress, offset, receiveStream)
+  }
+
+  context(codeBuilder: CodeBuilder)
+  private fun initBinding(
+    encoder: Encoder,
+    value: CodeBlock,
+  ): CodeBlock {
+    val receiveStreamName = codeBuilder.newName("receiveStream")
+    codeBuilder.addStatement("val %N = %L", receiveStreamName, value)
+
+    codeBuilder.controlFlow("if (!%N.hasRep)", receiveStreamName) {
+      codeBuilder.add("%N.initBinding(", receiveStreamName)
+      if (codeBuilder.platform is HostPlatform) {
+        codeBuilder.add("%L, ", codeBuilder.bridge)
+      }
+      codeBuilder.add("%L)\n", typeNamer.streamBindingInstance(encoder.type))
+    }
+
+    return CodeBlock.of("%N", receiveStreamName)
   }
 }

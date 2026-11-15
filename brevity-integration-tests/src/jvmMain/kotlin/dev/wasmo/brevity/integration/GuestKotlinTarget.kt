@@ -38,13 +38,17 @@ class GuestKotlinTarget(
       |
       |import dev.wasmo.brevity.ReceiveFuture
       |import dev.wasmo.brevity.ReceiveStream
+      |import dev.wasmo.brevity.StreamPair
+      |import dev.wasmo.brevity.WasmTask
       |import kotlin.time.Duration.Companion.milliseconds
       |import kotlin.wasm.unsafe.ComponentModelInternalApi
       |import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
       |import kotlin.wasm.unsafe.componentModelRealloc
       |import kotlinx.coroutines.CompletableDeferred
       |import kotlinx.coroutines.Deferred
+      |import kotlinx.coroutines.currentCoroutineContext
       |import kotlinx.coroutines.delay
+      |import kotlinx.coroutines.launch
       |import wit.brevity.testing.TestWorld
       |import wit.brevity.testing.guest
       |import wit.brevity.testing.host

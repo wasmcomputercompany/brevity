@@ -34,7 +34,6 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
         wasiP1World { wasiP1 },
@@ -52,7 +51,6 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
         wasiP1World { wasiP1 },
@@ -70,7 +68,6 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
         wasiP1World { wasiP1 },
@@ -98,7 +95,6 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
         wasiP1World { wasiP1 },
@@ -120,7 +116,6 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
         wasiP1World { wasiP1 },
@@ -140,7 +135,6 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
         wasiP1World { wasiP1 },
@@ -160,7 +154,6 @@ class RunKotlinWasmTest {
     val world = WasmoTesting.World { host }
     val wasiP1 = FakeWasi()
     WasmInstance(
-      scope = this,
       path = kotlinWasmPath,
       worlds = listOf(
         wasiP1World { wasiP1 },

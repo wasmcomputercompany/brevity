@@ -12,7 +12,6 @@ class RunWatTest {
   @Test
   fun `run wat`() = runTest {
     val wasmInstance = WasmInstance(
-      scope = this,
       Parser.parse(
         Wat2Wasm.parse(
           """

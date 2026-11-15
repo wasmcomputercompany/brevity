@@ -20,7 +20,6 @@ enum class CallingMechanism {
         PassingMechanism.Parameter(),
         PassingMechanism.Parameter(4),
         PassingMechanism.Return,
-        PassingMechanism.Stream,
         // TODO: add PassingMechanism.Future and PassingMechanism.Stream once that works.
       )
   };
