@@ -4,7 +4,6 @@ import com.dylibso.chicory.runtime.ExportFunction
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
 import com.dylibso.chicory.wasm.InvalidException
-import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
@@ -14,8 +13,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 class HostBridge {
   private val repToExportedResource = mutableMapOf<Int, Resource>()
   private val repToImportedResource = mutableMapOf<Int, Resource>()
-  private var nextTaskThreadId = 1001
-  private var nextRep = 6_060_000
+  private var nextTaskId = 1_000_000
+  private var nextRep = 2_000_000
   internal var initialStackPointer: Int = 0
   internal var initialTlsBase: Int = 0
 
@@ -97,13 +96,13 @@ class HostBridge {
     execute: () -> PackedAsyncResult,
     callback: (Event) -> PackedAsyncResult,
   ): T {
-    val name = "$name ${nextTaskThreadId++}"
-    val rootTask = RootTask<T>(
-      name = name,
-      coroutineContext = currentCoroutineContext(),
-    )
+    val coroutineContext = currentCoroutineContext()
     return suspendCancellableCoroutine { continuation ->
-      rootTask.continuation = continuation
+      val rootTask = RootTask(
+        name = "$name ${nextTaskId++}",
+        coroutineContext = coroutineContext,
+        continuation = continuation,
+      )
       val thread = TaskThread(
         bridge = this,
         task = rootTask,
@@ -114,7 +113,6 @@ class HostBridge {
 
       rootTask.scope.launch(
         start = CoroutineStart.UNDISPATCHED,
-        context = CoroutineName(name),
       ) {
         thread.execute(
           execute = execute,

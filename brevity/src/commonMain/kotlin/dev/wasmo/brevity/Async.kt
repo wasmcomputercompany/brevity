@@ -182,6 +182,11 @@ sealed class Event(
       return when (code) {
         0 -> None
         1 -> Subtask(p1, SubtaskState.entries[p2])
+        2 -> Stream(StreamEndId.StreamRead, p1, PackedCopyResult(p2.toUInt()))
+        3 -> Stream(StreamEndId.StreamWrite, p1, PackedCopyResult(p2.toUInt()))
+        4 -> Stream(StreamEndId.FutureRead, p1, PackedCopyResult(p2.toUInt()))
+        5 -> Stream(StreamEndId.FutureWrite, p1, PackedCopyResult(p2.toUInt()))
+        6 -> TaskCancelled
         else -> error("unexpected event code")
       }
     }

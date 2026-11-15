@@ -5,12 +5,12 @@ package dev.wasmo.brevity
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Delay
 import kotlinx.coroutines.InternalCoroutinesApi
@@ -22,24 +22,74 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  * A Wasm task is an invocation of an async function.
  */
 @BrevityInternalApi
-class RootTask : WasmTask {
+class RootTask(
+  val name: String,
+) : WasmTask {
   /*
    * This uses the Wasm component model for async features, instead of the kotlinx-coroutines
    * dispatchers which uses WASIp1 APIs.
    */
 
   private val dispatcher = TaskDispatcher()
-  private val subtaskContinuations = mutableMapOf<Int, Continuation<Unit>>()
-
-  var complete = false
+  private val subtaskContinuations = mutableMapOf<Int, Continuation<SubtaskState>>()
+  private val streamContinuations = mutableMapOf<Int, Continuation<PackedCopyResult>>()
 
   override val scope: CoroutineScope =
-    CoroutineScope(BrevityCoroutineExceptionHandler + dispatcher + this)
+    CoroutineScope(BrevityCoroutineExceptionHandler + dispatcher + CoroutineName(name) + this)
   private val dispatchQueue = ArrayDeque<Pair<CoroutineContext, Runnable>>()
 
-  suspend fun awaitSubtaskComplete(subtaskIndex: Int) {
-    suspendCancellableCoroutine { continuation ->
-      subtaskContinuations[subtaskIndex] = continuation
+  /**
+   * Suspends until the launched subtask completes.
+   *
+   * @throws CancellationException
+   */
+  suspend fun awaitSubtaskComplete(packedSubtaskResult: PackedSubtaskResult) {
+    var subtaskState = packedSubtaskResult.subtaskState
+    while (true) {
+      when (subtaskState) {
+        SubtaskState.Returned -> return
+        SubtaskState.CanceledBeforeStarted, SubtaskState.CanceledBeforeReturned ->
+          throw CancellationException()
+
+        SubtaskState.Starting, SubtaskState.Started -> {
+          println("$name awaitSubtaskComplete()")
+          subtaskState = suspendCancellableCoroutine { continuation ->
+            subtaskContinuations[packedSubtaskResult.subtaskIndex] = continuation
+          }
+          println("$name awaitSubtaskComplete() done")
+        }
+      }
+    }
+  }
+
+  /**
+   * Suspends until at least one element is copied.
+   *
+   * @throws CancellationException
+   */
+  suspend fun awaitStreamProgress(streamIndex: Int, packedCopyResult: PackedCopyResult): Int {
+    var packedCopyResult = packedCopyResult
+    while (true) {
+      when {
+        packedCopyResult == PackedCopyResult.Blocked -> {
+          packedCopyResult = suspendCancellableCoroutine { continuation ->
+            streamContinuations[streamIndex] = continuation
+          }
+          continue
+        }
+
+        packedCopyResult.copyResult == CopyResult.Completed -> {
+          return packedCopyResult.progress
+        }
+
+        packedCopyResult.copyResult == CopyResult.Dropped -> {
+          throw CancellationException() // TODO: return a sentinel like '0' for dropped
+        }
+
+        packedCopyResult.copyResult == CopyResult.Cancelled -> {
+          throw CancellationException()
+        }
+      }
     }
   }
 
@@ -48,21 +98,20 @@ class RootTask : WasmTask {
       Event.None -> TODO()
       is Event.Subtask -> {
         val continuation = subtaskContinuations.remove(event.subtaskIndex)
-          ?: error("no such subtask: ${event.subtaskIndex}")
-        when (event.subtaskState) {
-          SubtaskState.Returned -> continuation.resume(Unit)
-          SubtaskState.CanceledBeforeStarted, SubtaskState.CanceledBeforeReturned ->
-            continuation.resumeWithException(CancellationException())
-
-          SubtaskState.Starting -> {}
-          SubtaskState.Started -> {}
-        }
-        return runUntilIdle()
+          ?: error("unexpected subtask: ${event.subtaskIndex}")
+        continuation.resume(event.subtaskState)
       }
 
-      is Event.Stream -> TODO()
+      is Event.Stream -> {
+        val continuation = streamContinuations.remove(event.index)
+          ?: error("unexpected stream: ${event.index}")
+        continuation.resume(event.result)
+      }
+
       Event.TaskCancelled -> TODO()
     }
+
+    return runUntilIdle()
   }
 
   /** Execute all immediately-executable work, and return the new state of the suspended task. */
@@ -78,13 +127,18 @@ class RootTask : WasmTask {
       }
     }
 
-    if (complete) return PackedAsyncResult(CallbackCode.Exit)
-
-    val waitableSet = newWaitableSet()
-    for (subtaskIndex in subtaskContinuations.keys) {
-      waitableJoin(subtaskIndex, waitableSet)
+    if (subtaskContinuations.isNotEmpty() || streamContinuations.isNotEmpty()) {
+      val waitableSet = newWaitableSet()
+      for (waitableIndex in subtaskContinuations.keys) {
+        waitableJoin(waitableIndex, waitableSet)
+      }
+      for (waitableIndex in streamContinuations.keys) {
+        waitableJoin(waitableIndex, waitableSet)
+      }
+      return PackedAsyncResult(CallbackCode.Wait, waitableSet)
     }
-    return PackedAsyncResult(CallbackCode.Wait, waitableSet)
+
+    return PackedAsyncResult(CallbackCode.Exit)
   }
 
   inner class TaskDispatcher : CoroutineDispatcher(), Delay {
@@ -114,4 +168,6 @@ class RootTask : WasmTask {
       }
     }
   }
+
+  override fun toString() = name
 }

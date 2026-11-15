@@ -224,9 +224,10 @@ private class AbiLiftAsyncExport(
 
     val packedAsyncResultName = codeBuilder.newName("packedAsyncResult")
     codeBuilder.controlFlow(
-      "val %N = %L.launchTask",
+      "val %N = %L.launchTask(%S)",
       packedAsyncResultName,
       codeBuilder.bridge,
+      functionEncoder.function.kotlinName,
     ) {
       val resultValue = liftedFunction.call(
         null,

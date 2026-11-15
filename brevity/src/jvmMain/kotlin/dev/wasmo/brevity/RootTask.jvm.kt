@@ -10,9 +10,9 @@ import kotlinx.coroutines.CoroutineScope
 class RootTask<T>(
   val name: String,
   coroutineContext: CoroutineContext,
+  val continuation: CancellableContinuation<T>,
 ) : WasmTask {
   override val scope: CoroutineScope = CoroutineScope(coroutineContext + CoroutineName(name) + this)
-  lateinit var continuation: CancellableContinuation<T>
 
   fun cancelIfIncomplete() {
     continuation.cancel()

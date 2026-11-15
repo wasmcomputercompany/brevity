@@ -58,9 +58,16 @@ private class AbiLower(
 
       val loweredResult = loweredFunction.call(receiver, loweredParameterValues)
       if (functionEncoder.function.isSubtask) {
+        val taskName = contextOf<CodeBuilder>().newName("task")
+        contextOf<CodeBuilder>().addStatement(
+          "val %N = %M() as %T",
+          taskName,
+          Symbols.Brevity.CurrentTask,
+          Symbols.Brevity.RootTask,
+        )
         contextOf<CodeBuilder>().addStatement(
           "%L.awaitSubtaskComplete(%T(%L.toUInt()))",
-          codeBuilder.bridge,
+          taskName,
           Symbols.Brevity.PackedSubtaskResult,
           loweredResult.code,
         )
@@ -85,7 +92,7 @@ private class AbiLower(
         .also { codeBuilder.add("val %N = ", it) }
     }
     codeBuilder.add("%L.launchTask<%T>(⇥\n", codeBuilder.bridge, resultValue?.type ?: UNIT)
-    codeBuilder.add("name = %S,", functionEncoder.function.kotlinName)
+    codeBuilder.add("name = %S,\n", functionEncoder.function.kotlinName)
     codeBuilder.add("execute = {⇥\n")
     codeBuilder.nameAllocatorScope {
       val packedAsyncResult = loweredFunction.call(receiver, loweredParameterValues)

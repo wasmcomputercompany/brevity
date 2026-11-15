@@ -62,13 +62,11 @@ class StreamBindingsCollector(
     val receiveStreamName = codeBuilder.newName("receiveStream")
     codeBuilder.addStatement("val %N = %L", receiveStreamName, value)
 
-    codeBuilder.controlFlow("if (!%N.hasRep)", receiveStreamName) {
-      codeBuilder.add("%N.initBinding(", receiveStreamName)
-      if (codeBuilder.platform is HostPlatform) {
-        codeBuilder.add("%L, ", codeBuilder.bridge)
-      }
-      codeBuilder.add("%L)\n", typeNamer.streamBindingInstance(encoder.type))
+    codeBuilder.add("%N.initBinding(", receiveStreamName)
+    if (codeBuilder.platform is HostPlatform) {
+      codeBuilder.add("%L, ", codeBuilder.bridge)
     }
+    codeBuilder.add("%L)\n", typeNamer.streamBindingInstance(encoder.type))
 
     return CodeBlock.of("%N", receiveStreamName)
   }
