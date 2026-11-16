@@ -239,7 +239,7 @@ class BrevityExecutionTester(
           """
           |settings:
           |  kotlin:
-          |    version: 2.4.0
+          |    version: 2.5.0-RC
           |  jvm:
           |    jdk:
           |      version: 25
@@ -254,20 +254,23 @@ class BrevityExecutionTester(
         writeUtf8(
           """
           |[versions]
+          |assertk = "0.28.1"
           |brevity = "0-testing"
-          |coroutines = "1.10.2"
+          |chicory = "1.7.5"
+          |coroutines = "1.11.0"
+          |okio = "3.18.2"
           |
           |[libraries]
-          |assertk = { module = "com.willowtreeapps.assertk:assertk", version = "0.28.1" }
+          |assertk = { module = "com.willowtreeapps.assertk:assertk", version.ref = "assertk" }
           |brevity = { module = "dev.wasmo.brevity:brevity", version.ref = "brevity" }
           |brevity-wasi = { module = "dev.wasmo.brevity:brevity-wasi", version.ref = "brevity" }
           |brevity-wasi-p1 = { module = "dev.wasmo.brevity:brevity-wasi-p1", version.ref = "brevity" }
           |brevity-wasi-p2 = { module = "dev.wasmo.brevity:brevity-wasi-p2", version.ref = "brevity" }
           |brevity-wasi-p3 = { module = "dev.wasmo.brevity:brevity-wasi-p3", version.ref = "brevity" }
-          |chicory-runtime = { module = "com.dylibso.chicory:runtime", version = "1.7.5" }
+          |chicory-runtime = { module = "com.dylibso.chicory:runtime", version.ref = "chicory" }
           |coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
           |coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
-          |okio = { module = "com.squareup.okio:okio", version = "3.16.4" }
+          |okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
           |
           """.trimMargin(),
         )

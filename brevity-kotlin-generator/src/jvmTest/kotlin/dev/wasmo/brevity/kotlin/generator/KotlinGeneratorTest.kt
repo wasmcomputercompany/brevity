@@ -126,7 +126,6 @@ class KotlinGeneratorTest {
 
       import dev.wasmo.brevity.BrevityInternalApi
       import dev.wasmo.brevity.loadString
-      import dev.wasmo.brevity.retainWasmExportsForGuestBridge
       import kotlin.Int
       import kotlin.OptIn
       import kotlin.String
@@ -161,7 +160,6 @@ class KotlinGeneratorTest {
       public var Time.guest: Time.Guest
         get() = guest_
         set(`value`) {
-          retainWasmExportsForGuestBridge()
           retainWasmExportsForTime()
           guest_ = `value`
         }
