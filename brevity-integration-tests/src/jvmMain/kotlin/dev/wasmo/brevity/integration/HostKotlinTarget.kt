@@ -36,7 +36,9 @@ class HostKotlinTarget(
       |import assertk.assertions.isEqualTo
       |import dev.wasmo.brevity.ReceiveFuture
       |import dev.wasmo.brevity.ReceiveStream
+      |import dev.wasmo.brevity.StreamPair
       |import dev.wasmo.brevity.WasmInstance
+      |import dev.wasmo.brevity.WasmTask
       |import dev.wasmo.brevity.integration.isEqualTo
       |import dev.wasmo.brevity.wasi.p1.RealWasiP1Host
       |import dev.wasmo.brevity.wasi.p1.wasiP1World
@@ -47,7 +49,9 @@ class HostKotlinTarget(
       |import kotlin.time.Duration
       |import kotlin.time.Duration.Companion.milliseconds
       |import kotlinx.coroutines.ExperimentalCoroutinesApi
+      |import kotlinx.coroutines.currentCoroutineContext
       |import kotlinx.coroutines.delay
+      |import kotlinx.coroutines.launch
       |import kotlinx.coroutines.test.TestScope
       |import kotlinx.coroutines.test.currentTime
       |import kotlinx.coroutines.test.runTest
@@ -142,7 +146,6 @@ class HostKotlinTarget(
       |
       |fun main(vararg args: String) = runTest {
       |  val wasmInstance = WasmInstance(
-      |    scope = this,
       |    path = args[0].toPath(),
       |    worlds = listOf(
       |      wasiP1World { RealWasiP1Host() },

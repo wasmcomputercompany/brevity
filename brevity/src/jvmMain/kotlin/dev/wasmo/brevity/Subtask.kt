@@ -14,12 +14,14 @@ import kotlinx.coroutines.launch
 @BrevityInternalApi
 class Subtask(
   private val bridge: HostBridge,
-) : Waitable() {
+  parent: RootTask<*>,
+) : Waitable(), WasmTask {
+  override val scope = CoroutineScope(parent.scope.coroutineContext + this)
+
   fun start(
-    coroutineScope: CoroutineScope,
     block: suspend () -> Unit,
   ): PackedSubtaskResult {
-    coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+    scope.launch(start = CoroutineStart.UNDISPATCHED) {
       val subtaskState = try {
         block()
         SubtaskState.Returned

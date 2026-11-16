@@ -610,10 +610,29 @@ data class TestFunction(
           )
         }
 
-        PassingMechanism.Future, PassingMechanism.Stream -> {
+        PassingMechanism.Stream -> {
+          val hostIndexToValueFunction = copy(
+            passingMechanism = PassingMechanism.Return,
+            callingMechanism = CallingMechanism.Sync,
+          )
+          val value = hostIndexToValueFunction.kotlinCall("this", "index", "Nothing")
           writeUtf8(
             """
-            |TODO("implement futures and streams")
+            |val (sendStream, receiveStream) = StreamPair<${type.kotlinType}>()
+            |val value = $value
+            |currentCoroutineContext()[WasmTask]!!.scope.launch {
+            |  sendStream.send(value)
+            |}
+            |return receiveStream
+            |
+            """.trimMargin(),
+          )
+        }
+
+        PassingMechanism.Future -> {
+          writeUtf8(
+            """
+            |TODO("implement futures")
             |
             """.trimMargin(),
           )

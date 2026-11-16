@@ -8,7 +8,6 @@ import com.dylibso.chicory.runtime.internal.GcRefStore
 import com.dylibso.chicory.wasm.Parser
 import com.dylibso.chicory.wasm.WasmModule
 import java.lang.reflect.Field
-import kotlinx.coroutines.CoroutineScope
 import okio.FileSystem
 import okio.Path
 
@@ -39,7 +38,6 @@ class WasmInstance private constructor(
 
   companion object {
     operator fun invoke(
-      scope: CoroutineScope,
       fileSystem: FileSystem = FileSystem.SYSTEM,
       path: Path,
       name: String = "name",
@@ -48,11 +46,10 @@ class WasmInstance private constructor(
       val wasmModule = fileSystem.read(path) {
         Parser.parse(readByteArray())
       }
-      return invoke(scope, wasmModule, name, worlds)
+      return invoke(wasmModule, name, worlds)
     }
 
     operator fun invoke(
-      scope: CoroutineScope,
       wasmModule: WasmModule,
       name: String = "name",
       worlds: List<World<*, *>>,
@@ -60,7 +57,7 @@ class WasmInstance private constructor(
       val store = Store()
       val symbolIndex = SymbolIndex(wasmModule)
 
-      val bridge = HostBridge(coroutineScope = scope)
+      val bridge = HostBridge()
       bridge.initImports(store)
       for (world in worlds) {
         world.initImports(bridge, store)

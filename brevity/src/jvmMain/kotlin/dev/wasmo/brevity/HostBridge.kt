@@ -1,18 +1,20 @@
 package dev.wasmo.brevity
 
+import com.dylibso.chicory.runtime.ExportFunction
 import com.dylibso.chicory.runtime.Instance
 import com.dylibso.chicory.runtime.Memory
-import kotlinx.coroutines.CoroutineScope
+import com.dylibso.chicory.wasm.InvalidException
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 @BrevityInternalApi
-class HostBridge(
-  private val coroutineScope: CoroutineScope,
-) {
+class HostBridge {
   private val repToExportedResource = mutableMapOf<Int, Resource>()
   private val repToImportedResource = mutableMapOf<Int, Resource>()
+  private var nextTaskThreadId = 1001
   private var nextRep = 6_060_000
   internal var initialStackPointer: Int = 0
   internal var initialTlsBase: Int = 0
@@ -23,16 +25,24 @@ class HostBridge(
   lateinit var memoryAllocator: MemoryAllocator
     private set
 
+  private var wasmTaskHook: ExportFunction? = null
+
   val defaultThread = DefaultThread()
 
   /** The currently-executing thread. */
   var currentThread: Thread = defaultThread
 
   /** The currently-executing task. */
-  val currentTask: Task<*>
+  val currentTask: RootTask<*>
     get() = (currentThread as TaskThread).task
 
   fun init(symbolIndex: SymbolIndex, instance: Instance) {
+    wasmTaskHook = try {
+      instance.exports().function("__wasm_task_hook")
+    } catch (_: InvalidException) {
+      null
+    }
+
     // A .wasm doesn't have to declare a memory, but you can't do much without it. If the memory is
     // absent, leave the var uninitialized, and assume nothing will access it.
     val instanceMemory = instance.memory()
@@ -83,19 +93,29 @@ class HostBridge(
   }
 
   suspend fun <T> launchTask(
+    name: String,
     execute: () -> PackedAsyncResult,
     callback: (Event) -> PackedAsyncResult,
   ): T {
+    val name = "$name ${nextTaskThreadId++}"
+    val rootTask = RootTask<T>(
+      name = name,
+      coroutineContext = currentCoroutineContext(),
+    )
     return suspendCancellableCoroutine { continuation ->
+      rootTask.continuation = continuation
       val thread = TaskThread(
         bridge = this,
-        task = Task(continuation),
+        task = rootTask,
       ).apply {
         this.stackPointer = initialStackPointer
         this.tlsBase = initialTlsBase
       }
 
-      coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+      rootTask.scope.launch(
+        start = CoroutineStart.UNDISPATCHED,
+        context = CoroutineName(name),
+      ) {
         thread.execute(
           execute = execute,
           callback = callback,
@@ -105,8 +125,8 @@ class HostBridge(
   }
 
   fun launchSubtask(block: suspend () -> Unit): PackedSubtaskResult {
-    val subtask = Subtask(this)
-    return subtask.start(coroutineScope, block)
+    val subtask = Subtask(this, currentTask)
+    return subtask.start(block)
   }
 
   fun taskCancel() {
@@ -121,16 +141,39 @@ class HostBridge(
     // TODO("Not yet implemented")
   }
 
-  inline fun <T> executeThread(
+  inline fun executeThread(
     thread: Thread,
-    block: () -> T,
-  ): T {
+    startLocation: WasmTaskHookLocation,
+    block: () -> PackedAsyncResult,
+  ): PackedAsyncResult {
     check(currentThread == defaultThread)
     currentThread = thread
+    wasmTaskHook(startLocation)
     try {
-      return block()
+      val result = block()
+      wasmTaskHook(
+        when (result.callbackCode) {
+          CallbackCode.Exit -> WasmTaskHookLocation.AsyncLiftedFunctionEnd
+          else -> WasmTaskHookLocation.AsyncLiftedFunctionSuspend
+        },
+      )
+      return result
     } finally {
       currentThread = defaultThread
     }
+  }
+
+  /**
+   * Invoke the `__wasm_task_hook` manually.
+   *
+   * https://github.com/bytecodealliance/wasm-tools/pull/2603
+   *
+   * This is necessary because we don't properly support components composed of multiple core
+   * modules. When we can compose multiple components together, we can delete this, because it can
+   * be wired in by shimming components.
+   */
+  fun wasmTaskHook(location: WasmTaskHookLocation) {
+    val wasmTaskHook = this.wasmTaskHook ?: return
+    wasmTaskHook.apply(location.ordinal.toLong())
   }
 }

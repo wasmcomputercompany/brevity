@@ -19,22 +19,23 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
- * This dispatcher is scoped to a single task.
- *
- * This uses the Wasm component model for async features, instead of the kotlinx-coroutines
- * dispatchers which uses WASIp1 APIs.
+ * A Wasm task is an invocation of an async function.
  */
 @BrevityInternalApi
-internal class BrevityTask : CoroutineContext.Element {
-  private val dispatcher = BrevityDispatcher()
+class RootTask : WasmTask {
+  /*
+   * This uses the Wasm component model for async features, instead of the kotlinx-coroutines
+   * dispatchers which uses WASIp1 APIs.
+   */
+
+  private val dispatcher = TaskDispatcher()
   private val subtaskContinuations = mutableMapOf<Int, Continuation<Unit>>()
+
   var complete = false
 
-  val scope = CoroutineScope(BrevityCoroutineExceptionHandler + dispatcher + this)
+  override val scope: CoroutineScope =
+    CoroutineScope(BrevityCoroutineExceptionHandler + dispatcher + this)
   private val dispatchQueue = ArrayDeque<Pair<CoroutineContext, Runnable>>()
-
-  override val key: CoroutineContext.Key<*>
-    get() = Key
 
   suspend fun awaitSubtaskComplete(subtaskIndex: Int) {
     suspendCancellableCoroutine { continuation ->
@@ -59,10 +60,7 @@ internal class BrevityTask : CoroutineContext.Element {
         return runUntilIdle()
       }
 
-      is Event.FutureRead -> TODO()
-      is Event.FutureWrite -> TODO()
-      is Event.StreamRead -> TODO()
-      is Event.StreamWrite -> TODO()
+      is Event.Stream -> TODO()
       Event.TaskCancelled -> TODO()
     }
   }
@@ -89,8 +87,7 @@ internal class BrevityTask : CoroutineContext.Element {
     return PackedAsyncResult(CallbackCode.Wait, waitableSet)
   }
 
-  @BrevityInternalApi
-  inner class BrevityDispatcher : CoroutineDispatcher(), Delay {
+  inner class TaskDispatcher : CoroutineDispatcher(), Delay {
     override fun dispatch(
       context: CoroutineContext,
       block: Runnable,
@@ -117,6 +114,4 @@ internal class BrevityTask : CoroutineContext.Element {
       }
     }
   }
-
-  companion object Key : CoroutineContext.Key<BrevityTask>
 }
