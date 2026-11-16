@@ -146,7 +146,7 @@ class RunKotlinWasmTest {
     val name = "Jesse".asStringArgument()
     world.guest.streams.printError(name)
 
-    assertThat(wasiP1.stderr.readUtf8()).isEqualTo("Exception: boom, Jesse!\n\n")
+    assertThat(wasiP1.stderr.readUtf8()).isEqualTo("kotlin.Exception: boom, Jesse!\n")
   }
 
   @Test
