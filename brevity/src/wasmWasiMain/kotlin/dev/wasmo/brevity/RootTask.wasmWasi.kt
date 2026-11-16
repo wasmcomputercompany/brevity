@@ -52,11 +52,9 @@ class RootTask(
           throw CancellationException()
 
         SubtaskState.Starting, SubtaskState.Started -> {
-          println("$name awaitSubtaskComplete()")
           subtaskState = suspendCancellableCoroutine { continuation ->
             subtaskContinuations[packedSubtaskResult.subtaskIndex] = continuation
           }
-          println("$name awaitSubtaskComplete() done")
         }
       }
     }
