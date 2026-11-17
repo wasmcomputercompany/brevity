@@ -170,16 +170,15 @@ actual class StreamPair<T> {
 
   @BrevityInternalApi
   fun initBinding(bridge: HostBridge, binding: StreamBinding<T>) {
-    check(!send.hasRep && !receive.hasRep)
-    check(!::binding.isInitialized && !::memoryAllocator.isInitialized)
+    if (!send.hasRep && !receive.hasRep) {
+      send.rep = bridge.putImportedResource(send)
+      send.hasRep = true
+      send.buffer = Buffer(send, StreamEndId.StreamWrite)
 
-    send.rep = bridge.putImportedResource(send)
-    send.hasRep = true
-    send.buffer = Buffer(send, StreamEndId.StreamWrite)
-
-    receive.rep = bridge.putImportedResource(receive)
-    receive.hasRep = true
-    receive.buffer = Buffer(receive, StreamEndId.StreamRead)
+      receive.rep = bridge.putImportedResource(receive)
+      receive.hasRep = true
+      receive.buffer = Buffer(receive, StreamEndId.StreamRead)
+    }
 
     this.binding = binding
     this.memoryAllocator = bridge.memoryAllocator

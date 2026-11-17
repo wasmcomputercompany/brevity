@@ -2,6 +2,7 @@ package dev.wasmo.brevity
 
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 
 /**
  * This is available in the [CoroutineContext] for suspend functions executed in WebAssembly, and
@@ -17,3 +18,9 @@ interface WasmTask : CoroutineContext.Element {
 
   companion object Key : CoroutineContext.Key<WasmTask>
 }
+
+/**
+ * Returns the currently executing task, or null if the current coroutine context doesn't have an
+ * executing task.
+ */
+suspend fun currentTask(): WasmTask? = currentCoroutineContext()[WasmTask.Key]

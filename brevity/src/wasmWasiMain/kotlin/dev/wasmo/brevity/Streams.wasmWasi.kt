@@ -7,6 +7,7 @@ import kotlin.wasm.unsafe.MemoryAllocator
 import kotlin.wasm.unsafe.Pointer
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlin.wasm.unsafe.withScopedMemoryAllocator
+import kotlinx.coroutines.CompletableDeferred
 
 
 actual class FuturePair<T> actual constructor() {
@@ -42,13 +43,31 @@ actual class StreamPair<T> {
   actual val send = SendStream(this)
   actual val receive = ReceiveStream(this)
 
-  internal var binding: StreamBinding<T>? = null
+  internal val deferredBinding = CompletableDeferred<StreamBinding<T>>()
 
   actual constructor()
 
   actual operator fun component1() = send
   actual operator fun component2() = receive
 
+  @BrevityInternalApi
+  fun initBinding(binding: StreamBinding<T>) {
+    if (!send.hasRep && !receive.hasRep) {
+      val streamIds = binding.new()
+
+      val sendRep = (streamIds ushr 32).toInt()
+      GuestBridge.putImportedResource(sendRep, send)
+      send.rep = sendRep
+      send.hasRep = true
+
+      val receiveRep = streamIds.toInt()
+      GuestBridge.putImportedResource(receiveRep, receive)
+      receive.rep = receiveRep
+      receive.hasRep = true
+    }
+
+    deferredBinding.complete(binding)
+  }
 }
 
 @OptIn(UnsafeWasmMemoryApi::class)
@@ -56,15 +75,14 @@ actual class SendStream<T> internal actual constructor(
   private val pair: StreamPair<T>,
 ) : Resource() {
   actual suspend fun send(value: T) {
-    // TODO: suspend until binding is set
-    val binding = pair.binding ?: error("cannot send yet")
-
+    val binding = pair.deferredBinding.await()
     withScopedMemoryAllocator { memoryAllocator ->
-      val byteCount = binding.byteCount
-      val address = memoryAllocator.allocate(byteCount)
+      val address = memoryAllocator.allocate(binding.byteCount)
       binding.store(memoryAllocator, address, value)
-      val packedAsyncResult = binding.write(rep, address.address.toInt(), byteCount)
-      // TODO: GuestBridge.awaitStreamWriteComplete.
+      val writeResult = binding.write(rep, address.address.toInt(), 1).toUInt()
+      val task = currentTask() as RootTask
+      val progress = task.awaitStreamProgress(rep, PackedCopyResult(writeResult))
+      check(progress == 1) { "unexpected progress: $progress" }
     }
   }
 }
@@ -73,18 +91,20 @@ actual class ReceiveStream<T> internal actual constructor(
   private val pair: StreamPair<T>,
 ) : Resource() {
   actual suspend fun receive(): T {
-    TODO()
+    val binding = pair.deferredBinding.await()
+    withScopedMemoryAllocator { memoryAllocator ->
+      val address = memoryAllocator.allocate(binding.byteCount)
+      val readResult = binding.read(rep, address.address.toInt(), 1).toUInt()
+      val task = currentTask() as RootTask
+      val progress = task.awaitStreamProgress(rep, PackedCopyResult(readResult))
+      check(progress == 1) { "unexpected progress: $progress" }
+      return binding.load(address)
+    }
   }
 
   @BrevityInternalApi
   fun initBinding(binding: StreamBinding<T>) {
-    if (pair.binding == null) return
-
-    val streamIds = binding.new()
-    pair.send.rep = (streamIds ushr 32).toInt()
-    pair.receive.rep = streamIds.toInt()
-    GuestBridge.putImportedResource(pair.send.rep, pair.send)
-    GuestBridge.putImportedResource(pair.receive.rep, pair.receive)
+    pair.initBinding(binding)
   }
 }
 

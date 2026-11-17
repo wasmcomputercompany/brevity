@@ -2,18 +2,15 @@
 
 package dev.wasmo.brevity
 
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
 
 @BrevityInternalApi
 object GuestBridge {
   private val repToImportedResource = mutableMapOf<Int, Resource>()
   private val repToExportedResource = mutableMapOf<Int, Resource>()
-  private var nextRep = 4_040_000
-
-  // TODO: use context to identify which task is executing?
-  private var theOnlyRootTask: RootTask? = null
+  private val tasks = mutableMapOf<Int, RootTask>()
+  private var nextRep = 4_000_000
+  private var nextTaskId = 3_000_000
 
   // Prevent kotlinx-coroutines DefaultExecutor from registering a hook when exported functions
   // exit. That hook is particularly problematic for `cabi_realloc`, because it prevents that
@@ -54,60 +51,32 @@ object GuestBridge {
     return existing as T
   }
 
-  fun contextGet(index: Int): Int {
-    return when (index) {
-      0 -> contextGet0_export()
-      1 -> contextGet1_export()
-      else -> error("unexpected index: $index")
-    }
-  }
+  fun launchTask(
+    name: String,
+    block: suspend () -> Unit,
+  ): PackedAsyncResult {
+    val taskId = nextTaskId++
+    val task = RootTask(
+      name = "$name $taskId",
+    )
+    contextSet0_export(taskId)
+    tasks[taskId] = task
 
-  fun contextSet(index: Int, value: Int) {
-    when (index) {
-      0 -> contextSet0_export(value)
-      1 -> contextSet1_export(value)
-      else -> error("unexpected index: $index")
-    }
-  }
-
-  fun launchTask(block: suspend () -> Unit): PackedAsyncResult {
-    val task = RootTask()
-    theOnlyRootTask = task
     task.scope.launch(task) {
-      try {
-        block()
-      } finally {
-        task.complete = true
-        theOnlyRootTask = null
-      }
+      block()
     }
 
     return task.runUntilIdle()
   }
 
-  /**
-   * Suspends until the launched subtask completes.
-   *
-   * @throws CancellationException
-   */
-  suspend fun awaitSubtaskComplete(packedSubtaskResult: PackedSubtaskResult) {
-    when (packedSubtaskResult.subtaskState) {
-      SubtaskState.Starting, SubtaskState.Started -> {
-        val task = (currentCoroutineContext()[WasmTask.Key] as? RootTask)
-          ?: error("cannot launch subtask without a task")
-        task.awaitSubtaskComplete(packedSubtaskResult.subtaskIndex)
-      }
-
-      SubtaskState.Returned -> {
-      }
-
-      SubtaskState.CanceledBeforeStarted, SubtaskState.CanceledBeforeReturned ->
-        throw CancellationException()
-    }
-  }
-
   fun resumeTask(event: Event): PackedAsyncResult {
-    val resumedTask = theOnlyRootTask!! // TODO: obviously inadequate.
-    return resumedTask.resume(event)
+    val taskId = contextGet0_export()
+    val resumedTask = tasks[taskId]
+      ?: error("unexpected task: $taskId")
+    val result = resumedTask.resume(event)
+    if (result.callbackCode == CallbackCode.Exit) {
+      tasks.remove(taskId)
+    }
+    return result
   }
 }
