@@ -154,7 +154,6 @@ class GuestGenerator(
         FunSpec.setterBuilder()
           .addParameter("value", guestApisType)
           .apply {
-            addStatement("%M()", Symbols.Brevity.RetainWasmExportsForGuestBridge)
             addStatement("%N()", abiWorld.retainWasmExportsFunctionName)
             addStatement("%N = %N", "${guestApisInstanceName}_", "value")
           }
