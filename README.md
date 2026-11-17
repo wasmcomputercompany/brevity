@@ -17,7 +17,8 @@ This project contains documentation and specifications copyrighted by the
 * **brevity-build**: Gradle project so we can run Brevity’s Gradle plugin in Brevity’s own build.
 * **brevity-cli**: Command-line executable that compiles `.wit` into `.kt`.
 * **brevity-gradle-plugin**: Invokes brevity-cli from Gradle.
-* **brevity-integration-tests**: executes generated API stubs on the [Chicory] runtime, using
+* **brevity-integration-tests**: generates Kotlin for host and guest, and exercises that.
+* **brevity-interop-tests**: executes generated API stubs on the [Chicory] runtime, using
   both Kotlin and Rust as guest languages.
 * **brevity-kotlin-generator**: uses parsed `.wit` files to generate `.kt` files.
 * **brevity-testing**: test facets for our own internal testing.

@@ -1,8 +1,8 @@
-package dev.wasmo.brevity.integration
+package dev.wasmo.brevity.interop
 
 import dev.wasmo.brevity.Identifier
 import dev.wasmo.brevity.Orientation.Import
-import dev.wasmo.brevity.integration.CallingMechanism.Async
+import dev.wasmo.brevity.interop.CallingMechanism.Async
 import kotlin.test.Test
 import kotlinx.coroutines.test.runTest
 
@@ -251,8 +251,14 @@ class BridgeEveryTypeTest {
           kotlinType = "wit.brevity.testing.Shaker",
           rustType = "bindings::Shaker",
           values = listOf(
-            SampleValue(kotlin = "wit.brevity.testing.Shaker.Salt", rust = "bindings::Shaker::Salt"),
-            SampleValue(kotlin = "wit.brevity.testing.Shaker.Pepper", rust = "bindings::Shaker::Pepper"),
+            SampleValue(
+              kotlin = "wit.brevity.testing.Shaker.Salt",
+              rust = "bindings::Shaker::Salt"
+            ),
+            SampleValue(
+              kotlin = "wit.brevity.testing.Shaker.Pepper",
+              rust = "bindings::Shaker::Pepper"
+            ),
           ),
         ),
         SampleType(
@@ -261,8 +267,14 @@ class BridgeEveryTypeTest {
           kotlinType = "wit.brevity.testing.MaxByteEnum",
           rustType = "bindings::MaxByteEnum",
           values = listOf(
-            SampleValue(kotlin = "wit.brevity.testing.MaxByteEnum.V0", rust = "bindings::MaxByteEnum::V0"),
-            SampleValue(kotlin = "wit.brevity.testing.MaxByteEnum.V255", rust = "bindings::MaxByteEnum::V255"),
+            SampleValue(
+              kotlin = "wit.brevity.testing.MaxByteEnum.V0",
+              rust = "bindings::MaxByteEnum::V0"
+            ),
+            SampleValue(
+              kotlin = "wit.brevity.testing.MaxByteEnum.V255",
+              rust = "bindings::MaxByteEnum::V255"
+            ),
           ),
         ),
         SampleType(
@@ -271,9 +283,18 @@ class BridgeEveryTypeTest {
           kotlinType = "wit.brevity.testing.MinShortEnum",
           rustType = "bindings::MinShortEnum",
           values = listOf(
-            SampleValue(kotlin = "wit.brevity.testing.MinShortEnum.V0", rust = "bindings::MinShortEnum::V0"),
-            SampleValue(kotlin = "wit.brevity.testing.MinShortEnum.V255", rust = "bindings::MinShortEnum::V255"),
-            SampleValue(kotlin = "wit.brevity.testing.MinShortEnum.V256", rust = "bindings::MinShortEnum::V256"),
+            SampleValue(
+              kotlin = "wit.brevity.testing.MinShortEnum.V0",
+              rust = "bindings::MinShortEnum::V0"
+            ),
+            SampleValue(
+              kotlin = "wit.brevity.testing.MinShortEnum.V255",
+              rust = "bindings::MinShortEnum::V255"
+            ),
+            SampleValue(
+              kotlin = "wit.brevity.testing.MinShortEnum.V256",
+              rust = "bindings::MinShortEnum::V256"
+            ),
           ),
         ),
       ),
@@ -311,7 +332,10 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "kotlin.Double.MIN_VALUE", rust = "Some(f64::from_bits(1))"),
             SampleValue(kotlin = "kotlin.Double.MAX_VALUE", rust = "Some(f64::MAX)"),
             SampleValue(kotlin = "kotlin.Double.POSITIVE_INFINITY", rust = "Some(f64::INFINITY)"),
-            SampleValue(kotlin = "kotlin.Double.NEGATIVE_INFINITY", rust = "Some(f64::NEG_INFINITY)"),
+            SampleValue(
+              kotlin = "kotlin.Double.NEGATIVE_INFINITY",
+              rust = "Some(f64::NEG_INFINITY)"
+            ),
           ),
         ),
         SampleType(
@@ -323,7 +347,10 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "null", rust = "None"),
             SampleValue(kotlin = "\"hello\"", rust = "Some(\"hello\".to_string())"),
             SampleValue(kotlin = "\"\"", rust = "Some(\"\".to_string())"),
-            SampleValue(kotlin = "\"abc\\u0000def\"", rust = "Some(\"abc\\u{0000}def\".to_string())"),
+            SampleValue(
+              kotlin = "\"abc\\u0000def\"",
+              rust = "Some(\"abc\\u{0000}def\".to_string())"
+            ),
             SampleValue(kotlin = "\"\uD83C\uDF69\"", rust = "Some(\"\uD83C\uDF69\".to_string())"),
           ),
           borrowRustValue = { "($it).as_deref()" },
@@ -349,7 +376,10 @@ class BridgeEveryTypeTest {
             SampleValue(kotlin = "booleanArrayOf()", rust = "vec![]"),
             SampleValue(kotlin = "booleanArrayOf(false)", rust = "vec![false]"),
             SampleValue(kotlin = "booleanArrayOf(true)", rust = "vec![true]"),
-            SampleValue(kotlin = "booleanArrayOf(true, false, true)", rust = "vec![true, false, true]"),
+            SampleValue(
+              kotlin = "booleanArrayOf(true, false, true)",
+              rust = "vec![true, false, true]"
+            ),
           ),
           borrowRustValue = { "&($it)" },
         ),
@@ -362,8 +392,14 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "intArrayOf()", rust = "vec![]"),
             SampleValue(kotlin = "intArrayOf(0, 5)", rust = "vec![0, 5]"),
-            SampleValue(kotlin = "intArrayOf(kotlin.Int.MIN_VALUE, kotlin.Int.MAX_VALUE)", rust = "vec![i32::MIN, i32::MAX]"),
-            SampleValue(kotlin = "IntArray(100) { i -> i + 32767  }", rust = "((32767..=32866).collect::<Vec<i32>>())"),
+            SampleValue(
+              kotlin = "intArrayOf(kotlin.Int.MIN_VALUE, kotlin.Int.MAX_VALUE)",
+              rust = "vec![i32::MIN, i32::MAX]"
+            ),
+            SampleValue(
+              kotlin = "IntArray(100) { i -> i + 32767  }",
+              rust = "((32767..=32866).collect::<Vec<i32>>())"
+            ),
           ),
           borrowRustValue = { "&($it)" },
         ),
@@ -376,8 +412,14 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "longArrayOf()", rust = "vec![]"),
             SampleValue(kotlin = "longArrayOf(0L, 5L)", rust = "vec![0, 5]"),
-            SampleValue(kotlin = "longArrayOf(kotlin.Long.MIN_VALUE, kotlin.Long.MAX_VALUE)", rust = "vec![i64::MIN, i64::MAX]"),
-            SampleValue(kotlin = "LongArray(100) { i -> i + 2147483647L }", rust = "((2147483647..=2147483746).collect::<Vec<i64>>())"),
+            SampleValue(
+              kotlin = "longArrayOf(kotlin.Long.MIN_VALUE, kotlin.Long.MAX_VALUE)",
+              rust = "vec![i64::MIN, i64::MAX]"
+            ),
+            SampleValue(
+              kotlin = "LongArray(100) { i -> i + 2147483647L }",
+              rust = "((2147483647..=2147483746).collect::<Vec<i64>>())"
+            ),
           ),
           borrowRustValue = { "&($it)" },
         ),
@@ -390,7 +432,10 @@ class BridgeEveryTypeTest {
           values = listOf(
             SampleValue(kotlin = "doubleArrayOf()", rust = "vec![]"),
             SampleValue(kotlin = "doubleArrayOf(0.0, -0.0, 0.5)", rust = "vec![0.0, -0.0, 0.5]"),
-            SampleValue(kotlin = "doubleArrayOf(2.2250738585072014e-308)", rust = "vec![f64::MIN_POSITIVE]"),
+            SampleValue(
+              kotlin = "doubleArrayOf(2.2250738585072014e-308)",
+              rust = "vec![f64::MIN_POSITIVE]"
+            ),
             SampleValue(
               kotlin = "doubleArrayOf(kotlin.Double.MIN_VALUE, kotlin.Double.MAX_VALUE)",
               rust = "vec![f64::from_bits(1), f64::MAX]",
@@ -409,8 +454,14 @@ class BridgeEveryTypeTest {
           rustType = "Vec<String>",
           values = listOf(
             SampleValue(kotlin = "listOf<String>()", rust = "vec![] as Vec<String>"),
-            SampleValue(kotlin = "listOf(\"hello\", \"world\")", rust = "[\"hello\", \"world\"].map(String::from).to_vec()"),
-            SampleValue(kotlin = "listOf(\"\", \"abc\\u0000def\", \"\uD83C\uDF69\")", rust = "[\"\", \"abc\\u{0000}def\", \"\uD83C\uDF69\"].map(String::from).to_vec()"),
+            SampleValue(
+              kotlin = "listOf(\"hello\", \"world\")",
+              rust = "[\"hello\", \"world\"].map(String::from).to_vec()"
+            ),
+            SampleValue(
+              kotlin = "listOf(\"\", \"abc\\u0000def\", \"\uD83C\uDF69\")",
+              rust = "[\"\", \"abc\\u{0000}def\", \"\uD83C\uDF69\"].map(String::from).to_vec()"
+            ),
           ),
           borrowRustValue = { "&($it)" },
         ),
@@ -443,7 +494,10 @@ class BridgeEveryTypeTest {
           rustType = "[u32; 2]",
           values = listOf(
             SampleValue(kotlin = "listOf(0U, 5U)", rust = "[0, 5]"),
-            SampleValue(kotlin = "listOf(kotlin.UInt.MIN_VALUE, kotlin.UInt.MAX_VALUE)", rust = "[u32::MIN, u32::MAX]"),
+            SampleValue(
+              kotlin = "listOf(kotlin.UInt.MIN_VALUE, kotlin.UInt.MAX_VALUE)",
+              rust = "[u32::MIN, u32::MAX]"
+            ),
           ),
         ),
         SampleType(
@@ -452,9 +506,18 @@ class BridgeEveryTypeTest {
           kotlinType = "List<String>",
           rustType = "[String; 2]",
           values = listOf(
-            SampleValue(kotlin = "listOf(\"hello\", \"world\")", rust = "[\"hello\", \"world\"].map(String::from)"),
-            SampleValue(kotlin = "listOf(\"\", \"abc\\u0000def\")", rust = "[\"\", \"abc\\u{0000}def\"].map(String::from)"),
-            SampleValue(kotlin = "listOf(\"emoji\", \"\uD83C\uDF69\")", rust = "[\"emoji\", \"\uD83C\uDF69\"].map(String::from)"),
+            SampleValue(
+              kotlin = "listOf(\"hello\", \"world\")",
+              rust = "[\"hello\", \"world\"].map(String::from)"
+            ),
+            SampleValue(
+              kotlin = "listOf(\"\", \"abc\\u0000def\")",
+              rust = "[\"\", \"abc\\u{0000}def\"].map(String::from)"
+            ),
+            SampleValue(
+              kotlin = "listOf(\"emoji\", \"\uD83C\uDF69\")",
+              rust = "[\"emoji\", \"\uD83C\uDF69\"].map(String::from)"
+            ),
           ),
         ),
         SampleType(
@@ -463,7 +526,10 @@ class BridgeEveryTypeTest {
           kotlinType = "List<Int>",
           rustType = "[i32; 18]",
           values = listOf(
-            SampleValue(kotlin = "List(18) { i -> i }", rust = "(std::array::from_fn(|i| i as i32))"),
+            SampleValue(
+              kotlin = "List(18) { i -> i }",
+              rust = "(std::array::from_fn(|i| i as i32))"
+            ),
           ),
         ),
         SampleType(
@@ -472,8 +538,14 @@ class BridgeEveryTypeTest {
           kotlinType = "List<Pair<Boolean, Int>>",
           rustType = "[(bool, i32); 3]",
           values = listOf(
-            SampleValue(kotlin = "listOf(true to 12, false to 6, true to kotlin.Int.MAX_VALUE)", rust = "[(true, 12), (false, 6), (true, 2147483647)]"),
-            SampleValue(kotlin = "listOf(false to 1, true to 2, true to 3)", rust = "[(false, 1), (true, 2), (true, 3)]"),
+            SampleValue(
+              kotlin = "listOf(true to 12, false to 6, true to kotlin.Int.MAX_VALUE)",
+              rust = "[(true, 12), (false, 6), (true, 2147483647)]"
+            ),
+            SampleValue(
+              kotlin = "listOf(false to 1, true to 2, true to 3)",
+              rust = "[(false, 1), (true, 2), (true, 3)]"
+            ),
           ),
         ),
       ),
@@ -665,8 +737,14 @@ class BridgeEveryTypeTest {
           kotlinType = "dev.wasmo.brevity.Quad<String, Double, Double, Double>",
           rustType = "(String, f64, f64, f64)",
           values = listOf(
-            SampleValue(kotlin = "dev.wasmo.brevity.Quad(\"Origin\", 0.0, 0.0, 0.0)", rust = "(\"Origin\".to_string(), 0.0, 0.0, 0.0)"),
-            SampleValue(kotlin = "dev.wasmo.brevity.Quad(\"\uD83D\uDCC8\", 0.5, 0.5, 0.5)", rust = "(\"\uD83D\uDCC8\".to_string(), 0.5, 0.5, 0.5)"),
+            SampleValue(
+              kotlin = "dev.wasmo.brevity.Quad(\"Origin\", 0.0, 0.0, 0.0)",
+              rust = "(\"Origin\".to_string(), 0.0, 0.0, 0.0)"
+            ),
+            SampleValue(
+              kotlin = "dev.wasmo.brevity.Quad(\"\uD83D\uDCC8\", 0.5, 0.5, 0.5)",
+              rust = "(\"\uD83D\uDCC8\".to_string(), 0.5, 0.5, 0.5)"
+            ),
             SampleValue(
               kotlin = "dev.wasmo.brevity.Quad(\"To the\\u0000 fences\", 2.2250738585072014e-308, kotlin.Double.MIN_VALUE, kotlin.Double.MAX_VALUE)",
               rust = "(\"To the\\u{0000} fences\".to_string(), f64::MIN_POSITIVE, f64::from_bits(1), f64::MAX)",
@@ -715,7 +793,10 @@ class BridgeEveryTypeTest {
           kotlinType = "Map<String, String>",
           rustType = "std::collections::BTreeMap<String, String>",
           values = listOf(
-            SampleValue(kotlin = "mapOf<String, String>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf<String, String>()",
+              rust = "std::collections::BTreeMap::new()",
+            ),
             SampleValue(
               kotlin = "mapOf(\"hello\" to \"world\", \"foo\" to \"bar\")",
               rust = "std::collections::BTreeMap::from([(\"foo\".to_string(), \"bar\".to_string()), (\"hello\".to_string(), \"world\".to_string())])",
@@ -733,7 +814,10 @@ class BridgeEveryTypeTest {
           kotlinType = "Map<Boolean, String>",
           rustType = "std::collections::BTreeMap<bool, String>",
           values = listOf(
-            SampleValue(kotlin = "mapOf<Boolean, String>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf<Boolean, String>()",
+              rust = "std::collections::BTreeMap::new()",
+            ),
             SampleValue(
               kotlin = "mapOf(true to \"let's go\")",
               rust = "std::collections::BTreeMap::from([(true, \"let's go\".to_string())])",
@@ -751,7 +835,10 @@ class BridgeEveryTypeTest {
           kotlinType = "Map<Byte, ULong>",
           rustType = "std::collections::BTreeMap<i8, u64>",
           values = listOf(
-            SampleValue(kotlin = "mapOf<Byte, ULong>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf<Byte, ULong>()",
+              rust = "std::collections::BTreeMap::new()",
+            ),
             SampleValue(
               kotlin = "mapOf(kotlin.Byte.MIN_VALUE to kotlin.ULong.MIN_VALUE, kotlin.Byte.MAX_VALUE to kotlin.ULong.MAX_VALUE)",
               rust = "std::collections::BTreeMap::from([(i8::MIN, u64::MIN), (i8::MAX, u64::MAX)])",
@@ -769,7 +856,10 @@ class BridgeEveryTypeTest {
           kotlinType = "Map<ULong, Byte>",
           rustType = "std::collections::BTreeMap<u64, i8>",
           values = listOf(
-            SampleValue(kotlin = "mapOf<ULong, Byte>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf<ULong, Byte>()",
+              rust = "std::collections::BTreeMap::new()",
+            ),
             SampleValue(
               kotlin = "mapOf(kotlin.ULong.MIN_VALUE to kotlin.Byte.MIN_VALUE, kotlin.ULong.MAX_VALUE to kotlin.Byte.MAX_VALUE)",
               rust = "std::collections::BTreeMap::from([(u64::MIN, i8::MIN), (u64::MAX, i8::MAX)])",
@@ -805,7 +895,10 @@ class BridgeEveryTypeTest {
           kotlinType = "Map<UInt, String?>",
           rustType = "std::collections::BTreeMap<u32, Option<String>>",
           values = listOf(
-            SampleValue(kotlin = "mapOf<UInt, String?>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf<UInt, String?>()",
+              rust = "std::collections::BTreeMap::new()",
+            ),
             SampleValue(
               kotlin = "mapOf(kotlin.UInt.MIN_VALUE to null, kotlin.UInt.MAX_VALUE to \"max\")",
               rust = "std::collections::BTreeMap::from([(u32::MIN, None), (u32::MAX, Some(\"max\".to_string()))])",
@@ -823,7 +916,10 @@ class BridgeEveryTypeTest {
           kotlinType = "Map<String, Map<String, UInt>>",
           rustType = "std::collections::BTreeMap<String, std::collections::BTreeMap<String, u32>>",
           values = listOf(
-            SampleValue(kotlin = "mapOf<String, Map<String, UInt>>()", rust = "std::collections::BTreeMap::new()",),
+            SampleValue(
+              kotlin = "mapOf<String, Map<String, UInt>>()",
+              rust = "std::collections::BTreeMap::new()",
+            ),
             SampleValue(
               kotlin = "mapOf(\"empty\" to mapOf<String, UInt>(), \"full\" to mapOf(\"a\" to 1U, \"b\" to 2U))",
               rust = "std::collections::BTreeMap::from([" +
@@ -867,7 +963,10 @@ class BridgeEveryTypeTest {
           kotlinType = "List<Pair<Boolean, String>>",
           rustType = "Vec<(bool, String)>",
           values = listOf(
-            SampleValue(kotlin = "listOf<Pair<Boolean, String>>()", rust = "vec![] as Vec<(bool, String)>"),
+            SampleValue(
+              kotlin = "listOf<Pair<Boolean, String>>()",
+              rust = "vec![] as Vec<(bool, String)>"
+            ),
             SampleValue(
               kotlin = "listOf(true to \"preheat the fryer\", false to \"glaze the \uD83C\uDF69s\")",
               rust = "vec![(true, \"preheat the fryer\".to_string()), (false, \"glaze the \uD83C\uDF69s\".to_string())]"
@@ -885,7 +984,10 @@ class BridgeEveryTypeTest {
           kotlinType = "List<Triple<String, Double, Boolean>>",
           rustType = "Vec<(String, f64, bool)>",
           values = listOf(
-            SampleValue(kotlin = "listOf<Triple<String, Double, Boolean>>()", rust = "vec![] as Vec<(String, f64, bool)>"),
+            SampleValue(
+              kotlin = "listOf<Triple<String, Double, Boolean>>()",
+              rust = "vec![] as Vec<(String, f64, bool)>"
+            ),
             SampleValue(
               kotlin = "listOf(Triple(\"Maple Dip\", 1.99, true), Triple(\"Pink Sprinkle\", 9.99, false))",
               rust = "vec![(\"Maple Dip\".to_string(), 1.99, true), (\"Pink Sprinkle\".to_string(), 9.99, false)]"
@@ -904,7 +1006,10 @@ class BridgeEveryTypeTest {
           rustType = "Vec<Option<f64>>",
           values = listOf(
             SampleValue(kotlin = "listOf<Double?>()", rust = "vec![] as Vec<Option<f64>>"),
-            SampleValue(kotlin = "listOf(180.1, null, 176.0)", rust = "vec![Some(180.1), None, Some(176.0)]"),
+            SampleValue(
+              kotlin = "listOf(180.1, null, 176.0)",
+              rust = "vec![Some(180.1), None, Some(176.0)]"
+            ),
             SampleValue(kotlin = "listOf(null, 190.25)", rust = "vec![None, Some(190.25)]"),
           ),
           borrowRustValue = { "&($it)" }

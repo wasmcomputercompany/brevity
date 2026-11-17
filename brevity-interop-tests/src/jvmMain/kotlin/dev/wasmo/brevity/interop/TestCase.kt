@@ -1,8 +1,8 @@
-package dev.wasmo.brevity.integration
+package dev.wasmo.brevity.interop
 
 import dev.wasmo.brevity.Orientation
-import dev.wasmo.brevity.integration.PassingMechanism.Parameter
-import dev.wasmo.brevity.integration.PassingMechanism.Return
+import dev.wasmo.brevity.interop.PassingMechanism.Parameter
+import dev.wasmo.brevity.interop.PassingMechanism.Return
 import dev.wasmo.brevity.kotlin.generator.lowerCamelCase
 import okio.Buffer
 import okio.BufferedSink

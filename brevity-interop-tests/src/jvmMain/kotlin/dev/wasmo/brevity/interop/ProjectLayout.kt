@@ -1,4 +1,4 @@
-package dev.wasmo.brevity.integration
+package dev.wasmo.brevity.interop
 
 import okio.Path
 

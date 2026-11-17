@@ -2,12 +2,6 @@ package dev.wasmo.brevity.integration
 
 import assertk.assertThat
 import assertk.assertions.isEqualTo
-import dev.wasmo.brevity.WasmInstance
-import dev.wasmo.brevity.wasi.p1.wasiP1World
-import dev.wasmo.brevity.wasi.p2.RealWasiP2Host
-import dev.wasmo.brevity.wasi.p2.wasiP2World
-import dev.wasmo.brevity.wasi.p3.RealWasiP3Host
-import dev.wasmo.brevity.wasi.p3.wasiP3World
 import kotlin.test.Test
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
@@ -15,67 +9,27 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
-import okio.Path.Companion.toPath
 import wit.wasmo.testing.StringArgument
 import wit.wasmo.testing.StringResult
-import wit.wasmo.testing.Types
-import wit.wasmo.testing.WasmoTesting
-import wit.wasmo.testing.World
 
 class RunKotlinWasmTest {
-  private val kotlinWasmPath = "build/compileSync/wasmWasi/main/developmentExecutable/kotlin/brevity-root-brevity-integration-tests.wasm".toPath()
-  private val host = object : WasmoTesting.Host {
-    override val testingTypes: Types
-      get() = object : Types {}
-  }
-
   @Test
   fun `call function declared on world`() = runTest {
-    val world = WasmoTesting.World { host }
-    val wasiP1 = FakeWasi()
-    WasmInstance(
-      path = kotlinWasmPath,
-      worlds = listOf(
-        wasiP1World { wasiP1 },
-        wasiP2World { RealWasiP2Host() },
-        wasiP3World { RealWasiP3Host() },
-        world,
-      ),
-    )
-    val result = world.guest.sum(5L, 10L)
+    val tester = BrevityIntegrationTester()
+    val result = tester.world.guest.sum(5L, 10L)
     assertThat(result).isEqualTo(15L)
   }
 
   @Test
   fun `call function declared on interface`() = runTest {
-    val world = WasmoTesting.World { host }
-    val wasiP1 = FakeWasi()
-    WasmInstance(
-      path = kotlinWasmPath,
-      worlds = listOf(
-        wasiP1World { wasiP1 },
-        wasiP2World { RealWasiP2Host() },
-        wasiP3World { RealWasiP3Host() },
-        world,
-      ),
-    )
-    val result = world.guest.calculator.multiply(5L, 10L)
+    val tester = BrevityIntegrationTester()
+    val result = tester.world.guest.calculator.multiply(5L, 10L)
     assertThat(result).isEqualTo(50L)
   }
 
   @Test
   fun `call concatenate`() = runTest {
-    val world = WasmoTesting.World { host }
-    val wasiP1 = FakeWasi()
-    WasmInstance(
-      path = kotlinWasmPath,
-      worlds = listOf(
-        wasiP1World { wasiP1 },
-        wasiP2World { RealWasiP2Host() },
-        wasiP3World { RealWasiP3Host() },
-        world,
-      ),
-    )
+    val tester = BrevityIntegrationTester()
     val a = "Hello, ".asStringArgument()
     val b = "World!".asStringArgument()
 
@@ -86,24 +40,14 @@ class RunKotlinWasmTest {
       }
     }
 
-    world.guest.concat(a, b, callback)
+    tester.world.guest.concat(a, b, callback)
     assertThat(result).isEqualTo("Hello, World!")
   }
 
   @Test
   fun `call inline concatenate`() = runTest {
-    val world = WasmoTesting.World { host }
-    val wasiP1 = FakeWasi()
-    WasmInstance(
-      path = kotlinWasmPath,
-      worlds = listOf(
-        wasiP1World { wasiP1 },
-        wasiP2World { RealWasiP2Host() },
-        wasiP3World { RealWasiP3Host() },
-        world,
-      ),
-    )
-    assertThat(world.guest.inlineConcat("Hello, ", "World!"))
+    val tester = BrevityIntegrationTester()
+    assertThat(tester.world.guest.inlineConcat("Hello, ", "World!"))
       .isEqualTo("Hello, World!")
   }
 
@@ -113,58 +57,27 @@ class RunKotlinWasmTest {
 
   @Test
   fun `call printGreeting`() = runTest {
-    val world = WasmoTesting.World { host }
-    val wasiP1 = FakeWasi()
-    WasmInstance(
-      path = kotlinWasmPath,
-      worlds = listOf(
-        wasiP1World { wasiP1 },
-        wasiP2World { RealWasiP2Host() },
-        wasiP3World { RealWasiP3Host() },
-        world,
-      ),
-    )
+    val tester = BrevityIntegrationTester()
     val name = "Jesse".asStringArgument()
-    world.guest.streams.printGreeting(name)
+    tester.world.guest.streams.printGreeting(name)
 
-    assertThat(wasiP1.stdout.readUtf8()).isEqualTo("Hello, Jesse\n")
+    assertThat(tester.wasiP1.stdout.readUtf8()).isEqualTo("Hello, Jesse\n")
   }
 
   @Test
   fun `call printError`() = runTest {
-    val world = WasmoTesting.World { host }
-    val wasiP1 = FakeWasi()
-    WasmInstance(
-      path = kotlinWasmPath,
-      worlds = listOf(
-        wasiP1World { wasiP1 },
-        wasiP2World { RealWasiP2Host() },
-        wasiP3World { RealWasiP3Host() },
-        world,
-      ),
-    )
+    val tester = BrevityIntegrationTester()
     val name = "Jesse".asStringArgument()
-    world.guest.streams.printError(name)
+    tester.world.guest.streams.printError(name)
 
-    assertThat(wasiP1.stderr.readUtf8()).isEqualTo("kotlin.Exception: boom, Jesse!\n")
+    assertThat(tester.wasiP1.stderr.readUtf8()).isEqualTo("kotlin.Exception: boom, Jesse!\n")
   }
 
   @Test
   fun `parallel sleep`() = runTest {
-    val world = WasmoTesting.World { host }
-    val wasiP1 = FakeWasi()
-    WasmInstance(
-      path = kotlinWasmPath,
-      worlds = listOf(
-        wasiP1World { wasiP1 },
-        wasiP2World { RealWasiP2Host() },
-        wasiP3World { RealWasiP3Host() },
-        world,
-      ),
-    )
-
+    val tester = BrevityIntegrationTester()
     val elapsed = measureTestTime {
-      world.guest.parallelSleep(30U, 100UL)
+      tester.world.guest.parallelSleep(30U, 100UL)
     }
     assertThat(elapsed).isEqualTo(100.milliseconds)
   }

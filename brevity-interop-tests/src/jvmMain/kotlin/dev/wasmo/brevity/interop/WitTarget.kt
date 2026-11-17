@@ -1,9 +1,10 @@
-package dev.wasmo.brevity.integration
+package dev.wasmo.brevity.interop
 
 import dev.wasmo.brevity.Keyword
 import dev.wasmo.brevity.Orientation
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
+import kotlin.collections.iterator
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

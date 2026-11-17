@@ -1,4 +1,4 @@
-package dev.wasmo.brevity.integration
+package dev.wasmo.brevity.interop
 
 import dev.wasmo.brevity.Orientation.Export
 import dev.wasmo.brevity.Orientation.Import
