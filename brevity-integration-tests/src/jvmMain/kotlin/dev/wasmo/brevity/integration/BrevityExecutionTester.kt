@@ -234,6 +234,44 @@ class BrevityExecutionTester(
           """.trimMargin(),
         )
       }
+      fileSystem.write(layout.path / "common.module-template.yaml") {
+        writeUtf8(
+          """
+          |settings:
+          |  kotlin:
+          |    version: 2.4.0
+          |  jvm:
+          |    jdk:
+          |      version: 25
+          |
+          |repositories:
+          |  - mavenLocal
+          |
+          """.trimMargin(),
+        )
+      }
+      fileSystem.write(layout.path / "libs.versions.toml") {
+        writeUtf8(
+          """
+          |[versions]
+          |brevity = "0-testing"
+          |coroutines = "1.10.2"
+          |
+          |[libraries]
+          |assertk = { module = "com.willowtreeapps.assertk:assertk", version = "0.28.1" }
+          |brevity = { module = "dev.wasmo.brevity:brevity", version.ref = "brevity" }
+          |brevity-wasi = { module = "dev.wasmo.brevity:brevity-wasi", version.ref = "brevity" }
+          |brevity-wasi-p1 = { module = "dev.wasmo.brevity:brevity-wasi-p1", version.ref = "brevity" }
+          |brevity-wasi-p2 = { module = "dev.wasmo.brevity:brevity-wasi-p2", version.ref = "brevity" }
+          |brevity-wasi-p3 = { module = "dev.wasmo.brevity:brevity-wasi-p3", version.ref = "brevity" }
+          |chicory-runtime = { module = "com.dylibso.chicory:runtime", version = "1.7.5" }
+          |coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+          |coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+          |okio = { module = "com.squareup.okio:okio", version = "3.16.4" }
+          |
+          """.trimMargin(),
+        )
+      }
     }
   }
 
@@ -254,32 +292,25 @@ class BrevityExecutionTester(
       fileSystem.createDirectories(layout.brevity)
       fileSystem.write(layout.brevity / "module.yaml") {
         writeUtf8(
-          """
+          $$"""
+          |apply:
+          |  - //common.module-template.yaml
+          |
           |product:
           |  type: kmp/lib
           |  platforms: [jvm, wasmWasi]
           |
-          |settings:
-          |  kotlin:
-          |    version: 2.4.0
-          |  jvm:
-          |    jdk:
-          |      version: 25
-          |
-          |repositories:
-          |  - mavenLocal
-          |
           |dependencies:
-          |  - com.squareup.okio:okio:3.16.4
-          |  - dev.wasmo.brevity:brevity:0-testing
-          |  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2
+          |  - $libs.brevity
+          |  - $libs.coroutines.core
+          |  - $libs.okio
           |
           |dependencies@jvm:
-          |  - com.dylibso.chicory:runtime:1.7.5
-          |  - dev.wasmo.brevity:brevity-wasi-p1:0-testing
-          |  - dev.wasmo.brevity:brevity-wasi-p2:0-testing
-          |  - dev.wasmo.brevity:brevity-wasi-p3:0-testing
-          |  - dev.wasmo.brevity:brevity-wasi:0-testing
+          |  - $libs.brevity.wasi
+          |  - $libs.brevity.wasi.p1
+          |  - $libs.brevity.wasi.p2
+          |  - $libs.brevity.wasi.p3
+          |  - $libs.chicory.runtime
           |
           """.trimMargin(),
         )
@@ -292,26 +323,19 @@ class BrevityExecutionTester(
       fileSystem.createDirectories(layout.guest)
       fileSystem.write(layout.guest / "module.yaml") {
         writeUtf8(
-          """
+          $$"""
+          |apply:
+          |  - //common.module-template.yaml
+          |
           |product:
           |  type: wasm-wasi/app
           |
-          |settings:
-          |  kotlin:
-          |    version: 2.4.0
-          |  jvm:
-          |    jdk:
-          |      version: 25
-          |
-          |repositories:
-          |  - mavenLocal
-          |
           |dependencies:
+          |  - $libs.brevity
+          |  - $libs.brevity.wasi.p3
+          |  - $libs.coroutines.core
+          |  - $libs.okio
           |  - ../brevity
-          |  - com.squareup.okio:okio:3.16.4
-          |  - dev.wasmo.brevity:brevity-wasi-p3:0-testing
-          |  - dev.wasmo.brevity:brevity:0-testing
-          |  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2
           |
           """.trimMargin(),
         )
@@ -370,33 +394,29 @@ class BrevityExecutionTester(
       fileSystem.createDirectories(layout.host)
       fileSystem.write(layout.host / "module.yaml") {
         writeUtf8(
-          """
+          $$"""
+          |apply:
+          |  - //common.module-template.yaml
+          |
           |product:
           |  type: jvm/app
           |
           |settings:
-          |  kotlin:
-          |    version: 2.4.0
           |  jvm:
-          |    jdk:
-          |      version: 25
-          |    mainClass: dev.wasmo.brevity.integration.Host${name.replaceFirstChar { it.uppercase() }}MainKt
-          |
-          |repositories:
-          |  - mavenLocal
+          |    mainClass: dev.wasmo.brevity.integration.Host$${name.replaceFirstChar { it.uppercase() }}MainKt
           |
           |dependencies:
+          |  - $libs.assertk
+          |  - $libs.brevity
+          |  - $libs.brevity.wasi
+          |  - $libs.brevity.wasi.p1
+          |  - $libs.brevity.wasi.p2
+          |  - $libs.brevity.wasi.p3
+          |  - $libs.chicory.runtime
+          |  - $libs.coroutines.core
+          |  - $libs.coroutines.test
+          |  - $libs.okio
           |  - ../brevity
-          |  - com.dylibso.chicory:runtime:1.7.5
-          |  - com.squareup.okio:okio:3.16.4
-          |  - com.willowtreeapps.assertk:assertk:0.28.1
-          |  - dev.wasmo.brevity:brevity-wasi-p1:0-testing
-          |  - dev.wasmo.brevity:brevity-wasi-p2:0-testing
-          |  - dev.wasmo.brevity:brevity-wasi-p3:0-testing
-          |  - dev.wasmo.brevity:brevity-wasi:0-testing
-          |  - dev.wasmo.brevity:brevity:0-testing
-          |  - org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2
-          |  - org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2
           |
           """.trimMargin(),
         )
