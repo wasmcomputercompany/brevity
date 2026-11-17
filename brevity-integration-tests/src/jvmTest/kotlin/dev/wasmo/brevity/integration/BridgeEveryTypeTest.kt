@@ -212,10 +212,17 @@ class BridgeEveryTypeTest {
           ),
         ),
       ),
+      predicate = {
+        // stream<char> is not supported; use stream<u8> and an encoding instead.
+        !isStreamOfChar
+      },
     )
 
     test.execute()
   }
+
+  private val TestFunction.isStreamOfChar: Boolean
+    get() = type.id == Identifier("char") && passingMechanism == PassingMechanism.Stream
 
   @Test
   fun enums() = runTest {

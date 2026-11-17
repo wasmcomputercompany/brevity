@@ -168,7 +168,7 @@ class HostKotlinTarget(
         """.trimMargin(),
       )
       val testIndex = testCount++
-      if (testIndex > 0 && testIndex % 10 == 0) {
+      if (testIndex > 0 && testIndex % 5 == 0) {
         writeUtf8(
           """
           |
