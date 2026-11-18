@@ -59,14 +59,12 @@ expect class ReceiveStream<T> : Resource {
   /**
    * Receive up to [count] elements and return them as a list.
    *
-   * This will suspend until:
+   * This suspends until at least one element is received.
    *
-   *  * At least one element is received, or
-   *  * The stream is canceled, or
-   *  * The send stream is closed.
+   * If the receive operation is canceled, this immediately returns and empty list.
    *
-   * Returns an empty list if the [SendStream] is closed or if this receive call is asynchronously
-   * canceled.
+   * If the send stream is closed, this immediately sets [isClosedForSend] to true and returns an
+   * empty list.
    *
    * @param count the maximum number of elements to return. This may be zero, in which case the call
    *   will suspend until the sender calls [SendStream.send] with a non-empty list. Note that when
@@ -89,7 +87,7 @@ expect class ReceiveStream<T> : Resource {
   fun cancel()
 
   /**
-   * Drops this stream. This sets [SendStream.isClosedForReceive] to true.
+   * Drops this stream.
    *
    * After a stream is closed, it is an error to call [receive].
    *
@@ -101,29 +99,24 @@ expect class ReceiveStream<T> : Resource {
 /**
  * Receive a single element and return it.
  *
- * This will suspend until:
+ * This suspends until an element is received.
  *
- *  * At least one element is received, or
- *  * The stream is canceled, or
- *  * The send stream is closed.
+ * If the receive operation is canceled, this immediately returns null.
  *
- * Returns null if the [SendStream] is closed or if this receive call is asynchronously canceled.
+ * If the send stream is closed, this immediately sets [isClosedForSend] to true and returns null.
  *
  * @throws IllegalStateException if this [ReceiveStream] is closed.
  */
 expect suspend fun <T : Any> ReceiveStream<T>.receiveOrNull(): T?
 
 /**
- * Receive up to [byteCount] bytes and write them to [sink] starting at [offset]. Returns the number
- * of bytes transmitted.
+ * Receive up to [byteCount] bytes and write them to [sink] starting at [offset].
  *
- * This will suspend until:
+ * This suspends until at least one byte is received.
  *
- *  * At least one byte is received, or
- *  * The stream is canceled, or
- *  * The send stream is closed.
+ * If the receive operation is canceled, this immediately returns 0.
  *
- * This returns 0 if the [SendStream] is closed or if this receive call is asynchronously canceled.
+ * If the send stream is closed, this immediately sets [isClosedForSend] to true and returns -1.
  *
  * @param byteCount the maximum number of elements to return. This may be zero, in which case the
  *   call will suspend until the sender calls [SendStream.send] with a non-empty list. Note that
@@ -138,15 +131,13 @@ expect suspend fun ReceiveStream<Byte>.receive(
 ): Int
 
 /**
- * Receive up to [count] unit values, Returns the number of unit values received.
+ * Receive up to [count] unit values.
  *
- * This will suspend until:
+ * This suspends until at least one value is received.
  *
- *  * At least one unit value is received, or
- *  * The stream is canceled, or
- *  * The send stream is closed.
+ * If the receive operation is canceled, this immediately returns 0.
  *
- * Returns 0 if the [SendStream] is closed or if this receive call is asynchronously canceled.
+ * If the send stream is closed, this immediately sets [isClosedForSend] to true and returns -1.
  *
  * Unlike all other stream types, `Stream<Unit>` does not copy values and so transmitting up to
  * `2 ^ 28 - 1` unit values is efficient.
