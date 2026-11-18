@@ -1,4 +1,4 @@
-package dev.wasmo.brevity.integration
+package dev.wasmo.brevity.interop
 
 import dev.wasmo.brevity.collectNoIssuesOrThrow
 import dev.wasmo.brevity.kotlin.generator.WitBridgeGenerator
@@ -43,7 +43,6 @@ class BrevityExecutionTester(
   val rawWitUseStatements: String = "",
   val extraFiles: Map<Path, String> = mapOf(),
   val types: List<SampleType>,
-  val sleep: Boolean = false,
   predicate: TestFunction.() -> Boolean = { true },
 ) {
   private val fileSystem: WriteOnlyIfChangedFileSystem = WriteOnlyIfChangedFileSystem(fileSystem)

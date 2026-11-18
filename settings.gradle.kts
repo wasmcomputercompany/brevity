@@ -15,14 +15,15 @@ dependencyResolutionManagement {
   }
 }
 
-include(":sample")
 include(":brevity")
 include(":brevity-cli")
 include(":brevity-gradle-plugin")
 include(":brevity-integration-tests")
+include(":brevity-interop-tests")
 include(":brevity-kotlin-generator")
 include(":brevity-testing")
 include(":brevity-wit")
+include(":sample")
 include(":wasi:brevity-wasi")
 include(":wasi:brevity-wasi-p1")
 include(":wasi:brevity-wasi-p2")
