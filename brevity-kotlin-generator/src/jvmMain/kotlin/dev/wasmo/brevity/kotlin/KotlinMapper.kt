@@ -120,7 +120,7 @@ class KotlinMapper(
 
       is TypeName.Stream -> {
         val elementType = name.type?.let { get(it) } ?: UNIT
-        Symbols.Brevity.receiveStream(name.cardinality).parameterizedBy(elementType)
+        Symbols.Brevity.streamReceiver(name.cardinality).parameterizedBy(elementType)
       }
 
       is TypeName.Tuple -> when (name.types.size) {

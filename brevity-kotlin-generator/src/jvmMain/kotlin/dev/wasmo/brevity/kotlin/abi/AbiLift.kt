@@ -323,24 +323,24 @@ private class AbiStreamNewLift(
     check(receiver == null)
     codeBuilder.platform.afterLiftParameters()
 
-    val streamPairName = codeBuilder.newName("streamPair")
+    val streamName = codeBuilder.newName("stream")
     val resultName = codeBuilder.newName("result")
     codeBuilder.addStatement(
       "val %N = %T()",
-      streamPairName,
-      Symbols.Brevity.streamPair(stream.cardinality).parameterizedBy(stream.elementType),
+      streamName,
+      Symbols.Brevity.stream(stream.cardinality).parameterizedBy(stream.elementType),
     )
     codeBuilder.addStatement(
-      "%N.receive.initBinding(%L, %L)",
-      streamPairName,
+      "%N.receiver.initBinding(%L, %L)",
+      streamName,
       codeBuilder.bridge,
       typeNamer.streamBindingInstance(this.stream.irStream.type),
     )
     codeBuilder.addStatement(
-      "val %N = (%N.send.rep.toLong() shl 32) or %N.receive.rep.toLong()",
+      "val %N = (%N.sender.rep.toLong() shl 32) or %N.receiver.rep.toLong()",
       resultName,
-      streamPairName,
-      streamPairName,
+      streamName,
+      streamName,
     )
     return CodeBlockExpression(
       type = LONG,
@@ -363,8 +363,8 @@ private class AbiStreamIoLift(
 
     val streamName = codeBuilder.newName("stream")
     val streamType = when (functionName.op) {
-      FunctionName.StreamOp.Read -> Symbols.Brevity.receiveStream(stream.cardinality)
-      FunctionName.StreamOp.Write -> Symbols.Brevity.sendStream(stream.cardinality)
+      FunctionName.StreamOp.Read -> Symbols.Brevity.streamReceiver(stream.cardinality)
+      FunctionName.StreamOp.Write -> Symbols.Brevity.streamSender(stream.cardinality)
     }
     codeBuilder.addStatement(
       "val %N = %L.getImportedResource<%T>(%L)",
@@ -408,8 +408,8 @@ private class AbiStreamCancelLift(
 
     val streamName = codeBuilder.newName("stream")
     val streamType = when (functionName.op) {
-      FunctionName.StreamOp.Read -> Symbols.Brevity.receiveStream(stream.cardinality)
-      FunctionName.StreamOp.Write -> Symbols.Brevity.sendStream(stream.cardinality)
+      FunctionName.StreamOp.Read -> Symbols.Brevity.streamReceiver(stream.cardinality)
+      FunctionName.StreamOp.Write -> Symbols.Brevity.streamSender(stream.cardinality)
     }
     codeBuilder.addStatement(
       "val %N = %L.getImportedResource<%T>(%L)",
@@ -448,8 +448,8 @@ private class AbiStreamDropLift(
 
     val streamName = codeBuilder.newName("stream")
     val streamType = when (functionName.op) {
-      FunctionName.StreamOp.Read -> Symbols.Brevity.receiveStream(stream.cardinality)
-      FunctionName.StreamOp.Write -> Symbols.Brevity.sendStream(stream.cardinality)
+      FunctionName.StreamOp.Read -> Symbols.Brevity.streamReceiver(stream.cardinality)
+      FunctionName.StreamOp.Write -> Symbols.Brevity.streamSender(stream.cardinality)
     }
     codeBuilder.addStatement(
       "val %N = %L.getImportedResource<%T>(%L)",

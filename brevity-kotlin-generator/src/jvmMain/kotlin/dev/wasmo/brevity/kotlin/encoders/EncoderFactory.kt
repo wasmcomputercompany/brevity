@@ -39,9 +39,9 @@ class EncoderFactory(
         val elementType = typeName.type?.let { kotlinMapper.get(it) } ?: UNIT
         StreamEncoder(
           type = typeName,
-          streamType = Symbols.Brevity.receiveStream(typeName.cardinality)
+          receiverType = Symbols.Brevity.streamReceiver(typeName.cardinality)
             .parameterizedBy(elementType),
-          pairType = Symbols.Brevity.streamPair(typeName.cardinality)
+          streamType = Symbols.Brevity.stream(typeName.cardinality)
             .parameterizedBy(elementType),
         )
       }

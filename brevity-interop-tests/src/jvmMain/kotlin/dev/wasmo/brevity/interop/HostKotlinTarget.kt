@@ -34,9 +34,9 @@ class HostKotlinTarget(
       |
       |import assertk.assertThat
       |import assertk.assertions.isEqualTo
-      |import dev.wasmo.brevity.ReceiveFuture
-      |import dev.wasmo.brevity.ReceiveStream
-      |import dev.wasmo.brevity.StreamPair
+      |import dev.wasmo.brevity.Future.Receiver
+      |import dev.wasmo.brevity.Stream
+      |import dev.wasmo.brevity.Stream.Receiver
       |import dev.wasmo.brevity.WasmInstance
       |import dev.wasmo.brevity.WasmTask
       |import dev.wasmo.brevity.integration.isEqualTo

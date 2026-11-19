@@ -1,9 +1,8 @@
 package dev.wasmo.brevity.wasi.p3
 
-import dev.wasmo.brevity.FuturePair
-import dev.wasmo.brevity.ReceiveFuture
-import dev.wasmo.brevity.ReceiveStream
+import dev.wasmo.brevity.Future
 import dev.wasmo.brevity.Result
+import dev.wasmo.brevity.Stream
 import wit.wasi.cli.v0_3_0.Environment
 import wit.wasi.cli.v0_3_0.ErrorCode
 import wit.wasi.cli.v0_3_0.Exit
@@ -41,10 +40,10 @@ class RealWasiP3Host : Imports.Host {
   override val stdout: Stdout
     get() = TODO("Not yet implemented")
   override val stderr: Stderr = object : Stderr {
-    override fun writeViaStream(data_: ReceiveStream<UByte>): ReceiveFuture<Result<*, ErrorCode>> {
-      val (send, receive) = FuturePair<Result<*, ErrorCode>>()
+    override fun writeViaStream(data_: Stream.Receiver<UByte>): Future.Receiver<Result<*, ErrorCode>> {
+      val (sender, receiver) = Future<Result<*, ErrorCode>>()
       // TODO: actually write.
-      return receive
+      return receiver
     }
   }
   override val terminalInput: TerminalInput

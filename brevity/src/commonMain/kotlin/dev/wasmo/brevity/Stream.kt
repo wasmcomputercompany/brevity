@@ -25,7 +25,7 @@ import kotlinx.coroutines.channels.Channel
  *
  * ### Bulk Bytes
  *
- * This API offers specialized overloads for `StreamPair<Byte>` that do bulk transfer into a
+ * This API offers specialized overloads for `Stream<Byte>` that do bulk transfer into a
  * `ByteArray` instead of a `List<Byte>`. At any scale this is a useful performance benefit. But
  * it’s especially important as `stream<byte>` is how all data gets into and out of Wasm:
  *
