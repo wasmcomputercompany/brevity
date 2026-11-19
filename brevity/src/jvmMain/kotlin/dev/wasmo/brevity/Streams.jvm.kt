@@ -45,11 +45,7 @@ actual class Stream<T> {
       get() = TODO()
 
     actual suspend fun sendSome(values: List<T>): Int {
-      TODO()
-    }
-
-    suspend fun send(value: T) {
-      buffer.write(value)
+      buffer.write(values)
 
       pair.binding.transferIfPossible(
         memoryAllocator = pair.memoryAllocator,
@@ -63,10 +59,12 @@ actual class Stream<T> {
         }
       }
 
-      check(buffer.pos == 1)
+      check(buffer.pos > 0)
+      val result = buffer.pos
       buffer.queued = false
       buffer.values.clear()
       buffer.continuation = null
+      return result
     }
 
     @BrevityInternalApi
@@ -98,28 +96,13 @@ actual class Stream<T> {
     actual val senderClosed: Boolean
       get() = TODO()
 
-    actual suspend fun receive(count: Int): List<T> {
-      TODO()
-    }
-
     @BrevityInternalApi
     fun initBinding(bridge: HostBridge, binding: StreamBinding<T>) {
       pair.initBinding(bridge, binding)
     }
 
-    @BrevityInternalApi
-    fun read(address: Int, count: Int): Int {
-      buffer.setAddressRange(pair.binding, address, count)
-      pair.binding.transferIfPossible(
-        memoryAllocator = pair.memoryAllocator,
-        sendBuffer = pair.sender.buffer,
-        receiveBuffer = pair.receiver.buffer,
-      )
-      return buffer.takeResult()
-    }
-
-    suspend fun receive(): T {
-      buffer.read(1)
+    actual suspend fun receive(count: Int): List<T> {
+      buffer.read(count)
 
       pair.binding.transferIfPossible(
         memoryAllocator = pair.memoryAllocator,
@@ -133,11 +116,23 @@ actual class Stream<T> {
         }
       }
 
-      check(buffer.pos == 1)
+      check(buffer.pos > 0)
       buffer.queued = false
-      val result = buffer.values.removeFirst()
+      val result = buffer.values.toList()
+      buffer.values.clear()
       buffer.continuation = null
       return result
+    }
+
+    @BrevityInternalApi
+    fun read(address: Int, count: Int): Int {
+      buffer.setAddressRange(pair.binding, address, count)
+      pair.binding.transferIfPossible(
+        memoryAllocator = pair.memoryAllocator,
+        sendBuffer = pair.sender.buffer,
+        receiveBuffer = pair.receiver.buffer,
+      )
+      return buffer.takeResult()
     }
 
     @BrevityInternalApi

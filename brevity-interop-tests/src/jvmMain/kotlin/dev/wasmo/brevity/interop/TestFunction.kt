@@ -793,7 +793,7 @@ data class TestFunction(
           writeUtf8(
             """
             |  index = ${valueIndex},
-            |).receive()
+            |).receive().single()
             """.trimMargin(),
           )
         }

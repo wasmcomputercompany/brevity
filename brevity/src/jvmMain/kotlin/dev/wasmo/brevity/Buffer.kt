@@ -30,14 +30,14 @@ internal class Buffer<T>(
     this.limit = count
   }
 
-  fun write(value: T) {
-    check(values.isEmpty())
+  fun write(values: List<T>) {
+    check(this.values.isEmpty())
     check(!queued)
 
     this.queued = true
     this.address = ADDRESS_LIST
     this.pos = 0
-    this.values += value
+    this.values += values
     this.limit = values.size
   }
 

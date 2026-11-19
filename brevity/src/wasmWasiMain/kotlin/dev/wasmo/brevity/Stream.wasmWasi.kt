@@ -46,18 +46,19 @@ actual class Stream<T> {
       get() = TODO()
 
     actual suspend fun sendSome(values: List<T>): Int {
-      TODO()
-    }
-
-    suspend fun send(value: T) {
       val binding = pair.deferredBinding.await()
+      val count = values.size
+      val byteCount = binding.byteCount
       withScopedMemoryAllocator { memoryAllocator ->
-        val address = memoryAllocator.allocate(binding.byteCount)
-        binding.store(memoryAllocator, address, value)
-        val writeResult = binding.write(rep, address.address.toInt(), 1).toUInt()
+        val address = memoryAllocator.allocate(count * byteCount)
+        for ((i, element) in values.withIndex()) {
+          binding.store(memoryAllocator, address + i * byteCount, element)
+        }
+        val writeResult = binding.write(rep, address.address.toInt(), count).toUInt()
         val task = currentTask() as RootTask
         val progress = task.awaitStreamProgress(rep, PackedCopyResult(writeResult))
-        check(progress == 1) { "unexpected progress: $progress" }
+        check(progress > 0) { "unexpected progress: $progress" }
+        return progress
       }
     }
   }
@@ -69,18 +70,17 @@ actual class Stream<T> {
       get() = TODO()
 
     actual suspend fun receive(count: Int): List<T> {
-      TODO()
-    }
-
-    suspend fun receive(): T {
       val binding = pair.deferredBinding.await()
+      val byteCount = binding.byteCount
       withScopedMemoryAllocator { memoryAllocator ->
-        val address = memoryAllocator.allocate(binding.byteCount)
-        val readResult = binding.read(rep, address.address.toInt(), 1).toUInt()
+        val address = memoryAllocator.allocate(count * byteCount)
+        val readResult = binding.read(rep, address.address.toInt(), count).toUInt()
         val task = currentTask() as RootTask
         val progress = task.awaitStreamProgress(rep, PackedCopyResult(readResult))
-        check(progress == 1) { "unexpected progress: $progress" }
-        return binding.load(address)
+        check(progress > 0) { "unexpected progress: $progress" }
+        return List(progress) {
+          binding.load(address + byteCount * it)
+        }
       }
     }
 
