@@ -27,7 +27,8 @@ import kotlinx.coroutines.channels.Channel
  *
  * This API offers specialized overloads for `Stream<Byte>` that do bulk transfer into a
  * `ByteArray` instead of a `List<Byte>`. At any scale this is a useful performance benefit. But
- * it’s especially important as `stream<byte>` is how all data gets into and out of Wasm:
+ * it’s especially important as `stream<byte>` is how all of these data types get into and out of
+ * Wasm:
  *
  * * HTTP request and response bodies
  * * File contents
@@ -50,7 +51,7 @@ import kotlinx.coroutines.channels.Channel
  * ### Unit Streams
  *
  * Streams often include a type parameter, like `stream<u8>` or `stream<string>`. WIT also supports
- * streams with no type parameter, like `stream`. Brevity maps this to a Kotlin `StreamPair<Unit>`.
+ * streams with no type parameter, like `stream`. Brevity maps this to a Kotlin `Stream<Unit>`.
  * This type has a meaningful count but no data.
  *
  * Unlike all other stream types, `Stream<Unit>` does not copy values: sending and receiving
