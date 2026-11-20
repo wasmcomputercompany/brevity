@@ -618,12 +618,12 @@ data class TestFunction(
           val value = hostIndexToValueFunction.kotlinCall("this", "index", "Nothing")
           writeUtf8(
             """
-            |val (sendStream, receiveStream) = StreamPair<${type.kotlinType}>()
+            |val (sender, receiver) = Stream<${type.kotlinType}>()
             |val value = $value
             |currentCoroutineContext()[WasmTask]!!.scope.launch {
-            |  sendStream.send(value)
+            |  sender.send(value)
             |}
-            |return receiveStream
+            |return receiver
             |
             """.trimMargin(),
           )
@@ -703,7 +703,7 @@ data class TestFunction(
         writeUtf8(
           """
           |    index: Int,
-          |  ): ReceiveFuture<${type.kotlinType}> {
+          |  ): Future.Receiver<${type.kotlinType}> {
           |
           """.trimMargin(),
         )
@@ -713,7 +713,7 @@ data class TestFunction(
         writeUtf8(
           """
           |    index: Int,
-          |  ): ReceiveStream<${type.kotlinType}> {
+          |  ): Stream.Receiver<${type.kotlinType}> {
           |
           """.trimMargin(),
         )
@@ -793,7 +793,7 @@ data class TestFunction(
           writeUtf8(
             """
             |  index = ${valueIndex},
-            |).receive()
+            |).receive().single()
             """.trimMargin(),
           )
         }

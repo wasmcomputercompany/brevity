@@ -78,7 +78,9 @@ object Symbols {
     val CallbackCode = ClassName("dev.wasmo.brevity", "CallbackCode")
     val CurrentTask = MemberName("dev.wasmo.brevity", "currentTask")
     val Event = ClassName("dev.wasmo.brevity", "Event")
-    val FuturePair = ClassName("dev.wasmo.brevity", "FuturePair")
+    val Future = ClassName("dev.wasmo.brevity", "Future")
+    val FutureReceiver = ClassName("dev.wasmo.brevity", "Future", "Receiver")
+    val FutureSender = ClassName("dev.wasmo.brevity", "Future", "Sender")
     val GuestBridge = ClassName("dev.wasmo.brevity", "GuestBridge")
     val HostBridge = ClassName("dev.wasmo.brevity", "HostBridge")
     val LoadString = MemberName("dev.wasmo.brevity", "loadString")
@@ -86,39 +88,37 @@ object Symbols {
     val PackedAsyncResult = ClassName("dev.wasmo.brevity", "PackedAsyncResult")
     val PackedSubtaskResult = ClassName("dev.wasmo.brevity", "PackedSubtaskResult")
     val Quad = ClassName("dev.wasmo.brevity", "Quad")
-    val ReceiveStream = ClassName("dev.wasmo.brevity", "ReceiveStream")
-    val ReceiveFuture = ClassName("dev.wasmo.brevity", "ReceiveFuture")
     val Resource = ClassName("dev.wasmo.brevity", "Resource")
     val Result = ClassName("dev.wasmo.brevity", "Result")
     val ResultError = Result.nestedClass("Error")
     val ResultOk = Result.nestedClass("Ok")
     val RootTask = ClassName("dev.wasmo.brevity", "RootTask")
-    val SendFuture = ClassName("dev.wasmo.brevity", "SendFuture")
-    val SendStream = ClassName("dev.wasmo.brevity", "SendStream")
-    val StreamBinding = ClassName("dev.wasmo.brevity", "StreamBinding")
     val StoreByteArray = MemberName("dev.wasmo.brevity", "storeByteArray")
-    val StreamPair = ClassName("dev.wasmo.brevity", "StreamPair")
+    val Stream = ClassName("dev.wasmo.brevity", "Stream")
+    val StreamBinding = ClassName("dev.wasmo.brevity", "StreamBinding")
+    val StreamReceiver = ClassName("dev.wasmo.brevity", "Stream", "Receiver")
+    val StreamSender = ClassName("dev.wasmo.brevity", "Stream", "Sender")
     val WitAdapter = ClassName("dev.wasmo.brevity", "WitAdapter")
     val World = ClassName("dev.wasmo.brevity", "World")
 
-    fun streamPair(cardinality: Cardinality): ClassName {
+    fun stream(cardinality: Cardinality): ClassName {
       return when (cardinality) {
-        Cardinality.Future -> FuturePair
-        Cardinality.Stream -> StreamPair
+        Cardinality.Future -> Future
+        Cardinality.Stream -> Stream
       }
     }
 
-    fun receiveStream(cardinality: Cardinality): ClassName {
+    fun streamReceiver(cardinality: Cardinality): ClassName {
       return when (cardinality) {
-        Cardinality.Future -> ReceiveFuture
-        Cardinality.Stream -> ReceiveStream
+        Cardinality.Future -> FutureReceiver
+        Cardinality.Stream -> StreamReceiver
       }
     }
 
-    fun sendStream(cardinality: Cardinality): ClassName {
+    fun streamSender(cardinality: Cardinality): ClassName {
       return when (cardinality) {
-        Cardinality.Future -> SendFuture
-        Cardinality.Stream -> SendStream
+        Cardinality.Future -> FutureSender
+        Cardinality.Stream -> StreamSender
       }
     }
 

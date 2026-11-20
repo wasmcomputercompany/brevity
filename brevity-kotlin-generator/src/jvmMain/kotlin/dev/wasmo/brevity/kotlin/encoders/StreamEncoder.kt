@@ -8,8 +8,8 @@ import dev.wasmo.brevity.kotlin.code.GuestPlatform
 
 internal class StreamEncoder(
   type: TypeName,
+  private val receiverType: TypeNameKt,
   private val streamType: TypeNameKt,
-  private val pairType: TypeNameKt,
 ) : HandleEncoder(type) {
   context(codeBuilder: CodeBuilder, context: Context)
   override fun liftHandle(
@@ -18,17 +18,17 @@ internal class StreamEncoder(
     return when {
       codeBuilder.platform is GuestPlatform -> {
         CodeBlock.of(
-          "%L.getImportedResource(%L) { %T().receive }",
+          "%L.getImportedResource(%L) { %T().receiver }",
           codeBuilder.bridge,
           index,
-          pairType,
+          streamType,
         )
       }
       else -> {
         CodeBlock.of(
           "%L.getImportedResource<%T>(%L)",
           codeBuilder.bridge,
-          streamType,
+          receiverType,
           index,
         )
       }

@@ -19,8 +19,8 @@ class StreamBindingsCollector(
     lowerFlatIo: LowerFlatIo,
     value: CodeBlock,
   ) {
-    val receiveStream = initBinding(encoder, value)
-    encoder.lowerFlat(memoryAllocator, lowerFlatIo, receiveStream)
+    val streamReceiver = initBinding(encoder, value)
+    encoder.lowerFlat(memoryAllocator, lowerFlatIo, streamReceiver)
   }
 
   context(codeBuilder: CodeBuilder, context: Context)
@@ -50,8 +50,8 @@ class StreamBindingsCollector(
     offset: Int,
     value: CodeBlock,
   ) {
-    val receiveStream = initBinding(encoder, value)
-    encoder.store(memoryAllocator, baseAddress, offset, receiveStream)
+    val streamReceiver = initBinding(encoder, value)
+    encoder.store(memoryAllocator, baseAddress, offset, streamReceiver)
   }
 
   context(codeBuilder: CodeBuilder)
@@ -59,15 +59,15 @@ class StreamBindingsCollector(
     encoder: Encoder,
     value: CodeBlock,
   ): CodeBlock {
-    val receiveStreamName = codeBuilder.newName("receiveStream")
-    codeBuilder.addStatement("val %N = %L", receiveStreamName, value)
+    val streamReceiverName = codeBuilder.newName("receiver")
+    codeBuilder.addStatement("val %N = %L", streamReceiverName, value)
 
-    codeBuilder.add("%N.initBinding(", receiveStreamName)
+    codeBuilder.add("%N.initBinding(", streamReceiverName)
     if (codeBuilder.platform is HostPlatform) {
       codeBuilder.add("%L, ", codeBuilder.bridge)
     }
     codeBuilder.add("%L)\n", typeNamer.streamBindingInstance(encoder.type))
 
-    return CodeBlock.of("%N", receiveStreamName)
+    return CodeBlock.of("%N", streamReceiverName)
   }
 }
