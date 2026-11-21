@@ -3,141 +3,109 @@
 
 package dev.wasmo.brevity
 
-import kotlinx.coroutines.CancellableContinuation
-import kotlinx.coroutines.suspendCancellableCoroutine
-
 actual class Stream<T> {
   actual val sender = Sender(this)
   actual val receiver = Receiver(this)
-
-  internal lateinit var memoryAllocator: MemoryAllocator
-  internal lateinit var binding: StreamBinding<T>
 
   actual constructor()
 
   actual operator fun component1() = sender
   actual operator fun component2() = receiver
 
-  @BrevityInternalApi
-  fun initBinding(bridge: HostBridge, binding: StreamBinding<T>) {
-    if (!sender.hasRep && !receiver.hasRep) {
-      sender.rep = bridge.putImportedResource(sender)
-      sender.hasRep = true
-      sender.buffer = Buffer(sender, StreamEndId.StreamWrite)
-
-      receiver.rep = bridge.putImportedResource(receiver)
-      receiver.hasRep = true
-      receiver.buffer = Buffer(receiver, StreamEndId.StreamRead)
-    }
-
-    this.binding = binding
-    this.memoryAllocator = bridge.memoryAllocator
-  }
-
   actual class Sender<T> internal constructor(
     private val pair: Stream<T>,
   ) : Waitable() {
-    internal lateinit var buffer: Buffer<T>
-
-    internal var continuation: CancellableContinuation<Unit>? = null
+    internal val end = End<T>(this, StreamEndId.StreamWrite)
 
     actual val receiverClosed: Boolean
-      get() = TODO()
+      get() = pair.receiver.end.closed
+
+    actual suspend fun awaitReceive() {
+      TODO()
+    }
 
     actual suspend fun sendSome(values: List<T>): Int {
-      buffer.write(values)
-
-      pair.binding.transferIfPossible(
-        memoryAllocator = pair.memoryAllocator,
-        sendBuffer = pair.sender.buffer,
-        receiveBuffer = pair.receiver.buffer,
+      return end.hostWrite(
+        receiver = pair.receiver.end,
+        values = values,
       )
-
-      if (buffer.pos == 0) {
-        suspendCancellableCoroutine { continuation ->
-          buffer.continuation = continuation
-        }
-      }
-
-      check(buffer.pos > 0)
-      val result = buffer.pos
-      buffer.queued = false
-      buffer.values.clear()
-      buffer.continuation = null
-      return result
     }
 
     @BrevityInternalApi
     fun write(address: Int, count: Int): Int {
-      buffer.setAddressRange(pair.binding, address, count)
-
-      pair.binding.transferIfPossible(
-        memoryAllocator = pair.memoryAllocator,
-        sendBuffer = pair.sender.buffer,
-        receiveBuffer = pair.receiver.buffer,
+      return end.guestWrite(
+        receiver = pair.receiver.end,
+        address = address,
+        count = count,
       )
-
-      return buffer.takeResult()
     }
 
     @BrevityInternalApi
     fun cancel(): Int {
       TODO()
+    }
+
+    actual override fun close() {
+      end.close()
+      super.close()
     }
   }
 
   actual class Receiver<T> internal constructor(
     internal val pair: Stream<T>,
   ) : Waitable() {
-    internal lateinit var buffer: Buffer<T>
-
-    internal var continuation: CancellableContinuation<T>? = null
+    internal val end = End<T>(this, StreamEndId.StreamRead)
 
     actual val senderClosed: Boolean
-      get() = TODO()
+      get() = pair.sender.end.closed
 
     @BrevityInternalApi
     fun initBinding(bridge: HostBridge, binding: StreamBinding<T>) {
-      pair.initBinding(bridge, binding)
+      val sender = pair.sender
+      val receiver = this
+
+      if (!sender.hasRep && !receiver.hasRep) {
+        sender.rep = bridge.putImportedResource(sender)
+        sender.hasRep = true
+
+        receiver.rep = bridge.putImportedResource(receiver)
+        receiver.hasRep = true
+      }
+
+      sender.end.binding = binding
+      sender.end.memoryAllocator = bridge.memoryAllocator
+      receiver.end.binding = binding
+      receiver.end.memoryAllocator = bridge.memoryAllocator
+    }
+
+    actual suspend fun awaitSend() {
+      TODO()
     }
 
     actual suspend fun receive(count: Int): List<T> {
-      buffer.read(count)
-
-      pair.binding.transferIfPossible(
-        memoryAllocator = pair.memoryAllocator,
-        sendBuffer = pair.sender.buffer,
-        receiveBuffer = pair.receiver.buffer,
+      return end.hostRead(
+        sender = pair.sender.end,
+        count = count,
       )
-
-      if (buffer.pos == 0) {
-        suspendCancellableCoroutine { continuation ->
-          buffer.continuation = continuation
-        }
-      }
-
-      check(buffer.pos > 0)
-      buffer.queued = false
-      val result = buffer.values.toList()
-      buffer.values.clear()
-      buffer.continuation = null
-      return result
     }
 
     @BrevityInternalApi
     fun read(address: Int, count: Int): Int {
-      buffer.setAddressRange(pair.binding, address, count)
-      pair.binding.transferIfPossible(
-        memoryAllocator = pair.memoryAllocator,
-        sendBuffer = pair.sender.buffer,
-        receiveBuffer = pair.receiver.buffer,
+      return end.guestRead(
+        sender = pair.sender.end,
+        address = address,
+        count = count,
       )
-      return buffer.takeResult()
     }
 
     @BrevityInternalApi
     fun cancel(): Int {
       TODO()
+    }
+
+    actual override fun close() {
+      end.close()
+      super.close()
     }
   }
 }

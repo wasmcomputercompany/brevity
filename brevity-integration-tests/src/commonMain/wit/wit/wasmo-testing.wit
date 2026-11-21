@@ -1,30 +1,43 @@
 package wasmo:testing;
 
-interface types {
-  resource string-argument {
-    get: func() -> string;
-  }
-  resource string-result {
-    put: func(value: string);
-  }
-}
-
 interface calculator {
   multiply: func(a: s64, b: s64) -> s64;
 }
 
+interface stdio {
+  print-greeting: func(name: string);
+  print-error: func(name: string);
+}
+
+/// Perform send or receive operations on the guest, but orchestrate from the host.
 interface streams {
-  use types.{string-argument};
-  print-greeting: func(name: string-argument);
-  print-error: func(name: string-argument);
+  resource sender-tester {
+    is-receiver-closed: func() -> bool;
+    send-some: async func(values: list<string>) -> s32;
+    cancel-send: async func();
+    close-sender: func();
+  }
+
+  resource receiver-tester {
+    is-sender-closed: func() -> bool;
+    receive: async func(count: s32) -> list<string>;
+    cancel-receive: async func();
+    close-receiver: func();
+  }
+
+  /// Guest sender, host receiver.
+  create-guest-host: func() -> tuple<sender-tester, stream<string>>;
+  /// Host sender, guest receiver.
+  create-host-guest: func(%stream: stream<string>) -> receiver-tester;
+  /// Guest sender, guest receiver.
+  create-guest-guest: func() -> tuple<sender-tester, receiver-tester>;
 }
 
 world wasmo-testing {
-  use types.{string-argument, string-result};
   export calculator;
+  export stdio;
   export streams;
   export sum: func(a: s64, b: s64) -> s64;
-  export concat: func(a: string-argument, b: string-argument, callback: string-result);
-  export inline-concat: func(a: string, b: string) -> string;
+  export concat: func(a: string, b: string) -> string;
   export parallel-sleep: async func(coroutine-count: u32, duration-millis: u64);
 }
