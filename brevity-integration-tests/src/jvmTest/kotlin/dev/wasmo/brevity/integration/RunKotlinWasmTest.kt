@@ -9,8 +9,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
-import wit.wasmo.testing.StringArgument
-import wit.wasmo.testing.StringResult
 
 class RunKotlinWasmTest {
   @Test
@@ -30,36 +28,14 @@ class RunKotlinWasmTest {
   @Test
   fun `call concatenate`() = runTest {
     val tester = BrevityIntegrationTester()
-    val a = "Hello, ".asStringArgument()
-    val b = "World!".asStringArgument()
-
-    var result: String? = null
-    val callback = object : StringResult() {
-      override fun put(value_: String) {
-        result = value_
-      }
-    }
-
-    tester.world.guest.concat(a, b, callback)
-    assertThat(result).isEqualTo("Hello, World!")
-  }
-
-  @Test
-  fun `call inline concatenate`() = runTest {
-    val tester = BrevityIntegrationTester()
-    assertThat(tester.world.guest.inlineConcat("Hello, ", "World!"))
+    assertThat(tester.world.guest.concat("Hello, ", "World!"))
       .isEqualTo("Hello, World!")
-  }
-
-  private fun String.asStringArgument() = object : StringArgument() {
-    override fun get() = this@asStringArgument
   }
 
   @Test
   fun `call printGreeting`() = runTest {
     val tester = BrevityIntegrationTester()
-    val name = "Jesse".asStringArgument()
-    tester.world.guest.streams.printGreeting(name)
+    tester.world.guest.stdio.printGreeting("Jesse")
 
     assertThat(tester.wasiP1.stdout.readUtf8()).isEqualTo("Hello, Jesse\n")
   }
@@ -67,8 +43,7 @@ class RunKotlinWasmTest {
   @Test
   fun `call printError`() = runTest {
     val tester = BrevityIntegrationTester()
-    val name = "Jesse".asStringArgument()
-    tester.world.guest.streams.printError(name)
+    tester.world.guest.stdio.printError("Jesse")
 
     assertThat(tester.wasiP1.stderr.readUtf8()).isEqualTo("kotlin.Exception: boom, Jesse!\n")
   }

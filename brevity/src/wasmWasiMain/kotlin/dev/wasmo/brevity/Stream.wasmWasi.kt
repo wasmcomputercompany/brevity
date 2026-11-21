@@ -3,6 +3,7 @@
 
 package dev.wasmo.brevity
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.wasm.unsafe.UnsafeWasmMemoryApi
 import kotlin.wasm.unsafe.withScopedMemoryAllocator
 import kotlinx.coroutines.CompletableDeferred
@@ -41,9 +42,13 @@ actual class Stream<T> {
   actual class Sender<T> internal constructor(
     private val pair: Stream<T>,
   ) : Resource() {
-
+    private var _receiverClosed = false
     actual val receiverClosed: Boolean
-      get() = TODO()
+      get() = _receiverClosed
+
+    actual suspend fun awaitReceive() {
+      TODO()
+    }
 
     actual suspend fun sendSome(values: List<T>): Int {
       val binding = pair.deferredBinding.await()
@@ -54,39 +59,90 @@ actual class Stream<T> {
         for ((i, element) in values.withIndex()) {
           binding.store(memoryAllocator, address + i * byteCount, element)
         }
-        val writeResult = binding.write(rep, address.address.toInt(), count).toUInt()
-        val task = currentTask() as RootTask
-        val progress = task.awaitStreamProgress(rep, PackedCopyResult(writeResult))
-        check(progress > 0) { "unexpected progress: $progress" }
-        return progress
+
+        var writeResult = PackedCopyResult(
+          binding.write(rep, address.address.toInt(), count).toUInt(),
+        )
+
+        if (writeResult == PackedCopyResult.Blocked) {
+          val task = currentTask() as RootTask
+          writeResult = task.awaitStreamProgress(rep)
+        }
+
+        return when (writeResult.copyResult) {
+          CopyResult.Completed -> writeResult.progress
+          CopyResult.Dropped -> {
+            _receiverClosed = true
+            0
+          }
+          CopyResult.Cancelled -> throw CancellationException()
+        }
       }
+    }
+
+    actual override fun close() {
+      // TODO: do something smart if the binding isn't initialized.
+      try {
+        val binding = pair.deferredBinding.getCompleted()
+        binding.dropWrite(rep)
+      } catch (_: IllegalStateException) {
+      }
+      super.close()
     }
   }
 
   actual class Receiver<T> internal constructor(
     private val pair: Stream<T>,
   ) : Resource() {
+    private var _senderClosed = false
     actual val senderClosed: Boolean
-      get() = TODO()
+      get() = _senderClosed
+
+    @BrevityInternalApi
+    fun initBinding(binding: StreamBinding<T>) {
+      pair.initBinding(binding)
+    }
+
+    actual suspend fun awaitSend() {
+      TODO()
+    }
 
     actual suspend fun receive(count: Int): List<T> {
       val binding = pair.deferredBinding.await()
       val byteCount = binding.byteCount
       withScopedMemoryAllocator { memoryAllocator ->
         val address = memoryAllocator.allocate(count * byteCount)
-        val readResult = binding.read(rep, address.address.toInt(), count).toUInt()
-        val task = currentTask() as RootTask
-        val progress = task.awaitStreamProgress(rep, PackedCopyResult(readResult))
-        check(progress > 0) { "unexpected progress: $progress" }
-        return List(progress) {
-          binding.load(address + byteCount * it)
+
+        var readResult = PackedCopyResult(
+          binding.read(rep, address.address.toInt(), count).toUInt(),
+        )
+
+        if (readResult == PackedCopyResult.Blocked) {
+          val task = currentTask() as RootTask
+          readResult = task.awaitStreamProgress(rep)
+        }
+
+        return when (readResult.copyResult) {
+          CopyResult.Completed -> List(readResult.progress) {
+            binding.load(address + byteCount * it)
+          }
+          CopyResult.Dropped -> {
+            _senderClosed = true
+            listOf()
+          }
+          CopyResult.Cancelled -> throw CancellationException()
         }
       }
     }
 
-    @BrevityInternalApi
-    fun initBinding(binding: StreamBinding<T>) {
-      pair.initBinding(binding)
+    actual override fun close() {
+      // TODO: do something smart if the binding isn't initialized.
+      try {
+        val binding = pair.deferredBinding.getCompleted()
+        binding.dropRead(rep)
+      } catch (_: IllegalStateException) {
+      }
+      super.close()
     }
   }
 }
