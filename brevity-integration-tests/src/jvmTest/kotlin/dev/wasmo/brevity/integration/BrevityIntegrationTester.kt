@@ -28,5 +28,8 @@ class BrevityIntegrationTester {
       wasiP3World { RealWasiP3Host() },
       world,
     ),
-  )
+  ).apply {
+    // GC after setting everything up, until our GC correctness issue is fixed.
+    gc()
+  }
 }

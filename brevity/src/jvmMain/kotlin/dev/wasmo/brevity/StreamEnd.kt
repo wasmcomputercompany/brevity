@@ -89,13 +89,13 @@ internal class End<T>(
     }
     check(this.values.isEmpty())
 
+    val senderState = sender.state
+    if (senderState == State.Closed) return listOf()
+
     this.state = State.Transferring
     this.address = ADDRESS_LIST
     this.pos = 0
     this.limit = count.coerceAtMost(PackedCopyResult.MAX_PROGRESS)
-
-    val senderState = sender.state
-    if (senderState == State.Closed) return listOf()
 
     // If both ends are State.Transferring, transfer!
     if (senderState == State.Transferring) {
