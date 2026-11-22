@@ -61,34 +61,16 @@ class RootTask(
   }
 
   /**
-   * Suspends until at least one element is copied.
+   * Suspends until the stream is not blocked.
    *
    * @throws CancellationException
    */
-  suspend fun awaitStreamProgress(streamIndex: Int, packedCopyResult: PackedCopyResult): Int {
-    var packedCopyResult = packedCopyResult
-    while (true) {
-      when {
-        packedCopyResult == PackedCopyResult.Blocked -> {
-          packedCopyResult = suspendCancellableCoroutine { continuation ->
-            streamContinuations[streamIndex] = continuation
-          }
-          continue
-        }
-
-        packedCopyResult.copyResult == CopyResult.Completed -> {
-          return packedCopyResult.progress
-        }
-
-        packedCopyResult.copyResult == CopyResult.Dropped -> {
-          throw CancellationException() // TODO: return a sentinel like '0' for dropped
-        }
-
-        packedCopyResult.copyResult == CopyResult.Cancelled -> {
-          throw CancellationException()
-        }
-      }
+  suspend fun awaitStreamProgress(streamIndex: Int): PackedCopyResult {
+    val result = suspendCancellableCoroutine { continuation ->
+      streamContinuations[streamIndex] = continuation
     }
+    check(result != PackedCopyResult.Blocked)
+    return result
   }
 
   fun resume(event: Event): PackedAsyncResult {

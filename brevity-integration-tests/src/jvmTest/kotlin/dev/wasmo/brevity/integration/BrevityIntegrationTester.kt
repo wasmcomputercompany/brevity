@@ -7,7 +7,6 @@ import dev.wasmo.brevity.wasi.p2.wasiP2World
 import dev.wasmo.brevity.wasi.p3.RealWasiP3Host
 import dev.wasmo.brevity.wasi.p3.wasiP3World
 import okio.Path.Companion.toPath
-import wit.wasmo.testing.Types
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.World
 
@@ -16,8 +15,6 @@ class BrevityIntegrationTester {
     "build/compileSync/wasmWasi/main/developmentExecutable/kotlin/brevity-root-brevity-integration-tests.wasm".toPath()
 
   private val host = object : WasmoTesting.Host {
-    override val testingTypes: Types
-      get() = object : Types {}
   }
 
   val world = WasmoTesting.World { host }

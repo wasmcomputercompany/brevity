@@ -34,20 +34,6 @@ import kotlinx.coroutines.channels.Channel
  * * File contents
  * * stdin, stdout, stderr
  *
- * ### Zero-sized sends and receives
- *
- * It is valid and supported to attempt to send and receive 0 elements.
- *
- * A send call of 0 will suspend until the receiver calls [Receiver.receive] with any count. The
- * sender can then perform whatever work is necessary to produce a value, and then send it with
- * confidence that the value will be immediately received.
- *
- * A receive call of 0 will suspend until the sender sends a non-empty list. The receiver can then
- * prepare to receive a value, and receive it with confidence that a value will be immediately sent.
- *
- * This is a useful mechanism to defer work, but it is imperfect. Sends and receives can both be
- * canceled, so there's always a risk that a ready stream stops being ready.
- *
  * ### Unit Streams
  *
  * Streams often include a type parameter, like `stream<u8>` or `stream<string>`. WIT also supports
@@ -104,14 +90,25 @@ expect class Stream<T> {
     val receiverClosed: Boolean
 
     /**
+     * Suspend until the receiver indicates readiness by calling either [Receiver.receive] or
+     * [Receiver.awaitSend].
+     *
+     * The sender can then perform whatever work is necessary to produce a value, and then send it
+     * with some confidence that the value will be received.
+     *
+     * This mechanism can be used to defer work, but it is imperfect. Receives can be canceled, so
+     * there's a possibility that a ready stream stops being ready.
+     */
+    suspend fun awaitReceive()
+
+    /**
      * Attempt to send at least one element of [values], and return the total number sent.
      *
-     * This suspends until at least one element is sent.
+     * This suspends until at least one element is sent (unless [values] is empty, in which case
+     * this returns immediately).
      *
      * If the send stream is closed, this immediately sets [receiverClosed] to true and returns 0.
      *
-     * @param values the elements to send. This may be empty, in which case the call will suspend
-     *   until the receiver calls [Receiver.receive].
      * @throws IllegalStateException if this [Sender] is closed.
      */
     suspend fun sendSome(values: List<T>): Int
@@ -121,7 +118,8 @@ expect class Stream<T> {
      *
      * After a stream is closed, it is an error to call [send].
      *
-     * @throws IllegalStateException if there is a currently-suspended send on this stream.
+     * @throws ConcurrentModificationException if there is a currently-suspended send on this
+     *   stream.
      */
     override fun close()
   }
@@ -139,15 +137,26 @@ expect class Stream<T> {
     val senderClosed: Boolean
 
     /**
+     * Suspend until the sender indicates readiness by calling [Sender.send] with a non-empty list
+     * of values.
+     *
+     * The receiver can then prepare to receive a value, and receive it with some confidence that a
+     * value will be sent.
+     *
+     * This mechanism can be used to defer work, but it is imperfect. Sends can be canceled, so
+     * there's a possibility that a ready stream stops being ready.
+     */
+    suspend fun awaitSend()
+
+    /**
      * Receive up to [count] elements and return them as a list.
      *
-     * This suspends until at least one element is received.
+     * This suspends until at least one element is received (unless [count] is zero, in which case
+     * this returns immediately).
      *
      * If the send stream is closed, this immediately sets [senderClosed] to true and returns an
      * empty list.
      *
-     * @param count the maximum number of elements to receive. This may be zero, in which case the
-     *   call will suspend until the sender calls [Sender.send] with a non-empty list.
      * @throws IllegalStateException if this [Receiver] is closed.
      */
     suspend fun receive(count: Int = 1): List<T>
@@ -157,7 +166,8 @@ expect class Stream<T> {
      *
      * After a stream is closed, it is an error to call [receive].
      *
-     * @throws IllegalStateException if there is a currently-suspended receive on this stream.
+     * @throws ConcurrentModificationException if there is a currently-suspended receive on this
+     *   stream.
      */
     override fun close()
   }
