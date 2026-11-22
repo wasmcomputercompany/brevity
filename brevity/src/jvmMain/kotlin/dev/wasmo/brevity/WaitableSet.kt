@@ -9,7 +9,7 @@ class WaitableSet : Resource() {
   val waitables = ArrayDeque<Waitable>()
 
   /** If this set is currently waiting, it is waiting on this continuation. */
-  private var continuation: Continuation<Event>? = null
+  private var continuation: Continuation<Waitable>? = null
 
   fun poll(): Event {
     for (waitable in waitables) {
@@ -32,16 +32,17 @@ class WaitableSet : Resource() {
     val event = poll()
     if (event != Event.None) return event
 
-    return suspendCancellableCoroutine { continuation ->
+    val waitable = suspendCancellableCoroutine { continuation ->
       this.continuation = continuation
     }
+    return waitable.take()
   }
 
-  /** Returns true if the event was delivered. */
-  fun resume(pendingEvent: PendingEvent): Boolean {
+  /** Returns true if the waitable was delivered. */
+  fun resume(waitable: Waitable): Boolean {
     val continuation = this.continuation ?: return false
     this.continuation = null
-    continuation.resume(pendingEvent.take())
+    continuation.resume(waitable)
     return true
   }
 }

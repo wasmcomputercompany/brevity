@@ -64,7 +64,6 @@ internal class End<T>(
       suspendCancellableCoroutine { continuation ->
         this.continuation = continuation
       }
-      this.continuation = null
     }
 
     val result = this.pos
@@ -110,7 +109,6 @@ internal class End<T>(
       suspendCancellableCoroutine { continuation ->
         this.continuation = continuation
       }
-      this.continuation = null
     }
 
     val result = values.toList()
@@ -191,8 +189,9 @@ internal class End<T>(
   }
 
   private fun resume() {
-    val continuation = this.continuation
-    if (continuation != null) {
+    if (address == ADDRESS_LIST) {
+      val continuation = this.continuation ?: return
+      this.continuation = null
       continuation.resume(Unit)
       return
     }
@@ -270,33 +269,55 @@ internal class End<T>(
       }
     }
 
+    /**
+     * Transfer [count] elements from sender to receiver. Each is either a regular [List] or an
+     * address in linear memory, for a total of four cases.
+     *
+     * We don't resolve [End.binding] for list-to-list transfers, as it's unlikely to be initialized
+     * in that case.
+     */
     @OptIn(BrevityInternalApi::class)
     fun <T> transfer(
       sender: End<T>,
       receiver: End<T>,
       count: Int,
     ) {
-      val byteCount = when {
-        sender.address == ADDRESS_LIST && receiver.address == ADDRESS_LIST -> 0
-        else -> sender.binding.byteCount
-      }
-      var sendAddress = sender.address + (sender.pos * byteCount)
-      var receiveAddress = receiver.address + (receiver.pos * byteCount)
+      if (sender.address == ADDRESS_LIST && receiver.address == ADDRESS_LIST) {
+        // List to List.
+        receiver.values.addAll(sender.values.subList(sender.pos, sender.pos + count))
+      } else {
+        val binding = sender.binding
+        val memoryAllocator = sender.memoryAllocator
+        val byteCount = binding.byteCount
 
-      for (p in 0 until count) {
-        val value = when (sender.address) {
-          ADDRESS_LIST -> sender.values[sender.pos + p]
-          else -> sender.binding.load(sendAddress)
-            .also { sendAddress += byteCount }
+        if (sender.address == ADDRESS_LIST) {
+          // List to linear memory.
+          var r = receiver.address + (receiver.pos * byteCount)
+          for (p in 0 until count) {
+            val value = sender.values[sender.pos + p]
+            binding.store(memoryAllocator, r, value)
+            r += byteCount
+          }
+
+        } else if (receiver.address == ADDRESS_LIST) {
+          // Linear memory to list.
+          var s = sender.address + (sender.pos * byteCount)
+          for (p in 0 until count) {
+            receiver.values += binding.load(s)
+            s += byteCount
+          }
+        } else {
+          // Linear memory to linear memory.
+          var s = sender.address + (sender.pos * byteCount)
+          var r = receiver.address + (receiver.pos * byteCount)
+          for (p in 0 until count) {
+            val value = binding.load(s)
+            binding.store(memoryAllocator, r, value)
+            s += byteCount
+            r += byteCount
+          }
         }
-
-        when (receiver.address) {
-          ADDRESS_LIST -> receiver.values += value
-          else -> sender.binding.store(sender.memoryAllocator, receiveAddress, value)
-            .also { receiveAddress += byteCount }
-        }
       }
-
       sender.pos += count
       receiver.pos += count
     }

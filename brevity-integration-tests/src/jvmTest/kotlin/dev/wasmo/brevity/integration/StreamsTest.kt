@@ -22,7 +22,7 @@ import wit.wasmo.testing.Streams
  */
 @Burst
 class StreamsTest(
-  private val orientation: Orientation = Orientation.HostToGuest,
+  private val orientation: Orientation,
 ) {
   @Test
   fun `happy path`() = runTest {
@@ -188,6 +188,55 @@ class StreamsTest(
     }
 
     sender.sendSomeOrFail(listOf("a"))
+  }
+
+  /**
+   * This test exercises a very subtle but important performance optimization. If sender + receiver
+   * have different batch sizes (which they usually will), permit multiple of the smaller batches to
+   * contribute to the larger batch.
+   *
+   * The way this works is the transition from `Transferring` to `Idle` state happens when the
+   * stream is resumed, not earlier. Also, we must not switch coroutines (by calling `yield`, for
+   * example) in our transfer functions.
+   */
+  @Test
+  fun `two sends on a single receive`() = runTest {
+    val tester = BrevityIntegrationTester()
+    val [sender, receiver] = tester.world.guest.streams.create()
+
+    val receive5 = async {
+      receiver.receive(5)
+    }
+    val sendAbcAndDef = async {
+      val abc = sender.sendSome(listOf("a", "b", "c"))
+      val def = sender.sendSome(listOf("d", "e", "f"))
+      return@async abc + def
+    }
+    assertThat(receive5.await()).containsExactly("a", "b", "c", "d", "e")
+    assertThat(sendAbcAndDef.await()).isEqualTo(5)
+
+    receiver.closeReceiver()
+    sender.closeSender()
+  }
+
+  @Test
+  fun `two receives on a single send`() = runTest {
+    val tester = BrevityIntegrationTester()
+    val [sender, receiver] = tester.world.guest.streams.create()
+
+    val sendAbcdef = async {
+      sender.sendSome(listOf("a", "b", "c", "d", "e", "f"))
+    }
+    val receive3And2 = async {
+      val receive3 = receiver.receive(3)
+      val receive2 = receiver.receive(2)
+      return@async receive3 + receive2
+    }
+    assertThat(receive3And2.await()).containsExactly("a", "b", "c", "d", "e")
+    assertThat(sendAbcdef.await()).isEqualTo(5)
+
+    receiver.closeReceiver()
+    sender.closeSender()
   }
 
   private fun Streams.create(): Pair<Streams.SenderTester, Streams.ReceiverTester> {

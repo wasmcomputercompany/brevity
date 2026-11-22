@@ -7,15 +7,12 @@ abstract class Waitable : Resource() {
   @BrevityInternalApi
   private var pendingEvent: PendingEvent = PendingEvent.None
 
-  /**
-   * If a waitable set is already waiting, immediately deliver the event. Otherwise, store it in
-   * [pendingEvent] so it's available for a forthcoming call to [take].
-   */
+  /** If a waitable set is already waiting, resume it, so it may take the pending event. */
   @BrevityInternalApi
   internal fun enqueueEvent(pendingEvent: PendingEvent) {
     val waitableSet = this.waitableSet
-    if (waitableSet?.resume(pendingEvent) == true) return
     this.pendingEvent = pendingEvent
+    waitableSet?.resume(this)
   }
 
   /**
