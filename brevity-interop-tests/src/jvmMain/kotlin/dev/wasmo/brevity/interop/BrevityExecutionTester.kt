@@ -53,8 +53,7 @@ class BrevityExecutionTester(
   )
 
   private val testRepository: String
-    get() = System.getProperty("brevity.testRepository")
-      ?: fileSystem.canonicalize("build/testRepository".toPath()).toString()
+    get() = fileSystem.canonicalize("build/testRepository".toPath()).toString()
 
   private val testFunctions: List<TestFunction> = buildList {
     for (functionParent in FunctionParent.entries) {
