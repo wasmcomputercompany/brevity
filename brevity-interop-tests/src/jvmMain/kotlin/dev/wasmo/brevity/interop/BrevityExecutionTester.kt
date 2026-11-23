@@ -41,7 +41,7 @@ class BrevityExecutionTester(
   val name: String,
   val rawWitTypeDeclarations: String = "",
   val rawWitUseStatements: String = "",
-  val extraFiles: Map<Path, String> = mapOf(),
+  val extraBrevityFiles: Map<Path, String> = mapOf(),
   val types: List<SampleType>,
   predicate: TestFunction.() -> Boolean = { true },
 ) {
@@ -278,9 +278,9 @@ class BrevityExecutionTester(
   }
 
   suspend fun writeExtraFiles() {
-    for ((path, content) in extraFiles) {
+    for ([path, content] in extraBrevityFiles) {
       executeIo("writeExtraFiles") {
-        val filePath = layout.path / path
+        val filePath = layout.brevity / path
         fileSystem.createDirectories(filePath.parent!!)
         fileSystem.write(filePath) {
           writeUtf8(content)
