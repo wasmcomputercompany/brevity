@@ -29,11 +29,11 @@ import okio.source
  * This uses the Kotlin Toolchain.
  * https://kotlin-toolchain.org/latest/
  *
- * Brevity's runtime is resolved as 0-testing from build/localMaven. Gradle's jvmTest publishes it
- * there before running. To run these tests outside of Gradle publish it first:
+ * Brevity's runtime is resolved as 0-testing from build/testRepository. Gradle's jvmTest publishes
+ * and syncs it there before running. To run these tests outside of Gradle sync it first:
  *
  * ```
- * ./gradlew publishAllPublicationsToTestRepository
+ * ./gradlew :brevity-interop-tests:syncTestRepository
  * ```
  */
 class BrevityExecutionTester(
@@ -54,7 +54,7 @@ class BrevityExecutionTester(
 
   private val testRepository: String
     get() = System.getProperty("brevity.testRepository")
-      ?: fileSystem.canonicalize("../build/localMaven".toPath()).toString()
+      ?: fileSystem.canonicalize("build/testRepository".toPath()).toString()
 
   private val testFunctions: List<TestFunction> = buildList {
     for (functionParent in FunctionParent.entries) {

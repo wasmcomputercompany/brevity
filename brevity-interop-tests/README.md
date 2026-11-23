@@ -52,5 +52,6 @@ Test Repository
 
 The inputs to these tests include both Brevity's generated code as well as Brevity's runtime
 and dependencies. The Kotlin Toolchain resolves libraries from Maven Central or Maven Local
-so `jvmTest` publishes Brevity to `build/localMaven` under the marker version `0-testing`
+so `jvmTest` publishes Brevity under the marker version `0-testing` and syncs it to
+`build/testRepository` which keeps unchanged artifacts timestamps, so incremental builds survive,
 and points the toolchain there.

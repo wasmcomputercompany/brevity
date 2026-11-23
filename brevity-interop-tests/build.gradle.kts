@@ -37,10 +37,19 @@ val publishTestingArtifacts = listOf(
   ":wasi:brevity-wasi-p3",
 ).map { "$it:publishAllPublicationsToTestRepository" }
 
-tasks.named<Test>("jvmTest") {
+// The Kotlin Toolchain rebuilds when a dependency's mtime changes, every publish writes them.
+// Sync a copy so artifactw with unchanged bytes keep their mtimes.
+val syncedTestRepository = layout.buildDirectory.dir("testRepository")
+val syncTestRepository = tasks.register<Sync>("syncTestRepository") {
   dependsOn(publishTestingArtifacts)
-  inputs.files(fileTree(testRepository) { include("**/*.jar", "**/*.klib") })
-  systemProperty("brevity.testRepository", testRepository.get().asFile.absolutePath)
+  from(testRepository)
+  into(syncedTestRepository)
+  exclude("**/maven-metadata.xml*") // Rewritten with a timestamp on every publish.
+}
+
+tasks.named<Test>("jvmTest") {
+  inputs.files(syncTestRepository)
+  systemProperty("brevity.testRepository", syncedTestRepository.get().asFile.absolutePath)
 
   // Surface test output such as the phase timings to gradle/ci.
   testLogging.showStandardStreams = true
