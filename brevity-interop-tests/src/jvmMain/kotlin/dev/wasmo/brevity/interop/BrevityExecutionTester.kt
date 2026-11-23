@@ -48,7 +48,8 @@ class BrevityExecutionTester(
   private val fileSystem: WriteOnlyIfChangedFileSystem = WriteOnlyIfChangedFileSystem(fileSystem)
 
   private val layout = ProjectLayout(
-    path = "build/BrevityExecutionTester/$name".toPath(),
+    root = "build/BrevityExecutionTester".toPath(),
+    name = name,
   )
 
   private val testRepository: String
@@ -130,12 +131,12 @@ class BrevityExecutionTester(
       val hostKtJar = async {
         kotlinBuild.join()
         packageKotlinHost()
-        "build/tasks/_host_executableJarJvm/host-jvm-executable.jar"
+        "../build/tasks/_$name-host_executableJarJvm/$name-host-jvm-executable.jar"
       }
 
       val guestKtWasm = async {
         kotlinBuild.join()
-        "build/artifacts/CompiledWebArtifact/guestwasmWasidebug/kotlin-output/guest.wasm"
+        "../build/artifacts/CompiledWebArtifact/$name-guestwasmWasidebug/kotlin-output/$name-guest.wasm"
       }
 
       val guestRsWasm = async {
@@ -221,19 +222,19 @@ class BrevityExecutionTester(
 
   suspend fun generateKotlinProject() {
     executeIo("generateKotlinProject") {
-      fileSystem.createDirectories(layout.path)
-      fileSystem.write(layout.path / "project.yaml") {
+      fileSystem.createDirectories(layout.root)
+      fileSystem.write(layout.root / "project.yaml") {
         writeUtf8(
           """
           |modules:
-          |  - ./brevity
-          |  - ./guest
-          |  - ./host
+          |  - ./*/*-brevity
+          |  - ./*/*-guest
+          |  - ./*/*-host
           |
           """.trimMargin(),
         )
       }
-      fileSystem.write(layout.path / "common.module-template.yaml") {
+      fileSystem.write(layout.root / "common.module-template.yaml") {
         writeUtf8(
           """
           |settings:
@@ -249,7 +250,7 @@ class BrevityExecutionTester(
           """.trimMargin(),
         )
       }
-      fileSystem.write(layout.path / "libs.versions.toml") {
+      fileSystem.write(layout.root / "libs.versions.toml") {
         writeUtf8(
           """
           |[versions]
@@ -337,7 +338,7 @@ class BrevityExecutionTester(
           |  - $libs.brevity.wasi.p3
           |  - $libs.coroutines.core
           |  - $libs.okio
-          |  - ../brevity
+          |  - ../$$name-brevity
           |
           """.trimMargin(),
         )
@@ -349,7 +350,7 @@ class BrevityExecutionTester(
     executeIo("generateGuestAppRustCargoToml") {
       fileSystem.createDirectories(layout.rust)
       // Create one cargo workspace for every generated test. Dependencies compile once.
-      fileSystem.write(layout.path.parent!! / "Cargo.toml") {
+      fileSystem.write(layout.root / "Cargo.toml") {
         writeUtf8("""
         |[workspace]
         | resolver = "3"
@@ -418,7 +419,7 @@ class BrevityExecutionTester(
           |  - $libs.coroutines.core
           |  - $libs.coroutines.test
           |  - $libs.okio
-          |  - ../brevity
+          |  - ../$$name-brevity
           |
           """.trimMargin(),
         )
@@ -429,24 +430,24 @@ class BrevityExecutionTester(
   suspend fun compileKotlin() {
     executeCommand(
       "compileKotlin",
-      layout.path,
+      layout.root,
       "kotlin",
       "build",
       "--module",
-      "host",
+      "$name-host",
       "--module",
-      "guest",
+      "$name-guest",
     )
   }
 
   suspend fun packageKotlinHost() {
     executeCommand(
       "packageKotlinHost",
-      layout.path,
+      layout.root,
       "kotlin",
       "package",
       "--module",
-      "host",
+      "$name-host",
     )
   }
 
