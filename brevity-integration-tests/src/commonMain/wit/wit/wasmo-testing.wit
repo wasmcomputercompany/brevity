@@ -13,16 +13,22 @@ interface stdio {
 interface streams {
   resource sender-tester {
     is-receiver-closed: func() -> bool;
-    send-some: async func(values: list<string>) -> s32;
+    send-some-or-fail: async func(values: list<string>) -> result<s32, failure>;
     cancel-send: async func();
-    close-sender: func();
+    close-or-fail: func() -> result<_, failure>;
   }
 
   resource receiver-tester {
     is-sender-closed: func() -> bool;
-    receive: async func(count: s32) -> list<string>;
+    receive-or-fail: async func(count: s32) -> result<list<string>, failure>;
     cancel-receive: async func();
-    close-receiver: func();
+    close-or-fail: func() -> result<_, failure>;
+  }
+
+  variant failure {
+    canceled,
+    concurrent-modification,
+    illegal-state(option<string>),
   }
 
   /// Guest sender, host receiver.
