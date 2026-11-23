@@ -12,8 +12,6 @@ internal class End<T>(
   lateinit var binding: StreamBinding<T>
   lateinit var memoryAllocator: MemoryAllocator
 
-  private var state = State.Idle
-
   /** Data is either in memory at [address]... */
   private var address = 0
 
@@ -23,36 +21,33 @@ internal class End<T>(
   /** A continuation to unblock after accessing the deque. */
   private var continuation: Continuation<Unit>? = null
 
-  private var pos = 0
-  private var limit = 0
-  private val available: Int
-    get() = limit - pos
+  /** -1 if there's no transfer in progress. */
+  private var pos = -1
+  private var limit = -1
+  private var resumed = false
 
-  val closed: Boolean
-    get() = state == State.Closed
+  var closed = false
+    private set
 
   suspend fun hostWrite(
     receiver: End<T>,
     values: List<T>,
+    rendezvous: Boolean = false,
   ): Int {
-    when (state) {
-      State.Idle -> {}
-      State.Transferring -> throw ConcurrentModificationException()
-      State.Closed -> throw IllegalStateException("closed")
-    }
+    check(!closed) { "closed" }
+    if (pos != -1) throw ConcurrentModificationException()
     check(this.values.isEmpty())
 
-    val receiverState = receiver.state
-    if (receiverState == State.Closed) return 0
+    if (receiver.closed) return 0
+    if (values.isEmpty() && !rendezvous) return 0
 
-    this.state = State.Transferring
     this.address = ADDRESS_LIST
     this.pos = 0
     this.values += values
     this.limit = values.size.coerceAtMost(PackedCopyResult.MAX_PROGRESS)
 
     // If both ends are State.Transferring, transfer!
-    if (receiverState == State.Transferring) {
+    if (receiver.pos != -1) {
       transferAndResume(
         sender = this,
         receiver = receiver,
@@ -60,7 +55,7 @@ internal class End<T>(
     }
 
     // Suspend if nothing was transferred.
-    if (pos == 0) {
+    if (!resumed) {
       suspendCancellableCoroutine { continuation ->
         this.continuation = continuation
       }
@@ -69,9 +64,9 @@ internal class End<T>(
     val result = this.pos
 
     // Write complete: become idle again.
-    this.state = State.Idle
-    this.pos = 0
-    this.limit = 0
+    this.pos = -1
+    this.limit = -1
+    this.resumed = false
     this.values.clear()
 
     return result
@@ -80,24 +75,21 @@ internal class End<T>(
   suspend fun hostRead(
     sender: End<T>,
     count: Int,
+    rendezvous: Boolean = false,
   ): List<T> {
-    when (state) {
-      State.Idle -> {}
-      State.Transferring -> throw ConcurrentModificationException()
-      State.Closed -> throw IllegalStateException("closed")
-    }
+    check(!closed) { "closed" }
+    if (pos != -1) throw ConcurrentModificationException()
     check(this.values.isEmpty())
 
-    val senderState = sender.state
-    if (senderState == State.Closed) return listOf()
+    if (sender.closed) return listOf()
+    if (count == 0 && !rendezvous) return listOf()
 
-    this.state = State.Transferring
     this.address = ADDRESS_LIST
     this.pos = 0
     this.limit = count.coerceAtMost(PackedCopyResult.MAX_PROGRESS)
 
     // If both ends are State.Transferring, transfer!
-    if (senderState == State.Transferring) {
+    if (sender.pos != -1) {
       transferAndResume(
         sender = sender,
         receiver = this,
@@ -105,7 +97,7 @@ internal class End<T>(
     }
 
     // Suspend if nothing was transferred.
-    if (pos == 0) {
+    if (!resumed) {
       suspendCancellableCoroutine { continuation ->
         this.continuation = continuation
       }
@@ -114,9 +106,9 @@ internal class End<T>(
     val result = values.toList()
 
     // Read complete: become idle again.
-    this.state = State.Idle
-    this.pos = 0
-    this.limit = 0
+    this.pos = -1
+    this.limit = -1
+    this.resumed = false
     this.values.clear()
 
     return result
@@ -128,24 +120,19 @@ internal class End<T>(
     count: Int,
   ): Int {
     require(address.alignTo(binding.alignment) == address)
-    when (state) {
-      State.Idle -> {}
-      State.Transferring -> throw ConcurrentModificationException()
-      State.Closed -> throw IllegalStateException("closed")
-    }
+    check(!closed) { "closed" }
+    if (pos != -1) throw ConcurrentModificationException()
 
-    val receiverState = receiver.state
-    if (receiverState == State.Closed) {
+    if (receiver.closed) {
       return PackedCopyResult(CopyResult.Dropped).value.toInt()
     }
 
-    this.state = State.Transferring
     this.address = address
     this.pos = 0
     this.limit = count.coerceAtMost(PackedCopyResult.MAX_PROGRESS)
 
     // If both ends are State.Transferring, transfer!
-    if (receiverState == State.Transferring) {
+    if (receiver.pos != -1) {
       transferAndResume(
         sender = this,
         receiver = receiver,
@@ -161,24 +148,19 @@ internal class End<T>(
     count: Int,
   ): Int {
     require(address.alignTo(binding.alignment) == address)
-    when (state) {
-      State.Idle -> {}
-      State.Transferring -> throw ConcurrentModificationException()
-      State.Closed -> throw IllegalStateException("closed")
-    }
+    check(!closed) { "closed" }
+    if (pos != -1) throw ConcurrentModificationException()
 
-    val senderState = sender.state
-    if (senderState == State.Closed) {
+    if (sender.closed) {
       return PackedCopyResult(CopyResult.Dropped).value.toInt()
     }
 
-    this.state = State.Transferring
     this.address = address
     this.pos = 0
     this.limit = count.coerceAtMost(PackedCopyResult.MAX_PROGRESS)
 
     // If both ends are State.Transferring, transfer!
-    if (senderState == State.Transferring) {
+    if (sender.pos != -1) {
       transferAndResume(
         sender = sender,
         receiver = this,
@@ -189,6 +171,8 @@ internal class End<T>(
   }
 
   private fun resume() {
+    resumed = true
+
     if (address == ADDRESS_LIST) {
       val continuation = this.continuation ?: return
       this.continuation = null
@@ -200,9 +184,9 @@ internal class End<T>(
       val packedCopyResult = PackedCopyResult(CopyResult.Completed, pos)
 
       // Become idle again.
-      this.state = State.Idle
-      this.pos = 0
-      this.limit = 0
+      this.pos = -1
+      this.limit = -1
+      this.resumed = false
       this.values.clear()
 
       Event.Stream(streamEndId, waitable.rep, packedCopyResult)
@@ -218,13 +202,8 @@ internal class End<T>(
   }
 
   fun close() {
-    when (state) {
-      State.Idle -> {}
-      State.Transferring -> throw ConcurrentModificationException()
-      State.Closed -> return
-    }
-
-    this.state = State.Closed
+    if (pos != -1) throw ConcurrentModificationException()
+    this.closed = true
   }
 
   private companion object {
@@ -234,38 +213,28 @@ internal class End<T>(
     /** Transfers from this sender to [receiver]. */
     @OptIn(BrevityInternalApi::class)
     fun <T> transferAndResume(sender: End<T>, receiver: End<T>) {
-      check(sender.state == State.Transferring && receiver.state == State.Transferring)
+      val senderPos = sender.pos
+      val senderLimit = sender.limit
+      val receiverPos = receiver.pos
+      val receiverLimit = receiver.limit
+      check(senderPos != -1 && receiverPos != -1)
 
-      val sendAvailable = sender.available
-      val receiveAvailable = receiver.available
+      val sendAvailable = senderLimit - senderPos
+      val receiveAvailable = receiverLimit - receiverPos
       when {
         sendAvailable > 0 && receiveAvailable > 0 -> {
           val toTransfer = minOf(sendAvailable, receiveAvailable)
           transfer(sender, receiver, toTransfer)
-
-          if (toTransfer == sendAvailable) {
-            sender.state = State.Idle
-          }
           sender.resume()
-
-          if (toTransfer == receiveAvailable) {
-            receiver.state = State.Idle
-          }
           receiver.resume()
         }
 
-        // If the sender did a zero-length send, notify the sender. Note that if BOTH do a zero length
-        // op, we notify only the sender. This is asymmetric!
-        sendAvailable == 0 -> {
-          sender.state = State.Idle
-          sender.resume()
-        }
+        // If the sender did a zero-length send, notify the sender. Note that if BOTH do a zero
+        // length op, we notify only the sender. This is asymmetric!
+        sendAvailable == 0 -> sender.resume()
 
         // If the receiver did a zero-length receive, notify the receiver.
-        else -> {
-          receiver.state = State.Idle
-          receiver.resume()
-        }
+        else -> receiver.resume()
       }
     }
 
@@ -321,11 +290,5 @@ internal class End<T>(
       sender.pos += count
       receiver.pos += count
     }
-  }
-
-  internal enum class State {
-    Idle,
-    Transferring,
-    Closed,
   }
 }

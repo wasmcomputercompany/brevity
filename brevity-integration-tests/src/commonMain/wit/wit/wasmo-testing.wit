@@ -13,6 +13,7 @@ interface stdio {
 interface streams {
   resource sender-tester {
     is-receiver-closed: func() -> bool;
+    await-receive-or-fail: async func() -> result<_, failure>;
     send-some-or-fail: async func(values: list<string>) -> result<s32, failure>;
     cancel-send: async func();
     close-or-fail: func() -> result<_, failure>;
@@ -20,6 +21,7 @@ interface streams {
 
   resource receiver-tester {
     is-sender-closed: func() -> bool;
+    await-send-or-fail: async func() -> result<_, failure>;
     receive-or-fail: async func(count: s32) -> result<list<string>, failure>;
     cancel-receive: async func();
     close-or-fail: func() -> result<_, failure>;

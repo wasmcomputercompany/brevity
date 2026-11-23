@@ -17,6 +17,15 @@ internal class RealSenderTester(
 
   override fun isReceiverClosed() = sender.receiverClosed
 
+  override suspend fun awaitReceiveOrFail(): Result<*, Streams.Failure> {
+    try {
+      sender.awaitReceive()
+      return Result.Ok(Unit)
+    } catch (e: Throwable) {
+      return e.toResultOrNull<Unit>() ?: throw e
+    }
+  }
+
   override suspend fun sendSomeOrFail(values: List<String>): Result<Int, Streams.Failure> {
     currentSendJob = currentCoroutineContext()[Job]
     return try {
@@ -50,6 +59,15 @@ internal class RealReceiverTester(
   private var currentReceiveJob: Job? = null
 
   override fun isSenderClosed() = receiver.senderClosed
+
+  override suspend fun awaitSendOrFail(): Result<*, Streams.Failure> {
+    try {
+      receiver.awaitSend()
+      return Result.Ok(Unit)
+    } catch (e: Throwable) {
+      return e.toResultOrNull<Unit>() ?: throw e
+    }
+  }
 
   override suspend fun receiveOrFail(count: Int): Result<List<String>, Streams.Failure> {
     currentReceiveJob = currentCoroutineContext()[Job]
@@ -114,3 +132,7 @@ internal suspend fun SenderTester.sendSome(values: List<String>): Int {
 internal fun ReceiverTester.closeReceiver() = closeOrFail().getOrThrow()
 
 internal fun SenderTester.closeSender() = closeOrFail().getOrThrow()
+
+internal suspend fun ReceiverTester.awaitSend() = awaitSendOrFail().getOrThrow()
+
+internal suspend fun SenderTester.awaitReceive() = awaitReceiveOrFail().getOrThrow()

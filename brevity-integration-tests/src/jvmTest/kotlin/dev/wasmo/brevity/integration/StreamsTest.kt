@@ -239,6 +239,64 @@ class StreamsTest(
     sender.closeSender()
   }
 
+  @Test
+  fun `sender awaitReceive with nonzero receive`() = runTest {
+    val tester = BrevityIntegrationTester()
+    val [sender, receiver] = tester.world.guest.streams.create()
+
+    val awaitReceiveSendAbc = async {
+      sender.awaitReceive()
+      sender.sendSome(listOf("a", "b", "c"))
+    }
+    val receive2 = async {
+      receiver.receive(2)
+    }
+    assertThat(awaitReceiveSendAbc.await()).isEqualTo(2)
+    assertThat(receive2.await()).containsExactly("a", "b")
+
+    receiver.closeReceiver()
+    sender.closeSender()
+  }
+
+  @Test
+  fun `receiver awaitSend with nonzero send`() = runTest {
+    val tester = BrevityIntegrationTester()
+    val [sender, receiver] = tester.world.guest.streams.create()
+
+    val awaitSendReceive3 = async {
+      receiver.awaitSend()
+      receiver.receive(2)
+    }
+    val sendAbc = async {
+      sender.sendSome(listOf("a", "b", "c"))
+    }
+    assertThat(awaitSendReceive3.await()).containsExactly("a", "b")
+    assertThat(sendAbc.await()).isEqualTo(2)
+
+    receiver.closeReceiver()
+    sender.closeSender()
+  }
+
+  @Test
+  fun `receiver awaitSend and sender awaitReceive unblocks sender`() = runTest {
+    val tester = BrevityIntegrationTester()
+    val [sender, receiver] = tester.world.guest.streams.create()
+
+    val awaitReceiveSendAbc = async {
+      sender.awaitReceive()
+      sender.sendSome(listOf("a", "b", "c"))
+    }
+    val awaitSendReceive2 = async {
+      receiver.awaitSend()
+      receiver.receive(2)
+    }
+    assertThat(awaitReceiveSendAbc.await()).isEqualTo(2)
+    assertThat(awaitSendReceive2.await()).containsExactly("a", "b")
+
+    receiver.closeReceiver()
+    sender.closeSender()
+  }
+
   private fun Streams.create(): Pair<Streams.SenderTester, Streams.ReceiverTester> {
     return when (orientation) {
       Orientation.HostToGuest -> {
