@@ -21,7 +21,11 @@ actual class Stream<T> {
       get() = pair.receiver.end.closed
 
     actual suspend fun awaitReceive() {
-      TODO()
+      end.hostWrite(
+        receiver = pair.receiver.end,
+        values = listOf(),
+        rendezvous = true,
+      )
     }
 
     actual suspend fun sendSome(values: List<T>): Int {
@@ -79,7 +83,11 @@ actual class Stream<T> {
     }
 
     actual suspend fun awaitSend() {
-      TODO()
+      end.hostRead(
+        sender = pair.sender.end,
+        count = 0,
+        rendezvous = true,
+      )
     }
 
     actual suspend fun receive(count: Int): List<T> {

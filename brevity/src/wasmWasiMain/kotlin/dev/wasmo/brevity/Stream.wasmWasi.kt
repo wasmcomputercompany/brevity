@@ -42,17 +42,32 @@ actual class Stream<T> {
   actual class Sender<T> internal constructor(
     private val pair: Stream<T>,
   ) : Resource() {
+    private var closed = false
     private var _receiverClosed = false
     actual val receiverClosed: Boolean
       get() = _receiverClosed
 
     actual suspend fun awaitReceive() {
-      TODO()
+      write(
+        values = listOf(),
+        rendezvous = true,
+      )
     }
 
     actual suspend fun sendSome(values: List<T>): Int {
+      return write(values)
+    }
+
+    private suspend fun write(
+      values: List<T>,
+      rendezvous: Boolean = false,
+    ): Int {
+      check(!closed) { "closed" }
       val binding = pair.deferredBinding.await()
+
       val count = values.size
+      if (count == 0 && !rendezvous) return 0
+
       val byteCount = binding.byteCount
       withScopedMemoryAllocator { memoryAllocator ->
         val address = memoryAllocator.allocate(count * byteCount)
@@ -75,12 +90,16 @@ actual class Stream<T> {
             _receiverClosed = true
             0
           }
+
           CopyResult.Cancelled -> throw CancellationException()
         }
       }
     }
 
     actual override fun close() {
+      if (closed) return
+      closed = true
+
       // TODO: do something smart if the binding isn't initialized.
       try {
         val binding = pair.deferredBinding.getCompleted()
@@ -94,6 +113,7 @@ actual class Stream<T> {
   actual class Receiver<T> internal constructor(
     private val pair: Stream<T>,
   ) : Resource() {
+    private var closed = false
     private var _senderClosed = false
     actual val senderClosed: Boolean
       get() = _senderClosed
@@ -104,11 +124,25 @@ actual class Stream<T> {
     }
 
     actual suspend fun awaitSend() {
-      TODO()
+      read(
+        count = 0,
+        rendezvous = true,
+      )
     }
 
     actual suspend fun receive(count: Int): List<T> {
+      return read(count)
+    }
+
+    private suspend fun read(
+      count: Int,
+      rendezvous: Boolean = false,
+    ): List<T> {
+      check(!closed) { "closed" }
       val binding = pair.deferredBinding.await()
+
+      if (count == 0 && !rendezvous) return listOf()
+
       val byteCount = binding.byteCount
       withScopedMemoryAllocator { memoryAllocator ->
         val address = memoryAllocator.allocate(count * byteCount)
@@ -126,16 +160,21 @@ actual class Stream<T> {
           CopyResult.Completed -> List(readResult.progress) {
             binding.load(address + byteCount * it)
           }
+
           CopyResult.Dropped -> {
             _senderClosed = true
             listOf()
           }
+
           CopyResult.Cancelled -> throw CancellationException()
         }
       }
     }
 
     actual override fun close() {
+      if (closed) return
+      closed = true
+
       // TODO: do something smart if the binding isn't initialized.
       try {
         val binding = pair.deferredBinding.getCompleted()
