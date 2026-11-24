@@ -8,6 +8,9 @@ import kotlinx.coroutines.launch
 import wit.wasmo.testing.Calculator
 import wit.wasmo.testing.Stdio
 import wit.wasmo.testing.Streams
+import wit.wasmo.testing.UnitStreams
+import wit.wasmo.testing.UnitStreams.UnitReceiverTester
+import wit.wasmo.testing.UnitStreams.UnitSenderTester
 import wit.wasmo.testing.WasmoTesting
 import wit.wasmo.testing.guest
 
@@ -53,9 +56,23 @@ val actuallyInitialize = run {
         return RealSenderTester(stream.sender) to RealReceiverTester(stream.receiver)
       }
 
-      override fun createHostGuest(stream: Stream.Receiver<String>): Streams.ReceiverTester {
-        return RealReceiverTester(stream)
+      override fun createHostGuest(stream: Stream.Receiver<String>) =
+        RealReceiverTester(stream)
+    }
+
+    override val unitStreams: UnitStreams = object : UnitStreams {
+      override fun createGuestHost(): Pair<UnitSenderTester, Stream.Receiver<Unit>> {
+        val stream = Stream<Unit>()
+        return RealUnitSenderTester(stream.sender) to stream.receiver
       }
+
+      override fun createGuestGuest(): Pair<UnitSenderTester, UnitReceiverTester> {
+        val stream = Stream<Unit>()
+        return RealUnitSenderTester(stream.sender) to RealUnitReceiverTester(stream.receiver)
+      }
+
+      override fun createHostGuest(stream: Stream.Receiver<Unit>) =
+        RealUnitReceiverTester(stream)
     }
 
     override suspend fun parallelSleep(coroutineCount: UInt, durationMillis: ULong) {
