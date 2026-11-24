@@ -41,10 +41,25 @@ interface streams {
   create-guest-guest: func() -> tuple<sender-tester, receiver-tester>;
 }
 
+interface unit-streams {
+  resource unit-sender-tester {
+    send-some: async func(count: s32, fast: bool) -> s32;
+  }
+
+  resource unit-receiver-tester {
+    receive: async func(count: s32, fast: bool) -> s32;
+  }
+
+  create-guest-host: func() -> tuple<unit-sender-tester, stream>;
+  create-host-guest: func(%stream: stream) -> unit-receiver-tester;
+  create-guest-guest: func() -> tuple<unit-sender-tester, unit-receiver-tester>;
+}
+
 world wasmo-testing {
   export calculator;
   export stdio;
   export streams;
+  export unit-streams;
   export sum: func(a: s64, b: s64) -> s64;
   export concat: func(a: string, b: string) -> string;
   export parallel-sleep: async func(coroutine-count: u32, duration-millis: u64);
