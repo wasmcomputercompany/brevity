@@ -3,9 +3,9 @@ package dev.wasmo.brevity.integration
 import dev.wasmo.brevity.Result
 import dev.wasmo.brevity.Stream
 import kotlin.coroutines.cancellation.CancellationException
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import wit.wasmo.testing.Streams
 import wit.wasmo.testing.Streams.ReceiverTester
 import wit.wasmo.testing.Streams.SenderTester
@@ -13,26 +13,25 @@ import wit.wasmo.testing.Streams.SenderTester
 internal class RealSenderTester(
   private val sender: Stream.Sender<String>,
 ) : SenderTester() {
-  private var latestSend: Deferred<*>? = null
+  private var currentSendJob: Job? = null
 
   override fun isReceiverClosed() = sender.receiverClosed
 
   override suspend fun sendSomeOrFail(values: List<String>): Result<Int, Streams.Failure> {
+    currentSendJob = currentCoroutineContext()[Job]
     return try {
       coroutineScope {
-        val deferredSend = async {
-          sender.sendSome(values)
-        }
-        latestSend = deferredSend
-        Result.Ok(deferredSend.await())
+        Result.Ok(sender.sendSome(values))
       }
     } catch (e: Throwable) {
       return e.toResultOrNull() ?: throw e
+    } finally {
+      currentSendJob = null
     }
   }
 
   override suspend fun cancelSend() {
-    latestSend?.cancel()
+    currentSendJob?.cancel()
   }
 
   override fun closeOrFail(): Result<*, Streams.Failure> {
@@ -48,26 +47,25 @@ internal class RealSenderTester(
 internal class RealReceiverTester(
   private val receiver: Stream.Receiver<String>,
 ) : ReceiverTester() {
-  private var latestReceive: Deferred<*>? = null
+  private var currentReceiveJob: Job? = null
 
   override fun isSenderClosed() = receiver.senderClosed
 
   override suspend fun receiveOrFail(count: Int): Result<List<String>, Streams.Failure> {
+    currentReceiveJob = currentCoroutineContext()[Job]
     return try {
       coroutineScope {
-        val deferredReceive = async {
-          receiver.receive(count)
-        }
-        latestReceive = deferredReceive
-        Result.Ok(deferredReceive.await())
+        Result.Ok(receiver.receive(count))
       }
     } catch (e: Throwable) {
       e.toResultOrNull() ?: throw e
+    } finally {
+      currentReceiveJob = null
     }
   }
 
   override suspend fun cancelReceive() {
-    latestReceive?.cancel()
+    currentReceiveJob?.cancel()
   }
 
   override fun closeOrFail(): Result<*, Streams.Failure> {
