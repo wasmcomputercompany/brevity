@@ -27,8 +27,8 @@ kotlin {
 }
 
 // The Kotlin Toolchain compiles the generated projects against brevity published to the local test
-// repository.
-val testRepository = rootProject.layout.buildDirectory.dir("localMaven")
+// repository. It rebuilds when a dependency's mtime changes and every publish rewrites them, so
+// the tests read a synced copy where artifacts with unchanged bytes keep their mtimes.
 val publishTestingArtifacts = listOf(
   ":brevity",
   ":wasi:brevity-wasi",
@@ -37,10 +37,15 @@ val publishTestingArtifacts = listOf(
   ":wasi:brevity-wasi-p3",
 ).map { "$it:publishAllPublicationsToTestRepository" }
 
-tasks.named<Test>("jvmTest") {
+val syncTestRepository = tasks.register<Sync>("syncTestRepository") {
   dependsOn(publishTestingArtifacts)
-  inputs.files(fileTree(testRepository) { include("**/*.jar", "**/*.klib") })
-  systemProperty("brevity.testRepository", testRepository.get().asFile.absolutePath)
+  from(rootProject.layout.buildDirectory.dir("localMaven"))
+  into(layout.buildDirectory.dir("testRepository"))
+  exclude("**/maven-metadata.xml*") // Rewritten with a timestamp on every publish.
+}
+
+tasks.named<Test>("jvmTest") {
+  inputs.files(syncTestRepository)
 
   // Surface test output such as the phase timings to gradle/ci.
   testLogging.showStandardStreams = true

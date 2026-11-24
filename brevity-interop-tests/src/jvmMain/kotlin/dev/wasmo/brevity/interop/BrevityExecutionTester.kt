@@ -29,11 +29,11 @@ import okio.source
  * This uses the Kotlin Toolchain.
  * https://kotlin-toolchain.org/latest/
  *
- * Brevity's runtime is resolved as 0-testing from build/localMaven. Gradle's jvmTest publishes it
- * there before running. To run these tests outside of Gradle publish it first:
+ * Brevity's runtime is resolved as 0-testing from build/testRepository. Gradle's jvmTest publishes
+ * and syncs it there before running. To run these tests outside of Gradle sync it first:
  *
  * ```
- * ./gradlew publishAllPublicationsToTestRepository
+ * ./gradlew :brevity-interop-tests:syncTestRepository
  * ```
  */
 class BrevityExecutionTester(
@@ -41,19 +41,19 @@ class BrevityExecutionTester(
   val name: String,
   val rawWitTypeDeclarations: String = "",
   val rawWitUseStatements: String = "",
-  val extraFiles: Map<Path, String> = mapOf(),
+  val extraBrevityFiles: Map<Path, String> = mapOf(),
   val types: List<SampleType>,
   predicate: TestFunction.() -> Boolean = { true },
 ) {
   private val fileSystem: WriteOnlyIfChangedFileSystem = WriteOnlyIfChangedFileSystem(fileSystem)
 
   private val layout = ProjectLayout(
-    path = "build/BrevityExecutionTester/$name".toPath(),
+    root = "build/BrevityExecutionTester".toPath(),
+    name = name,
   )
 
   private val testRepository: String
-    get() = System.getProperty("brevity.testRepository")
-      ?: fileSystem.canonicalize("../build/localMaven".toPath()).toString()
+    get() = fileSystem.canonicalize("build/testRepository".toPath()).toString()
 
   private val testFunctions: List<TestFunction> = buildList {
     for (functionParent in FunctionParent.entries) {
@@ -130,12 +130,12 @@ class BrevityExecutionTester(
       val hostKtJar = async {
         kotlinBuild.join()
         packageKotlinHost()
-        "build/tasks/_host_executableJarJvm/host-jvm-executable.jar"
+        "../build/tasks/_$name-host_executableJarJvm/$name-host-jvm-executable.jar"
       }
 
       val guestKtWasm = async {
         kotlinBuild.join()
-        "build/artifacts/CompiledWebArtifact/guestwasmWasidebug/kotlin-output/guest.wasm"
+        "../build/artifacts/CompiledWebArtifact/$name-guestwasmWasidebug/kotlin-output/$name-guest.wasm"
       }
 
       val guestRsWasm = async {
@@ -221,19 +221,19 @@ class BrevityExecutionTester(
 
   suspend fun generateKotlinProject() {
     executeIo("generateKotlinProject") {
-      fileSystem.createDirectories(layout.path)
-      fileSystem.write(layout.path / "project.yaml") {
+      fileSystem.createDirectories(layout.root)
+      fileSystem.write(layout.root / "project.yaml") {
         writeUtf8(
           """
           |modules:
-          |  - ./brevity
-          |  - ./guest
-          |  - ./host
+          |  - ./*/*-brevity
+          |  - ./*/*-guest
+          |  - ./*/*-host
           |
           """.trimMargin(),
         )
       }
-      fileSystem.write(layout.path / "common.module-template.yaml") {
+      fileSystem.write(layout.root / "common.module-template.yaml") {
         writeUtf8(
           """
           |settings:
@@ -249,7 +249,7 @@ class BrevityExecutionTester(
           """.trimMargin(),
         )
       }
-      fileSystem.write(layout.path / "libs.versions.toml") {
+      fileSystem.write(layout.root / "libs.versions.toml") {
         writeUtf8(
           """
           |[versions]
@@ -278,9 +278,9 @@ class BrevityExecutionTester(
   }
 
   suspend fun writeExtraFiles() {
-    for ((path, content) in extraFiles) {
+    for ([path, content] in extraBrevityFiles) {
       executeIo("writeExtraFiles") {
-        val filePath = layout.path / path
+        val filePath = layout.brevity / path
         fileSystem.createDirectories(filePath.parent!!)
         fileSystem.write(filePath) {
           writeUtf8(content)
@@ -337,7 +337,7 @@ class BrevityExecutionTester(
           |  - $libs.brevity.wasi.p3
           |  - $libs.coroutines.core
           |  - $libs.okio
-          |  - ../brevity
+          |  - ../$$name-brevity
           |
           """.trimMargin(),
         )
@@ -349,7 +349,7 @@ class BrevityExecutionTester(
     executeIo("generateGuestAppRustCargoToml") {
       fileSystem.createDirectories(layout.rust)
       // Create one cargo workspace for every generated test. Dependencies compile once.
-      fileSystem.write(layout.path.parent!! / "Cargo.toml") {
+      fileSystem.write(layout.root / "Cargo.toml") {
         writeUtf8("""
         |[workspace]
         | resolver = "3"
@@ -418,7 +418,7 @@ class BrevityExecutionTester(
           |  - $libs.coroutines.core
           |  - $libs.coroutines.test
           |  - $libs.okio
-          |  - ../brevity
+          |  - ../$$name-brevity
           |
           """.trimMargin(),
         )
@@ -429,24 +429,24 @@ class BrevityExecutionTester(
   suspend fun compileKotlin() {
     executeCommand(
       "compileKotlin",
-      layout.path,
+      layout.root,
       "kotlin",
       "build",
       "--module",
-      "host",
+      "$name-host",
       "--module",
-      "guest",
+      "$name-guest",
     )
   }
 
   suspend fun packageKotlinHost() {
     executeCommand(
       "packageKotlinHost",
-      layout.path,
+      layout.root,
       "kotlin",
       "package",
       "--module",
-      "host",
+      "$name-host",
     )
   }
 

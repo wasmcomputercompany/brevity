@@ -17,8 +17,8 @@ class WitAdapterTest {
         |use types.{datetime};
         |
         """.trimMargin(),
-      extraFiles = mapOf(
-        "brevity/src/wit/brevity/testing/RealAdapters.kt".toPath() to """
+      extraBrevityFiles = mapOf(
+        "src/wit/brevity/testing/RealAdapters.kt".toPath() to """
           |package wit.brevity.testing
           |
           |import dev.wasmo.brevity.WitAdapter

@@ -3,15 +3,20 @@ package dev.wasmo.brevity.interop
 import okio.Path
 
 class ProjectLayout(
-  val path: Path,
+  /** The Kotlin Toolchain project and Cargo workspace shared by all testers. */
+  val root: Path,
+  val name: String,
 ) {
+  val path: Path
+    get() = root / name
+
   val brevityWit: Path
     get() = path / "wit"
   val rustWit: Path
     get() = path / "rust" / "wit"
 
   val brevity: Path
-    get() = path / "brevity"
+    get() = path / "$name-brevity"
   val brevitySrc: Path
     get() = brevity / "src"
   val brevitySrcJvm: Path
@@ -20,12 +25,12 @@ class ProjectLayout(
     get() = brevity / "src@wasmWasi"
 
   val guest: Path
-    get() = path / "guest"
+    get() = path / "$name-guest"
   val guestSrc: Path
     get() = guest / "src"
 
   val host: Path
-    get() = path / "host"
+    get() = path / "$name-host"
   val hostSrc: Path
     get() = host / "src"
 
