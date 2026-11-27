@@ -15,7 +15,7 @@ actual class Stream<T> {
   actual class Sender<T> internal constructor(
     private val pair: Stream<T>,
   ) : Waitable() {
-    internal val end = End<T>(this, StreamEndId.StreamWrite)
+    internal val end = StreamEnd<T>(this, StreamEndId.StreamWrite)
 
     actual val receiverClosed: Boolean
       get() = pair.receiver.end.closed
@@ -58,7 +58,7 @@ actual class Stream<T> {
   actual class Receiver<T> internal constructor(
     internal val pair: Stream<T>,
   ) : Waitable() {
-    internal val end = End<T>(this, StreamEndId.StreamRead)
+    internal val end = StreamEnd<T>(this, StreamEndId.StreamRead)
 
     actual val senderClosed: Boolean
       get() = pair.sender.end.closed

@@ -5,18 +5,15 @@ import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 
 @BrevityInternalApi
-internal class End<T>(
+internal class StreamEnd<T>(
   private val waitable: Waitable,
   private val streamEndId: StreamEndId,
 ) {
   lateinit var binding: StreamBinding<T>
   lateinit var memoryAllocator: MemoryAllocator
 
-  /** Data is either in memory at [address]... */
-  private var address = 0
-
-  /** ...or it is in the [values] deque, in which case [address] is [ADDRESS_LIST]. */
-  private val values = ArrayDeque<T>()
+  /** Access to the current batch of data. */
+  private var data: Data<T>? = null
 
   /** A continuation to unblock after accessing the deque. */
   private var continuation: Continuation<Unit>? = null
@@ -30,20 +27,19 @@ internal class End<T>(
     private set
 
   suspend fun hostWrite(
-    receiver: End<T>,
+    receiver: StreamEnd<T>,
     values: List<T>,
     rendezvous: Boolean = false,
   ): Int {
     check(!closed) { "closed" }
     if (pos != -1) throw ConcurrentModificationException()
-    check(this.values.isEmpty())
+    check(data == null)
 
     if (receiver.closed) return 0
     if (values.isEmpty() && !rendezvous) return 0
 
-    this.address = ADDRESS_LIST
+    this.data = ListSource(values)
     this.pos = 0
-    this.values += values
     this.limit = values.size.coerceAtMost(PackedCopyResult.MAX_PROGRESS)
 
     // If both ends are State.Transferring, transfer!
@@ -67,24 +63,26 @@ internal class End<T>(
     this.pos = -1
     this.limit = -1
     this.resumed = false
-    this.values.clear()
+    this.data = null
 
     return result
   }
 
   suspend fun hostRead(
-    sender: End<T>,
+    sender: StreamEnd<T>,
     count: Int,
     rendezvous: Boolean = false,
   ): List<T> {
     check(!closed) { "closed" }
     if (pos != -1) throw ConcurrentModificationException()
-    check(this.values.isEmpty())
+    check(data == null)
 
     if (sender.closed) return listOf()
     if (count == 0 && !rendezvous) return listOf()
 
-    this.address = ADDRESS_LIST
+    val result = mutableListOf<T>()
+    val listSink = ListSink(result)
+    this.data = listSink
     this.pos = 0
     this.limit = count.coerceAtMost(PackedCopyResult.MAX_PROGRESS)
 
@@ -103,19 +101,17 @@ internal class End<T>(
       }
     }
 
-    val result = values.toList()
-
     // Read complete: become idle again.
     this.pos = -1
     this.limit = -1
     this.resumed = false
-    this.values.clear()
+    this.data = null
 
     return result
   }
 
   fun guestWrite(
-    receiver: End<T>,
+    receiver: StreamEnd<T>,
     address: Int,
     count: Int,
   ): Int {
@@ -127,7 +123,7 @@ internal class End<T>(
       return PackedCopyResult(CopyResult.Dropped).value.toInt()
     }
 
-    this.address = address
+    this.data = GuestMemory(address)
     this.pos = 0
     this.limit = count.coerceAtMost(PackedCopyResult.MAX_PROGRESS)
 
@@ -143,7 +139,7 @@ internal class End<T>(
   }
 
   fun guestRead(
-    sender: End<T>,
+    sender: StreamEnd<T>,
     address: Int,
     count: Int,
   ): Int {
@@ -155,7 +151,7 @@ internal class End<T>(
       return PackedCopyResult(CopyResult.Dropped).value.toInt()
     }
 
-    this.address = address
+    this.data = GuestMemory(address)
     this.pos = 0
     this.limit = count.coerceAtMost(PackedCopyResult.MAX_PROGRESS)
 
@@ -173,7 +169,7 @@ internal class End<T>(
   private fun resume() {
     resumed = true
 
-    if (address == ADDRESS_LIST) {
+    if (data !is StreamEnd.GuestMemory) {
       val continuation = this.continuation ?: return
       this.continuation = null
       continuation.resume(Unit)
@@ -187,7 +183,7 @@ internal class End<T>(
       this.pos = -1
       this.limit = -1
       this.resumed = false
-      this.values.clear()
+      this.data = null
 
       Event.Stream(streamEndId, waitable.rep, packedCopyResult)
     }
@@ -207,12 +203,9 @@ internal class End<T>(
   }
 
   private companion object {
-    /** Sentinel value to read items from a list. */
-    const val ADDRESS_LIST = -1
-
     /** Transfers from this sender to [receiver]. */
     @OptIn(BrevityInternalApi::class)
-    fun <T> transferAndResume(sender: End<T>, receiver: End<T>) {
+    fun <T> transferAndResume(sender: StreamEnd<T>, receiver: StreamEnd<T>) {
       val senderPos = sender.pos
       val senderLimit = sender.limit
       val receiverPos = receiver.pos
@@ -242,53 +235,75 @@ internal class End<T>(
      * Transfer [count] elements from sender to receiver. Each is either a regular [List] or an
      * address in linear memory, for a total of four cases.
      *
-     * We don't resolve [End.binding] for list-to-list transfers, as it's unlikely to be initialized
+     * We don't resolve [StreamEnd.binding] for list-to-list transfers, as it's unlikely to be initialized
      * in that case.
      */
     @OptIn(BrevityInternalApi::class)
     fun <T> transfer(
-      sender: End<T>,
-      receiver: End<T>,
+      sender: StreamEnd<T>,
+      receiver: StreamEnd<T>,
       count: Int,
     ) {
-      if (sender.address == ADDRESS_LIST && receiver.address == ADDRESS_LIST) {
-        // List to List.
-        receiver.values.addAll(sender.values.subList(sender.pos, sender.pos + count))
-      } else {
-        val binding = sender.binding
-        val memoryAllocator = sender.memoryAllocator
-        val byteCount = binding.byteCount
+      val sourceList = sender.data!!.load(sender.pos, count)
+      receiver.data!!.store(receiver.pos, sourceList)
 
-        if (sender.address == ADDRESS_LIST) {
-          // List to linear memory.
-          var r = receiver.address + (receiver.pos * byteCount)
-          for (p in 0 until count) {
-            val value = sender.values[sender.pos + p]
-            binding.store(memoryAllocator, r, value)
-            r += byteCount
-          }
-
-        } else if (receiver.address == ADDRESS_LIST) {
-          // Linear memory to list.
-          var s = sender.address + (sender.pos * byteCount)
-          for (p in 0 until count) {
-            receiver.values += binding.load(s)
-            s += byteCount
-          }
-        } else {
-          // Linear memory to linear memory.
-          var s = sender.address + (sender.pos * byteCount)
-          var r = receiver.address + (receiver.pos * byteCount)
-          for (p in 0 until count) {
-            val value = binding.load(s)
-            binding.store(memoryAllocator, r, value)
-            s += byteCount
-            r += byteCount
-          }
-        }
-      }
       sender.pos += count
       receiver.pos += count
+    }
+  }
+
+  sealed interface Data<T> {
+    fun load(pos: Int, count: Int): List<T>
+    fun store(pos: Int, values: List<T>)
+  }
+
+  inner class GuestMemory(
+    private val address: Int,
+  ) : Data<T> {
+    override fun load(
+      pos: Int,
+      count: Int,
+    ): List<T> {
+      val byteCount = binding.byteCount
+      return List(count) { index ->
+        binding.load(address + (pos + index) * byteCount)
+      }
+    }
+
+    override fun store(
+      pos: Int,
+      values: List<T>,
+    ) {
+      val byteCount = binding.byteCount
+      for ((index, value) in values.withIndex()) {
+        binding.store(
+          memoryAllocator = memoryAllocator,
+          address = address + (pos + index) * byteCount,
+          value = values[index],
+        )
+      }
+    }
+  }
+
+  class ListSource<T>(
+    val list: List<T>,
+  ) : Data<T> {
+    override fun load(pos: Int, count: Int) = list.subList(pos, pos + count)
+
+    override fun store(pos: Int, values: List<T>) {
+      error("unexpected call")
+    }
+  }
+
+  class ListSink<T>(
+    val list: MutableList<T>,
+  ) : Data<T> {
+    override fun load(pos: Int, count: Int): List<T> {
+      error("unexpected call")
+    }
+
+    override fun store(pos: Int, values: List<T>) {
+      list += values
     }
   }
 }
