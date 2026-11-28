@@ -58,7 +58,7 @@ actual class Stream<T> {
     actual suspend fun sendSome(values: List<T>): Int {
       return write(
         count = values.size,
-        storer = Storer.ListStorer(listOf()),
+        storer = Storer.ListStorer(values),
       )
     }
 
