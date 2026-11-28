@@ -9,6 +9,11 @@ actual class Stream<T> {
 
   actual constructor()
 
+  init {
+    this.sender.end.other = receiver.end
+    this.receiver.end.other = sender.end
+  }
+
   actual operator fun component1() = sender
   actual operator fun component2() = receiver
 
@@ -21,24 +26,23 @@ actual class Stream<T> {
       get() = pair.receiver.end.closed
 
     actual suspend fun awaitReceive() {
-      end.hostWrite(
-        receiver = pair.receiver.end,
-        values = listOf(),
+      end.hostTransfer(
+        data = StreamEnd.ListSource(listOf()),
+        count = 0,
         rendezvous = true,
       )
     }
 
     actual suspend fun sendSome(values: List<T>): Int {
-      return end.hostWrite(
-        receiver = pair.receiver.end,
-        values = values,
+      return end.hostTransfer(
+        data = StreamEnd.ListSource(values),
+        count = values.size,
       )
     }
 
     @BrevityInternalApi
     fun write(address: Int, count: Int): Int {
-      return end.guestWrite(
-        receiver = pair.receiver.end,
+      return end.guestTransfer(
         address = address,
         count = count,
       )
@@ -83,24 +87,27 @@ actual class Stream<T> {
     }
 
     actual suspend fun awaitSend() {
-      end.hostRead(
-        sender = pair.sender.end,
+      end.hostTransfer(
+        data = StreamEnd.ListSink(mutableListOf()),
         count = 0,
         rendezvous = true,
       )
     }
 
     actual suspend fun receive(count: Int): List<T> {
-      return end.hostRead(
-        sender = pair.sender.end,
+      val result = mutableListOf<T>()
+
+      end.hostTransfer(
+        data = StreamEnd.ListSink(result),
         count = count,
       )
+
+      return result
     }
 
     @BrevityInternalApi
     fun read(address: Int, count: Int): Int {
-      return end.guestRead(
-        sender = pair.sender.end,
+      return end.guestTransfer(
         address = address,
         count = count,
       )
