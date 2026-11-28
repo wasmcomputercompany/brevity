@@ -468,7 +468,7 @@ class BrevityExecutionTester(
   suspend fun compileRustGuest() {
     // Generate .wasm components from Rust sources
     executeCommand(
-      "compileRustGuest",
+      "compileRust(step=cargo)",
       layout.rust,
       "cargo",
       "build",
@@ -478,7 +478,7 @@ class BrevityExecutionTester(
 
     // Unbundle the .wasm component into a .wasm core module
     executeCommand(
-      "compileRustGuest",
+      "compileRust(step=unbundle)",
       layout.rust,
       "wasm-tools",
       "component",
