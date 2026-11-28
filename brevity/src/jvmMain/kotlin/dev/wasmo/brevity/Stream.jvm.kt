@@ -124,3 +124,17 @@ actual class Stream<T> {
     }
   }
 }
+
+actual suspend fun Stream.Receiver<Unit>.receiveUnits(count: Int): Int {
+  return end.hostTransfer(
+    data = StreamEnd.UnitData,
+    count = count,
+  )
+}
+
+actual suspend fun Stream.Sender<Unit>.sendUnits(count: Int): Int {
+  return end.hostTransfer(
+    data = StreamEnd.UnitData,
+    count = count,
+  )
+}

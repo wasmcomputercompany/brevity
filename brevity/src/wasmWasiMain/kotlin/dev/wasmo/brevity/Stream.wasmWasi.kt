@@ -49,31 +49,33 @@ actual class Stream<T> {
 
     actual suspend fun awaitReceive() {
       write(
-        values = listOf(),
+        count = 0,
+        storer = Storer.ListStorer(listOf()),
         rendezvous = true,
       )
     }
 
     actual suspend fun sendSome(values: List<T>): Int {
-      return write(values)
+      return write(
+        count = values.size,
+        storer = Storer.ListStorer(listOf()),
+      )
     }
 
-    private suspend fun write(
-      values: List<T>,
+    internal suspend fun write(
+      count: Int,
+      storer: Storer<T>,
       rendezvous: Boolean = false,
     ): Int {
       check(!closed) { "closed" }
       val binding = pair.deferredBinding.await()
 
-      val count = values.size
       if (count == 0 && !rendezvous) return 0
 
       val byteCount = binding.byteCount
       withScopedMemoryAllocator { memoryAllocator ->
         val address = memoryAllocator.allocate(count * byteCount)
-        for ((i, element) in values.withIndex()) {
-          binding.store(memoryAllocator, address + i * byteCount, element)
-        }
+        storer.store(binding, memoryAllocator, address)
 
         var writeResult = PackedCopyResult(
           binding.write(rep, address.address.toInt(), count).toUInt(),
@@ -126,22 +128,29 @@ actual class Stream<T> {
     actual suspend fun awaitSend() {
       read(
         count = 0,
+        loader = Loader.ListLoader(),
         rendezvous = true,
       )
     }
 
     actual suspend fun receive(count: Int): List<T> {
-      return read(count)
+      val loader = Loader.ListLoader<T>()
+      read(
+        count = count,
+        loader = loader,
+      )
+      return loader.list
     }
 
-    private suspend fun read(
+    internal suspend fun read(
       count: Int,
+      loader: Loader<T>,
       rendezvous: Boolean = false,
-    ): List<T> {
+    ) : Int {
       check(!closed) { "closed" }
       val binding = pair.deferredBinding.await()
 
-      if (count == 0 && !rendezvous) return listOf()
+      if (count == 0 && !rendezvous) return 0
 
       val byteCount = binding.byteCount
       withScopedMemoryAllocator { memoryAllocator ->
@@ -157,13 +166,14 @@ actual class Stream<T> {
         }
 
         return when (readResult.copyResult) {
-          CopyResult.Completed -> List(readResult.progress) {
-            binding.load(address + byteCount * it)
+          CopyResult.Completed -> {
+            loader.load(binding, address, readResult.progress)
+            readResult.progress
           }
 
           CopyResult.Dropped -> {
             _senderClosed = true
-            listOf()
+            0
           }
 
           CopyResult.Cancelled -> throw CancellationException()
@@ -184,4 +194,19 @@ actual class Stream<T> {
       super.close()
     }
   }
+}
+
+
+actual suspend fun Stream.Receiver<Unit>.receiveUnits(count: Int): Int {
+  return read(
+    count = count,
+    loader = Loader.UnitLoader,
+  )
+}
+
+actual suspend fun Stream.Sender<Unit>.sendUnits(count: Int): Int {
+  return write(
+    count = count,
+    storer = Storer.UnitStorer,
+  )
 }

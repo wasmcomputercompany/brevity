@@ -219,23 +219,22 @@ internal class StreamEnd<T>(
     }
   }
 
-  sealed interface Data<T> {
-    fun get(pos: Int): T
-    fun put(pos: Int, value: T)
+  abstract class Data<T> {
+    abstract fun get(pos: Int): T
+    abstract fun put(pos: Int, value: T)
 
-    fun transfer(
+    open fun transfer(
       sourcePos: Int,
       sink: Data<T>,
       sinkPos: Int,
       count: Int,
     ) {
       for (i in 0 until count) {
-        val value = get(sourcePos + i)
-        sink.put(sinkPos + i, value)
+        sink.put(sinkPos + i, get(sourcePos + i))
       }
     }
 
-    fun store(
+    open fun store(
       sourcePos: Int,
       sink: StreamEnd<T>.GuestMemory,
       sinkPos: Int,
@@ -246,7 +245,7 @@ internal class StreamEnd<T>(
       }
     }
 
-    fun load(
+    open fun load(
       source: StreamEnd<T>.GuestMemory,
       sourcePos: Int,
       sinkPos: Int,
@@ -261,7 +260,7 @@ internal class StreamEnd<T>(
   /** This is an inner class because it needs to know *which memory* it's accessing. */
   inner class GuestMemory(
     private val address: Int,
-  ) : Data<T> {
+  ) : Data<T>() {
     override fun get(pos: Int): T {
       return binding.load(
         address = address + (pos * binding.byteCount),
@@ -279,7 +278,7 @@ internal class StreamEnd<T>(
 
   class ListSource<T>(
     val list: List<T>,
-  ) : Data<T> {
+  ) : Data<T>() {
     override fun get(pos: Int): T = list[pos]
 
     override fun put(pos: Int, value: T) {
@@ -289,13 +288,48 @@ internal class StreamEnd<T>(
 
   class ListSink<T>(
     val list: MutableList<T>,
-  ) : Data<T> {
+  ) : Data<T>() {
     override fun get(pos: Int): T {
       error("cannot read a sink")
     }
 
     override fun put(pos: Int, value: T) {
       list += value
+    }
+  }
+
+  object UnitData : Data<Unit>() {
+    override fun get(pos: Int) = Unit
+
+    override fun put(pos: Int, value: Unit) {
+    }
+
+    override fun transfer(
+      sourcePos: Int,
+      sink: Data<Unit>,
+      sinkPos: Int,
+      count: Int,
+    ) {
+      if (sink == this) return
+      for (i in sinkPos until sinkPos + count) {
+        sink.put(i, Unit)
+      }
+    }
+
+    override fun store(
+      sourcePos: Int,
+      sink: StreamEnd<Unit>.GuestMemory,
+      sinkPos: Int,
+      count: Int,
+    ) {
+    }
+
+    override fun load(
+      source: StreamEnd<Unit>.GuestMemory,
+      sourcePos: Int,
+      sinkPos: Int,
+      count: Int,
+    ) {
     }
   }
 }

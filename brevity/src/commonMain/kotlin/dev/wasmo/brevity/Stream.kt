@@ -243,12 +243,7 @@ suspend fun Stream.Sender<Byte>.sendSome(
  *   will suspend until the receiver calls [Stream.Receiver.receive] with a non-zero count.
  * @throws IllegalStateException if this [Stream.Sender] is closed.
  */
-suspend fun Stream.Sender<Unit>.sendUnits(count: Int = 1): Int {
-  return when (count) {
-    0 -> sendSome(listOf())
-    else -> sendSome(listOf(Unit))
-  }
-}
+expect suspend fun Stream.Sender<Unit>.sendUnits(count: Int = 1): Int
 
 /**
  * Receive a single element and return it.
@@ -300,7 +295,4 @@ suspend fun Stream.Receiver<Byte>.receive(
  *   will suspend until the sender calls [Stream.Sender.send] with a non-zero count.
  * @throws IllegalStateException if this [Stream.Receiver] is closed.
  */
-suspend fun Stream.Receiver<Unit>.receiveUnits(count: Int = 1): Int {
-  val values = receive(count)
-  return values.size
-}
+expect suspend fun Stream.Receiver<Unit>.receiveUnits(count: Int = 1): Int
